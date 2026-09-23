@@ -22,6 +22,14 @@ IDS = {  # produção -> BRAIN TESTE (arquivo 06 da DOCUMENTACAO)
     "3c9c5ab532d3800f8261fdab1e4ff621": "3a4c5ab532d38385b893811ad439d0fb",  # ATIVIDADES PÓS OBRA
 }
 REPO_PROD, REPO_TESTE = "DEVMoraisEng/PORTAL-MORAIS", "MoraisEng-Teste/PORTAL-MORAIS"
+DOMINIO_PROD, DOMINIO_TESTE = "devmoraiseng.github.io/PORTAL-MORAIS", "moraiseng-teste.github.io/PORTAL-MORAIS"
+# ids de produção conhecidos além dos 10 do IDS acima — ficam desligados no
+# fork (os passos/robôs que os usariam já são desligados por PASSOS_DESLIGAR
+# e pelo apagamento de robos-mc.yml), então só viram AVISO, não erro.
+IDS_AVISO = {
+    "306c5ab532d3812fa14fe9a281510128": "Obras",
+    "3e2c5ab532d38055a241db35f74e7bbc": "Proprietários",
+}
 EXTENSOES = {".gs", ".py", ".js", ".html", ".yml", ".yaml", ".md", ".json"}
 PULAR = {".git", "venda", "teste", "dist", "img"}
 PASSOS_DESLIGAR = ["Buscar dados da Análise de Dados", "Buscar dados das Obras"]
@@ -35,13 +43,21 @@ def desligar_passos(s):
     return s
 
 
+URL_EXEC_RE = r"https://script\.google\.com/macros/s/[\w-]+/exec"
+VENDA_DOSSIE = "venda-dossie.js"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--exec", required=True, dest="url_exec")
+    ap.add_argument("--venda", required=True, dest="url_venda",
+                     help="URL /exec do PORTAL-VENDA-TESTE (grava em venda-dossie.js; não entra na troca genérica)")
     ap.add_argument("--raiz", default=".")
     a = ap.parse_args()
-    if not re.fullmatch(r"https://script\.google\.com/macros/s/[\w-]+/exec", a.url_exec):
+    if not re.fullmatch(URL_EXEC_RE, a.url_exec):
         sys.exit("URL do PORTAL-TESTE inválida: precisa ser https://script.google.com/macros/s/<id>/exec")
+    if not re.fullmatch(URL_EXEC_RE, a.url_venda):
+        sys.exit("URL do PORTAL-VENDA-TESTE inválida: precisa ser https://script.google.com/macros/s/<id>/exec")
     raiz = pathlib.Path(a.raiz).resolve()
     alterados = []
     for p in sorted(raiz.rglob("*")):
@@ -53,7 +69,14 @@ def main():
         for prod, teste in IDS.items():
             s = s.replace(prod, teste)
         s = s.replace(REPO_PROD, REPO_TESTE)
-        s = re.sub(r"https://script\.google\.com/macros/s/[\w-]+/exec", a.url_exec, s)
+        s = s.replace(DOMINIO_PROD, DOMINIO_TESTE)
+        if str(rel) == VENDA_DOSSIE:
+            # venda-dossie.js fala com um Apps Script SEPARADO (PORTAL-VENDA);
+            # a troca genérica da URL /exec de baixo pularia este arquivo e
+            # gravaria a URL errada aqui numa segunda sincronização.
+            s = re.sub(r'var URL_PORTAL_VENDA = "[^"]*";', 'var URL_PORTAL_VENDA = "' + a.url_venda + '";', s)
+        else:
+            s = re.sub(URL_EXEC_RE, a.url_exec, s)
         if p.name == "pages.yml":
             s = desligar_passos(s)
         if s != antes:
@@ -65,18 +88,30 @@ def main():
         alterados.append(".github/workflows/robos-mc.yml (apagado)")
     sobras = []
     urls_sobras = []
+    avisos = []
     for p in raiz.rglob("*"):
         rel = p.relative_to(raiz)
         if p.is_file() and rel.parts[0] not in PULAR and p.suffix.lower() in EXTENSOES:
             t = p.read_bytes().decode("utf-8")
             sobras += [f"{rel}: {i}" for i in IDS if i in t]
-            urls = re.findall(r"https://script\.google\.com/macros/s/[\w-]+/exec", t)
+            urls = re.findall(URL_EXEC_RE, t)
             for url in urls:
-                if url != a.url_exec:
+                # a checagem de sobras aceita só --exec em qualquer arquivo, e
+                # --venda apenas dentro de venda-dossie.js (é o único lugar
+                # onde essa URL deveria aparecer).
+                permitido = url == a.url_exec or (str(rel) == VENDA_DOSSIE and url == a.url_venda)
+                if not permitido:
                     urls_sobras.append(f"{rel}: {url}")
+            for i, nome in IDS_AVISO.items():
+                if i in t:
+                    avisos.append(f"{rel}: {i} ({nome}) — desligado no fork (passos/robôs desligados)")
+            for m in re.finditer(r"DEVMoraisEng/[\w.-]+", t):
+                avisos.append(f"{rel}: {m.group(0)} — repositório de produção fora do PORTAL-MORAIS")
     print("alterados:", len(alterados))
     for x in alterados:
         print("  ", x)
+    if avisos:
+        print("AVISO:", *avisos, sep="\n  ")
     if sobras:
         print("ID DE PRODUÇÃO SOBROU:", *sobras, sep="\n  ")
         sys.exit(1)
