@@ -34,9 +34,11 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
-  function mensagemDeErro(erro, arquivoGuardado) {
+  function mensagemDeErro(erro, arquivoGuardado, foiLerDocumento) {
     var e = String(erro || "");
     if (arquivoGuardado) return "Arquivo guardado; a leitura falhou — use Ler de novo.";
+    if (e === "SEM_RESPOSTA" && foiLerDocumento)
+      return "O servidor demorou a responder — o arquivo pode ter sido guardado. Use Ler de novo antes de enviar outra vez.";
     if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "A base não tem a coluna " + e.slice(17) + " — avise o desenvolvedor.";
     if (e.indexOf("TIPO_DE_COLUNA_ERRADO: ") === 0) return "A coluna " + e.slice(23) + " está com o tipo errado no Notion — avise o desenvolvedor.";
     return MSG[e] || "Algo deu errado (" + e + ") — tente de novo.";
@@ -60,12 +62,13 @@
   }
 
   function html(e, ui) {
-    var travado = !e.tipoCasa, ocupado = !!ui.ocupado;
+    var travado = !e.tipoCasa, ocupado = !!ui.ocupado, testes = !!ui.testes;
     var dis = function (cond) { return cond ? " disabled" : ""; };
     var h = '<div class="grp">Dossiê do comprador</div>';
+    if (testes) h += '<div class="dz-aviso">Perfil TESTES só consulta.</div>';
     h += '<div class="dz-linha"><span class="dz-rot">Tipo de casa</span>' + TIPOS_CASA.map(function (t) {
       return '<button type="button" data-acao="tipo" data-valor="' + esc(t) + '" class="bt ghost bt-mini' +
-        (e.tipoCasa === t ? " on" : "") + '"' + dis(ocupado) + ">" + esc(t) + "</button>";
+        (e.tipoCasa === t ? " on" : "") + '"' + dis(ocupado || testes) + ">" + esc(t) + "</button>";
     }).join(" ") + "</div>";
     if (travado) h += '<div class="dz-aviso">Escolha o tipo de casa para liberar os documentos.</div>';
     h += '<div class="dz-linha"><span class="dz-rot">Compradores</span>' + ["1", "2"].map(function (n) {
@@ -78,12 +81,12 @@
       h += '<div class="dz-linha"><span class="dz-rot">' + esc(d.rotulo) + ' <small>' +
         (n ? n + (n === 1 ? " arquivo" : " arquivos") : "nenhum arquivo") + "</small>" +
         (ui.ocupado === d.id ? " <b>lendo…</b>" : "") + "</span>" +
-        '<button type="button" class="bt bt-mini" data-acao="enviar" data-espaco="' + d.id + '"' + dis(travado || ocupado) + ">Enviar e ler</button> " +
-        '<button type="button" class="bt ghost bt-mini" data-acao="reler" data-espaco="' + d.id + '"' + dis(travado || ocupado || !n) + ">Ler de novo</button></div>";
+        '<button type="button" class="bt bt-mini" data-acao="enviar" data-espaco="' + d.id + '"' + dis(travado || ocupado || testes) + ">Enviar e ler</button> " +
+        '<button type="button" class="bt ghost bt-mini" data-acao="reler" data-espaco="' + d.id + '"' + dis(travado || ocupado || testes || !n) + ">Ler de novo</button></div>";
     });
     h += '<div class="dz-linha"><span class="dz-rot">Dossiê: <b>' + esc(e.dossie || "—") + "</b></span>" +
-      '<button type="button" class="bt bt-mini" data-acao="conferir"' + dis(travado || ocupado) + ">Marcar conferido</button> " +
-      '<button type="button" class="bt ghost bt-mini" data-acao="devolver"' + dis(travado || ocupado) + ">Devolver</button></div>";
+      '<button type="button" class="bt bt-mini" data-acao="conferir"' + dis(travado || ocupado || testes) + ">Marcar conferido</button> " +
+      '<button type="button" class="bt ghost bt-mini" data-acao="devolver"' + dis(travado || ocupado || testes) + ">Devolver</button></div>";
     if (e.observacao) h += "<pre>" + esc(e.observacao) + "</pre>";
     if (ui.msg) h += '<div class="dz-msg">' + esc(ui.msg) + "</div>";
     return h;
@@ -97,10 +100,14 @@
   var CSS = "#dossie-wrap{margin-bottom:14px}#dossie-wrap .dz-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}" +
     "#dossie-wrap .dz-rot{flex:1 1 200px}#dossie-wrap .on{outline:2px solid #4cd964}#dossie-wrap .dz-aviso{color:#E67E22;margin:6px 0}" +
     "#dossie-wrap .dz-msg{margin-top:8px;font-weight:600}#dossie-wrap pre{white-space:pre-wrap;font:inherit;margin:4px 0}";
-  var estado = null, ui = { dois: false, ocupado: null, msg: "" }, paginaDoBloco = null;
+  var estado = null, ui = { dois: false, ocupado: null, msg: "", testes: false }, paginaDoBloco = null;
 
   function obraAberta() { try { return OBRA_ABERTA; } catch (e) { return null; } }
   function mesmaCasa(pageId) { return obraAberta() === pageId && paginaDoBloco === pageId; }
+  function perfilTestes() {
+    var s = (typeof sessao === "function") ? sessao() : null;
+    return !!(s && String(s.tipo || "").toUpperCase() === "TESTES");
+  }
   function wrap() { return document.getElementById("dossie-wrap"); }
   function pintar() {
     var w = wrap(); if (!w) return;
@@ -175,14 +182,17 @@
       }
       inp.onchange = function () { resolver(inp.files && inp.files[0]); };
       inp.addEventListener("cancel", function () { resolver(null); });
-      window.addEventListener("focus", aoFocar);
+      /* Com "cancel" nativo, o cancelamento já chega por esse evento — a
+       * folga de 500 ms do fallback "focus" pode descartar um arquivo
+       * escolhido da nuvem no Android, cujo "change" chega depois disso. */
+      if (!("oncancel" in inp)) window.addEventListener("focus", aoFocar);
       inp.click();
     });
   }
-  async function depoisDeGravar(pageId, r, texto) {
+  async function depoisDeGravar(pageId, r, texto, foiLerDocumento) {
     if (!mesmaCasa(pageId)) return;
     ui.ocupado = null;
-    ui.msg = r.ok ? texto : mensagemDeErro(r.erro, r.arquivoGuardado);
+    ui.msg = r.ok ? texto : mensagemDeErro(r.erro, r.arquivoGuardado, foiLerDocumento);
     await carregarEstado(pageId);
     if (mesmaCasa(pageId) && typeof abrirObra === "function") abrirObra(pageId);
   }
@@ -211,7 +221,7 @@
         payload.arquivo = arq;
       }
       r = await chamarVenda(payload, 150000);
-      return depoisDeGravar(pageId, r, r.ok ? resumo(r) : "");
+      return depoisDeGravar(pageId, r, r.ok ? resumo(r) : "", true);
     }
     if (acao === "conferir") {
       ui.ocupado = "conferir"; pintar();
@@ -228,8 +238,13 @@
   }
   function garantirBloco(body) {
     var id = obraAberta();
-    if (!id || wrap() || body.querySelector(".load")) return;
-    if (paginaDoBloco !== id) { paginaDoBloco = id; estado = null; ui = { dois: false, ocupado: null, msg: "" }; }
+    if (!id) {
+      /* painel fechado: zera para a mesma casa recarregar o estado ao reabrir */
+      if (paginaDoBloco !== null) { paginaDoBloco = null; estado = null; ui = { dois: false, ocupado: null, msg: "", testes: false }; }
+      return;
+    }
+    if (wrap() || body.querySelector(".load")) return;
+    if (paginaDoBloco !== id) { paginaDoBloco = id; estado = null; ui = { dois: false, ocupado: null, msg: "", testes: perfilTestes() }; }
     var w = document.createElement("div"); w.id = "dossie-wrap";
     w.addEventListener("click", aoClicar);
     body.insertBefore(w, body.firstChild);

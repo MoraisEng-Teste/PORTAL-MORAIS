@@ -61,6 +61,13 @@ test("mensagens de erro em português, com o caso do arquivo guardado", () => {
   assert.equal(D.mensagemDeErro("XPTO"), "Algo deu errado (XPTO) — tente de novo.");
 });
 
+test("SEM_RESPOSTA muda de mensagem quando a ação era lerDocumento (o arquivo pode ter sido guardado)", () => {
+  assert.equal(D.mensagemDeErro("SEM_RESPOSTA"), "O servidor não respondeu — confira a internet e tente de novo.");
+  assert.equal(D.mensagemDeErro("SEM_RESPOSTA", false, true),
+    "O servidor demorou a responder — o arquivo pode ter sido guardado. Use Ler de novo antes de enviar outra vez.");
+  assert.equal(D.mensagemDeErro("NAO_AUTORIZADO", false, true), "Sua sessão expirou — entre de novo no portal.");
+});
+
 test("resumo da leitura", () => {
   assert.equal(D.resumo({ preenchidos: ["A", "B"], observacoes: ["x"], dossie: "FALTA DOCUMENTO" }),
     "Lido: 2 campos preenchidos; 1 observação (veja abaixo); ainda falta documento.");
@@ -72,6 +79,20 @@ test("escala reduz o lado maior a 1600 e não amplia foto pequena", () => {
   assert.deepEqual(D.escala(4000, 3000, 1600), { w: 1600, h: 1200 });
   assert.deepEqual(D.escala(3000, 4000, 1600), { w: 1200, h: 1600 });
   assert.deepEqual(D.escala(800, 600, 1600), { w: 800, h: 600 });
+});
+
+test("perfil TESTES desabilita os botões que gravam e avisa que só consulta", () => {
+  const h = D.html(base, ui({ testes: true }));
+  assert.match(h, /Perfil TESTES só consulta/);
+  const gravam = h.match(/<button[^>]*data-acao="(tipo|enviar|reler|conferir|devolver)"[^>]*>/g);
+  assert.ok(gravam.every((b) => b.includes("disabled")));
+});
+
+test("sem perfil TESTES, os botões seguem habilitados normalmente", () => {
+  const h = D.html(base, ui());
+  assert.doesNotMatch(h, /Perfil TESTES só consulta/);
+  const enviar = h.match(/<button[^>]*data-acao="enviar"[^>]*>/g);
+  assert.ok(enviar.some((b) => !b.includes("disabled")));
 });
 
 test("tipoAceito separa imagem, PDF e o resto (HEIC fica de fora)", () => {
