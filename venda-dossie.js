@@ -74,7 +74,7 @@
     }).join(" ") + "</div>";
     DOCS.forEach(function (d) {
       if (d.comprador === 2 && !ui.dois) return;
-      var n = (e.arquivos && e.arquivos[d.id]) || 0;
+      var n = Number((e.arquivos && e.arquivos[d.id]) || 0) || 0;
       h += '<div class="dz-linha"><span class="dz-rot">' + esc(d.rotulo) + ' <small>' +
         (n ? n + (n === 1 ? " arquivo" : " arquivos") : "nenhum arquivo") + "</small>" +
         (ui.ocupado === d.id ? " <b>lendo…</b>" : "") + "</span>" +
@@ -100,6 +100,7 @@
   var estado = null, ui = { dois: false, ocupado: null, msg: "" }, paginaDoBloco = null;
 
   function obraAberta() { try { return OBRA_ABERTA; } catch (e) { return null; } }
+  function mesmaCasa(pageId) { return obraAberta() === pageId && paginaDoBloco === pageId; }
   function wrap() { return document.getElementById("dossie-wrap"); }
   function pintar() {
     var w = wrap(); if (!w) return;
@@ -120,7 +121,7 @@
   }
   async function carregarEstado(pageId) {
     var r = await chamarVenda({ action: "estado", pageId: pageId });
-    if (obraAberta() !== pageId) return;
+    if (!mesmaCasa(pageId)) return;
     if (r.ok) { estado = r; if (r.doisCompradores) ui.dois = true; }
     else ui.msg = mensagemDeErro(r.erro);
     pintar();
@@ -160,16 +161,18 @@
     });
   }
   async function depoisDeGravar(pageId, r, texto) {
+    if (!mesmaCasa(pageId)) return;
     ui.ocupado = null;
     ui.msg = r.ok ? texto : mensagemDeErro(r.erro, r.arquivoGuardado);
     await carregarEstado(pageId);
-    if (obraAberta() === pageId && typeof abrirObra === "function") abrirObra(pageId);
+    if (mesmaCasa(pageId) && typeof abrirObra === "function") abrirObra(pageId);
   }
   async function aoClicar(ev) {
     var b = ev.target.closest("[data-acao]"); if (!b || b.disabled) return;
     var pageId = obraAberta(), acao = b.getAttribute("data-acao"), r;
     if (!pageId) return;
     if (acao === "dois") { ui.dois = b.getAttribute("data-valor") === "2"; pintar(); return; }
+    if (ui.ocupado) return;
     if (acao === "tipo") {
       ui.ocupado = "tipo"; pintar();
       r = await chamarVenda({ action: "tipoCasa", pageId: pageId, valor: b.getAttribute("data-valor") });
@@ -177,13 +180,17 @@
     }
     if (acao === "enviar" || acao === "reler") {
       var espaco = b.getAttribute("data-espaco"), payload = { action: "lerDocumento", pageId: pageId, espaco: espaco };
+      ui.ocupado = espaco; ui.msg = ""; pintar();
       if (acao === "enviar") {
-        var f = await escolherArquivo(); if (!f) return;
+        var f = await escolherArquivo();
+        if (!f) { if (mesmaCasa(pageId)) { ui.ocupado = null; pintar(); } return; }
         var arq = await prepararArquivo(f);
-        if (arq.erro) { ui.msg = mensagemDeErro(arq.erro); pintar(); return; }
+        if (arq.erro) {
+          if (mesmaCasa(pageId)) { ui.ocupado = null; ui.msg = mensagemDeErro(arq.erro); pintar(); }
+          return;
+        }
         payload.arquivo = arq;
       }
-      ui.ocupado = espaco; ui.msg = ""; pintar();
       r = await chamarVenda(payload, 150000);
       return depoisDeGravar(pageId, r, r.ok ? resumo(r) : "");
     }

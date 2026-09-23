@@ -41,6 +41,12 @@ test("Ler de novo só habilita com arquivo no espaço", () => {
   assert.match(h.match(/<button[^>]*data-acao="reler"[^>]*data-espaco="C1_COMPROVANTE"[^>]*>/)[0], /disabled/);
 });
 
+test("contagem de arquivos vinda do servidor é convertida em número (não vira HTML)", () => {
+  const h = D.html(Object.assign({}, base, { arquivos: Object.assign({}, base.arquivos, { C1_IDENTIDADE: "<b>2</b>" }) }), ui());
+  assert.doesNotMatch(h, /<b>2<\/b>/);
+  assert.match(h, /nenhum arquivo/);
+});
+
 test("observação é escapada", () => {
   const h = D.html(Object.assign({}, base, { observacao: "<img src=x onerror=alert(1)>" }), ui());
   assert.doesNotMatch(h, /<img/);
