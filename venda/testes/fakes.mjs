@@ -29,7 +29,8 @@ export function criarGas({ props, rotas }) {
     console: { log: (...a) => logs.push(a.join(" ")), error: (...a) => logs.push(a.join(" ")) },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (n) => (n in props ? props[n] : null) }) },
     CacheService: { getScriptCache: () => ({ get: (k) => (cache.has(k) ? cache.get(k) : null),
-                                             put: (k, v) => cache.set(k, v), remove: (k) => cache.delete(k) }) },
+                                             put: (k, v) => { if (String(v).length > 100000) throw new Error("Argument too large: value"); cache.set(k, v); },
+                                             remove: (k) => cache.delete(k) }) },
     ContentService: { MimeType: { JSON: "json" }, createTextOutput: (t) => ({ setMimeType: () => ({ texto: t }) }) },
     Utilities: {
       base64EncodeWebSafe: (x) => b64ws(paraBuf(x)),
@@ -84,14 +85,20 @@ export const COLUNAS_REAIS = {
 export const texto = (s) => ({ rich_text: [{ type: "text", plain_text: s, text: { content: s } }] });
 const vazioDe = (t) => ({ [t]: t === "files" || t === "rich_text" || t === "title" ? [] : null });
 
-/* Notion falso: uma base (as colunas acima, ou `colunas`) e uma página "pag-1". */
-export function notionFalso({ valores = {}, s3 = {}, colunas = COLUNAS_REAIS } = {}) {
+/* Página id no formato que PortalVenda.gs exige (32 hex, sem hífen) e o
+   database_id "de fábrica" que a página falsa diz ter como parent. */
+export const PAGE_ID_PADRAO = "0123456789abcdef0123456789abcdef";
+export const DB_ID_PADRAO = "db-falso";
+
+/* Notion falso: uma base (as colunas acima, ou `colunas`) e uma página
+   (PAGE_ID_PADRAO por padrão, ou `pageId`), com `parent.database_id` = `dbId`. */
+export function notionFalso({ valores = {}, s3 = {}, colunas = COLUNAS_REAIS, pageId = PAGE_ID_PADRAO, dbId = DB_ID_PADRAO } = {}) {
   const db = { properties: {} };
   for (const [nome, t] of Object.entries(colunas)) {
     const tipo = typeof t === "string" ? t : t.tipo;
     db.properties[nome] = { type: tipo, [tipo]: tipo === "select" ? { options: t.opcoes.map((n) => ({ name: n })) } : {} };
   }
-  const pagina = { id: "pag-1", properties: {} };
+  const pagina = { id: pageId, parent: { database_id: dbId }, properties: {} };
   for (const [nome, p] of Object.entries(db.properties)) pagina.properties[nome] = Object.assign({ type: p.type }, vazioDe(p.type));
   for (const [nome, v] of Object.entries(valores)) Object.assign(pagina.properties[nome], v);
   const uploads = {}, patches = [];
@@ -117,8 +124,8 @@ export function notionFalso({ valores = {}, s3 = {}, colunas = COLUNAS_REAIS } =
     if (url.startsWith("https://api.notion.com/v1")) {
       const u = url.slice("https://api.notion.com/v1".length);
       if (m === "GET" && u.startsWith("/databases/")) return { json: db };
-      if (m === "GET" && u === "/pages/pag-1") return { json: pagina };
-      if (m === "PATCH" && u === "/pages/pag-1") { patches.push(corpo.properties); return aplicar(corpo.properties); }
+      if (m === "GET" && u === "/pages/" + pageId) return { json: pagina };
+      if (m === "PATCH" && u === "/pages/" + pageId) { patches.push(corpo.properties); return aplicar(corpo.properties); }
       if (m === "POST" && u === "/file_uploads") {
         const id = "fu-" + (++seq);
         uploads[id] = { nome: corpo.filename, mime: corpo.content_type };

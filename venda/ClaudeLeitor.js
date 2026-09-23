@@ -50,7 +50,7 @@ var ClaudeLeitor = (function () {
       url: URL,
       headers: { "x-api-key": chaveApi, "anthropic-version": "2023-06-01", "anthropic-beta": "server-side-fallback-2026-07-01" },
       corpo: {
-        model: MODELO, max_tokens: 2000, fallbacks: "default",
+        model: MODELO, max_tokens: 16000, fallbacks: "default",
         output_config: { effort: "low", format: { type: "json_schema", schema: ESQUEMAS[tipo] } },
         messages: [{ role: "user", content: blocos }]
       }

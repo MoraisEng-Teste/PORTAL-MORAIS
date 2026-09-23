@@ -11,6 +11,7 @@ test("montarPedido: imagem e PDF viram blocos base64, com esquema, esforço baix
   assert.equal(p.headers["anthropic-version"], "2023-06-01");
   assert.equal(p.headers["anthropic-beta"], "server-side-fallback-2026-07-01");
   assert.equal(p.corpo.model, "claude-opus-5");
+  assert.equal(p.corpo.max_tokens, 16000);
   assert.equal(p.corpo.fallbacks, "default");
   assert.equal(p.corpo.output_config.effort, "low");
   assert.equal(p.corpo.output_config.format.type, "json_schema");

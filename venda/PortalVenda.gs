@@ -7,7 +7,8 @@
  * Nenhum log com nome, CPF, endereço ou conteúdo de documento. */
 var VERSAO_VENDA = "venda-v1";
 var NOTION_VERSION = "2022-06-28";
-var ERROS_CONHECIDOS = /^(COLUNA_FALTANDO|TIPO_DE_COLUNA_ERRADO|BACKEND_SEM_CONFIG)/;
+var ERROS_CONHECIDOS = /^(COLUNA_FALTANDO|TIPO_DE_COLUNA_ERRADO|BACKEND_SEM_CONFIG|PAGINA_DE_OUTRA_BASE)/;
+var REGEX_PAGE_ID = /^[0-9a-f]{32}$|^[0-9a-f-]{36}$/i;
 
 function prop_(n) { return PropertiesService.getScriptProperties().getProperty(n) || ""; }
 
@@ -32,6 +33,7 @@ function tratar_(p) {
     if (!temAcessoVendas_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
     var grava = ["tipoCasa", "lerDocumento", "conferir", "devolver"].indexOf(p.action) >= 0;
     if (grava && String(sess.t || "").toUpperCase() === "TESTES") return { ok: false, erro: "SEM_PERMISSAO_TESTES" };
+    if (p.action !== "ping" && !REGEX_PAGE_ID.test(String(p.pageId || ""))) return { ok: false, erro: "PAGINA_INVALIDA" };
     var col = colunas_();
     switch (p.action) {
       case "estado":       return estado_(col, p);
@@ -84,20 +86,29 @@ function notion_(method, path, body) {
 }
 
 function colunas_() {
+  /* O cache guarda só o necessário das colunas RESOLVIDAS (nome real, tipo,
+     opções se select) — não o schema inteiro da base, que numa VENDAS com
+     muitas colunas pode passar do limite de ~100 KB do CacheService e
+     lançar, derrubando toda ação. Falha ao gravar no cache não é grave:
+     só custa buscar o schema de novo na próxima chamada. */
   var cache = CacheService.getScriptCache(), k = "venda_schema_v1", txt = cache.get(k), schema;
-  if (txt) schema = JSON.parse(txt);
-  else {
+  if (txt) {
+    schema = JSON.parse(txt);
+  } else {
     var db = notion_("GET", "/databases/" + prop_("DB_VENDAS"), null);
-    schema = {};
+    var completo = {};
     for (var nome in db.properties) {
       var pr = db.properties[nome];
-      schema[nome] = { tipo: pr.type, opcoes: pr.type === "select" ? (pr.select.options || []).map(function (o) { return o.name; }) : [] };
+      completo[nome] = { tipo: pr.type, opcoes: pr.type === "select" ? (pr.select.options || []).map(function (o) { return o.name; }) : [] };
     }
-    cache.put(k, JSON.stringify(schema), 1800);
+    var pre = RegrasVenda.resolverColunas(completo);
+    schema = {};
+    for (var canon in pre.mapa) { var real = pre.mapa[canon]; schema[real] = completo[real]; }
+    try { cache.put(k, JSON.stringify(schema), 1800); } catch (e) { console.error("PORTAL-VENDA cache do schema falhou: " + String(e.message || e).slice(0, 120)); }
   }
   var r = RegrasVenda.resolverColunas(schema);
-  if (r.faltando.length) { cache.remove(k); throw new Error("COLUNA_FALTANDO: " + r.faltando.join(", ")); }
-  if (r.tipoErrado.length) { cache.remove(k); throw new Error("TIPO_DE_COLUNA_ERRADO: " + r.tipoErrado.join(", ")); }
+  if (r.faltando.length) { try { cache.remove(k); } catch (e) {} throw new Error("COLUNA_FALTANDO: " + r.faltando.join(", ")); }
+  if (r.tipoErrado.length) { try { cache.remove(k); } catch (e) {} throw new Error("TIPO_DE_COLUNA_ERRADO: " + r.tipoErrado.join(", ")); }
   return { mapa: r.mapa, schema: schema };
 }
 
@@ -115,7 +126,11 @@ function valorProp_(pr) {
   }
 }
 function lerPagina_(col, pageId) {
-  var pg = notion_("GET", "/pages/" + pageId, null), atuais = {};
+  var pg = notion_("GET", "/pages/" + pageId, null);
+  var dbEsperado = prop_("DB_VENDAS").replace(/-/g, "");
+  var dbAtual = String((pg.parent && pg.parent.database_id) || "").replace(/-/g, "");
+  if (dbAtual !== dbEsperado) throw new Error("PAGINA_DE_OUTRA_BASE");
+  var atuais = {};
   for (var canon in col.mapa) atuais[canon] = valorProp_(pg.properties[col.mapa[canon]]);
   return atuais;
 }
@@ -228,6 +243,11 @@ function lerDocumento_(col, sess, p) {
   for (var c2 in plano.props) g[c2] = plano.props[c2];
   g[C.DOSSIE] = est.estado;
   if (plano.observacoes.length) g[C.OBS] = RegrasVenda.juntarObservacoes(a[C.OBS], plano.observacoes, hoje_("dd/MM"), sess.u);
-  gravar_(col, p.pageId, g);
+  try {
+    gravar_(col, p.pageId, g);
+  } catch (e) {
+    console.error("PORTAL-VENDA gravação falhou: " + String(e.message || e).slice(0, 120));
+    return { ok: false, erro: "GRAVACAO_FALHOU", arquivoGuardado: guardado };
+  }
   return { ok: true, preenchidos: plano.preenchidos, observacoes: plano.observacoes, dossie: est.estado, faltam: est.faltam };
 }
