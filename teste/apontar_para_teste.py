@@ -53,9 +53,7 @@ def main():
         for prod, teste in IDS.items():
             s = s.replace(prod, teste)
         s = s.replace(REPO_PROD, REPO_TESTE)
-        if p.name == "app.js":
-            s = re.sub(r'(const API\s*=\s*")[^"]*(")', lambda m: m.group(1) + a.url_exec + m.group(2), s)
-            s = re.sub(r'(const API_ESCRITA\s*=\s*")[^"]*(")', lambda m: m.group(1) + a.url_exec + m.group(2), s)
+        s = re.sub(r"https://script\.google\.com/macros/s/[\w-]+/exec", a.url_exec, s)
         if p.name == "pages.yml":
             s = desligar_passos(s)
         if s != antes:
@@ -66,16 +64,24 @@ def main():
         robos.unlink()
         alterados.append(".github/workflows/robos-mc.yml (apagado)")
     sobras = []
+    urls_sobras = []
     for p in raiz.rglob("*"):
         rel = p.relative_to(raiz)
         if p.is_file() and rel.parts[0] not in PULAR and p.suffix.lower() in EXTENSOES:
             t = p.read_bytes().decode("utf-8")
             sobras += [f"{rel}: {i}" for i in IDS if i in t]
+            urls = re.findall(r"https://script\.google\.com/macros/s/[\w-]+/exec", t)
+            for url in urls:
+                if url != a.url_exec:
+                    urls_sobras.append(f"{rel}: {url}")
     print("alterados:", len(alterados))
     for x in alterados:
         print("  ", x)
     if sobras:
         print("ID DE PRODUÇÃO SOBROU:", *sobras, sep="\n  ")
+        sys.exit(1)
+    if urls_sobras:
+        print("URL DE APPS SCRIPT DE PRODUÇÃO SOBROU:", *urls_sobras, sep="\n  ")
         sys.exit(1)
 
 

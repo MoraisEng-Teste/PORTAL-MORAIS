@@ -14,6 +14,7 @@ class Apontar(unittest.TestCase):
         (d / "Code.gs").write_bytes(b'VENDAS: "33cc5ab532d38047ae3aee8b87ac1f4d",\r\nvar GH_REPO = "DEVMoraisEng/PORTAL-MORAIS";\r\n')
         (d / "app.js").write_text('const API   = "https://script.google.com/macros/s/PROD1/exec";\n'
                                   'const API_ESCRITA = "https://script.google.com/macros/s/PROD2/exec";\n', encoding="utf-8")
+        (d / "login.html").write_text('const API = "https://script.google.com/macros/s/AKfyPROD3/exec";\n', encoding="utf-8")
         (d / "fetch_vendas.py").write_text('ID_VENDAS_PADRAO = "33cc5ab532d38047ae3aee8b87ac1f4d"\n', encoding="utf-8")
         wf = d / ".github" / "workflows"; wf.mkdir(parents=True)
         (wf / "pages.yml").write_text("    steps:\n      - name: Buscar dados das Obras\n        run: python fetch_obras.py\n", encoding="utf-8")
@@ -32,6 +33,9 @@ class Apontar(unittest.TestCase):
             self.assertIn(b"\r\n", code)
             app = (d / "app.js").read_text(encoding="utf-8")
             self.assertEqual(app.count(EXEC), 2)
+            login = (d / "login.html").read_text(encoding="utf-8")
+            self.assertIn(EXEC, login)
+            self.assertNotIn("AKfyPROD3", login)
             self.assertIn("f53c5ab532d38325aa4a0193011aad24", (d / "fetch_vendas.py").read_text(encoding="utf-8"))
             pages = (d / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
             self.assertIn("      - name: Buscar dados das Obras\n        if: ${{ false }}\n", pages)
