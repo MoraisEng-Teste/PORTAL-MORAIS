@@ -17,6 +17,34 @@
 
 Mudou o código? Implantar › Gerenciar implantações › lápis › Nova versão › Implantar.
 
+O isolamento do teste depende de dois lados:
+
+- **Segredos do fork:** só `NOTION_TOKEN` de teste nas propriedades do
+  projeto; nenhum `SUPABASE_*`, `ERP_*`, `MC_*` (esses são do portal
+  principal, não do PORTAL-VENDA-TESTE).
+- **Propriedades do PORTAL-TESTE:** nenhum `GITHUB_TOKEN` de produção; se
+  um dia houver um `GITHUB_TOKEN` ali, tem que ser só do fork
+  (MoraisEng-Teste/PORTAL-MORAIS).
+
+### Checklist do teste de ponta a ponta
+
+Nesta ordem:
+
+1. Enviar **dois** arquivos no mesmo espaço (frente e verso) e conferir no
+   Notion que os dois ficaram. Se o 2º falhar com `UPLOAD_FALHOU`, **parar
+   e avisar** — a API do Notion pode recusar um segundo `{type:"file"}` no
+   mesmo upload.
+2. Trocar de casa no meio de uma leitura (o painel não pode confundir a
+   resposta com a casa nova).
+3. Duplo clique em "Enviar e ler" (não pode disparar duas leituras).
+4. Cancelar o seletor de arquivo (não pode travar o botão como "lendo…").
+5. Foto tirada no celular (Android, Google Fotos) — o arquivo escolhido da
+   nuvem não pode ser descartado pelo fallback de foco.
+
+Depois, os itens do Step 4 da Task 7 do plano: tipo de casa, identidade,
+comprovante, aprovação, ler de novo, devolver/conferir, JSON público sem
+CPF/nome, log só com tokens.
+
 ## Produção (quando o dono disser "sobe")
 
 1. Desenvolvedor cria as 24 colunas na VENDAS de produção (arquivo 10 da DOCUMENTACAO).
