@@ -156,7 +156,26 @@
     return new Promise(function (ok) {
       var inp = document.createElement("input");
       inp.type = "file"; inp.accept = "image/jpeg,image/png,image/webp,application/pdf";
-      inp.onchange = function () { ok(inp.files && inp.files[0]); };
+      var resolvido = false;
+      function resolver(f) {
+        if (resolvido) return;
+        resolvido = true;
+        window.removeEventListener("focus", aoFocar);
+        ok(f);
+      }
+      function aoFocar() {
+        window.removeEventListener("focus", aoFocar);
+        /* Navegador sem o evento "cancel" no <input type=file>: se ao voltar
+         * o foco pra janela nenhum arquivo foi escolhido, foi cancelamento —
+         * mas dá uma folga pro "change" (que também dispara perto do foco)
+         * resolver primeiro quando um arquivo FOI escolhido. */
+        setTimeout(function () {
+          if (!resolvido && !(inp.files && inp.files.length)) resolver(null);
+        }, 500);
+      }
+      inp.onchange = function () { resolver(inp.files && inp.files[0]); };
+      inp.addEventListener("cancel", function () { resolver(null); });
+      window.addEventListener("focus", aoFocar);
       inp.click();
     });
   }
