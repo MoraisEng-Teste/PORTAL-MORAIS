@@ -168,6 +168,83 @@ var RegrasVenda = (function () {
     return { estado: faltam.length ? ESTADOS.FALTA : ESTADOS.LIDO, faltam: faltam };
   }
 
+  var TIPOS_DOC = { identidade: ["CNH", "RG"], comprovante: ["COMPROVANTE"], aprovacao: ["APROVACAO"] };
+
+  function planejarGravacao(espacoId, leitura, atuais, hojeISO) {
+    var esp = ESPACOS[espacoId];
+    if (!esp) throw new Error("ESPACO_DESCONHECIDO: " + espacoId);
+    leitura = leitura || {};
+    atuais = atuais || {};
+    var plano = { props: {}, observacoes: [], preenchidos: [] };
+    function obs(t) { plano.observacoes.push(esp.rotulo + ": " + t); }
+    function gravar(col, valor) { plano.props[col] = valor; plano.preenchidos.push(col); }
+    function propor(col, valor, modo) {
+      if (vazio(valor)) return;
+      var atual = atuais[col];
+      if (vazio(atual)) { gravar(col, valor); return; }
+      if (iguais(atual, valor, modo)) return;
+      obs("o campo " + col + " já tem outro valor e o documento diz diferente" +
+        (modo === "cpf" ? " (documento " + mascararCpf(valor) + ", campo " + mascararCpf(atual) + ")" : "") +
+        " — conferir");
+    }
+
+    var tipoLido = texto(leitura.tipo_documento).toUpperCase().trim();
+    if (TIPOS_DOC[esp.tipo].indexOf(tipoLido) < 0) {
+      obs("o arquivo não parece ser " + esp.esperado + " — nada foi preenchido");
+      return plano;
+    }
+
+    if (esp.tipo === "identidade") {
+      var nome = texto(leitura.nome).trim();
+      var cpf = soDigitos(leitura.cpf);
+      if (cpf && !cpfValido(cpf)) {
+        obs("o CPF lido (" + mascararCpf(cpf) + ") não fecha o dígito verificador — não foi gravado, conferir");
+        cpf = "";
+      }
+      var numero = texto(leitura.numero_documento).trim();
+      var doc = numero ? [tipoLido, numero, texto(leitura.orgao_emissor).trim()].filter(function (x) { return x; }).join(" ") : "";
+      var cli = atuais[COL.CLIENTES];
+      if (esp.comprador === 1) {
+        if (nome) {
+          if (vazio(cli)) gravar(COL.CLIENTES, vazio(atuais[COL.C2_NOME]) ? nome : nome + " E " + texto(atuais[COL.C2_NOME]).trim());
+          else if (!contemNome(cli, nome)) obs("o nome lido não aparece em CLIENTES — conferir");
+        }
+        propor(COL.CPF1, cpf ? formatarCpf(cpf) : "", "cpf");
+        propor(COL.C1_DOC, doc, "texto");
+        propor(COL.C1_NAC, leitura.nacionalidade, "texto");
+      } else {
+        propor(COL.C2_NOME, nome, "texto");
+        if (nome && !vazio(cli) && !contemNome(cli, nome)) {
+          if ((" " + chave(cli) + " ").indexOf(" E ") < 0) gravar(COL.CLIENTES, texto(cli).trim() + " E " + nome);
+          else obs("o nome lido não aparece em CLIENTES — conferir");
+        }
+        propor(COL.C2_CPF, cpf ? formatarCpf(cpf) : "", "cpf");
+        propor(COL.C2_DOC, doc, "texto");
+        propor(COL.C2_NAC, leitura.nacionalidade, "texto");
+      }
+    } else if (esp.tipo === "comprovante") {
+      propor(esp.comprador === 2 ? COL.C2_END : COL.C1_END, leitura.endereco_completo, "texto");
+      var dono = esp.comprador === 2 ? atuais[COL.C2_NOME] : atuais[COL.CLIENTES];
+      if (!vazio(leitura.titular) && !vazio(dono) && !contemNome(dono, leitura.titular))
+        obs("o comprovante está em nome de outra pessoa — conferir (se for de parente, pedir a declaração)");
+      var d = dataDoc(leitura.data_emissao);
+      if (!d) obs("não consegui ler a data do comprovante — conferir se tem menos de 90 dias");
+      else {
+        var dias = diasEntre(d, hojeISO);
+        if (dias > 90) obs("o comprovante tem " + dias + " dias (mais de 90) — pedir um mais recente");
+      }
+    } else {
+      propor(COL.FINANCIADO, valorBR(leitura.valor_financiado), "number");
+      propor(COL.FGTS, valorBR(leitura.valor_fgts), "number");
+      propor(COL.SUBSIDIO, valorBR(leitura.valor_subsidio), "number");
+      var cpfP = soDigitos(leitura.cpf_proponente);
+      var cpfs = [soDigitos(atuais[COL.CPF1]), soDigitos(atuais[COL.C2_CPF])].filter(function (x) { return x; });
+      if (cpfP && cpfs.length && cpfs.indexOf(cpfP) < 0)
+        obs("o CPF do proponente (" + mascararCpf(cpfP) + ") não é o de nenhum comprador — conferir");
+    }
+    return plano;
+  }
+
   return {
     COL: COL, TIPOS: TIPOS, ESPACOS: ESPACOS, ESTADOS: ESTADOS, TIPOS_CASA: TIPOS_CASA,
     chave: chave, soDigitos: soDigitos, cpfValido: cpfValido, mascararCpf: mascararCpf,
@@ -176,7 +253,7 @@ var RegrasVenda = (function () {
     resolverOpcao: resolverOpcao, manterArquivo: manterArquivo, mimeDoArquivo: mimeDoArquivo,
     conferirArquivo: conferirArquivo, juntarObservacoes: juntarObservacoes,
     temDoisCompradores: temDoisCompradores, contarArquivos: contarArquivos,
-    estadoAposLeitura: estadoAposLeitura
+    estadoAposLeitura: estadoAposLeitura, planejarGravacao: planejarGravacao
   };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = RegrasVenda;

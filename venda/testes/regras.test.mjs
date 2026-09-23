@@ -112,3 +112,84 @@ test("temDoisCompradores, contarArquivos e estadoAposLeitura", () => {
   assert.deepEqual(R.estadoAposLeitura(R.contarArquivos(dois), true),
     { estado: "FALTA DOCUMENTO", faltam: ["C2_IDENTIDADE", "C2_COMPROVANTE"] });
 });
+
+const C = R.COL;
+const HOJE = "2026-09-23";
+const CNH = { tipo_documento: "CNH", nome: "ANA TESTE", cpf: "52998224725", numero_documento: "01234567890", orgao_emissor: "DETRAN/GO", nacionalidade: "brasileira", data_nascimento: "01/01/1990" };
+
+test("identidade do comprador 1 preenche CLIENTES, CPF, documento e nacionalidade vazios", () => {
+  const p = R.planejarGravacao("C1_IDENTIDADE", CNH, {}, HOJE);
+  assert.deepEqual(p.props, {
+    [C.CLIENTES]: "ANA TESTE", [C.CPF1]: "529.982.247-25",
+    [C.C1_DOC]: "CNH 01234567890 DETRAN/GO", [C.C1_NAC]: "brasileira"
+  });
+  assert.deepEqual(p.observacoes, []);
+});
+
+test("segunda leitura do mesmo documento não sobrescreve nem gera observação", () => {
+  const atuais = { [C.CLIENTES]: "Ana  Teste", [C.CPF1]: "529.982.247-25", [C.C1_DOC]: "CNH 01234567890 DETRAN/GO", [C.C1_NAC]: "Brasileira" };
+  const p = R.planejarGravacao("C1_IDENTIDADE", CNH, atuais, HOJE);
+  assert.deepEqual(p.props, {});
+  assert.deepEqual(p.observacoes, []);
+});
+
+test("CPF diferente do que já está no campo vira observação mascarada, sem sobrescrever", () => {
+  const p = R.planejarGravacao("C1_IDENTIDADE", CNH, { [C.CPF1]: "111.444.777-35" }, HOJE);
+  assert.equal(p.props[C.CPF1], undefined);
+  assert.equal(p.observacoes.length, 1);
+  assert.match(p.observacoes[0], /CPF .*documento \*\*\*-25, campo \*\*\*-35/);
+  assert.doesNotMatch(p.observacoes[0], /529/);
+});
+
+test("CPF lido com dígito errado não é gravado e vira observação", () => {
+  const p = R.planejarGravacao("C1_IDENTIDADE", Object.assign({}, CNH, { cpf: "52998224724" }), {}, HOJE);
+  assert.equal(p.props[C.CPF1], undefined);
+  assert.match(p.observacoes[0], /não fecha o dígito/);
+});
+
+test("arquivo de outro tipo no espaço não preenche nada", () => {
+  const p = R.planejarGravacao("C1_COMPROVANTE", Object.assign({}, CNH), {}, HOJE);
+  assert.deepEqual(p.props, {});
+  assert.match(p.observacoes[0], /não parece ser um comprovante de endereço/);
+});
+
+test("comprador 2: grava COMPRADOR 2 e completa CLIENTES de um nome só", () => {
+  const leitura = Object.assign({}, CNH, { nome: "BRUNO TESTE", cpf: "11144477735" });
+  const p = R.planejarGravacao("C2_IDENTIDADE", leitura, { [C.CLIENTES]: "ANA TESTE" }, HOJE);
+  assert.equal(p.props[C.C2_NOME], "BRUNO TESTE");
+  assert.equal(p.props[C.C2_CPF], "111.444.777-35");
+  assert.equal(p.props[C.CLIENTES], "ANA TESTE E BRUNO TESTE");
+});
+
+test("comprador 1 lido depois do 2 grava CLIENTES com os dois nomes", () => {
+  const p = R.planejarGravacao("C1_IDENTIDADE", CNH, { [C.C2_NOME]: "BRUNO TESTE" }, HOJE);
+  assert.equal(p.props[C.CLIENTES], "ANA TESTE E BRUNO TESTE");
+});
+
+test("comprovante: endereço vazio é preenchido; velho e de outra pessoa viram observação", () => {
+  const leitura = { tipo_documento: "COMPROVANTE", titular: "CARLOS OUTRO", endereco_completo: "RUA TESTE, 10, CENTRO, GOIÂNIA/GO, 74000-000", data_emissao: "01/05/2026" };
+  const p = R.planejarGravacao("C1_COMPROVANTE", leitura, { [C.CLIENTES]: "ANA TESTE" }, HOJE);
+  assert.equal(p.props[C.C1_END], "RUA TESTE, 10, CENTRO, GOIÂNIA/GO, 74000-000");
+  assert.equal(p.observacoes.length, 2);
+  assert.match(p.observacoes[0], /outra pessoa/);
+  assert.match(p.observacoes[1], /145 dias/);
+});
+
+test("comprovante sem data legível vira observação", () => {
+  const p = R.planejarGravacao("C1_COMPROVANTE", { tipo_documento: "COMPROVANTE", titular: "", endereco_completo: "", data_emissao: "" }, {}, HOJE);
+  assert.match(p.observacoes[0], /não consegui ler a data/);
+});
+
+test("aprovação da Caixa grava valores e aponta CPF de proponente estranho", () => {
+  const leitura = { tipo_documento: "APROVACAO", nome_proponente: "X", cpf_proponente: "11144477735", valor_financiado: "180.000,00", valor_fgts: "R$ 12.000,00", valor_subsidio: "" };
+  const p = R.planejarGravacao("APROVACAO", leitura, { [C.CPF1]: "529.982.247-25" }, HOJE);
+  assert.deepEqual(p.props, { [C.FINANCIADO]: 180000, [C.FGTS]: 12000 });
+  assert.match(p.observacoes[0], /\*\*\*-35/);
+});
+
+test("aprovação com o mesmo valor já gravado não gera observação", () => {
+  const leitura = { tipo_documento: "APROVACAO", nome_proponente: "", cpf_proponente: "", valor_financiado: "180000", valor_fgts: "", valor_subsidio: "" };
+  const p = R.planejarGravacao("APROVACAO", leitura, { [C.FINANCIADO]: 180000 }, HOJE);
+  assert.deepEqual(p.props, {});
+  assert.deepEqual(p.observacoes, []);
+});
