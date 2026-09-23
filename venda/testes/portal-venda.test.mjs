@@ -155,6 +155,19 @@ test("com todos os documentos, marca LIDO PELA IA e anota observações com data
   assert.match(obs, /ana\.teste\] Comprovante do comprador 1: o comprovante está em nome de outra pessoa/);
 });
 
+test("download falha depois do upload: LEITURA_FALHOU, arquivo fica, DOSSIÊ inalterado", () => {
+  const n = notionFalso();
+  const g = criarGas({ props: PROPS, rotas: (url, opt) => {
+    if (url.startsWith("https://s3.falso/")) return { lancar: "download falhou" };
+    return n.rota(url, opt);
+  } });
+  const r = g.chamar({ action: "lerDocumento", token: tokenDe(), pageId: "pag-1", espaco: "C1_IDENTIDADE",
+                       arquivo: { nome: "cnh.jpg", mime: "image/jpeg", base64: JPG } });
+  assert.deepEqual(r, { ok: false, erro: "LEITURA_FALHOU", arquivoGuardado: true });
+  assert.equal(n.pagina.properties["COMPRADOR 1 - IDENTIDADE"].files.length, 1);
+  assert.equal(n.pagina.properties["DOSSIÊ"].select, null);
+});
+
 test("nenhum log leva CPF ou nome", () => {
   const { g } = montar({ claude: claudeResponde(CNH) });
   g.chamar({ action: "lerDocumento", token: tokenDe(), pageId: "pag-1", espaco: "C1_IDENTIDADE",

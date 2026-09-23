@@ -192,14 +192,20 @@ function lerDocumento_(col, sess, p) {
     try { anexarArquivo_(p.pageId, col.mapa[esp.coluna], p.arquivo); guardado = true; }
     catch (e) { console.error("PORTAL-VENDA upload falhou: " + String(e.message || e).slice(0, 120)); return { ok: false, erro: "UPLOAD_FALHOU", arquivoGuardado: false }; }
   }
-  var a = lerPagina_(col, p.pageId);
-  var arquivos = (a[esp.coluna] || []).slice(-4);
+  var a, arquivos, partes;
+  try {
+    a = lerPagina_(col, p.pageId);
+    arquivos = (a[esp.coluna] || []).slice(-4);
+    partes = [];
+    arquivos.forEach(function (f) {
+      var b = baixarArquivo_(f);
+      if (b && RegrasVenda.conferirArquivo(b).ok) partes.push(b);
+    });
+  } catch (e) {
+    console.error("PORTAL-VENDA leitura falhou: " + String(e.message || e).slice(0, 120));
+    return { ok: false, erro: "LEITURA_FALHOU", arquivoGuardado: guardado };
+  }
   if (!arquivos.length) return { ok: false, erro: "SEM_ARQUIVO", arquivoGuardado: guardado };
-  var partes = [];
-  arquivos.forEach(function (f) {
-    var b = baixarArquivo_(f);
-    if (b && RegrasVenda.conferirArquivo(b).ok) partes.push(b);
-  });
   if (!partes.length) return { ok: false, erro: "ARQUIVO_NAO_LEGIVEL", arquivoGuardado: guardado };
 
   var pedido = ClaudeLeitor.montarPedido(esp.tipo, partes, prop_("ANTHROPIC_API_KEY"));
