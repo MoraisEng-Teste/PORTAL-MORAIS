@@ -54,8 +54,8 @@ from fetch_vendas import (api, ler_banco, valor, norm, gravar, montar_schema,
                           TIPOS_EDITAVEIS)
 
 # IDs das bases. Não são credencial (ver comentário no topo do fetch_vendas.py).
-ID_DOCS_PADRAO = "32fc5ab532d380a0900dd7f4bfc619bd"   # BASE DE DADOS DOCUMENTOS
-ID_ATV_PADRAO  = "330c5ab532d38009b6c2d5d6b77b6926"   # ATIVIDADES CONTROLE DE DOCUMENTAÇÕES
+ID_DOCS_PADRAO = "a74c5ab532d38374a4170155196788f9"   # BASE DE DADOS DOCUMENTOS
+ID_ATV_PADRAO  = "96ac5ab532d38299bd2d01aa18016caf"   # ATIVIDADES CONTROLE DE DOCUMENTAÇÕES
 
 DB_DOCS = (os.environ.get("DOCUMENTOS_DB_ID") or ID_DOCS_PADRAO).strip()
 DB_ATV  = (os.environ.get("ATIVIDADES_DOCS_DB_ID") or ID_ATV_PADRAO).strip()

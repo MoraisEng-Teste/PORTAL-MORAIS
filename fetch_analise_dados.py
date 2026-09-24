@@ -62,9 +62,9 @@ from fetch_vendas import ler_banco, valor, norm, TOKEN
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 
-ID_DOCS   = "32fc5ab532d380a0900dd7f4bfc619bd"   # BASE DE DADOS DOCUMENTOS
-ID_VENDAS = "33cc5ab532d38047ae3aee8b87ac1f4d"   # BANCO DE DADOS VENDAS
-ID_METAS  = "358c5ab532d3804fbcbfebc3656b1220"   # METAS
+ID_DOCS   = "a74c5ab532d38374a4170155196788f9"   # BASE DE DADOS DOCUMENTOS
+ID_VENDAS = "f53c5ab532d38325aa4a0193011aad24"   # BANCO DE DADOS VENDAS
+ID_METAS  = "e50c5ab532d382a188ad81a19cfb207b"   # METAS
 ID_OBRAS  = "306c5ab532d3812fa14fe9a281510128"   # (EMP) Projeto 2.0
 
 ERP_CSV_PROPOSTAS    = os.environ.get("ERP_CSV_PROPOSTAS", "").strip()

@@ -65,7 +65,7 @@ em até 15 min.
 Adicione ao `Code.gs` e chame `agendarBuild()` no fim de cada escrita:
 
 ```javascript
-var GH_REPO  = PropertiesService.getScriptProperties().getProperty('GITHUB_REPO');  // "DEVMoraisEng/PORTAL-MORAIS"
+var GH_REPO  = PropertiesService.getScriptProperties().getProperty('GITHUB_REPO');  // "MoraisEng-Teste/PORTAL-MORAIS"
 var GH_TOKEN = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN'); // PAT clássico, escopo "repo"
 
 function agendarBuild() {

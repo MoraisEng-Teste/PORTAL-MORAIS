@@ -84,6 +84,7 @@ jobs:
       # continue-on-error: a planilha do ERP fora do ar não pode derrubar o
       # build do portal inteiro.
       - name: Buscar dados da Análise de Dados
+        if: ${{ false }}
         continue-on-error: true
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
@@ -99,6 +100,7 @@ jobs:
       # sem CPF/CNPJ, nascimento e conta). A integração do Notion precisa
       # estar conectada à ATIVIDADES DE PROJETOS.
       - name: Buscar dados das Obras
+        if: ${{ false }}
         continue-on-error: true
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
@@ -110,6 +112,7 @@ jobs:
       # abrir em 1-2 s pelo portal (ação ligArquivo do Melhorias.gs). Só sobe o
       # que é novo; nada disso vai para o dist/. Falhar aqui não derruba o site.
       - name: Espelhar anexos das Ligações
+        if: ${{ false }}
         continue-on-error: true
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}

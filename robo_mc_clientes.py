@@ -28,7 +28,7 @@ from fetch_vendas import ler_banco, api
 
 ID_CADASTRO = "3e2c5ab532d38055a241db35f74e7bbc"
 ID_OBRAS = "306c5ab532d3812fa14fe9a281510128"
-ID_DOCS = "32fc5ab532d380a0900dd7f4bfc619bd"
+ID_DOCS = "a74c5ab532d38374a4170155196788f9"
 
 # Clientes do MC que NÃO são proprietários, mesmo com setor diferente de
 # "Casa" (fornecedor, investidor avulso…). Nome como está no MC.

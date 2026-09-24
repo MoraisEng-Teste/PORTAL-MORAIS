@@ -59,8 +59,8 @@ from fetch_vendas import api, ler_banco, valor, norm, gravar, SAIDA
 
 # IDs das bases (não são credencial — ver comentário no topo do fetch_vendas.py).
 # São os mesmos do CONFIG.DB do Code.gs.
-ID_POS_OBRA_PADRAO = "3c9c5ab532d380a0b78bdb2f421bc9f5"   # PÓS OBRA (uma linha por obra/casa)
-ID_ATIVIDADES_PADRAO = "3c9c5ab532d3800f8261fdab1e4ff621"  # ATIVIDADES PÓS OBRA (chamados)
+ID_POS_OBRA_PADRAO = "5bbc5ab532d383629c3f81fd4f521891"   # PÓS OBRA (uma linha por obra/casa)
+ID_ATIVIDADES_PADRAO = "3a4c5ab532d38385b893811ad439d0fb"  # ATIVIDADES PÓS OBRA (chamados)
 
 DB_POS = (os.environ.get("POS_OBRA_DB_ID") or ID_POS_OBRA_PADRAO).strip()
 DB_ATV = (os.environ.get("ATIVIDADES_POS_OBRA_DB_ID") or ID_ATIVIDADES_PADRAO).strip()

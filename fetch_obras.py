@@ -34,8 +34,8 @@ from fetch_vendas import ler_banco, api, gravar, norm, SAIDA, TOKEN
 ID_OBRAS = "306c5ab532d3812fa14fe9a281510128"   # (EMP) Projeto 2.0
 ID_ATIV = "306c5ab532d381fb864edee432bb128d"    # ATIVIDADES DE PROJETOS
 ID_CADASTRO = "3e2c5ab532d38055a241db35f74e7bbc"  # PROPRIETÁRIOS (cadastro) — só o NOME sai daqui
-ID_LIGACOES = "313c5ab532d3801e974ced0bb656c9d5"  # LIGAÇÕES DE ÁGUA E ENERGIA (só a contagem por obra)
-ID_VENDAS = "33cc5ab532d38047ae3aee8b87ac1f4d"    # BANCO DE DADOS VENDAS (só a contagem por obra)
+ID_LIGACOES = "007c5ab532d383ac9ec081556377772d"  # LIGAÇÕES DE ÁGUA E ENERGIA (só a contagem por obra)
+ID_VENDAS = "f53c5ab532d38325aa4a0193011aad24"    # BANCO DE DADOS VENDAS (só a contagem por obra)
 
 
 def conta_alerta(p):

@@ -143,24 +143,24 @@ var CONFIG = {
   ACESSO_CACHE_SEGUNDOS: 300,
 
   DB: {
-    LOGINS:            "3bac5ab532d380d4968df15d5357f462",
-    VENDAS:            "33cc5ab532d38047ae3aee8b87ac1f4d",
-    ATIVIDADES_VENDAS: "33dc5ab532d380abaa00fecd5c2d88c2",
-    DISPONIBILIDADES:  "33dc5ab532d38091b927d7659f98612c",
-    DOCUMENTOS:        "32fc5ab532d380a0900dd7f4bfc619bd",
-    METAS:             "358c5ab532d3804fbcbfebc3656b1220",
+    LOGINS:            "b94c5ab532d382a2840a0128217d1ea0",
+    VENDAS:            "f53c5ab532d38325aa4a0193011aad24",
+    ATIVIDADES_VENDAS: "88ac5ab532d383e980ee015b88826d8f",
+    DISPONIBILIDADES:  "eeac5ab532d383ddaa7981cc4c215231",
+    DOCUMENTOS:        "a74c5ab532d38374a4170155196788f9",
+    METAS:             "e50c5ab532d382a188ad81a19cfb207b",
     // LIGAÇÕES DE ÁGUA E ENERGIA — uma linha por casa e concessionária.
     // É a base que alimenta o ligacoes.html.
-    LIGACOES:          "313c5ab532d3801e974ced0bb656c9d5",
+    LIGACOES:          "007c5ab532d383ac9ec081556377772d",
     // PÓS OBRA — uma linha por obra/casa, sincronizada automaticamente a
     // partir de VENDAS (ver bloco "PÓS OBRA: sincronização automática",
     // logo depois do bloco do GCAP).
-    POS_OBRA:            "3c9c5ab532d380a0b78bdb2f421bc9f5",
+    POS_OBRA:            "5bbc5ab532d383629c3f81fd4f521891",
     // ATIVIDADES PÓS OBRA — chamados de assistência técnica. Id já
     // confirmado ao vivo no Notion; a lógica de criação/leitura/edição
     // desses chamados ainda será escrita num próximo patch — por enquanto
     // este id só fica reservado aqui.
-    ATIVIDADES_POS_OBRA: "3c9c5ab532d3800f8261fdab1e4ff621"
+    ATIVIDADES_POS_OBRA: "3a4c5ab532d38385b893811ad439d0fb"
   }
 };
 
@@ -3318,7 +3318,7 @@ function criarChaveAgenda() {
   PROPS_.setProperty(AGENDA_DIA_KEY, JSON.stringify(todas));
 
   Logger.log("Chave criada para " + nome + "\n\nMande este link:\n" +
-             "https://devmoraiseng.github.io/PORTAL-MORAIS/servicos.html?k=" + chave +
+             "https://moraiseng-teste.github.io/PORTAL-MORAIS/servicos.html?k=" + chave +
              "\n\nQualquer link antigo desta pessoa acabou de parar de funcionar.");
 }
 function revogarChaveAgenda(nome) {
@@ -4929,7 +4929,7 @@ function analiseDetalheObra_(sess, p) {
  * serviços apagados que continuaram na tela.
  *
  * PRÉ-REQUISITO (uma vez só): Propriedades do script > GITHUB_TOKEN, com um
- * fine-grained PAT do repositório DEVMoraisEng/PORTAL-MORAIS e permissão
+ * fine-grained PAT do repositório MoraisEng-Teste/PORTAL-MORAIS e permissão
  * Contents: Read and write. Sem a propriedade, esta função não faz nada e
  * não quebra ninguém — o cron continua sendo o plano B.
  *
@@ -4937,7 +4937,7 @@ function analiseDetalheObra_(sess, p) {
  * podem disparar dez builds. O primeiro aviso dispara na hora; os seguintes
  * só depois da janela. É o mesmo desenho do RAS-SEMANAL.
  * ===================================================================== */
-var GH_REPO = "DEVMoraisEng/PORTAL-MORAIS";
+var GH_REPO = "MoraisEng-Teste/PORTAL-MORAIS";
 var GH_EVENTO = "portal_update";          // TEM que bater com o types: do pages.yml
 /* r29 — 5 min, não 15.
    O motivo é a chegada do acionador periódico (publicarSite, abaixo). Com
@@ -5583,7 +5583,7 @@ function removerTriggerColeta() {
 /* ATIVIDADES CONTROLE DE DOCUMENTAÇÕES. O id da base DOCUMENTOS já existe em
    CONFIG.DB.DOCUMENTOS — este aqui faltava. Id não é credencial (ver o topo
    do Code.gs). */
-var DB_ATIVIDADES_DOCS = "330c5ab532d38009b6c2d5d6b77b6926";
+var DB_ATIVIDADES_DOCS = "96ac5ab532d38299bd2d01aa18016caf";
 
 /* Ações deste setor. Ação nova entra aqui, senão o docsRotear_ devolve null e
    ela morre no ACAO_DESCONHECIDA. */
