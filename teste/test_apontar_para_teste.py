@@ -12,6 +12,29 @@ def rodar(raiz, *extra):
                           capture_output=True, text=True)
 
 
+PAGES_YML = (
+    "    steps:\n"
+    "      - name: Buscar dados das Obras\n"
+    "        run: python fetch_obras.py\n"
+    "        env:\n"
+    "          TOKEN: ${{ secrets.GH_TOKEN }}\n"
+    "      - name: Buscar dados do Notion\n"
+    "        run: python fetch_notion.py\n"
+    "        env:\n"
+    "          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}\n"
+    "      - name: Espelhar anexos das Ligações\n"
+    "        run: python espelhar.py\n"
+    "        env:\n"
+    "          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}\n"
+    "          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}\n"
+    "      - name: Publicar site\n"
+    "        if: github.event_name == 'push'\n"
+    "        run: python publicar.py\n"
+    "        env:\n"
+    "          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}\n"
+)
+
+
 class Apontar(unittest.TestCase):
     def montar(self, d):
         (d / "Code.gs").write_bytes(b'VENDAS: "33cc5ab532d38047ae3aee8b87ac1f4d",\r\nvar GH_REPO = "DEVMoraisEng/PORTAL-MORAIS";\r\n')
@@ -20,14 +43,18 @@ class Apontar(unittest.TestCase):
         (d / "login.html").write_text('const API = "https://script.google.com/macros/s/AKfyPROD3/exec";\n', encoding="utf-8")
         (d / "fetch_vendas.py").write_text('ID_VENDAS_PADRAO = "33cc5ab532d38047ae3aee8b87ac1f4d"\n', encoding="utf-8")
         wf = d / ".github" / "workflows"; wf.mkdir(parents=True)
-        (wf / "pages.yml").write_text("    steps:\n      - name: Buscar dados das Obras\n        run: python fetch_obras.py\n", encoding="utf-8")
+        (wf / "pages.yml").write_text(PAGES_YML, encoding="utf-8")
         (wf / "robos-mc.yml").write_text("name: Robôs\n", encoding="utf-8")
+        (wf / "robos-mc-contas.yml").write_text("name: Robôs Contas\n", encoding="utf-8")
+        (wf / "outro.yml").write_text("name: Outro\n", encoding="utf-8")
         (d / "venda").mkdir()
         (d / "venda" / "nota.md").write_text("33cc5ab532d38047ae3aee8b87ac1f4d\n", encoding="utf-8")
         (d / "venda-dossie.js").write_text('  var URL_PORTAL_VENDA = "";   // URL /exec do PORTAL-VENDA\n', encoding="utf-8")
         (d / "fetch_obras.py").write_text('ID_OBRAS = "306c5ab532d3812fa14fe9a281510128"\n', encoding="utf-8")
         (d / "index.html").write_text('<img src="https://devmoraiseng.github.io/PORTAL-MORAIS/logo.png">\n', encoding="utf-8")
         (d / "robo_mc_clientes.py").write_text('COLETA_REPO = "DEVMoraisEng/OR-ADO-REALIZADO"\n', encoding="utf-8")
+        sp = d / ".superpowers"; sp.mkdir()
+        (sp / "x.md").write_text("33cc5ab532d38047ae3aee8b87ac1f4d\n", encoding="utf-8")
 
     def test_aponta_tudo_e_preserva_crlf(self):
         with tempfile.TemporaryDirectory() as t:
@@ -46,11 +73,18 @@ class Apontar(unittest.TestCase):
             self.assertIn("f53c5ab532d38325aa4a0193011aad24", (d / "fetch_vendas.py").read_text(encoding="utf-8"))
             pages = (d / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
             self.assertIn("      - name: Buscar dados das Obras\n        if: ${{ false }}\n", pages)
-            self.assertFalse((d / ".github" / "workflows" / "robos-mc.yml").exists())
+            self.assertIn("      - name: Espelhar anexos das Ligações\n        if: ${{ false }}\n", pages)
+            self.assertNotIn("      - name: Buscar dados do Notion\n        if: ${{ false }}\n", pages)
+            wf = d / ".github" / "workflows"
+            self.assertFalse((wf / "robos-mc.yml").exists())
+            self.assertFalse((wf / "robos-mc-contas.yml").exists())
+            self.assertFalse((wf / "outro.yml").exists())
+            self.assertTrue((wf / "pages.yml").exists())
             self.assertIn("33cc5ab532d38047ae3aee8b87ac1f4d", (d / "venda" / "nota.md").read_text(encoding="utf-8"))
             dossie = (d / "venda-dossie.js").read_text(encoding="utf-8")
             self.assertIn('var URL_PORTAL_VENDA = "' + EXEC_VENDA + '";', dossie)
             self.assertNotIn(EXEC, dossie)
+            self.assertIn("33cc5ab532d38047ae3aee8b87ac1f4d", (d / ".superpowers" / "x.md").read_text(encoding="utf-8"))
 
     def test_ids_de_producao_conhecidos_alem_dos_10_viram_aviso_nao_erro(self):
         # M-4: Obras e Proprietários (e outros ids de produção conhecidos além
@@ -92,9 +126,27 @@ class Apontar(unittest.TestCase):
             r = rodar(d, "--exec", EXEC, "--venda", EXEC_VENDA)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             pages = (d / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
-            self.assertEqual(pages.count("if: ${{ false }}"), 1)
+            # 3 passos desligados: Buscar dados das Obras, Espelhar anexos das
+            # Ligações, Publicar site (este já tinha outro if:, substituído).
+            self.assertEqual(pages.count("if: ${{ false }}"), 3)
+            self.assertEqual(pages.count("if:"), 3)
             dossie = (d / "venda-dossie.js").read_text(encoding="utf-8")
             self.assertEqual(dossie.count(EXEC_VENDA), 1)
+
+    def test_passo_com_if_existente_troca_condicao_sem_duplicar(self):
+        # "Publicar site" já tem if: github.event_name == 'push' e usa um
+        # segredo de produção (SUPABASE_URL): a condição existente deve ser
+        # SUBSTITUÍDA por if: ${{ false }}, nunca uma segunda linha if:.
+        with tempfile.TemporaryDirectory() as t:
+            d = pathlib.Path(t); self.montar(d)
+            r = rodar(d, "--exec", EXEC, "--venda", EXEC_VENDA)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            pages = (d / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+            passo = pages.split("- name: Publicar site", 1)[1].split("- name:", 1)[0]
+            self.assertEqual(passo.count("if:"), 1)
+            self.assertIn("if: ${{ false }}", passo)
+            self.assertNotIn("github.event_name", passo)
+            self.assertIn("AVISO", r.stdout)
 
     def test_recusa_url_que_nao_e_do_apps_script(self):
         with tempfile.TemporaryDirectory() as t:

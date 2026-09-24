@@ -31,16 +31,41 @@ IDS_AVISO = {
     "3e2c5ab532d38055a241db35f74e7bbc": "Proprietários",
 }
 EXTENSOES = {".gs", ".py", ".js", ".html", ".yml", ".yaml", ".md", ".json"}
-PULAR = {".git", "venda", "teste", "dist", "img"}
-PASSOS_DESLIGAR = ["Buscar dados da Análise de Dados", "Buscar dados das Obras"]
+PULAR = {".git", "venda", "teste", "dist", "img", ".superpowers"}
 DESLIGADO = "if: ${{ false }}"
+SEGREDO_PERMITIDO = "NOTION_TOKEN"  # único segredo que pode ficar ligado no fork
+PASSO_INICIO_RE = re.compile(r"(?m)^([ \t]*)- name: [^\n]*(\r?\n)")
 
 
-def desligar_passos(s):
-    for nome in PASSOS_DESLIGAR:
-        s = re.sub(r"(?m)^([ \t]*)- name: " + re.escape(nome) + r"(\r?\n)(?!\1  " + re.escape(DESLIGADO) + ")",
-                   lambda m: m.group(0) + m.group(1) + "  " + DESLIGADO + m.group(2), s)
-    return s
+def desligar_passos_com_segredo(s):
+    """Desliga (if: ${{ false }}) todo passo cujo próprio bloco referencie
+    algum secrets.<NOME> diferente de NOTION_TOKEN — genérico, não depende
+    de uma lista fixa de nomes de passo. Devolve (novo_texto, avisos)."""
+    matches = list(PASSO_INICIO_RE.finditer(s))
+    if not matches:
+        return s, []
+    avisos = []
+    partes = [s[: matches[0].start()]]
+    for i, m in enumerate(matches):
+        fim = matches[i + 1].start() if i + 1 < len(matches) else len(s)
+        bloco = s[m.start():fim]
+        segredos = set(re.findall(r"secrets\.(\w+)", bloco))
+        if segredos - {SEGREDO_PERMITIDO}:
+            indent = m.group(1)
+            linha_desligada = indent + "  " + DESLIGADO
+            if_re = re.compile(r"(?m)^" + re.escape(indent + "  ") + r"if: .*$")
+            if_match = if_re.search(bloco)
+            if if_match:
+                if if_match.group(0) != linha_desligada:
+                    nome = m.group(0).strip()
+                    avisos.append(f"pages.yml: passo '{nome}' já tinha uma condição if: própria "
+                                  f"— substituída por {DESLIGADO} (usa segredo de produção)")
+                    bloco = bloco[:if_match.start()] + linha_desligada + bloco[if_match.end():]
+            else:
+                pos = m.end() - m.start()
+                bloco = bloco[:pos] + linha_desligada + m.group(2) + bloco[pos:]
+        partes.append(bloco)
+    return "".join(partes), avisos
 
 
 URL_EXEC_RE = r"https://script\.google\.com/macros/s/[\w-]+/exec"
@@ -60,6 +85,7 @@ def main():
         sys.exit("URL do PORTAL-VENDA-TESTE inválida: precisa ser https://script.google.com/macros/s/<id>/exec")
     raiz = pathlib.Path(a.raiz).resolve()
     alterados = []
+    avisos = []
     for p in sorted(raiz.rglob("*")):
         rel = p.relative_to(raiz)
         if p.is_dir() or rel.parts[0] in PULAR or p.suffix.lower() not in EXTENSOES:
@@ -78,17 +104,20 @@ def main():
         else:
             s = re.sub(URL_EXEC_RE, a.url_exec, s)
         if p.name == "pages.yml":
-            s = desligar_passos(s)
+            s, avisos_passo = desligar_passos_com_segredo(s)
+            avisos.extend(avisos_passo)
         if s != antes:
             p.write_bytes(s.encode("utf-8"))
             alterados.append(str(rel))
-    robos = raiz / ".github" / "workflows" / "robos-mc.yml"
-    if robos.exists():
-        robos.unlink()
-        alterados.append(".github/workflows/robos-mc.yml (apagado)")
+    workflows = raiz / ".github" / "workflows"
+    if workflows.is_dir():
+        for f in sorted(workflows.iterdir()):
+            if f.is_file() and f.name != "pages.yml":
+                rel = f.relative_to(raiz)
+                f.unlink()
+                alterados.append(f"{rel} (apagado)")
     sobras = []
     urls_sobras = []
-    avisos = []
     for p in raiz.rglob("*"):
         rel = p.relative_to(raiz)
         if p.is_file() and rel.parts[0] not in PULAR and p.suffix.lower() in EXTENSOES:
