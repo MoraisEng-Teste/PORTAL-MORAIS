@@ -1,6 +1,6 @@
 /* app.js · Morais Engenharia — camada comum (sessão + offline + sync) */
 
-const API   = "https://script.google.com/macros/s/PENDENTE-PORTAL-TESTE/exec";
+const API   = "https://script.google.com/macros/s/AKfycbzYFHAodPoiS79pAqdGVEQmpMcAptrnGLtKoouN4n96L09djHViq467IH1wDLSh2920/exec";
 
 /* ===================== SEGUNDA IMPLANTAÇÃO: ESCRITA (set/26) ==============
  * MEDIDO EM 03/09/2026: dois PROJETOS diferentes do Apps Script, publicados
@@ -20,7 +20,7 @@ const API   = "https://script.google.com/macros/s/PENDENTE-PORTAL-TESTE/exec";
  * ENQUANTO A SEGUNDA IMPLANTAÇÃO NÃO EXISTIR, deixe a constante vazia (""):
  * tudo volta a sair pela URL única, exatamente como antes desta mudança.
  * =================================================================== */
-const API_ESCRITA = "https://script.google.com/macros/s/PENDENTE-PORTAL-TESTE/exec";
+const API_ESCRITA = "https://script.google.com/macros/s/AKfycbzYFHAodPoiS79pAqdGVEQmpMcAptrnGLtKoouN4n96L09djHViq467IH1wDLSh2920/exec";
 
 /* Ações que devem sair pela implantação de ESCRITA. Precisa bater com
    ACOES_ESCRITA + ACOES_CRIACAO do Code.gs. Ação nova que grave entra aqui
