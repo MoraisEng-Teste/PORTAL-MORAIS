@@ -35,7 +35,8 @@ ID_OBRAS = "306c5ab532d3812fa14fe9a281510128"   # (EMP) Projeto 2.0
 ID_ATIV = "306c5ab532d381fb864edee432bb128d"    # ATIVIDADES DE PROJETOS
 ID_CADASTRO = "3e2c5ab532d38055a241db35f74e7bbc"  # PROPRIETÁRIOS (cadastro) — só o NOME sai daqui
 ID_LIGACOES = "007c5ab532d383ac9ec081556377772d"  # LIGAÇÕES DE ÁGUA E ENERGIA (só a contagem por obra)
-ID_VENDAS = "f53c5ab532d38325aa4a0193011aad24"    # BANCO DE DADOS VENDAS (só a contagem por obra)
+ID_VENDAS = "f53c5ab532d38325aa4a0193011aad24"    # BANCO DE DADOS VENDAS (contagem + casas vendidas/entregues)
+ID_DOCS = (os.environ.get("DOCUMENTOS_DB_ID") or "a74c5ab532d38374a4170155196788f9").strip()   # BASE DE DADOS DOCUMENTOS
 
 
 def conta_alerta(p):
@@ -50,6 +51,54 @@ def conta_alerta(p):
     if v == norm("DÚVIDA"):
         return "DÚVIDA"
     return None
+
+
+POSITIVOS_ENTREGA = {"SIM", "INEXISTE", "AGIO"}
+
+
+def situacao_obras(ids_obras, titulo_por_id):
+    """28/09/26 — para o painel da obra:
+       - da BASE DE DADOS DOCUMENTOS: OBRA INCIADA e OBRA FINALIZADA?
+       - do BANCO DE DADOS VENDAS: cada casa — vendida? entregue?
+       Liga pela relação com a obra; sem relação, pelo endereço (= Projeto).
+       Nada de nome de cliente: só número da casa e SIM/NÃO."""
+    por_end = {padronizar_endereco(t): i for i, t in titulo_por_id.items() if t}
+    def obra_de(ip, colunas_endereco):
+        for v in ip.values():
+            for oid in ids(v) if (v or {}).get("type") == "relation" else []:
+                k = oid.replace("-", "")
+                if k in ids_obras:
+                    return k
+        for c in colunas_endereco:
+            t = txt(pega(ip, c))
+            if t and padronizar_endereco(t) in por_end:
+                return por_end[padronizar_endereco(t)]
+        return None
+    docs, casas = {}, {}
+    try:
+        for pg in ler_banco(ID_DOCS, "DOCUMENTOS (obra iniciada/finalizada)"):
+            ip = por_nome(pg.get("properties") or {})
+            o = obra_de(ip, ["ENDEREÇO"])
+            if o:
+                docs[o] = {"obra_iniciada": txt(pega(ip, "OBRA INCIADA", "OBRA INICIADA")),
+                           "obra_finalizada": txt(pega(ip, "OBRA FINALIZADA?", "OBRA FINALIZADA"))}
+    except SystemExit as e:
+        print(f"  DOCUMENTOS não lido: {e}", flush=True)
+    try:
+        for pg in ler_banco(ID_VENDAS, "VENDAS (casas)"):
+            ip = por_nome(pg.get("properties") or {})
+            o = obra_de(ip, ["ENDEREÇO"])
+            if not o:
+                continue
+            n = txt(pega(ip, "CASA", "CASA-AUTO"))
+            vendida = bool(txt(pega(ip, "CLIENTES")) or txt(pega(ip, "DATA DA VENDA")))
+            ent = norm(txt(pega(ip, "ENTREGOU A CASA E PEGOU TERMO DE ENTREGA?", "ENTEGOU A CASA E PEGOU TERMO DE ENTREGA?")) or "")
+            casas.setdefault(o, []).append({"casa": n, "vendida": vendida, "entregue": ent in POSITIVOS_ENTREGA})
+    except SystemExit as e:
+        print(f"  VENDAS (casas) não lido: {e}", flush=True)
+    for l in casas.values():
+        l.sort(key=lambda c: (c["casa"] is None, c["casa"] if isinstance(c["casa"], (int, float)) else str(c["casa"])))
+    return docs, casas
 
 
 def contar_por_relacao(db_id, rotulo, coluna):
@@ -175,6 +224,10 @@ def pega(ip, *nomes):
     return None
 
 
+# banco CONTAS BANCÁRIAS (mantido pelo robo_mc_contas.py) — id não é segredo
+CONTAS_DB_ID = os.environ.get("CONTAS_DB_ID", "").strip() or "3e4c5ab532d380afbd3bf9f7af31d2a7"
+
+
 def main():
     if not TOKEN:
         raise SystemExit("Falta o secret NOTION_TOKEN.")
@@ -257,6 +310,16 @@ def main():
             "vendas_criadas": ven_por_obra.get(str(pg.get("id")).replace("-", ""), 0),
         })
 
+    # 28/09/26: obra iniciada/finalizada (DOCUMENTOS) e casas vendidas/entregues (VENDAS)
+    ids_obras = {str(o["id"]).replace("-", "") for o in obras}
+    docs_obra, casas_obra = situacao_obras(ids_obras, {str(o["id"]).replace("-", ""): o.get("titulo") for o in obras})
+    for o in obras:
+        k = str(o["id"]).replace("-", "")
+        d = docs_obra.get(k) or {}
+        o["obra_iniciada"] = d.get("obra_iniciada")
+        o["obra_finalizada"] = d.get("obra_finalizada")
+        o["casas"] = casas_obra.get(k, [])
+
     atividades = []
     for pg in ler_banco(ID_ATIV, "ATIVIDADES DE PROJETOS"):
         props = pg.get("properties") or {}
@@ -299,8 +362,38 @@ def main():
         print(f"  cadastro de proprietários não lido: {e}", flush=True)
     proprietarios = sorted(set(proprietarios), key=norm)
 
+    # 25/09/26 — lista de CONTAS BANCÁRIAS para a escolha na obra, pronta no
+    # arquivo (a tela abre já com ela, sem esperar o Apps Script). Vai SÓ o
+    # nome da opção — o mesmo texto que aparece na coluna CONTA da obra —
+    # das contas marcadas "Aparece" e ativas no ERP. Nada de banco, agência,
+    # número ou id do ERP.
+    # contas_todas alimenta a aba "Contas bancárias" (Conta, Aparece,
+    # Situação) — também só nome, marcação e situação.
+    contas, contas_todas = [], []
+    try:
+        for pg in ler_banco(CONTAS_DB_ID, "CONTAS BANCÁRIAS"):
+            ip = pg.get("properties") or {}
+            ap = pega(ip, "Aparece")
+            aparece = bool(ap and ap.get("type") == "checkbox" and ap.get("checkbox"))
+            situacao = (txt(pega(ip, "Situação no ERP")) or "").strip()
+            tit = next((v for v in ip.values() if v.get("type") == "title"), None)
+            titulo = (txt(tit) or "").strip()
+            if not titulo:
+                continue
+            contas_todas.append({"id": pg["id"], "conta": titulo, "aparece": aparece, "situacao": situacao})
+            if not aparece or "SUMIU" in norm(situacao):
+                continue
+            nome = (txt(pega(ip, "Nome na obra")) or "").strip() or " ".join(titulo.replace(",", " ").split())[:100]
+            contas.append({"opcao": nome})
+    except SystemExit as e:
+        print(f"  contas bancárias não lidas: {e}", flush=True)
+    contas.sort(key=lambda c: norm(c["opcao"]))
+    contas_todas.sort(key=lambda c: norm(c["conta"]))
+
     gravar("obras.json", {
         "updated_at": datetime.now(timezone.utc).isoformat(),
+        "contas": contas,
+        "contas_todas": contas_todas,
         "obras": obras,
         "atividades": atividades,
         "opcoes": {k: v for k, v in opcoes.items() if norm(k) not in PROIBIDAS},
@@ -308,7 +401,7 @@ def main():
         "proprietarios": proprietarios,
         "pessoas": sorted([{"id": k, "nome": v} for k, v in pessoas.items()], key=lambda x: norm(x["nome"])),
     })
-    print(f"obras.json: {len(obras)} obras, {len(atividades)} atividades, {len(pessoas)} pessoas", flush=True)
+    print(f"obras.json: {len(obras)} obras, {len(atividades)} atividades, {len(pessoas)} pessoas, {len(contas)} contas", flush=True)
 
 
 if __name__ == "__main__":

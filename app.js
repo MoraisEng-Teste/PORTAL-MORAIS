@@ -55,7 +55,10 @@ const ACOES_NA_ESCRITA = [
      obraVivo e obraComentarios não gravam, mas são curtas e acompanham uma
      gravação: não podem esperar atrás do checklist. */
   "obraUpdate", "obraAtvUpdate", "obraAtvCheck", "obraAtvAcao", "obraLigacoes",
-  "obraConta", "obraVivo", "obraComentarios", "obraComentarioNovo", "investidorUpdate",
+  /* 24/09/26: obraComentarios e obraComentarioNovo SAÍRAM daqui — os
+     comentários ficam prontos no cache da LEITURA (aquecimento), e o
+     comentário novo precisa apagar a cópia no MESMO projeto que a serve. */
+  "obraConta", "obraVivo", "investidorUpdate",
   /* anexo das ligações: pedido curto (só assina o link); na fila das
      leituras ele esperava o ligSensiveis inteiro — era o PDF de 2 minutos */
   "ligArquivo"
@@ -92,7 +95,28 @@ const CPRE  = "morais_cache_v2_";
 /* ---------- sessão ---------- */
 function sessao(){ try{ return JSON.parse(localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||"null"); }catch(e){ return null; } }
 function sair(){ localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); location.href = LOGIN; }
-function exigirSessao(){ const s=sessao(); if(!s||!s.token){ location.href=LOGIN; } return s; }
+/* 01/10/26 — SESSÃO VENCIDA. O token vale 30 dias a partir do login, mas a leitura vem do dist/
+   (sem passar pelo servidor): quem só olhava nunca percebia que tinha vencido, e a primeira gravação
+   voltava "sessão expirada". Agora: (1) o servidor devolve um token novo (tokenNovo) faltando menos
+   de 15 dias e esta tela troca sozinha; (2) token já vencido manda direto para o login, em vez de
+   deixar a pessoa preencher e perder. */
+function tokenExp(tok){
+  try{
+    const p=String(tok||"").split(".")[0]; if(!p) return 0;
+    const b=p.replace(/-/g,"+").replace(/_/g,"/"); const pad=b+"===".slice((b.length+3)%4);
+    const txt=decodeURIComponent(Array.prototype.map.call(atob(pad),c=>"%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+    return Number(JSON.parse(txt).exp)||0;
+  }catch(e){ return 0; }
+}
+function sessaoVencida(s){ const e=tokenExp(s&&s.token); return !!(e && Date.now()>e); }
+function atualizarToken(novo){
+  if(!novo) return;
+  [localStorage, sessionStorage].forEach(st=>{
+    try{ const raw=st.getItem(KEY); if(!raw) return; const o=JSON.parse(raw); if(o&&o.token){ o.token=novo; st.setItem(KEY, JSON.stringify(o)); } }catch(e){}
+  });
+}
+function irParaLogin(){ localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); location.href=LOGIN; }
+function exigirSessao(){ const s=sessao(); if(!s||!s.token||sessaoVencida(s)){ irParaLogin(); } return s; }
 /* MASTER vê TODOS os sistemas do hub (Vendas etc.), como o ADM — é um perfil
    de diretor. O que ele não pode é MEXER: não edita endereço nem dá baixa em
    atividade (ver ehMaster no vendas.html). GERAL continua limitado ao que
@@ -107,7 +131,10 @@ const TIPOS_VEEM_TUDO = ["ADM","MASTER","TESTES"];
 function tipoDe(s){ return String((s&&s.tipo)||"").toUpperCase(); }
 function podeAcessar(s, chave){
   if(!s) return false;
-  return TIPOS_VEEM_TUDO.indexOf(tipoDe(s))>=0 || (s.acessos||[]).indexOf(chave)>=0;
+  /* 25/09/26: compara sem acento, caixa e espaço sobrando — uma opção
+     "OBRAS " (com espaço) na coluna ACESSOS escondia o botão sem aviso */
+  const nz=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/\s+/g," ").trim();
+  return TIPOS_VEEM_TUDO.indexOf(tipoDe(s))>=0 || (s.acessos||[]).some(a=>nz(a)===nz(chave));
 }
 /* ---------- ACESSO NOVO QUE NÃO CHEGAVA NA TELA (set/26) ----------
  * A sessão gravada no navegador (tipo + ACESSOS) era escrita UMA VEZ, no
@@ -299,9 +326,25 @@ async function _chamarDireto(payload, timeoutMs){
   const s=sessao(); if(s&&s.token&&!payload.token) payload.token=s.token;
   const ctrl=new AbortController();
   const timer=setTimeout(()=>ctrl.abort(), timeoutMs||45000); // evita "Carregando…" travado pra sempre
+  /* 25/09/26 — O Google às vezes devolve uma PÁGINA DE ERRO (HTML, 404 na
+     etapa "echo") em vez da resposta, mesmo com a execução concluída — é
+     intermitente: repetido na hora, responde normal. Antes isso virava "não
+     consegui falar com o servidor" e a gravação ia parar na fila. Agora a
+     leitura e a gravação de campo (que dá no mesmo se repetir) são refeitas
+     sozinhas até 2 vezes. Ação que NÃO pode repetir (criar, enviar e-mail,
+     comentar, gerar link/PDF) continua falhando na primeira, como antes. */
+  const acao=String((payload&&payload.action)||"");
+  const repetivel=!/(Novo|Nova|Criar|criar|Email|Enviar|Acao|Ligacoes|Link|Pdf|Distrato|distrato|Refazer|Setup|aixa|pload|Anexar|xcluir|Liberar)/.test(acao);
   try{
-    const r=await fetch(urlDe(payload && payload.action),{ method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload), signal:ctrl.signal });
-    return await r.json();
+    for(let tent=0;;tent++){
+      const r=await fetch(urlDe(acao),{ method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload), signal:ctrl.signal });
+      const txt=await r.text();
+      try{ const obj=JSON.parse(txt); if(obj&&obj.tokenNovo) atualizarToken(obj.tokenNovo); return obj; }
+      catch(e){
+        if(!repetivel||tent>=2) throw new Error("RESPOSTA_INVALIDA ("+r.status+")");
+        await new Promise(ok=>setTimeout(ok, tent?1500:700));
+      }
+    }
   } finally { clearTimeout(timer); }
 }
 
@@ -571,7 +614,7 @@ async function escrever(payload, rotulo){
       if(r && r.erro && !ERROS_TRANSITORIOS.includes(r.erro)) return { ok:false, erro:r.erro };
       /* Sessão realmente inválida também não vira "salvo": a pessoa precisa
          relogar, e a fila só empurraria o problema. */
-      if(r && r.erro==="NAO_AUTORIZADO") return { ok:false, erro:"NAO_AUTORIZADO" };
+      if(r && r.erro==="NAO_AUTORIZADO"){ setTimeout(irParaLogin, 3500); return { ok:false, erro:"NAO_AUTORIZADO" }; }
       /* BACKEND_OCUPADO / BACKEND_SEM_CONFIG: o servidor engasgou, a gravação
          é válida. Cai pra fila e sobe sozinha depois. */
       // resposta estranha (sem ok e sem erro): cai pra fila
@@ -649,6 +692,15 @@ function tentarSincronizar(){ if(fila().length) sincronizar(); }
 setInterval(tentarSincronizar, 20000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) tentarSincronizar(); });
 window.addEventListener("load", tentarSincronizar);
+/* renova a sessão em segundo plano quando faltar menos de 15 dias (ver tokenExp) */
+window.addEventListener("load", ()=>{
+  setTimeout(()=>{
+    const s=sessao(); if(!s||!s.token||!navigator.onLine) return;
+    const e=tokenExp(s.token); if(!e || e-Date.now() > 15*24*3600*1000) return;
+    if(Date.now()>e){ return; }
+    try{ chamar({ action:"renovarSessao" }, 30000).catch(()=>{}); }catch(err){}
+  }, 4000);
+});
 
 /* Tem escrita esperando envio? Enquanto tiver, nenhuma edição local pode ser
    descartada por tempo — ela ainda não chegou ao Notion, então o arquivo
@@ -661,7 +713,7 @@ const ERROS_TEXTO = {
   SEM_DADOS_PUBLICADOS: "os dados ainda não foram publicados — rode o workflow 'Publicar site' no GitHub",
   ERRO_API: "não consegui falar com o servidor (confira se o Apps Script está publicado)",
   TEMPO_ESGOTADO: "o servidor demorou demais pra responder — tente de novo",
-  NAO_AUTORIZADO: "sessão expirada",
+  NAO_AUTORIZADO: "sua sessão venceu — abrindo o login para você entrar de novo",
   /* devolvido quando o Apps Script não conseguiu ler as Propriedades do
      script (acontece sob concorrência). NÃO é sessão expirada — a tela não
      deve deslogar ninguém por causa disso. */
@@ -1033,11 +1085,23 @@ function aplicarEdicoesLocais(base, updatedAt, ler, gravar){
  * todas as cópias e recarrega. As telas mostram o atalho Ctrl+Shift+L.
  * ===================================================================== */
 const DADOS_VERSAO = "2026-09-24a";
-const _PREFIXOS_COPIA = ["morais_cache_", "morais_store_", "obras_cont_", "obras_contas_", "morais_edits_"];
+const _PREFIXOS_COPIA = ["morais_cache_", "morais_store_", "obras_cont_", "obras_contas_", "obras_coms_", "morais_edits_"];
 function _ehCopia(k){ return _PREFIXOS_COPIA.some(p=>k.indexOf(p)===0); }
-function limparDadosLocais(recarregar){
+/* 28/09/26 — CÓPIAS DO PAINEL QUE NÃO SOMEM
+ * Medido: ao entrar de manhã (cópia com mais de 24 h), depois do "Recarregar"
+ * ou de sair e entrar, o painel abria SEM Mural, SEM aniversários e com
+ * "Nenhuma atividade" até o Apps Script responder — parecia quebrado.
+ *   - DA EMPRESA (iguais para todos): aniversários e Mural. Nunca são
+ *     apagadas; a tela pinta com elas e troca quando o servidor responde.
+ *   - DA PESSOA (atividades, sino): sobrevivem ao "Recarregar" e à faxina
+ *     de 24 h (a tela sempre relê do servidor por cima), mas saem no "Sair" —
+ *     outra pessoa pode entrar no mesmo computador. */
+const _COPIAS_EMPRESA = ["morais_cache_v2_aniversariantes","morais_cache_v2_atv_mural"];
+const _COPIAS_PESSOA  = ["morais_cache_v2_atv_minhas","morais_cache_v2_atv_outras","morais_cache_v2_atv_alertas","morais_cache_v2_atv_cks","morais_cache_v2_atv_modelos"];
+function _copiaFica(k, saindo){ return _COPIAS_EMPRESA.indexOf(k)>=0 || (!saindo && _COPIAS_PESSOA.indexOf(k)>=0); }
+function limparDadosLocais(recarregar, saindo){
   try{
-    const ks=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&_ehCopia(k)) ks.push(k); }
+    const ks=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&_ehCopia(k)&&!_copiaFica(k,saindo)) ks.push(k); }
     ks.forEach(k=>localStorage.removeItem(k));
   }catch(e){}
   try{ if(typeof _storeMem!=="undefined") _storeMem.clear(); }catch(e){}
@@ -1054,7 +1118,7 @@ function limparDadosLocais(recarregar){
     }
     const lim=Date.now()-24*3600*1000;
     for(let i=localStorage.length-1;i>=0;i--){
-      const k=localStorage.key(i); if(!k||!_ehCopia(k)||k==="morais_edits_v1") continue;
+      const k=localStorage.key(i); if(!k||!_ehCopia(k)||k==="morais_edits_v1"||_copiaFica(k,false)) continue;
       let t=0; try{ const o=JSON.parse(localStorage.getItem(k)); t=(o&&(o.t||o.ts))||0; }catch(e){}
       if(t&&t<lim) localStorage.removeItem(k);
     }
@@ -1065,7 +1129,7 @@ function limparDadosLocais(recarregar){
 })();
 /* sair também leva as cópias embora */
 const _sairOriginal = sair;
-sair = function(){ limparDadosLocais(false); _sairOriginal(); };
+sair = function(){ limparDadosLocais(false, true); _sairOriginal(); };
 document.addEventListener("keydown",e=>{
   if(e.ctrlKey&&e.shiftKey&&(e.key==="L"||e.key==="l")){
     e.preventDefault();

@@ -76,6 +76,22 @@ select:focus,input:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0
 .ival.r{color:var(--verm)}
 .ilab{font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--text3);font-weight:700;margin-top:3px}
 .tabela-wrap{overflow:auto;max-height:72vh;border:1px solid var(--border2);border-radius:10px;background:var(--sup)}
+/* 29/09 — PREENCHER NA PLANILHA: campos editáveis direto na tabela de obras */
+.tabela-wrap .ce{font:inherit;font-size:12.5px;color:inherit;background:transparent;border:1.5px solid transparent;border-radius:6px;padding:3px 4px;max-width:100%;cursor:pointer}
+.tabela-wrap .ce:hover{border-color:var(--border);background:var(--sup)}
+.tabela-wrap .ce:focus{outline:none;border-color:var(--azul);background:var(--sup)}
+.tabela-wrap select.ce.sn{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 6px}
+.tabela-wrap select.ce.sim{background:rgba(42,157,92,.14);color:var(--verde-esc)}
+.tabela-wrap select.ce.nao{background:#f1e0e0;color:#9b2c2c}
+.tabela-wrap select.ce.ine{background:#e6eefb;color:#2d5ea8}
+.tabela-wrap select.ce.st{font-size:11.5px;font-weight:700;background:var(--bg2,#eef3f5);border-radius:999px;padding:2px 6px}
+.tabela-wrap input.ce[type=date]{width:132px}
+.tabela-wrap .ce.salvando{border-color:#F0C36D!important}
+.tabela-wrap .ce.ok{border-color:var(--verde)!important}
+.tabela-wrap .ce.erro{border-color:#c0392b!important}
+html[data-tema="escuro"] .tabela-wrap select.ce.sim{background:#16341f;color:#8ce0a5}
+html[data-tema="escuro"] .tabela-wrap select.ce.nao{background:#3a1e1e;color:#f3a29a}
+html[data-tema="escuro"] .tabela-wrap .ce option{background:#1b2a33;color:#e6eef2}
 table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:12.5px}
 thead th{background:var(--azul);color:#fff;text-align:left;padding:9px 11px;font-size:10px;letter-spacing:.4px;text-transform:uppercase;position:sticky;top:0;white-space:nowrap;z-index:2;font-weight:700}
 thead th.stick{left:0;z-index:3}
@@ -125,8 +141,10 @@ tbody tr:hover td{background:#e9f6ef;cursor:pointer} tbody tr:hover td.stick{bac
 .atv-cab div:hover{color:var(--azul)}
 .seta{font-size:9px;margin-left:3px;opacity:.8}
 .acoes-atv{display:flex;gap:8px;flex-wrap:wrap;padding:0 22px}
-.lig-bts{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-top:10px}
-.lig-bts .bt{background:var(--sup);color:var(--azul);border:1.5px solid var(--border);text-align:left}
+.lig-bts{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:10px}
+/* 29/09: o texto quebra dentro do botão (antes vazava por cima do vizinho) */
+.lig-bts .bt{background:var(--sup);color:var(--azul);border:1.5px solid var(--border);text-align:left;white-space:normal;height:auto;min-height:38px;line-height:1.25;min-width:0;overflow-wrap:anywhere}
+.lig-bts .bt:disabled{opacity:.55;cursor:not-allowed}
 .lig-bts .bt:hover{border-color:var(--azul);background:#e7f0f3}
 /* painel */
 .overlay{position:fixed;inset:0;background:rgba(20,40,55,.55);display:none;z-index:40}
@@ -213,6 +231,7 @@ tbody tr:hover td{background:#e9f6ef;cursor:pointer} tbody tr:hover td.stick{bac
 .cb-op.novo{color:var(--verde-esc);font-weight:700;border-top:1px solid var(--border2)}
 .cb-vazio{padding:8px 10px;color:var(--text4);font-size:12px}
 html[data-tema="escuro"] .cb-op:hover,html[data-tema="escuro"] .cb-op.ativo{background:#1b2f3c}
+.cont a,.com .tx a{color:var(--azul);text-decoration:underline;word-break:break-all}
 .com-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .com{background:var(--sup);border:1px solid var(--border2);border-radius:10px;padding:8px 11px}
 .com .qm{font-size:11px;color:var(--text3);font-weight:700;margin-bottom:3px}
@@ -357,7 +376,7 @@ html[data-tema="escuro"] .atv.atr .nm{color:#f3a29a}
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="app.js?v=36"></script>
+<script src="app.js?v=43"></script>
 <script>
 /* ---------- tema ---------- */
 const TEMA_KEY="morais_tema";
@@ -388,7 +407,7 @@ let D={obras:[],atividades:[],opcoes:{},opcoes_atividades:{},pessoas:[]};
    atualiza. Só nome da conta — nada de número/agência. */
 const CONTAS_KEY="obras_contas_v1";
 let CONTAS=(function(){ try{ const x=JSON.parse(localStorage.getItem(CONTAS_KEY)||"null"); return x&&Array.isArray(x.l)?x.l:null; }catch(e){ return null; } })(),
-    CONTAS_AVISO="", _contasEmVoo=null, _contasFresco=0;
+    CONTAS_AVISO="", _contasEmVoo=null, _contasFresco=0, _contasTent=0;
 let ABA="obras", FILTRO="andamento", PESSOA=null, VER_FIN=false, OBRA=null, ATV=null, MODO="lista", CONT=null;
 let SORT_OB={k:"data_prevista",d:1}, SORT_ATV={k:null,d:1};
 /* conteúdo das atividades: memória + localStorage (abre na hora, confere por trás) */
@@ -424,6 +443,10 @@ function ponteAplicar(base,lista,campoDe,publicadoEm){
   let o; try{ o=edicoes(); }catch(e){ return; }
   const pub=publicadoEm?tsPublicacao(publicadoEm):0, agora=Date.now(); let mudou=false;
   const porId=new Map(lista.map(x=>[x.id,x]));
+  /* 25/09/26: gravação que ainda está na FILA (sem conexão na hora) nunca
+     perde para uma leitura — o Notion ainda não tem como saber dela */
+  let pend=new Set();
+  try{ (fila()||[]).forEach(it=>{ const q=it&&it.payload||{}; if(q.pageId&&q.prop) pend.add(String(q.pageId).replace(/-/g,"")+"|"+q.prop); }); }catch(e){}
   for(const k in o){
     const e=o[k]; if(!e||e.b!==base) continue;
     const alvo=porId.get(e.id), campo=campoDe(e.p);
@@ -431,13 +454,33 @@ function ponteAplicar(base,lista,campoDe,publicadoEm){
     if(agora-e.ts>7*24*3600*1000){ delete o[k]; mudou=true; continue; }
     if(iguaisEdicao(alvo[campo],e.v)){ delete o[k]; mudou=true; continue; }   // o Notion já tem
     const idadeLeitura=pub||agora;
-    if(idadeLeitura>e.ts+PONTE_FOLGA){ delete o[k]; mudou=true; continue; }    // leitura bem posterior e diferente: vale o Notion
+    const naFila=pend.has(String(e.id).replace(/-/g,"")+"|"+e.p);
+    /* 25/09/26: o arquivo publicado (build) NUNCA derruba o que foi salvo —
+       ele pode atrasar por muito tempo (build que falhou, fila do GitHub).
+       Só a leitura AO VIVO (obraVivo, direto do Notion) pode dizer que o valor
+       mudou lá, e mesmo assim só depois de 3 min da gravação. */
+    if(!naFila&&!pub&&idadeLeitura>e.ts+PONTE_FOLGA){ delete o[k]; mudou=true; continue; }
     alvo[campo]=e.v;                                                           // ainda não chegou: fica o que foi salvo
   }
   if(mudou) edicoesGravar(o);
 }
 function ponteAtividades(publicadoEm){ ponteAplicar("obras-atv",D.atividades,p=>ATV_PROP[p],publicadoEm); D.atividades.forEach(a=>{ a.controle_prazo=prazoLocal(a); }); }
-function ponteObras(publicadoEm){ ponteAplicar("obras",D.obras,p=>{ const c=CAMPOS.find(x=>x[2]===p); return c&&c[3]!=="pessoa"?c[1]:null; },publicadoEm); }
+/* 25/09/26 — os ALERTAS dependem destes campos: depois de reaplicar o que foi
+   salvo, refaz o que deriva deles (nome da pessoa a partir do id, situação
+   da conta). Antes, uma leitura atrasada trazia o alerta de volta. */
+function ponteObras(publicadoEm){
+  ponteAplicar("obras",D.obras,p=>{ const c=CAMPOS.find(x=>x[2]===p); return c?c[1]:null; },publicadoEm);
+  D.obras.forEach(o=>{
+    ["resp_ids","rt_ids"].forEach(k=>{
+      const ids=o[k]; if(!Array.isArray(ids)||!ids.length) return;
+      const nome=ids.map(id=>{ const p=(D.pessoas||[]).find(x=>String(x.id).replace(/-/g,"")===String(id).replace(/-/g,"")); return p?p.nome:""; }).filter(Boolean).join(", ");
+      if(nome) o[k==="resp_ids"?"resp":"rt"]=nome;
+    });
+    if(o.conta!==undefined&&o.conta!==null&&o.conta!==""){
+      o.conta_alerta=(o.conta==="CRIAR CONTA"||o.conta==="DÚVIDA")?o.conta:null;
+    }
+  });
+}
 let INV=null, INV_SENS=null, INV_BUSCA="";
 /* cor por grupo de tipo (1.x, 2.x … 7) — mesma ideia das cores do Notion */
 const CORES_TIPO={1:"#2f6fb0",2:"#7b4fb3",3:"#2a9d5c",4:"#d27a1f",5:"#8a6d3b",6:"#c2477a",7:"#1c7c74"};
@@ -542,6 +585,13 @@ async function carregar(){
     if(!r.ok) throw new Error("HTTP "+r.status);
     D=await r.json(); D.opcoes_atividades=D.opcoes_atividades||{};
     ponteAtividades(D.updated_at); ponteObras(D.updated_at);
+    /* 25/09/26 — a lista de contas já vem no arquivo publicado: o formulário
+       abre com ela na hora. O servidor só confere depois (carregarContas). */
+    if(Array.isArray(D.contas)&&D.contas.length&&(!CONTAS||!CONTAS.length||!_contasFresco)){
+      CONTAS=D.contas; CONTAS_AVISO="";
+      try{ localStorage.setItem(CONTAS_KEY,JSON.stringify({t:Date.now(),l:CONTAS})); }catch(e){}
+      if(document.getElementById("mf").classList.contains("on")){ preencherSelConta(); aplicarCombos(document.getElementById("mf")); }
+    }
     /* 23/09/26: a tela abre sempre em OBRAS. Ao clicar em Atividades, a aba
        já entra nas atividades de quem está logado (ver pintarAtividades). */
     document.getElementById("updated").textContent="Atualizado: "+new Date(D.updated_at).toLocaleString("pt-BR");
@@ -622,11 +672,37 @@ function pintarLista(l){
       ${thOrd("Prev. término","data_prevista",SORT_OB,"ordObra")}${thOrd("Projeto final.","projeto_finalizado",SORT_OB,"ordObra")}
       ${thOrd("Orçamento final.","orcamento_finalizado",SORT_OB,"ordObra")}${thOrd("Liberar","liberar",SORT_OB,"ordObra")}
       ${thOrd("Controle de prazo","controle_prazo",SORT_OB,"ordObra")}${thOrd("Status","status",SORT_OB,"ordObra")}</tr></thead><tbody>`+
-      l.map(o=>`<tr onclick="abrirObra('${o.id}')"><td class="stick"><span class="obralink">${esc(o.titulo||"(sem endereço)")}</span>${o.pendente?' <span class="tag">criando…</span>':""}</td>
+      l.map(o=>o.pendente?`<tr onclick="abrirObra('${o.id}')"><td class="stick"><span class="obralink">${esc(o.titulo||"(sem endereço)")}</span> <span class="tag">criando…</span></td>
         <td>${esc(o.setor||"—")}</td><td>${esc(o.resp||"—")}</td><td>${dt(o.data_prevista)}</td>
         <td>${tagSN(o.projeto_finalizado)}</td><td>${tagSN(o.orcamento_finalizado)}</td><td>${tagSN(o.liberar)}</td>
-        <td class="prazo">${esc(o.controle_prazo||"—")}</td><td><span class="tag">${esc(o.status||"—")}</span></td></tr>`).join("")+
-      `</tbody></table></div>`:`<div class="vazio">Nenhuma obra nesta lista.</div>`;
+        <td class="prazo">${esc(o.controle_prazo||"—")}</td><td><span class="tag">${esc(o.status||"—")}</span></td></tr>`
+      :`<tr onclick="abrirObra('${o.id}')"><td class="stick"><span class="obralink" title="Abrir a obra">${esc(o.titulo||"(sem endereço)")}</span></td>
+        <td>${celObra(o,"setor")}</td><td>${celObra(o,"resp_ids")}</td><td>${celObra(o,"data_prevista")}</td>
+        <td>${celObra(o,"projeto_finalizado")}</td><td>${celObra(o,"orcamento_finalizado")}</td><td>${celObra(o,"liberar")}</td>
+        <td class="prazo">${esc(o.controle_prazo||"—")}</td><td>${celObra(o,"status")}</td></tr>`).join("")+
+      `</tbody></table></div><div class="ajuda" style="margin-top:6px">Preencha direto na tabela: setor, responsável, previsão, projeto/orçamento finalizado, liberar e status gravam no Notion na hora (borda amarela = gravando, verde = gravou). Clique no nome da obra para abrir tudo.</div>`
+      :`<div class="vazio">Nenhuma obra nesta lista.</div>`;
+}
+/* 29/09 — célula editável da tabela (usa a mesma gravação do painel da obra) */
+const _SALV_OB=new Set();
+function celObra(o,k){
+  const i=CAMPOS.findIndex(c=>c[1]===k); if(i<0) return esc(o[k]||"—");
+  const [rot,,col,tipo]=CAMPOS[i], v=o[k];
+  const st=_SALV_OB.has(o.id+"|"+k)?" salvando":"";
+  const on=`data-ce="${o.id}|${k}" title="${esc(rot)}" onclick="event.stopPropagation()" onchange="gravarObra(${i},this,'${o.id}')"`;
+  if(tipo==="data") return `<input type="date" class="ce${st}" value="${esc(v||"")}" ${on}>`;
+  if(tipo==="pessoa"){
+    const atual=String((v||[])[0]||"").replace(/-/g,"");
+    const tem=D.pessoas.some(p=>String(p.id).replace(/-/g,"")===atual);
+    return `<select class="ce${st}" ${on}><option value="">—</option>${!tem&&atual?`<option value="${esc((v||[])[0])}" selected>${esc(o.resp||"(pessoa)")}</option>`:""}${
+      D.pessoas.map(p=>`<option value="${p.id}" ${String(p.id).replace(/-/g,"")===atual?"selected":""}>${esc(p.nome)}</option>`).join("")}</select>`;
+  }
+  let ops=ehLivre(col)?listaOpc(col):opc(col);
+  if(v&&!ops.some(x=>N(x)===N(v))) ops=[v].concat(ops);
+  if(!ops.length&&!ehLivre(col)) return k==="status"?`<span class="tag">${esc(v||"—")}</span>`:tagSN(v);
+  const n=N(v), sn=/^(SIM|NAO|INEXISTE)$/.test(n)?" sn "+(n==="SIM"?"sim":n==="NAO"?"nao":"ine"):(k==="status"?" st":"");
+  return `<select class="ce${sn}${st}" ${on}><option value="">—</option>${ops.map(x=>`<option ${N(x)===N(v)?"selected":""}>${esc(x)}</option>`).join("")}${
+    ehLivre(col)?`<option value="__novo__">+ Novo…</option>`:""}</select>`;
 }
 
 /* ===================== ABA ATIVIDADES (por pessoa) ===================== */
@@ -651,10 +727,14 @@ function pintarAtividades(){
       <div class="icard"><div class="ival">${ks.length}</div><div class="ilab">Tipos</div></div></div>`:""}
     ${ks.length?ks.map(k=>{ const g=SORT_ATV.k?ordenar(grupos[k],SORT_ATV):grupos[k].sort((a,b)=>String(a.data_final||"9999").localeCompare(String(b.data_final||"9999")));
       const na=g.filter(atrasada).length;
-      return `<details class="grupo" open><summary>${esc(k)}<span class="qtd ${na?"r":""}">${g.length}${na?` · ${na} em atraso`:""}</span></summary>
+      return `<details class="grupo grp-atv" data-k="${esc(k)}"${(window.ATV_GR_ABERTOS||new Set()).has(k)?" open":""}><summary>${esc(k)}<span class="qtd ${na?"r":""}">${g.length}${na?` · ${na} em atraso`:""}</span></summary>
         <div class="corpo">${cabAtv(true)}${g.map(a=>linhaAtv(a,true)).join("")}</div></details>`; }).join("")
       :`<div class="vazio">${PESSOA?"Nenhuma atividade para esta pessoa.":"Nenhuma atividade encontrada."}</div>`}`;
   window.NOMES_ATV=nomes;
+  /* 05/10/26: grupos de atividades nascem FECHADOS; o que abrir fica aberto ao repintar */
+  if(!window.ATV_GR_ABERTOS) window.ATV_GR_ABERTOS=new Set();
+  document.querySelectorAll("details.grp-atv[data-k]").forEach(d=>{ if(d._lig) return; d._lig=1;
+    d.addEventListener("toggle",()=>{ d.open?ATV_GR_ABERTOS.add(d.dataset.k):ATV_GR_ABERTOS.delete(d.dataset.k); }); });
 }
 function cabAtv(comObra){
   const c=(rot,k)=>`<div onclick="ordAtv('${k}')">${rot}${SORT_ATV.k===k?`<span class="seta">${SORT_ATV.d>0?"▲":"▼"}</span>`:""}</div>`;
@@ -672,6 +752,17 @@ function linhaAtv(a,comObra){
     <div><div class="k">Conclusão</div><input type="date" value="${esc(a.data_conclusao||"")}" onchange="gravarAtv('${a.id}','Data De Conclusão da Atividade',this.value,this)"></div>
     <div><div class="k">Controle de prazo</div><div class="v prazo">${esc(a.controle_prazo||"—")}</div></div>
   </div>`;
+}
+/* 25/09/26 — gravação que NÃO se perde: vai pela fila do app.js (escrever).
+   Deu certo -> resposta normal. Rede caiu ou servidor não respondeu -> fica
+   guardada no navegador e sobe sozinha quando a conexão voltar ({enfileirado}).
+   Só volta atrás quando o servidor RECUSA de verdade (permissão, valor
+   inválido) — aí não adianta tentar de novo. */
+async function gravarNaFila(payload,rotulo){
+  let r; try{ r=await escrever(payload,rotulo); }catch(e){ r=null; }
+  if(r&&r.ok&&r.enviado) return Object.assign({ok:true},r.resposta||{});
+  if(r&&r.ok&&r.enfileirado) return {ok:true,enfileirado:true};
+  return r||{ok:false,erro:"sem conexão"};
 }
 /* grava com uma segunda tentativa automática: "sem conexão" quase sempre era
    a resposta se perdendo no caminho (POST -> 302 -> GET), não falha real */
@@ -694,6 +785,7 @@ async function gravarAtv(id,prop,valor,el){
      concluída sai da lista na hora); o servidor grava por trás. Se ele
      recusar de verdade, tudo volta como estava e o aviso diz o motivo. */
   const antes={status:a.status,data_conclusao:a.data_conclusao,data_final:a.data_final,data_inicio:a.data_inicio,controle_prazo:a.controle_prazo};
+  a._editadoEm=Date.now();
   const campo=ATV_PROP[prop];
   if(campo) a[campo]=valor||null;
   const autoConc=(prop==="Status"&&N(valor)==="FINALIZADO"&&!a.data_conclusao);
@@ -703,16 +795,23 @@ async function gravarAtv(id,prop,valor,el){
   if(autoConc) ponteGuardar("obras-atv",id,"Data De Conclusão da Atividade",a.data_conclusao);
   const concluida=N(a.status)==="FINALIZADO"&&dataOk(a.data_conclusao);
   if(concluida){
-    const lin=el&&el.closest(".atv");
-    if(lin&&!VER_FIN){ lin.classList.add("saindo"); setTimeout(repintarSeguro,300); } else setTimeout(repintarSeguro,50);
-    toast(VER_FIN?"Atividade concluída.":"Atividade concluída — saiu da lista (marque \"incluir finalizadas\" para ver).");
+    /* 25/09/26: a saída animada é só na aba Atividades. No painel da obra a
+       linha continua (ele mostra todas); antes ela ficava invisível e deixava
+       um buraco no meio da lista até o painel ser redesenhado. */
+    const lin=el&&el.closest(".atv"), naLista=lin&&!lin.closest(".painel");
+    if(naLista&&!VER_FIN){ lin.classList.add("saindo"); setTimeout(repintarSeguro,300); } else setTimeout(repintarSeguro,50);
+    toast(!naLista||VER_FIN?"Atividade concluída.":"Atividade concluída — saiu da lista (marque \"incluir finalizadas\" para ver).");
     acompanharProxima(a.obra_id, true);
   } else { if(el){ el.classList.remove("ok","erro"); el.classList.add("salvando"); } setTimeout(repintarSeguro,50); }
 
-  const r=await gravarComRetry(Object.assign({action:"obraAtvUpdate",pageId:id,prop:prop,valor:valor,obraId:a.obra_id},autoConc?{conclusaoSeVazia:true}:{}),null);
+  const r=await gravarNaFila(Object.assign({action:"obraAtvUpdate",pageId:id,prop:prop,valor:valor,obraId:a.obra_id},autoConc?{conclusaoSeVazia:true}:{}),"Atividade: "+(a.titulo||a.tipo||""));
   const el2=el&&document.body.contains(el)?el:null;
   if(el2) el2.classList.remove("salvando");
-  if(r&&r.ok){
+  if(r&&r.ok&&r.enfileirado){
+    if(el2) el2.classList.add("ok");
+    if(_acomp[a.obra_id]&&_acomp[a.obra_id].espera){ delete _acomp[a.obra_id]; mostrarProcurando(false); }
+    toast("Sem conexão agora — a baixa ficou guardada e grava sozinha quando a conexão voltar.");
+  } else if(r&&r.ok){
     if(el2) el2.classList.add("ok");
     if(r.conclusao&&r.conclusao!==a.data_conclusao){ a.data_conclusao=r.conclusao; ponteGuardar("obras-atv",id,"Data De Conclusão da Atividade",r.conclusao); }
     if(!concluida) toast("Salvo.");
@@ -773,6 +872,14 @@ window.addEventListener("portal-ao-vivo",ev=>{
   const d=ev.detail||{}; if(d.tela!=="obras"||!D) return;
   const me=(sessao()||{}).nome||"";
   if(d.quem&&me&&d.quem===me) return;                       // fui eu
+  /* comentário novo de outra pessoa na obra/atividade que está aberta aqui */
+  if(d.acao==="obraComentarioNovo"&&d.id){
+    if(ATV===d.id) carregarComentarios(d.id,"com-atv",true);
+    else if(OBRA===d.id) carregarComentarios(d.id,"com-obra",true);
+    else delete COMS[d.id];
+    toast("Novo comentário"+(d.quem?" de "+d.quem:"")+".");
+    return;
+  }
   let obraId=d.obraId;
   if(!obraId&&d.id){ const at=D.atividades.find(x=>x.id===d.id); obraId=at?at.obra_id:(obraDe(d.id)?d.id:null); }
   if(!obraId){ toast((d.quem||"Alguém")+" alterou as obras — use 🔄 Recarregar para ver."); return; }
@@ -794,19 +901,35 @@ function prazoLocal(a){
 /* Traz a obra e as atividades dela direto do Notion (obraVivo). Devolve as
    atividades que ainda não estavam na tela. */
 const _vivoEmVoo={};
+/* 25/09/26 — A CAUSA DO "PREENCHI, FECHEI, ABRI E SUMIU".
+   Abrir a obra dispara uma leitura ao vivo que leva alguns segundos. Se a
+   pessoa preenchia um campo NESSE intervalo, a leitura — que tinha começado
+   ANTES da gravação — chegava depois, com o valor antigo, e passava por cima
+   do novo. Ao reabrir a obra, o campo aparecia vazio, como se nada tivesse
+   sido feito. Agora cada gravação marca a hora (_editadoEm) e uma leitura que
+   começou antes dessa hora NÃO sobrescreve o registro; em vez disso, uma
+   leitura nova é feita logo depois, já com o valor gravado. */
 async function atualizarObraVivo(obraId){
   if(!obraId||String(obraId).indexOf("tmp-")===0) return [];
   if(_vivoEmVoo[obraId]) return _vivoEmVoo[obraId];
+  const iniciou=Date.now();
   const pr=(async()=>{
     let r; try{ r=await chamar({action:"obraVivo",obraId:obraId},40000); }catch(e){ r=null; }
     if(!(r&&r.ok)) return [];
     const o=obraDe(obraId);
-    if(o&&r.obra){ Object.keys(r.obra).forEach(k=>{ if(k!=="id") o[k]=r.obra[k]; }); o._vivo=true; o._bt=null; }
+    let releia=false;
+    if(o&&r.obra){
+      if(o._editadoEm&&iniciou<o._editadoEm) releia=true;                     // leitura velha: não mexe
+      else { Object.keys(r.obra).forEach(k=>{ if(k!=="id") o[k]=r.obra[k]; }); o._vivo=true; o._bt=null; }
+    }
     const vindas=r.atividades||[], ids=new Set(vindas.map(x=>x.id)), novas=[];
     D.atividades=D.atividades.filter(x=>x.obra_id!==obraId||ids.has(x.id)||String(x.id).indexOf("tmp")===0);
     vindas.forEach(v=>{ const a=D.atividades.find(x=>x.id===v.id);
-      if(a) Object.assign(a,v); else { D.atividades.push(v); novas.push(v); } });
+      if(a){ if(a._editadoEm&&iniciou<a._editadoEm) releia=true; else Object.assign(a,v); }
+      else { D.atividades.push(v); novas.push(v); } });
+    if(releia) setTimeout(()=>atualizarObraVivo(obraId),800);
     ponteAtividades(null); ponteObras(null);   // leitura ao vivo pode vir atrasada: o que foi salvo prevalece
+    if(ABA==="alertas") pintarAlertas();
     _IDXv=null;   // índice por obra refeito na próxima pintura
     repintarSeguro();
     return novas;
@@ -904,19 +1027,16 @@ function abrirObra(id){
   atualizarObraVivo(id).then(()=>preCarregarConteudos(id));
   carregarComentarios(id,"com-obra");
 }
-function fecharObra(){ OBRA=null; document.getElementById("ov1").classList.remove("on"); document.getElementById("p1").classList.remove("on"); }
+function fecharObra(){ OBRA=null; document.getElementById("ov1").classList.remove("on"); document.getElementById("p1").classList.remove("on");
+  /* 25/09/26: ao fechar, a lista de trás mostra o que acabou de ser preenchido */
+  pintarTabs(); if(ABA==="alertas") pintarAlertas(); else if(ABA==="obras"&&document.getElementById("lista-obras")) pintarLista(); }
 function pintarObraPainel(){
   const o=obraDe(OBRA); if(!o) return;
   document.getElementById("p1-end").textContent=o.titulo||"(sem endereço)";
   document.getElementById("p1-loc").textContent=[o.setor,o.cidade,o.resp].filter(Boolean).join(" · ");
   const atv=atvsDaObra(o.id);
   const normais=atv.filter(a=>!ehLig(a)).sort(ordenaAtv), lig=atv.filter(ehLig).sort(ordenaAtv);
-  const falt=faltasDe(o), feitas=normais.filter(atvFeita).length;
-  let h=`<div class="chips"><span class="chip">${esc(o.status||"sem status")}</span>
-    ${o.controle_prazo?`<span class="chip ${N(o.controle_prazo).indexOf("ATRASO")>=0?"alerta":""}">${esc(o.controle_prazo)}</span>`:""}
-    ${normais.length?`<span class="chip ok">${feitas} de ${normais.length} atividades concluídas</span>`:""}
-    ${o.em_mc===true?`<span class="chip ok">No Mais Controle</span>`:o.em_mc===false?`<span class="chip alerta">Fora do Mais Controle${o.mais_controle?" · "+esc(o.mais_controle):""}</span>`:""}
-    ${falt.length?`<span class="chip alerta">Falta: ${esc(falt.join(", "))}</span>`:""}</div>`;
+  let h=`<div class="chips">${chipsObraHtml(o)}</div>`;
   h+=`<div class="grp">Dados da obra</div><div class="resumo">${CAMPOS.map((c,i)=>campoHtml(o,c,i)).join("")}</div>`;
   h+=`<div class="grp">Atividades <span class="sp"></span>
       <button class="tg ${MODO==="lista"?"on":""}" title="Atividades em lista, por tipo" onclick="MODO='lista';pintarObraPainel()">Lista</button>
@@ -934,7 +1054,7 @@ function pintarObraPainel(){
   if(jaCriado) h+=`<div class="ja-criado">✓ JÁ CRIADO — ${o.lig_criadas||0} ligações e ${o.vendas_criadas||0} vendas desta obra.
       ${ehAdmTela()&&!liberado?`<button class="bt bt-mini ghost" title="Libera os botões para criar de novo, mesmo já tendo ligações/vendas (só ADM)" onclick="(window.LIG_LIBERA=window.LIG_LIBERA||{})['${o.id}']=1;pintarObraPainel()">criar de novo (ADM)</button>`:""}</div>`;
   h+=`<div class="lig-bts">${[1,2,3,4,5].map(n=>[false].concat(canedo?[]:[true]).map(e=>
-      `<button class="bt" ${semCidade||(jaCriado&&!liberado)?"disabled":""} title="Cria ${n} ${n===1?"linha":"linhas"} de ligação de água e energia${e?" (com esgoto)":""} e ${n} ${n===1?"venda":"vendas"} para esta obra" onclick="criarLigacoes(${n},${e},this${jaCriado?",true":""})">${jaCriado&&!liberado?"JÁ CRIADO · ":"→ "}${n} ${n===1?"CASA":"CASAS"}${e?" C/ ESGOTO":""}</button>`).join("")).join("")}</div>
+      `<button class="bt" ${semCidade||(jaCriado&&!liberado)?"disabled":""} title="Cria ${n} ${n===1?"linha":"linhas"} de ligação de água e energia${e?" (com esgoto)":""} e ${n} ${n===1?"venda":"vendas"} para esta obra" onclick="criarLigacoes(${n},${e},this${jaCriado?",true":""})">${jaCriado&&!liberado?"🔒 ":"→ "}${n} ${n===1?"CASA":"CASAS"}${e?" C/ ESGOTO":""}</button>`).join("")).join("")}</div>
     <div class="ajuda">${semCidade?"Preencha a CIDADE da obra para liberar os botões. ":""}
       ${canedo?"Senador Canedo: SANESC + EQUATORIAL (sem esgoto)":"Goiânia: SANEAGO + EQUATORIAL (com SANEAGO ESGOTO nos botões \"c/ esgoto\")"}
       · cada casa também ganha a linha em Vendas.</div>`;
@@ -942,36 +1062,109 @@ function pintarObraPainel(){
   document.getElementById("p1-corpo").innerHTML=h;
   aplicarCombos(document.getElementById("p1-corpo"));
 }
-async function gravarObra(i,el){
-  const o=obraDe(OBRA); if(!o) return;
+/* 25/09/26 — GRAVAÇÃO OTIMISTA NA OBRA (mesma ideia da baixa de atividade).
+   Antes a obra só mudava na memória DEPOIS da resposta do servidor: quem
+   fechava o painel antes do "salvo" continuava vendo o alerta e, ao reabrir,
+   a leitura ao vivo trazia o campo vazio do Notion. Agora o valor entra NA
+   HORA (tela, alertas, contador e ponte); a gravação roda por trás. Só volta
+   atrás se o servidor RECUSAR de verdade — e só se ninguém mexeu de novo. */
+function chipsObraHtml(o){
+  const atv=atvsDaObra(o.id), normais=atv.filter(a=>!ehLig(a)), falt=faltasDe(o), feitas=normais.filter(atvFeita).length;
+  return `<span class="chip">${esc(o.status||"sem status")}</span>
+    ${o.controle_prazo?`<span class="chip ${N(o.controle_prazo).indexOf("ATRASO")>=0?"alerta":""}">${esc(o.controle_prazo)}</span>`:""}
+    ${normais.length?`<span class="chip ok">${feitas} de ${normais.length} atividades concluídas</span>`:""}
+    ${o.em_mc===true?`<span class="chip ok">No Mais Controle</span>`:o.em_mc===false?`<span class="chip alerta">Fora do Mais Controle${o.mais_controle?" · "+esc(o.mais_controle):""}</span>`:""}
+    ${falt.length?`<span class="chip alerta">Falta: ${esc(falt.join(", "))}</span>`:""}
+    ${chipsCasasObra(o)}`;
+}
+/* 28/09/26 — da BASE DE DADOS DOCUMENTOS (obra iniciada / finalizada) e do
+   BANCO DE DADOS VENDAS (cada casa: vendida? entregue?). Vêm no obras.json. */
+function chipsCasasObra(o){
+  const sim=v=>/^SIM/.test(N(v||""));
+  let h="";
+  if(o.obra_iniciada!=null) h+=`<span class="chip ${sim(o.obra_iniciada)?"ok":""}" title="BASE DE DADOS DOCUMENTOS">Obra iniciada: ${esc(o.obra_iniciada||"—")}</span>`;
+  if(o.obra_finalizada!=null) h+=`<span class="chip ${sim(o.obra_finalizada)?"ok":""}" title="BASE DE DADOS DOCUMENTOS">Obra finalizada: ${esc(o.obra_finalizada||"—")}</span>`;
+  (o.casas||[]).forEach(c=>{
+    const n=c.casa!=null&&c.casa!==""?`Casa ${esc(c.casa)}`:"Casa";
+    h+=c.entregue?`<span class="chip ok" title="BANCO DE DADOS VENDAS">${n}: vendida · entregue</span>`
+      :c.vendida?`<span class="chip alerta" title="BANCO DE DADOS VENDAS">${n}: vendida · não entregue</span>`
+      :`<span class="chip" title="BANCO DE DADOS VENDAS">${n}: não vendida</span>`;
+  });
+  return h;
+}
+/* chips e cabeçalho do painel sem redesenhar os campos (não tira o foco) */
+function atualizarChipsObra(o){
+  if(!o||OBRA!==o.id) return;
+  const c=document.querySelector("#p1-corpo .chips"); if(c) c.innerHTML=chipsObraHtml(o);
+  const l=document.getElementById("p1-loc"); if(l) l.textContent=[o.setor,o.cidade,o.resp].filter(Boolean).join(" · ");
+}
+function repintarFundoObras(){ pintarTabs(); if(ABA==="obras"&&document.getElementById("lista-obras")) pintarLista(); else if(ABA==="alertas") pintarAlertas(); }
+function aplicarValorObra(o,k,tipo,valor,el){
+  if(tipo==="pessoa"){
+    o[k]=valor;
+    const opt=el&&el.options&&el.selectedIndex>=0?el.options[el.selectedIndex]:null;
+    const p=D.pessoas.find(x=>String(x.id).replace(/-/g,"")===String(valor[0]||"").replace(/-/g,""));
+    o[k==="resp_ids"?"resp":"rt"]=valor.length?((p&&p.nome)||(opt&&opt.value?opt.text:"")):"";
+  }
+  else if(tipo==="num") o[k]=valor===""||valor==null?null:Number(valor);
+  else if(tipo==="multi") o[k]=valor.length?valor[0]:null;
+  else if(tipo==="conta"){ o[k]=valor; o.conta_alerta=(valor==="CRIAR CONTA"||valor==="DÚVIDA")?valor:null; }
+  else o[k]=valor||null;
+}
+async function gravarObra(i,el,idLinha){
+  const o=obraDe(idLinha||OBRA); if(!o) return;                 // 29/09: idLinha = veio da tabela
   const [rot,k,col,tipo]=CAMPOS[i];
   if(el.value==="__novo__"){
     const nv=pedirNovo(col);
-    if(!nv){ pintarObraPainel(); return; }
+    if(!nv){ if(idLinha) repintarFundoObras(); else pintarObraPainel(); return; }
     const op=document.createElement("option"); op.textContent=nv; el.insertBefore(op,el.lastElementChild); el.value=nv;
   }
   let valor=el.value; if(tipo==="pessoa"||tipo==="multi") valor=valor?[valor]:[];
   if(tipo==="data"&&valor&&!dataOk(valor)) return;      // data pela metade: espera completar
-  el.classList.remove("ok","erro"); el.classList.add("salvando");
-  /* Liberar sai pela LEITURA (é lá que o ObrasSync cria a Compatibilização na
-     hora); conta bancária tem ação própria; o resto vai pela ESCRITA */
   if(tipo==="conta"&&!valor) return;
+
+  /* 1) NA HORA: memória, ponte, chips, alertas e contador */
+  const antes={[k]:o[k],resp:o.resp,rt:o.rt,conta_alerta:o.conta_alerta};
+  o._editadoEm=Date.now();                      // leitura que começou antes disto não sobrescreve
+  aplicarValorObra(o,k,tipo,valor,el);
+  const meu=o[k];
+  ponteGuardar("obras",o.id,col,meu);             // leitura ao vivo/build atrasado não traz o vazio de volta
+  o._bt=null;
+  el.classList.remove("ok","erro"); el.classList.add("salvando");
+  const chave=o.id+"|"+k; _SALV_OB.add(chave);
+  atualizarChipsObra(o);
+  repintarFundoObras();
+  if(idLinha&&OBRA===o.id) pintarObraPainel();                   // painel aberto da mesma obra acompanha
+
+  /* 2) POR TRÁS: grava. Liberar sai pela LEITURA (é lá que o ObrasSync cria
+     a Compatibilização na hora); conta bancária tem ação própria; o resto
+     vai pela ESCRITA */
   const payload=tipo==="conta"?{action:"obraConta",pageId:o.id,conta:valor}
     :{action:N(col)===N("Liberar Obra Para Processo Interno")?"obraLiberar":"obraUpdate",pageId:o.id,prop:col,valor:valor};
-  const r=await gravarComRetry(payload,el);
-  el.classList.remove("salvando");
+  const r=await gravarNaFila(payload,"Obra: "+(o.titulo||""));
+  _SALV_OB.delete(chave);
+  const celula=()=>document.querySelector(`.tabela-wrap [data-ce="${chave}"]`);
+  const el2=document.body.contains(el)?el:celula();
+  if(el2) el2.classList.remove("salvando");
+  if(el2!==celula()&&celula()) celula().classList.remove("salvando");
   if(r&&r.ok){
-    el.classList.add("ok");
-    if(tipo==="pessoa"){ o[k]=valor; const p=D.pessoas.find(x=>x.id===valor[0]); o[k==="resp_ids"?"resp":"rt"]=p?p.nome:""; }
-    else if(tipo==="num") o[k]=el.value===""?null:Number(el.value);
-    else if(tipo==="conta"){ o[k]=el.value; o.conta_alerta=(el.value==="CRIAR CONTA"||el.value==="DÚVIDA")?el.value:null; }
-    else o[k]=el.value||null;
-    if(tipo!=="pessoa") ponteGuardar("obras",o.id,col,o[k]);
-    o._bt=null;
-    toast(r.compat&&r.compat.criada?"Criado para esta obra: "+(r.compat.criadas||[]).join(" e ")+".":rot+" salvo.");
-    pintarTabs(); if(ABA==="obras") pintarLista(); else if(ABA==="alertas") pintarAlertas();
+    if(el2) el2.classList.add("ok");
+    { const c=celula(); if(c){ c.classList.add("ok"); setTimeout(()=>c.classList.remove("ok"),1800); } }
+    if(r.enfileirado) toast(rot+": sem conexão agora — ficou guardado e grava sozinho quando voltar.");
+    else if(r.compat&&r.compat.criada) toast("Criado para esta obra: "+(r.compat.criadas||[]).join(" e ")+".");
     atualizarObraVivo(o.id);
-  }else{ el.classList.add("erro"); toast("Não salvou: "+errMsg(r)); }
+  }else{
+    /* recusa de verdade: volta — mas só se o campo ainda tem o valor desta gravação */
+    if(iguaisEdicao(o[k],meu)){
+      Object.assign(o,antes);
+      try{ esquecerEdicao("obras",o.id,col); }catch(e){}
+      if(OBRA===o.id) pintarObraPainel();
+      repintarFundoObras();
+    }
+    const alvo=(el2&&document.body.contains(el2)?el2:null)||celula()||(OBRA===o.id?document.querySelector(`#p1-corpo [onchange^="gravarObra(${i},"]`):null);
+    if(alvo){ alvo.classList.add("erro"); if(alvo._cb) comboSync(alvo); }
+    toast("Não salvou "+rot+": "+errMsg(r)+" — o campo voltou como estava.");
+  }
 }
 
 /* cronograma: barra de Data De Início até a conclusão (ou final prevista) */
@@ -1001,8 +1194,10 @@ function abrirAtv(id){
   ATV=id; CONT=CONT_MEM[id]||null; pintarAtvPainel();
   document.getElementById("ov2").classList.add("on"); document.getElementById("p2").classList.add("on");
   /* já tem cópia de menos de 2 min (pré-carregada ao abrir a obra): não pede de novo */
-  if(!CONT&&LOTE_ANDANDO.has(id)){}          // o pré-carregamento já está trazendo
-  else if(!CONT||Date.now()-(CONT.t||0)>120000) carregarConteudo(id);
+  /* 24/09/26: a atividade aberta NUNCA espera o pré-carregamento — pede o
+     conteúdo dela na hora, com prioridade na fila. Se já tem cópia, mostra a
+     cópia e confere por trás. */
+  if(!CONT||Date.now()-(CONT.t||0)>120000) carregarConteudo(id);
   carregarComentarios(id,"com-atv");
 }
 function fecharAtv(){ ATV=null; document.getElementById("ov2").classList.remove("on"); document.getElementById("p2").classList.remove("on"); }
@@ -1021,13 +1216,19 @@ function pintarAtvPainel(){
     <div class="ri"><div class="k">Conclusão</div><input type="date" value="${esc(a.data_conclusao||"")}" onchange="gravarAtv('${a.id}','Data De Conclusão da Atividade',this.value,this)"></div>
     </div>${acoesHtml(a)}<div class="grp">Checklist e conteúdo</div><div id="p2-cont">${
       CONT===null?`<div class="cont"><span class="load"></span> Carregando o conteúdo da atividade…</div>`
-      :CONT.erro?`<div class="cont" style="color:var(--verm)">Não consegui carregar: ${esc(CONT.erro)}</div>`
+      :CONT.erro?`<div class="cont" style="color:var(--verm)">Não consegui carregar: ${esc(CONT.erro)}
+          <button class="bt bt-mini ghost" style="margin-left:8px" title="Pede o conteúdo de novo ao servidor" onclick="CONT=null;pintarAtvPainel();carregarConteudo('${a.id}')">Tentar de novo</button></div>`
       :conteudoHtml(CONT.blocos)}</div>
     <div class="grp">Comentários e imagens</div><div class="pl" id="com-atv">${comentariosHtml(a.id)}</div>`;
   document.getElementById("p2-corpo").innerHTML=h;
 }
-async function carregarConteudo(id){
-  let r; try{ r=await chamar({action:"obraAtvConteudo",pageId:id},60000); }catch(e){ r={ok:false,erro:"sem conexão"}; }
+async function carregarConteudo(id, tentativa){
+  /* 24/09/26: 25 s por tentativa e UMA nova tentativa automática (antes: 60 s
+     parado e depois "não respondeu"). Na falha, a tela oferece tentar de novo. */
+  /* prioritário: passa na frente do pré-carregamento na fila do navegador, e
+     vai à LEITURA, que é onde o aquecimento deixa o conteúdo pronto no cache */
+  let r; try{ r=await chamar({action:"obraAtvConteudo",pageId:id},25000,true); }catch(e){ r={ok:false,erro:"sem conexão"}; }
+  if(!(r&&r.ok)&&!tentativa&&ATV===id){ return carregarConteudo(id,1); }
   if(r&&r.ok) contGuardar(id,r.blocos||[]);
   if(ATV!==id) return;
   if(!(r&&r.ok)&&CONT_MEM[id]) return;   // falhou mas já temos uma cópia: fica com ela
@@ -1043,11 +1244,19 @@ function conteudoHtml(bs){
   return (c.t?`<div class="ajuda" style="padding:0 22px">${c.f} de ${c.t} itens concluídos</div><div class="progresso"><div style="width:${Math.round(c.f/c.t*100)}%"></div></div>`:"")+
     `<div class="cont">${blocosHtml(bs)}</div>`;
 }
+/* 25/09/26 — link vira link: endereço escrito no texto (https://...) e texto
+   com link do Notion abrem numa nova aba. */
+function linkar(txt,links){
+  let h=esc(txt||"");
+  (links||[]).forEach(l=>{ const e=esc(l.t||""); if(e&&l.h&&/^https?:/i.test(l.h)&&h.indexOf(e)>=0)
+    h=h.replace(e,`<a href="${esc(l.h)}" target="_blank" rel="noopener" title="Abre o link numa nova aba">${e}</a>`); });
+  return h.replace(/(^|[\s(])(https?:\/\/[^\s<"]+[^\s<".,;:!?)\]])/gi,(m,a,u)=>a+`<a href="${u}" target="_blank" rel="noopener" title="Abre o link numa nova aba">${u}</a>`);
+}
 function blocosHtml(bs){
   let h="", lista=null;
   const fecha=()=>{ if(lista){ h+=`</${lista}>`; lista=null; } };
   (bs||[]).forEach(b=>{
-    const t=esc(b.texto||""), filhos=b.filhos&&b.filhos.length?blocosHtml(b.filhos):"";
+    const t=linkar(b.texto||"",b.links), filhos=b.filhos&&b.filhos.length?blocosHtml(b.filhos):"";
     if(b.tipo==="bulleted_list_item"||b.tipo==="numbered_list_item"){
       const tag=b.tipo==="bulleted_list_item"?"ul":"ol";
       if(lista!==tag){ fecha(); h+=`<${tag}>`; lista=tag; }
@@ -1146,12 +1355,16 @@ async function carregarContas(forcar){
   if(_contasEmVoo) return _contasEmVoo;
   if(!forcar && Date.now()-_contasFresco<5*60000) return;
   _contasEmVoo=(async()=>{
-    let r; try{ r=await chamar({action:"contasBancarias"},45000); }catch(e){ r=null; }
-    if(r&&r.ok&&Array.isArray(r.contas)){
-      CONTAS=r.contas; CONTAS_AVISO=""; _contasFresco=Date.now();
+    let r; try{ r=await chamar({action:"contasBancarias"},30000,true); }catch(e){ r=null; }
+    if(r&&r.ok&&Array.isArray(r.contas)&&(r.contas.length||!(D&&Array.isArray(D.contas)&&D.contas.length))){
+      CONTAS=r.contas; CONTAS_AVISO=""; _contasFresco=Date.now(); _contasTent=0;
       try{ localStorage.setItem(CONTAS_KEY,JSON.stringify({t:Date.now(),l:CONTAS})); }catch(e){}
     } else if(!CONTAS||!CONTAS.length){
-      CONTAS=CONTAS||[]; CONTAS_AVISO="a lista de contas ainda não carregou — tente abrir de novo em instantes";
+      CONTAS=CONTAS||[]; CONTAS_AVISO="carregando a lista de contas… (tentando de novo)";
+      /* 25/09/26: não desiste — tenta de novo em 10, 20, 40 e 80 s */
+      _contasTent=(_contasTent||0)+1;
+      if(_contasTent<=4) setTimeout(()=>carregarContas(true),10000*Math.pow(2,_contasTent-1));
+      else CONTAS_AVISO="a lista de contas não carregou — use 🔄 Recarregar";
     }
     if(document.getElementById("mf").classList.contains("on")){ preencherSelConta(); aplicarCombos(document.getElementById("mf")); }
     if(OBRA) repintarSeguro();
@@ -1295,27 +1508,50 @@ new MutationObserver(ms=>ms.forEach(m=>{ if(m.target._cb) comboSync(m.target); }
    Ao abrir a obra, o checklist de TODAS as atividades dela vem numa chamada
    só, por trás. Quando a pessoa clica, já está aqui. */
 const LOTE_ANDANDO=new Set();
+/* 24/09/26 — em LOTES DE 5, um depois do outro. Pedir as ~20 atividades de
+   uma vez gerava uma resposta grande demais: o Google devolvia 404 na etapa
+   "echo" (o mesmo limite que derrubou a Análise de Dados) e nada chegava.
+   Com o aquecimento no servidor (Melhorias m5), quase tudo já vem do cache. */
+const LOTE_TAM=5;
 async function preCarregarConteudos(obraId){
   const ids=D.atividades.filter(a=>a.obra_id===obraId&&!ehLig(a)&&String(a.id).indexOf("tmp")!==0)
+    .sort((x,y)=>(atvFeita(x)?1:0)-(atvFeita(y)?1:0))                 // as abertas primeiro
     .filter(a=>!CONT_MEM[a.id]||Date.now()-(CONT_MEM[a.id].t||0)>10*60000).map(a=>a.id);
-  if(!ids.length) return;
-  ids.forEach(x=>LOTE_ANDANDO.add(x));
-  let r; try{ r=await chamar({action:"obraAtvConteudoLote",ids:ids},90000); }catch(e){ r=null; }
-  ids.forEach(x=>LOTE_ANDANDO.delete(x));
-  if(!(r&&r.ok&&r.conteudos)){ if(ATV&&ids.indexOf(ATV)>=0&&!CONT) carregarConteudo(ATV); return; }
-  Object.keys(r.conteudos).forEach(id=>contGuardar(id,r.conteudos[id]||[]));
-  if(ATV&&r.conteudos[ATV]&&(!CONT||CONT.erro)){ CONT=CONT_MEM[ATV]; pintarAtvPainel(); }
+  for(let i=0;i<ids.length;i+=LOTE_TAM){
+    if(OBRA!==obraId) return;                                          // fechou a obra: para
+    const lote=ids.slice(i,i+LOTE_TAM).filter(x=>x!==ATV||!CONT);
+    if(!lote.length) continue;
+    lote.forEach(x=>LOTE_ANDANDO.add(x));
+    let r; try{ r=await chamar({action:"obraAtvConteudoLote",ids:lote},40000); }catch(e){ r=null; }
+    lote.forEach(x=>LOTE_ANDANDO.delete(x));
+    if(!(r&&r.ok&&r.conteudos)) return;                                // falhou: não insiste agora
+    Object.keys(r.conteudos).forEach(id=>contGuardar(id,r.conteudos[id]||[]));
+    Object.keys(r.comentarios||{}).forEach(id=>{ if(!Array.isArray(COMS[id])) comsGuardar(id,r.comentarios[id]); });
+    if(ATV&&r.conteudos[ATV]&&(!CONT||CONT.erro)){ CONT=CONT_MEM[ATV]; pintarAtvPainel(); }
+  }
 }
 
 /* ===================== COMENTÁRIOS E IMAGENS (extra 1) ===================== */
-const COMS={};
+/* 24/09/26 — os comentários ficam guardados no navegador (como o checklist):
+   a obra/atividade abre com a última cópia na tela e o servidor só confere.
+   O pré-carregamento em lote também já traz os que estão prontos no cache. */
+const COMS_KEY="obras_coms_v1";
+const COMS=(function(){ try{ const x=JSON.parse(localStorage.getItem(COMS_KEY)||"{}")||{}; const o={}; for(const k in x) o[k]=x[k].l; return o; }catch(e){ return {}; } })();
+function comsGuardar(id,lista){
+  COMS[id]=lista;
+  try{
+    const x=JSON.parse(localStorage.getItem(COMS_KEY)||"{}")||{}; x[id]={t:Date.now(),l:lista};
+    const ks=Object.keys(x); if(ks.length>150) ks.sort((a,b)=>x[a].t-x[b].t).slice(0,ks.length-150).forEach(k=>delete x[k]);
+    localStorage.setItem(COMS_KEY,JSON.stringify(x));
+  }catch(e){}
+}
 function comentariosHtml(pageId){
   const l=COMS[pageId];
   const lista=l===undefined?`<div class="ajuda"><span class="load"></span> carregando comentários…</div>`
     :l.erro?`<div class="ajuda err">Não carregou os comentários: ${esc(l.erro)}</div>`
     :!l.length?`<div class="ajuda">Nenhum comentário ainda.</div>`
     :l.map(c=>`<div class="com"><div class="qm">${esc(c.autor||"")} · ${c.criadoEm?new Date(c.criadoEm).toLocaleString("pt-BR"):""}</div>
-      ${c.texto?`<div class="tx">${esc(c.texto)}</div>`:""}
+      ${c.texto?`<div class="tx">${linkar(c.texto)}</div>`:""}
       ${(c.anexos||[]).map(a=>a.url?(a.categoria==="image"||/\.(png|jpe?g|gif|webp|heic)(\?|$)/i.test(a.url)
           ?`<a href="${esc(a.url)}" target="_blank" rel="noopener"><img src="${esc(a.url)}" alt=""></a>`
           :`<a class="arq" href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.nome||"arquivo")}</a>`):"").join("")}</div>`).join("");
@@ -1325,9 +1561,11 @@ function comentariosHtml(pageId){
       <button class="bt" id="cb-${pageId}" title="Envia o comentário (e o anexo, se houver) para a página no Notion" onclick="enviarComentario('${pageId}')">Enviar</button>
       <div class="com-anexo" id="ca-${pageId}"></div></div>`;
 }
-async function carregarComentarios(pageId,boxId){
-  let r; try{ r=await chamar({action:"obraComentarios",pageId:pageId},40000); }catch(e){ r={ok:false,erro:"sem conexão"}; }
-  COMS[pageId]=r&&r.ok?(r.comentarios||[]):{erro:errMsg(r)};
+async function carregarComentarios(pageId,boxId,fresco){
+  let r; try{ r=await chamar(Object.assign({action:"obraComentarios",pageId:pageId},fresco?{fresco:true}:{}),25000,true); }catch(e){ r={ok:false,erro:"sem conexão"}; }
+  if(r&&r.ok) comsGuardar(pageId,r.comentarios||[]);
+  else if(Array.isArray(COMS[pageId])) return;          // falhou, mas já tem cópia na tela: fica com ela
+  else COMS[pageId]={erro:errMsg(r)};
   const box=document.getElementById(boxId); if(!box) return;
   const txt=document.getElementById("ct-"+pageId), rascunho=txt?txt.value:"";
   box.innerHTML=comentariosHtml(pageId);
@@ -1352,7 +1590,7 @@ async function enviarComentario(pageId){
   if(!(r&&r.ok)){ toast("Não enviou: "+errMsg(r)); return; }
   delete COM_ARQ[pageId]; if(t) t.value="";
   toast(r.anexoNoCorpo?"Enviado — o anexo ficou no corpo da página no Notion.":"Comentário enviado.");
-  carregarComentarios(pageId,document.getElementById("com-atv")&&ATV===pageId?"com-atv":"com-obra");
+  carregarComentarios(pageId,document.getElementById("com-atv")&&ATV===pageId?"com-atv":"com-obra",true);
 }
 
 /* ===================== CONTAS BANCÁRIAS (aba própria) =====================
@@ -1362,12 +1600,18 @@ async function enviarComentario(pageId){
 let CTS=null, CT_FILTRO="ativas", CT_BUSCA="";
 async function pintarContas(forcar){
   const v=document.getElementById("view");
-  if(!CTS||forcar){
-    v.innerHTML=`<div class="sec"><span class="cond">Contas bancárias</span></div><div class="vazio"><span class="load"></span> Carregando contas…</div>`;
-    let r; try{ r=await chamar({action:"contasTodas"},60000); }catch(e){ r={ok:false,erro:"sem conexão"}; }
-    if(!(r&&r.ok)){ v.innerHTML=`<div class="sec"><span class="cond">Contas bancárias</span></div><div class="vazio">Não carregou: ${esc(errMsg(r))}</div>`; return; }
-    CTS=r;
+  /* 25/09/26 — a aba abre NA HORA com a lista publicada no arquivo (build);
+     o servidor confere por trás e, se responder, a tabela se atualiza. Antes
+     ela ficava presa em "Carregando contas…" esperando o Apps Script. */
+  if(!CTS&&D&&Array.isArray(D.contas_todas)&&D.contas_todas.length){
+    const s0=sessao()||{}, adm=["ADM","MASTER"].indexOf(String(s0.tipo||"").toUpperCase())>=0;
+    CTS={ok:true,contas:D.contas_todas.map(c=>Object.assign({},c)),podeEditar:adm,doArquivo:true};
   }
+  if(!CTS){
+    v.innerHTML=`<div class="sec"><span class="cond">Contas bancárias</span></div><div class="vazio"><span class="load"></span> Carregando contas…</div>`;
+    await ctBuscar(true);
+    if(!CTS){ v.innerHTML=`<div class="sec"><span class="cond">Contas bancárias</span></div><div class="vazio">Não carregou agora. <button class="bt bt-mini ghost" onclick="pintarContas(true)">Tentar de novo</button></div>`; return; }
+  } else if(forcar||CTS.doArquivo) ctBuscar(forcar);      // confere por trás, sem travar a tela
   if(ABA!=="contas") return;
   const ativa=c=>N(c.situacao).indexOf("SUMIU")<0, q=N(CT_BUSCA);
   let l=CTS.contas.filter(c=>(CT_FILTRO==="todas"||(CT_FILTRO==="ativas"?ativa(c):!ativa(c))) && (!q||N(c.conta).indexOf(q)>=0));
@@ -1383,6 +1627,14 @@ async function pintarContas(forcar){
         <td><input type="checkbox" ${c.aparece?"checked":""} ${CTS.podeEditar?"":"disabled"} onchange="marcarAparece('${c.id}',this)"></td>
         <td>${ativa(c)?`<span class="tag sim">${esc(c.situacao||"Ativa")}</span>`:`<span class="tag nao">${esc(c.situacao)}</span>`}</td></tr>`).join("")
       :`<tr><td colspan="3" class="vazio">Nenhuma conta neste filtro.</td></tr>`}</tbody></table></div>`;
+}
+let CT_BUSCANDO=false;
+async function ctBuscar(avisar){
+  if(CT_BUSCANDO) return; CT_BUSCANDO=true;
+  let r; try{ r=await chamar({action:"contasTodas"},30000,true); }catch(e){ r=null; }
+  CT_BUSCANDO=false;
+  if(r&&r.ok&&Array.isArray(r.contas)&&r.contas.length){ CTS=r; if(ABA==="contas") pintarContas(); return; }
+  if(CTS){ CTS.doArquivo=false; if(avisar) toast("Não consegui atualizar agora — mostrando a última lista publicada."); }
 }
 async function marcarAparece(id,el){
   const c=CTS&&CTS.contas.find(x=>x.id===id); if(!c) return;
