@@ -1260,6 +1260,10 @@ const SIM_COLS_REC=[
 ];
 const SIM_COLS_TXT=["cliente","cpf","corretor","imobiliaria","status","mensagem"];
 /* 02/10 (item 6) — simulação nova = chegou nas últimas 24 h */
+/* 06/10 — celular do corretor: formatado e com link para WhatsApp */
+function simFmtTel(v){ const d=String(v||"").replace(/\D/g,"").slice(-11); return d.length>10?`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`:(d.length>6?`(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`:d); }
+function simLinkTel(v){ const d=String(v||"").replace(/\D/g,""); if(!d) return "—";
+  return `<a href="https://wa.me/55${d.slice(-11)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--azul)">${esc(simFmtTel(d))}</a>`; }
 function simNova(s){ const t=Date.parse(s.criadoEm||s.criado||""); return !isNaN(t) && (Date.now()-t) < 24*3600*1000; }
 
 function simSegSt(v){
@@ -1312,7 +1316,7 @@ function simRenderRecebidas(){
   }
   const corpo=vis.map(s=>`<tr class="clicavel${chegouReservada(s,false)?' linha-res':''}"${chegouReservada(s,false)?' title="Simulação feita com a unidade já reservada"':''}${simNova(s)?' style="background:#FFF3C4"':''} onclick="simVerDet('${s.id}')">
     <td>${esc(s.cliente||"—")}</td><td class="col-un">${esc(s.cpf||"—")}</td>
-    <td>${esc(s.corretor||"—")}</td><td>${esc(s.imobiliaria||"—")}</td>
+    <td>${esc(s.corretor||"—")}${s.celularCorretor?`<div style="font-size:11px;color:var(--text3)">📱 ${esc(simFmtTel(s.celularCorretor))}</div>`:""}</td><td>${esc(s.imobiliaria||"—")}</td>
     <td>Un. ${esc(String(s.unidade||"—"))} <span style="color:var(--text3)">(T${esc(String(s.tipo||"—"))})</span></td>
     <td class="num">${s.renda?simBRL(s.renda):"—"}</td>
     <td class="num">${s.financiado?simBRL(s.financiado):"—"}</td>
@@ -1390,7 +1394,7 @@ function simVerAbaixo(id){
       <button class="bt ghost" onclick="document.getElementById('sim-detBaixo').style.display='none'">Fechar</button></div>
     <div class="modal-sub" style="margin-bottom:10px">CPF ${esc(s.cpf||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <div class="sim-grade">
-      ${it("Corretor",esc(s.corretor||""))}${it("Imobiliária",esc(s.imobiliaria||""))}${it("E-mail",esc(s.email||""))}
+      ${it("Corretor",esc(s.corretor||""))}${it("Imobiliária",esc(s.imobiliaria||""))}${it("E-mail",esc(s.email||""))}${it("Celular do corretor",s.celularCorretor?simLinkTel(s.celularCorretor):"—")}
       ${it("Unidade","Un. "+esc(String(s.unidade||"—"))+" (Tipo "+esc(String(s.tipo||"—"))+")")}
       ${it("Valor de venda",simBRL(s.valorVenda))}${it("Avaliação",simBRL(s.avaliacao))}
       ${it("Renda",simBRL(s.renda))}${it("FGTS",simBRL(s.fgts))}${it("Subsídio",simBRL(s.subsidio))}
@@ -1430,7 +1434,7 @@ function simVerDet(id){
     <div class="modal-tit">${esc(s.cliente||"—")}</div>
     <div class="modal-sub">CPF ${esc(s.cpf||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <div class="sim-grade">
-      ${it("Corretor",esc(s.corretor||""))}${it("Imobiliária",esc(s.imobiliaria||""))}${it("E-mail",esc(s.email||""))}
+      ${it("Corretor",esc(s.corretor||""))}${it("Imobiliária",esc(s.imobiliaria||""))}${it("E-mail",esc(s.email||""))}${it("Celular do corretor",s.celularCorretor?simLinkTel(s.celularCorretor):"—")}
       ${it("Unidade","Un. "+esc(String(s.unidade||"—"))+" (Tipo "+esc(String(s.tipo||"—"))+")")}
       ${it("Valor de venda",simBRL(s.valorVenda))}${it("Avaliação",simBRL(s.avaliacao))}
       ${it("Renda",simBRL(s.renda))}${it("FGTS",simBRL(s.fgts))}${it("Subsídio",simBRL(s.subsidio))}
@@ -2292,13 +2296,29 @@ const PEND_SEMPRE=["RG e CPF do proponente","Comprovante de estado civil","Compr
 /* 05/10 (itens 5 e 7) — documento de quem: "(cônjuge)", "(comprador 1)", "(fiador 2)"... no fim do rótulo */
 function propDonoDoc(rot){ const m=String(rot||"").match(/^(.*) \(((?:cônjuge|conjuge)|comprador \d|fiador \d|dependentes)\)$/i);
   return m ? {base:m[1], dono:m[2].toLowerCase().replace("conjuge","cônjuge")} : {base:String(rot||""), dono:/cônjuge|conjuge/i.test(rot)?"cônjuge":"proponente"}; }
+/* 06/10 — contexto da proposta para os documentos: cônjuge em outro endereço e compradores (com a origem de cada um) */
+function propCtxDocs(campos){
+  let d={}; try{ d=JSON.parse((campos||{})["DADOS"]||"{}"); }catch(e){}
+  const comps=(d.dependentes||[]).filter(x=>x && String(x.tipo||"").toUpperCase()==="COMPRADOR").slice(0,2).map(x=>x.origemRenda||"");
+  const mesmoCol=PROP_NORM((campos||{})["CONJUGE MESMO ENDERECO"]||"");
+  return {conjMesmo: mesmoCol ? mesmoCol!=="NAO" : d.conjugeMesmoEndereco!==false, comp: comps};
+}
 function propPedido(doc, origens, civil){
   /* 02/10 (item 11) — compara SEM acento. 05/10 (item 5) — cada documento olha a origem da renda
      de QUEM ele é: o do proponente só a do proponente, o do cônjuge só a do cônjuge. */
   const dd=propDonoDoc(doc), o0=PROP_NORM((origens||[])[0]||""), o1=PROP_NORM((origens||[])[1]||"");
+  const ctx=(origens&&origens.ctx)||{};
   if(dd.dono==="cônjuge"){
     if(doc==="RG e CPF do cônjuge") return !!o1;
+    if(dd.base==="Comprovante de endereço") return ctx.conjMesmo===false;   // 06/10: só quando mora em outro endereço
     return !!(o1 && PEND_REGRA[dd.base] && PEND_REGRA[dd.base].some(r=>PROP_NORM(r)===o1));
+  }
+  const mComp=/^comprador (\d)$/.exec(dd.dono);
+  if(mComp){   // 06/10: compradores — documento, endereço e a renda pela origem DELE
+    const oc=PROP_NORM(((ctx.comp||[])[Number(mComp[1])-1])||""), existe=Number(mComp[1])<=(ctx.comp||[]).length;
+    if(!existe) return false;
+    if(dd.base==="Documento" || dd.base==="Comprovante de endereço") return true;
+    return !!(oc && PEND_REGRA[dd.base] && PEND_REGRA[dd.base].some(r=>PROP_NORM(r)===oc));
   }
   if(dd.dono!=="proponente") return false;
   return PEND_SEMPRE.indexOf(doc)>=0 ||
@@ -2309,6 +2329,7 @@ function propPendenciasHtml(p, pend){
   pend = pend || p.pendencias;
   if(!pend) return '<div class="sim-aviso ok"><span class="load"></span> Conferindo pendências…</div>';
   const origens=[String(p.origemRenda||""), String(p.origemRendaConjuge||"")];
+  origens.ctx=p.ctxDocs||{};
   const civil=String(p.estadoCivil||"");
   /* r55 — só conta o que ESTE cliente precisa entregar. Documento que a
      análise não exige para o perfil dele não é pendência. */
@@ -2421,7 +2442,7 @@ function propVer(id){
     ${propQuadroFluxo(p)}
     <div class="sim-grade" style="margin-top:14px">
       ${it("Corretor",esc(p.vendedor||""))}${it("CRECI",esc(p.creci||""))}${it("Imobiliária",esc(p.imobiliaria||""))}
-      ${it("E-mail",esc(p.email||""))}
+      ${it("E-mail",esc(p.email||""))}${it("Celular do corretor",p.celularCorretor?simLinkTel(p.celularCorretor):"—")}
       ${it("Preço da unidade",simBRL(p.preco))}${it("Crédito aprovado",simBRL(p.creditoAprovado))}
       ${it("Valor financiado",simBRL(p.valorFinanciado))}${it("Parcela",p.parcelaFinanciamento?simBRL(p.parcelaFinanciamento):"não apurada")}
       ${it("Renda aprovada",simBRL(p.rendaAprovada))}${it("Renda total",simBRL(p.rendaTotal))}
@@ -2633,7 +2654,7 @@ function propPintarDetalhe(id, r){
      atualizadas com o que o Notion acabou de devolver, na mesma lógica dos
      marcadores da proposta (primeiro o que ESTE cliente precisa). */
   const cxPend = propPendenciasHtml(
-    {origemRenda:r.origemRenda, origemRendaConjuge:r.origemRendaConjuge, estadoCivil:r.estadoCivil},
+    {origemRenda:r.origemRenda, origemRendaConjuge:r.origemRendaConjuge, estadoCivil:r.estadoCivil, ctxDocs:propCtxDocs(r.campos)},
     r.pendencias || {campos:[], documentos:[]});
 
   /* r50 (item 4) — conversa de e-mail da proposta: o que já foi enviado ao
@@ -2676,6 +2697,7 @@ function propPintarDetalhe(id, r){
      está na lista geral. Antes, um CLT via "pró-labore não enviado" e
      parecia pendência. */
   const origensD=[String(r.origemRenda||""), String(r.origemRendaConjuge||"")];
+  origensD.ctx=propCtxDocs(r.campos);   // 06/10
   const civilD=String(r.estadoCivil||"");
   /* 05/10 (item 7) — cada documento na linha da PESSOA dele e com botão para anexar por aqui */
   const linhaDoc=a=>{
