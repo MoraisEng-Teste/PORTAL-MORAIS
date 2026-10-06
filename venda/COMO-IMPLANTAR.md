@@ -116,6 +116,132 @@ Gera o contrato de compra e venda no fim do painel da casa (PDF em
 Teste: abrir a casa de teste, preencher/conferir os campos, **Gerar contrato**;
 faltando dado, o botão lista o que falta e não gera nada.
 
+## Assinatura (entrega 3)
+
+Botão "Enviar para assinatura" no painel da casa: manda o ÚLTIMO PDF de
+`CONTRATO GERADO` para a Clicksign (API v3) e, com "Atualizar situação",
+colhe o PDF assinado em `CONTRATO ASSINADO`. Rotas e corpos usados, com o
+link de cada página da documentação e as dúvidas em aberto:
+`venda/CLICKSIGN-API.md`. **Testar primeiro no sandbox** (é o padrão).
+
+1. **Arquivos novos** no projeto PORTAL-VENDA (botão + › Script):
+   `venda/ClicksignVenda.js` → arquivo **ClicksignVenda**;
+   `venda/AssinaturaVenda.gs` → arquivo **AssinaturaVenda**. Mudaram e têm de
+   ser colados de novo: `PortalVenda.gs` (2 ações; as duas barradas para o
+   perfil TESTES, porque "Atualizar situação" também grava na casa),
+   `GerarContrato.gs` (carimbo no nome do PDF) e `ContratoVenda.js` (passam a
+   levar os e-mails). Depois: Implantar › Gerenciar implantações › lápis ›
+   Nova versão › Implantar.
+   **Contrato gerado antes desta versão não é enviado:** o nome do PDF agora
+   leva um carimbo dos dados (`… [#abcd1234].pdf`) e o envio recusa PDF sem
+   carimbo ou com carimbo de dados antigos ("Os dados mudaram depois de gerar o
+   contrato — gere de novo"). Basta clicar **Gerar contrato** de novo.
+2. **Colunas novas no Notion:**
+   - VENDAS: `ASSINATURA - ENVELOPE ID` (texto), `ASSINATURA - SITUAÇÃO`
+     (texto: o portal grava RASCUNHO, ENVIADO, ASSINADO, RECUSADO, CANCELADO
+     ou EXPIRADO — não editar à mão), `CONTRATO ASSINADO` (arquivos e mídia) e
+     `COMPRADOR 1 - E-MAIL` (e-mail; o do comprador 2 já existe).
+   - VENDEDORES – CONTRATO: `E-MAIL` (vendedor pessoa física) e
+     `REPRESENTANTE E-MAIL` (quem assina pela empresa).
+   - CORRETORES – CONTRATO: `E-MAIL` já existe (só é usado se o corretor
+     assinar).
+3. **Propriedades do script** (Configurações do projeto):
+   - `CLICKSIGN_TOKEN` — obrigatória. Sem ela o botão responde "a
+     assinatura ainda não foi ligada" e não chama nada.
+   - `CLICKSIGN_URL` — opcional; padrão `https://sandbox.clicksign.com`.
+     Na produção, depois do teste: `https://app.clicksign.com` (e o token
+     da conta de produção — o do sandbox não vale lá).
+   - `ASSINATURA_TESTEMUNHAS_SPE` e `ASSINATURA_TESTEMUNHAS_PF` — as duas
+     testemunhas de cada caso, em JSON:
+     `[{"nome":"Nome Sobrenome","email":"a@empresa.com","cpf":"000.000.000-00"},{...}]`.
+     Vendedor PJ (SPE) usa o par SPE; vendedor PF usa o par PF.
+   - `ASSINATURA_REPRESENTANTE` — opcional, JSON `{"nome":…,"email":…,"cpf":…}`:
+     só completa o e-mail de quem assina pela empresa quando o cadastro do
+     vendedor traz `REPRESENTANTE NOME` sem `REPRESENTANTE E-MAIL` **e o nome
+     é o mesmo** (acento, caixa e espaço não contam). Nome diferente ou vazio
+     no cadastro: o envio lista "Vendedor: falta REPRESENTANTE E-MAIL no
+     cadastro" — o portal nunca troca a pessoa que assina.
+   - `ASSINATURA_INCLUIR_CORRETOR` — `SIM` para o corretor também assinar
+     (padrão: não assina).
+   - `ASSINATURA_PAPEIS_<envelope>` — o próprio script cria uma por envio
+     (qual signatário é comprador, testemunha…; sem dado pessoal) e apaga
+     sozinho quando a situação fica final (ASSINADO, CANCELADO, EXPIRADO,
+     RECUSADO) ou o envio falha. Não apagar à mão enquanto estiver em andamento.
+   - `ASSINATURA_PENDENTE_<página>` — só aparece se a Clicksign ativou o
+     envelope e o Notion não gravou nem na 3ª tentativa. Barra novo envio da
+     casa; o "Atualizar situação" grava e apaga a chave. Não apagar à mão.
+4. **Token da Clicksign:** só o **administrador da conta Clicksign** gera.
+   Sandbox: criar a conta em `https://sandbox.clicksign.com/signup`; nas duas
+   contas o caminho é Configurações › API › Gerar Access Token › descrição ›
+   Gerar, e na mesma tela associar o e-mail à API (Salvar e-mail). Quem gerar
+   **cola direto nas Propriedades do script** — nunca no chat, em e-mail, em
+   planilha ou no repositório. O token vai no cabeçalho sem "Bearer".
+5. **Teste no sandbox:** casa de teste com contrato gerado, e-mails de teste
+   que a equipe consiga abrir. Enviar para assinatura › conferir os e-mails ›
+   assinar com todos › Atualizar situação › o PDF assinado aparece em
+   `CONTRATO ASSINADO` e a situação vira ASSINADO. Testar também: recusar
+   (situação RECUSADO e o botão volta a enviar) e cancelar o envelope na
+   Clicksign (CANCELADO). Forçar uma falha antes de ativar (ex.: e-mail de
+   testemunha inválido na Propriedade só no sandbox): o rascunho tem de sumir
+   da Clicksign e a casa voltar a "Enviar". As dúvidas do `CLICKSIGN-API.md`
+   se resolvem neste teste — o código para com erro visível em cada uma
+   delas, nunca chuta.
+
+Quem assina, na ordem: comprador 1, comprador 2 (se houver), vendedor PF ou
+o representante da empresa, as duas testemunhas e, se ligado, o corretor.
+Faltando e-mail, nome com sobrenome ou testemunha configurada, o botão lista
+o que falta e não manda nada. Envelope em andamento, assinado ou em
+RASCUNHO barra novo envio; cancelado, recusado ou expirado deixam enviar de
+novo. Um envio por vez no projeto todo: se outra pessoa estiver enviando, o
+botão responde "Há outro envio para assinatura em andamento". Se o envio
+falhar antes de ativar, o portal apaga o rascunho na Clicksign e a casa volta
+a "Enviar"; se não conseguir apagar, a situação fica "Rascunho na Clicksign" —
+apagar o rascunho lá e clicar **Atualizar situação** libera a casa.
+
+## Mais Controle (entrega 4)
+
+Botão **Ver prévia / Lançar no Mais Controle** no fim do painel, abaixo do
+Contrato. O Apps Script não fala com o ERP (o WAF exige user-agent de navegador
+e o UrlFetchApp não deixa trocar): ele pede ao GitHub que rode o workflow
+`mc-venda.yml`, que roda `python -m venda.mc.lancar` e escreve o resultado nas
+colunas da venda. O que o robô faz:
+
+1. lê a venda; recusa se faltar CPF válido, data da venda, casa ou valores, ou se a soma das
+   parcelas (Sinal, Entrada, Intermediária, FGTS, Financiamento = financiado + subsídio)
+   não bater com o que a SPE recebe;
+2. acha a **obra** pelo nome (= ENDEREÇO) e usa a **conta da obra**;
+3. procura **venda da mesma casa já lançada** (em qualquer grafia antiga) — se achar, **não cria** e anota o id;
+4. acha o **cliente pelo CPF** (cria só se não existir);
+5. na prévia, só escreve o resumo em `MC - SITUAÇÃO`; no lançamento, cria cliente (se faltar) e a venda
+   (`VENDA CASA 0N - NOME`, Parcelado, juros compostos) e grava `MC - VENDA ID`.
+
+Implantar:
+
+1. **Colunas na VENDAS** (texto): `MC - SITUAÇÃO`, `MC - VENDA ID`. No teste o script
+   `ferramentas/contrato/criar_colunas_mc_teste.py` cria (fora do repo).
+2. **PORTAL-VENDA:** arquivo novo **MaisControleVenda** (`venda/MaisControleVenda.gs`) e o
+   `PortalVenda` atualizado. Propriedades: `GITHUB_TOKEN` (token fine-grained do repositório,
+   permissão *Contents: Read and write*) e `GH_REPO_MC` (teste: `MoraisEng-Teste/PORTAL-MORAIS`;
+   produção: `DEVMoraisEng/PORTAL-MORAIS`). Nova versão.
+3. **GitHub do repositório** › Settings › Secrets and variables › Actions:
+   segredos `MC_ROBO_EMAIL` e `MC_ROBO_SENHA` (o usuário robô do Mais Controle — os mesmos dos
+   Robôs MC) e `NOTION_TOKEN` (já existe). **Variável** `MC_APLICAR`: deixe **vazia** enquanto
+   testa (tudo vira prévia, e o pedido de lançar aparece como "BLOQUEADO"); `1` libera gravar.
+4. Primeiro lançamento real: uma casa escolhida pelo dono, com ele acompanhando no ERP.
+
+**Atenção — só existe UM Mais Controle.** O fork de TESTE fala com o mesmo ERP da
+produção. No fork, `MC_APLICAR` **nunca** é `1`: lá o botão serve só para a prévia
+(que só lê). Gravar de verdade é sempre pelo repositório de produção.
+
+Travas do robô: só grava o que foi visto na prévia (assinatura `[#…]` dos valores e
+do CPF; mudou algo, recusa e pede nova prévia); não cria se já existe venda da mesma
+casa (e não preenche o id, que pode ser de venda antiga); recusa se houver venda da
+obra sem a casa na descrição; uma situação PROCESSANDO com mais de 15 minutos libera
+pedir de novo; qualquer falha do workflow escreve ERRO na situação.
+
+O log do Actions é público: o robô só imprime situação e motivos, nunca CPF, nome ou valores
+por pessoa.
+
 ## Plano B — Anthropic
 
 A leitura por padrão é pela OpenAI (decisão do dono em 28/09/2026); a
