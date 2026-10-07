@@ -33,7 +33,7 @@ from fetch_vendas import ler_banco, api, gravar, norm, SAIDA, TOKEN
 
 ID_OBRAS = "306c5ab532d3812fa14fe9a281510128"   # (EMP) Projeto 2.0
 ID_ATIV = "306c5ab532d381fb864edee432bb128d"    # ATIVIDADES DE PROJETOS
-ID_CADASTRO = "3e2c5ab532d38055a241db35f74e7bbc"  # PROPRIETÁRIOS (cadastro) — só o NOME sai daqui
+ID_CADASTRO = "3f1c5ab532d381c8bb86ef8eff482456"  # PROPRIETÁRIOS (cadastro) — só o NOME sai daqui
 ID_LIGACOES = "007c5ab532d383ac9ec081556377772d"  # LIGAÇÕES DE ÁGUA E ENERGIA (só a contagem por obra)
 ID_VENDAS = "f53c5ab532d38325aa4a0193011aad24"    # BANCO DE DADOS VENDAS (contagem + casas vendidas/entregues)
 ID_DOCS = (os.environ.get("DOCUMENTOS_DB_ID") or "a74c5ab532d38374a4170155196788f9").strip()   # BASE DE DADOS DOCUMENTOS
@@ -225,7 +225,7 @@ def pega(ip, *nomes):
 
 
 # banco CONTAS BANCÁRIAS (mantido pelo robo_mc_contas.py) — id não é segredo
-CONTAS_DB_ID = os.environ.get("CONTAS_DB_ID", "").strip() or "3e4c5ab532d380afbd3bf9f7af31d2a7"
+CONTAS_DB_ID = os.environ.get("CONTAS_DB_ID", "").strip() or "3f1c5ab532d3812caaedf6c9a383aace"
 
 
 def main():

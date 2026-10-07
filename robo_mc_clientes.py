@@ -26,7 +26,7 @@ from robo_mc_comum import (N, so_digitos, foto, esperar, abrir, login, ir_menu, 
                            proxima_pagina, valor_por_rotulo, radios_marcados, APLICAR, SAIDA)
 from fetch_vendas import ler_banco, api
 
-ID_CADASTRO = "3e2c5ab532d38055a241db35f74e7bbc"
+ID_CADASTRO = "3f1c5ab532d381c8bb86ef8eff482456"
 ID_OBRAS = "306c5ab532d3812fa14fe9a281510128"
 ID_DOCS = "a74c5ab532d38374a4170155196788f9"
 
