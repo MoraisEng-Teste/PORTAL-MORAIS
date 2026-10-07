@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teste — Gerar venda do condomínio</title>
+<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 16px}
+li{margin:12px 0;display:flex;gap:12px;align-items:center}</style></head>
+<body>
+<h2>Teste — Gerar venda do condomínio</h2>
+<p>Só existe no ambiente de TESTE. Entre no portal de teste antes (mesma aba). Pastas fictícias:</p>
+<ul id="lista"></ul>
+<p id="msg"></p>
+<script src="venda/gerar-venda-condominio.js?v=1"></script>
+<script>
+var URL_PV = "https://script.google.com/macros/s/AKfycbxuqs0uG-Jx4OxFRWSAp9aoEcQHkTJWS_zFyY6QCLa8_hZOkJZSe9Af0nUvytSBmBiC/exec";
+[["3f2c5ab532d3810d817fdb2532027cad","Unidade 61 — sem casa na VENDAS ainda (com 1 documento)"],
+ ["3f2c5ab532d381b6927df754c589c99c","Unidade 62 — já tem casa (deve só abrir)"]].forEach(function (x) {
+  var li = document.createElement("li");
+  li.appendChild(GerarVendaCondominio.botao({ pageId: x[0], urlPortalVenda: URL_PV, urlVendas: "vendas.html" }));
+  li.appendChild(document.createTextNode(x[1]));
+  document.getElementById("lista").appendChild(li);
+});
+</script>
+</body></html>
