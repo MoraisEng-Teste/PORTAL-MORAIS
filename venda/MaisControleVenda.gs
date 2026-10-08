@@ -5,7 +5,9 @@
  * o UrlFetchApp não deixa trocar. Então aqui só se PEDE ao GitHub que rode o
  * workflow "mc-venda" (Python, venda/mc/lancar.py), que lê a venda no Notion,
  * fala com o ERP e escreve o resultado de volta nas colunas:
- *   MC - SITUAÇÃO  (texto)  PROCESSANDO… / PRÉVIA OK — … / CRIADA … / JÁ EXISTE … / RECUSADA: …
+ *   MC - SITUAÇÃO  (texto)  PROCESSANDO… / PRÉVIA OK [#hash] | … / CRIADA | venda <id> / JÁ EXISTE … / RECUSADA: …
+ *                           (PRÉVIA e CRIADA em linhas: cabeçalho, depois "Cliente: …", "Parcelas: …", "Total: …";
+ *                           a tela desenha cada linha como tópico; o carimbo [#hash] fica sempre na 1ª linha)
  *   MC - VENDA ID  (texto)  id da venda no ERP
  * Propriedades: GITHUB_TOKEN (fine-grained, Contents: Read and write no repo),
  * GH_REPO_MC (ex.: "MoraisEng-Teste/PORTAL-MORAIS" — SEM padrão de propósito,
@@ -22,8 +24,9 @@ function mcColunaReal_(props, nome) {
 
 function mcLerColunas_(pageId) {
   var pg = notion_("GET", "/pages/" + pageId, null);
-  var dbEsperado = prop_("DB_VENDAS").replace(/-/g, "");
-  if (String((pg.parent && pg.parent.database_id) || "").replace(/-/g, "") !== dbEsperado) throw new Error("PAGINA_DE_OUTRA_BASE");
+  /* casa da VENDAS ou, desde a entrega 7, a própria linha do condomínio (DB_VENDAS_COND):
+     o robô lê a linha e grava MC - SITUAÇÃO / MC - VENDA ID nela */
+  if (!vendaBaseDaPagina_(pg)) throw new Error("PAGINA_DE_OUTRA_BASE");
   var props = pg.properties || {};
   var s = mcColunaReal_(props, MC_COL_SITUACAO), v = mcColunaReal_(props, MC_COL_VENDA);
   if (!s || !v || s.tipo !== "rich_text" || v.tipo !== "rich_text") throw new Error("COLUNA_FALTANDO: " + MC_COL_SITUACAO + ", " + MC_COL_VENDA + " (texto)");

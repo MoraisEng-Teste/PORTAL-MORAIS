@@ -21,7 +21,7 @@
    Documentos de comprador vão para a OpenAI (decisão do dono em 28/09/2026).
 4. Implantar › Nova implantação › App da Web › Executar como **Eu** › Quem pode
    acessar **Qualquer pessoa** › Implantar › autorizar (Avançado › Acessar).
-5. Teste: abrir `<URL>/exec?action=ping` → `{"ok":true,"versao":"venda-v3","papel":"VENDA"}`.
+5. Teste: abrir `<URL>/exec?action=ping` → `{"ok":true,"versao":"venda-v4","papel":"VENDA"}`.
 6. Mande a URL `/exec` no chat (não é segredo).
 
 Mudou o código? Implantar › Gerenciar implantações › lápis › Nova versão › Implantar.
@@ -379,6 +379,155 @@ Implantar:
 
 **Ainda não faz:** os fiadores não entram como signatários na Clicksign (o
 envio para assinatura manda só compradores, vendedor, testemunhas e corretor).
+
+## Tela de venda do condomínio (entrega 7)
+
+Decisão do dono (07/10/2026): no condomínio, o **cartão da unidade** na "Planilha
+Casas Condomínio" (vendas.html, `condAbrir`) passa a ser a tela de venda. Depois do
+"ANDAMENTO DO PROCESSO" aparece o quadro **TELA DE VENDA** com os mesmos blocos da
+casa de rua — **Contrato** (Gerar contrato / Visualizar / Gerar de novo),
+**Assinatura** (Enviar para assinatura / Atualizar situação) e **Mais Controle**
+(Ver prévia / Lançar / Atualizar) — para a **própria linha** da BANCO DE DADOS
+VENDAS CONDOMÍNIO. O **Gerar venda** (cópia para a VENDAS) deixa de ser usado no
+cartão. O ping passa a responder `"versao":"venda-v4"`.
+
+Como funciona: o PORTAL-VENDA aceita, nas ações `contratoEstado`, `gerarContrato`,
+`assinaturaEnviar`, `assinaturaEstado`, `mcEstado` e `mcLancar`, uma página da base
+`DB_VENDAS_COND` além da VENDAS. Ele monta uma "página de venda virtual"
+(`CondominioVenda.paginaVirtual`: endereço `CONDOMÍNIO <nome>`, casa = UNIDADE,
+compradores, valores, corretor, comissão paga pelo vendedor) e trata a própria
+linha como `CONDOMÍNIO - VENDA ID` — o contrato sai do modelo único
+`MODELO_CONDOMINIO_ID` com o fluxo e os fiadores dela, como na entrega 6. O que a
+ação devolve é gravado em colunas da linha (lista e tipos em
+[`COLUNAS-CONDOMINIO.md`](COLUNAS-CONDOMINIO.md)). Página de outra base continua
+recusada (`PAGINA_DE_OUTRA_BASE`). O robô do Mais Controle (`venda/mc`) lê a linha
+direto (comprador = PROPONENTE, total = VALOR DE VENDA, financiado = VALOR DO
+CRÉDITO, FGTS, SUBISÍDIO, corretor, imobiliária, data da venda, fluxo) e grava
+`MC - SITUAÇÃO` / `MC - VENDA ID` nela; a casa da VENDAS com `CONDOMÍNIO - VENDA ID`
+continua funcionando como antes.
+
+Desempenho: ao abrir o cartão, os três estados (contrato, assinatura, Mais
+Controle) são pedidos **em paralelo e uma vez só**; o cartão se redesenha a cada
+gravação do andamento e os blocos reaproveitam o que já foi lido.
+
+Implantar:
+
+1. **Notion:** criar na BANCO DE DADOS VENDAS CONDOMÍNIO as 6 colunas de
+   [`COLUNAS-CONDOMINIO.md`](COLUNAS-CONDOMINIO.md) (`CONTRATO GERADO` e
+   `CONTRATO ASSINADO` = Arquivos e mídia; `ASSINATURA - ENVELOPE ID`,
+   `ASSINATURA - SITUAÇÃO`, `MC - SITUAÇÃO`, `MC - VENDA ID` = Texto). A
+   integração do Notion do PORTAL-VENDA já tem acesso à base (entrega 5).
+2. **PORTAL-VENDA:** colar de novo `CondominioVenda` (de `venda/CondominioVenda.js`),
+   `GerarContrato`, `MaisControleVenda` e `PortalVenda`; nova versão; conferir o
+   ping (`venda-v4`). Propriedades: nada novo (`DB_VENDAS_COND` e
+   `MODELO_CONDOMINIO_ID` já existem).
+3. **Robô do Mais Controle:** nada a configurar — o workflow `mc-venda` já recebe
+   `DB_VENDAS_COND` (variável do repositório); vale o código da `main`.
+4. **Portal (site):** publicar `venda-dossie.js` com a `URL_PORTAL_VENDA` deste
+   ambiente preenchida (como nas entregas anteriores). Ele passa a expor
+   `window.VendaBlocos` (`montar(elemento, pageId)` e `soltar()`) e carrega o
+   `venda/assinatura-ui.js` mesmo sem o painel da casa.
+5. **vendas.html** (quem mantém a produção cola estas 4 mudanças pequenas):
+   - trocar `<script src="venda-dossie.js?v=1"></script>` por `?v=2`;
+   - em `condFechar()`, logo depois de `COND_ABERTA=null;`:
+     `if(window.VendaBlocos) VendaBlocos.soltar();`
+   - em `condAbrir(id)`, na montagem do cartão, entre `condAndamentoHtml(l)+` e
+     `condLinkVendaHtml(l)+`: `condTelaVendaHtml()+`
+   - no fim de `condAbrir(id)`, depois de `document.getElementById("cd-card").style.display="block";`:
+     `if(window.VendaBlocos) VendaBlocos.montar(document.getElementById("cd-venda"),id);`
+     e, logo depois da função, a nova função:
+     ```js
+     function condTelaVendaHtml(){
+       if(!window.VendaBlocos) return "";
+       return '<div class="cd-and"><h4>TELA DE VENDA <span style="font-weight:400;color:var(--text3)">· contrato, assinatura e Mais Controle desta unidade</span></h4><div id="cd-venda"></div></div>';
+     }
+     ```
+   - trocar o número do cache do `sw.js` como de costume (vendas.html mudou).
+6. **Teste** (no ambiente de teste): abrir uma unidade com o fluxo completo →
+   Gerar contrato → conferir o PDF em `CONTRATO GERADO` da linha → Enviar para
+   assinatura (sandbox) → Ver prévia do Mais Controle (com `MC_APLICAR` desligado).
+
+Cuidado: uma unidade que **já** virou casa na VENDAS pelo Gerar venda pode ser
+tocada pelos dois caminhos. O Mais Controle se protege (o robô recusa venda
+repetida da mesma unidade — "JÁ EXISTE"), mas contrato e envelope da Clicksign
+seriam dois. Para essas unidades, terminar pela casa da VENDAS; as novas, pelo
+cartão.
+
+## Distrato (entrega 8)
+
+Pedido do dono (07/10/2026): o botão **DISTRATO** da tela de venda passa a
+(a) ARQUIVAR a venda numa base própria antes de limpar e (b) acertar a venda
+no Mais Controle — única exceção à regra "a automação nunca altera/exclui
+venda do ERP", e só por aqui, com prévia e senha.
+
+**Regra no Mais Controle:** houve recebimento (retido ou devolvido) → na
+venda ficam só as parcelas recebidas e a descrição ganha ` (Distrato)`;
+DEVOLVIDO → também lança a CONTA A PAGAR da devolução (valor e data da tela;
+padrão: o recebido, hoje + 30); nada recebido → a venda é EXCLUÍDA. Rotas e
+o que é certo/suposição: `venda/mc/DISTRATO-ERP.md`.
+
+**Onde está o código:**
+- backend: Code.gs do portal (projeto PORTAL-TESTE primeiro) — ações
+  `distratoPrevia`, `distratoEstado` e a `distrato` reescrita (bloco
+  "DISTRATO — ARQUIVO E MAIS CONTROLE"). O Code.gs não mora neste
+  repositório: a versão de teste está na pasta local do dono (`portal-gs-vivo/teste/code.gs.txt`);
+- tela: `vendas.html` (modal do distrato) — mudança mínima neste branch, para
+  o desenvolvedor incorporar;
+- robô: `venda/mc/distrato.py`, acionado pelo mesmo workflow `mc-venda.yml`
+  com `acao=distrato`, `recebeu=sim|nao`, `destino=retido|devolvido`,
+  `valor`, `data`.
+
+### O diálogo novo da tela
+
+1. Pergunta **"Houve sinal/pagamento recebido?"** (Sim/Não).
+2. Se Sim: **"O valor recebido será RETIDO ou DEVOLVIDO?"**. Se DEVOLVIDO:
+   **valor a devolver** (vazio = todo o recebido) e **data prevista** (vazio = hoje + 30).
+3. **Motivo** (obrigatório).
+4. Botão **"Ver o que acontece no Mais Controle"**: o portal aciona o robô
+   em PRÉVIA (nada é gravado) e a tela mostra, em 1–3 minutos, o texto que
+   ele escreveu na coluna `MC - DISTRATO` da venda: parcelas mantidas e
+   removidas, a descrição nova, a conta a pagar da devolução — ou "EXCLUIR a
+   venda" — ou a RECUSA com o motivo. Venda sem `MC - VENDA ID`: a tela diz
+   que nada será feito no ERP.
+5. Só com a prévia OK o botão **Confirmar distrato** libera; pede a **senha**.
+   Mudou qualquer resposta depois da prévia → precisa de prévia nova.
+6. Ao confirmar, o Apps Script: confere a senha e que a prévia é destas
+   respostas → ARQUIVA na base DISTRATOS (copiando os arquivos) → aciona o
+   robô em APLICAR a partir do arquivo → limpa a venda e apaga as atividades
+   (como antes). Falhou o arquivo ou o acionamento → **nada é limpo**.
+7. O resultado do ERP aparece na base DISTRATOS, coluna `MC - DISTRATO`.
+
+### O que o dono cria / cola / configura (teste primeiro)
+
+1. Notion: base **DISTRATOS** com as colunas de `venda/DISTRATOS-ESQUEMA.md`;
+   coluna **`MC - DISTRATO`** (Texto) na base VENDAS (de teste e, depois, de
+   produção). Dar acesso às integrações (portal e robô) à base nova.
+2. Apps Script (PORTAL-TESTE): colar o `code.gs.txt` de teste atualizado;
+   Propriedade **`DB_DISTRATOS`** = id da base DISTRATOS de teste. O
+   `GITHUB_TOKEN` já existe (o do aviso de build) e precisa poder disparar
+   `repository_dispatch` no repositório onde mora o `mc-venda.yml`
+   (Contents: Read and write). Opcional: `GH_REPO_MC` (sem ela vale o
+   `GH_REPO` do arquivo). Nova versão da implantação.
+3. GitHub (fork de teste) → Settings → Variables: **`DB_DISTRATOS`** (id da
+   base, obrigatória para o APLICAR), **`NATUREZA_DEVOLUCAO_ID`** (id da
+   categoria do título a pagar da devolução no Mais Controle; sem ela a
+   devolução só é avisada) e, opcional, **`FORMA_PAGAMENTO_DEVOLUCAO_ID`**.
+   `MC_APLICAR` continua NUNCA 1 no fork de teste (o aplicar volta "BLOQUEADO").
+4. Teste: venda de teste com `MC - VENDA ID` → prévia (Não / Sim-Retido /
+   Sim-Devolvido) → confirmar → conferir a linha na base DISTRATOS (dados,
+   arquivos copiados, `MC - DISTRATO` = BLOQUEADO com a prévia) e a venda
+   limpa. Também: sem `DB_DISTRATOS` o distrato recusa e não limpa.
+5. Produção (quando o dono disser "sobe"): o desenvolvedor leva o bloco para
+   o Code.gs de produção e o modal para o `vendas.html`; Propriedade
+   `DB_DISTRATOS` de produção; variáveis no repositório de produção;
+   `MC_APLICAR=1` lá já existe.
+
+**Riscos conhecidos:** rotas de exclusão/alteração e o favorecido-cliente na
+conta a pagar não foram provados ao vivo (ver DISTRATO-ERP.md); a devolução
+é lançada só como conta a pagar (não paga nada); se o robô falhar DEPOIS da
+limpeza, a venda do portal já está limpa e o resultado/erro fica na base
+DISTRATOS para alguém resolver no ERP à mão; a cópia de arquivos aumenta o
+tempo do distrato (arquivo acima de 20 MB recusa).
 
 ## Plano B — Anthropic
 

@@ -8,7 +8,7 @@
  * OPENAI_API_KEY (provedor openai), MODELO_IA (opcional, só openai),
  * ANTHROPIC_API_KEY (provedor anthropic, plano B).
  * Nenhum log com nome, CPF, endereço ou conteúdo de documento. */
-var VERSAO_VENDA = "venda-v3";
+var VERSAO_VENDA = "venda-v4";   // v4: contrato, assinatura e Mais Controle também na linha do condomínio (entrega 7)
 var NOTION_VERSION = "2022-06-28";
 var ERROS_CONHECIDOS = /^(COLUNA_FALTANDO|TIPO_DE_COLUNA_ERRADO|BACKEND_SEM_CONFIG|PAGINA_DE_OUTRA_BASE)/;
 var REGEX_PAGE_ID = /^[0-9a-f]{32}$|^[0-9a-f-]{36}$/i;
@@ -35,7 +35,7 @@ function tratar_(p) {
     if (!sess) return { ok: false, erro: "NAO_AUTORIZADO" };
     if (!temAcessoVendas_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
     var grava = ["tipoCasa", "lerDocumento", "conferir", "devolver", "gerarContrato", "mcLancar", "assinaturaEnviar", "assinaturaEstado",
-                 "gerarVendaCondominio"].indexOf(p.action) >= 0;
+                 "gerarVendaCondominio", "assinaturaReenviar"].indexOf(p.action) >= 0;
     if (grava && String(sess.t || "").toUpperCase() === "TESTES") return { ok: false, erro: "SEM_PERMISSAO_TESTES" };
     if (p.action !== "ping" && !REGEX_PAGE_ID.test(String(p.pageId || ""))) return { ok: false, erro: "PAGINA_INVALIDA" };
     var col = colunas_();
@@ -53,6 +53,7 @@ function tratar_(p) {
       case "mcLancar":     return mcLancar_(col, sess, p);
       case "assinaturaEnviar": return assinaturaEnviar_(col, sess, p);
       case "assinaturaEstado": return assinaturaEstado_(col, p);
+      case "assinaturaReenviar": return assinaturaReenviar_(col, sess, p);
       case "gerarVendaCondominio": return gerarVendaCondominio_(col, sess, p);
       default: return { ok: false, erro: "ACAO_DESCONHECIDA" };
     }
