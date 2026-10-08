@@ -21,7 +21,7 @@
    Documentos de comprador vão para a OpenAI (decisão do dono em 28/09/2026).
 4. Implantar › Nova implantação › App da Web › Executar como **Eu** › Quem pode
    acessar **Qualquer pessoa** › Implantar › autorizar (Avançado › Acessar).
-5. Teste: abrir `<URL>/exec?action=ping` → `{"ok":true,"versao":"venda-v5","papel":"VENDA"}`.
+5. Teste: abrir `<URL>/exec?action=ping` → `{"ok":true,"versao":"venda-v6","papel":"VENDA"}`.
 6. Mande a URL `/exec` no chat (não é segredo).
 
 Mudou o código? Implantar › Gerenciar implantações › lápis › Nova versão › Implantar.
@@ -56,20 +56,25 @@ CPF/nome, log só com tokens.
 
 ## Produção (quando o dono disser "sobe")
 
-1. Desenvolvedor cria as 24 colunas na VENDAS de produção (arquivo 10 da DOCUMENTACAO).
-2. Projeto **PORTAL-VENDA** igual ao de teste, com `NOTION_TOKEN` e `SESSION_SECRET`
-   **iguais aos do PORTAL-ESCRITA**, `DB_VENDAS` = `33cc5ab532d38047ae3aee8b87ac1f4d`,
-   `PROVEDOR_IA` = `openai`, `OPENAI_API_KEY` = a chave da OpenAI e `MODELO_IA`
-   opcional. Implantar e testar o `ping`.
-3. Subir `venda-dossie.js` com a URL `/exec` de produção na constante `URL_PORTAL_VENDA`.
-4. No `vendas.html` de produção, depois da linha do `app.js`, acrescentar
-   `<script src="venda-dossie.js?v=1"></script>`.
-5. Conferir numa casa: o bloco aparece; tipo de casa grava; um documento lê.
-   Se o bloco não aparecer: Ctrl+F5 (o `sw.js` guarda páginas em cache).
+Roteiro completo, por quem faz e por sistema: `PRODUCAO - 2026-10-07 venda checklist.md` (fora do repositório).
 
-**Desfazer:** tirar a linha do `vendas.html`. As colunas podem ficar.
+1. **Projeto PORTAL-VENDA de produção — já criado (07/10)** pelo clasp, com o código desta versão e o arquivo
+   `ConfigProducao` (só existe lá). No editor: selecionar `configurarProducao` › Executar › autorizar. Ela preenche as
+   Propriedades que não são segredo (bases, Clicksign de produção, repositório) e cria a pasta privada dos
+   pré-contratos; o registro lista o que falta colar.
+2. Segredos, colados à mão: `NOTION_TOKEN`, `SESSION_SECRET` e `GITHUB_TOKEN` **copiados do PORTAL-ESCRITA**
+   (o `GITHUB_TOKEN` dele já é do PORTAL-MORAIS com Contents R/W); `OPENAI_API_KEY` do PORTAL-VENDA-TESTE (o portal
+   real não tem); `CLICKSIGN_TOKEN` de produção. Modelos (`MODELO_*_ID`): os mesmos Google Docs do teste.
+   Colar o `GITHUB_TOKEN` por último: é ele que liga o botão do Mais Controle.
+3. Desenvolvedor: bases e colunas do Notion (checklist, seção 5) e o bloco do distrato no Code.gs do
+   PORTAL-ESCRITA (entrega 8). A prévia/estado do distrato saem pela ESCRITA (`app.js`).
+4. GitHub de produção: variável `MC_VENDA_APLICAR` **vazia** no começo (o botão só faz a prévia); segredo
+   `MC_ROBO_APARELHO` se o login do robô pedir código. Os workflows aceitam `MC_ROBO_USUARIO` como e-mail do robô.
+   Apagar `MC_INDICES` no fork de teste antes de ligar na produção.
+5. Versão do site: branch `producao/venda` (sem `teste/`, `URL_PORTAL_VENDA` de produção, cache novo do `sw.js`),
+   revisada pelo desenvolvedor antes de entrar na `main`. Conferir numa casa: Ctrl+F5 se o bloco não aparecer.
 
-**Não sobe para produção:** a pasta `teste/` e o commit do apontador.
+**Desfazer:** tirar a linha do `venda-dossie.js` do `vendas.html`. As colunas podem ficar.
 
 ## Contrato (entrega 2)
 
@@ -140,7 +145,7 @@ link de cada página da documentação e as dúvidas em aberto:
    - VENDAS: `ASSINATURA - ENVELOPE ID` (texto), `ASSINATURA - SITUAÇÃO`
      (texto: o portal grava RASCUNHO, ENVIADO, ASSINADO, RECUSADO, CANCELADO
      ou EXPIRADO — não editar à mão), `CONTRATO ASSINADO` (arquivos e mídia) e
-     `COMPRADOR 1 - E-MAIL` (e-mail; o do comprador 2 já existe).
+     `Email` (já existe na produção: é o e-mail do comprador 1).
    - VENDEDORES – CONTRATO: `E-MAIL` (vendedor pessoa física) e
      `REPRESENTANTE E-MAIL` (quem assina pela empresa).
    - CORRETORES – CONTRATO: `E-MAIL` já existe (só é usado se o corretor
@@ -581,9 +586,9 @@ Implantar:
    Propriedades: nada novo (as `PRECONTRATO_<pageId>` são criadas sozinhas).
 2. **Portal (site):** publicar `venda-dossie.js` com a `URL_PORTAL_VENDA` deste
    ambiente preenchida.
-3. **Pasta provisória:** quem confere precisa conseguir abrir o PDF do
-   pré-contrato — compartilhar a pasta `PASTA_PROVISORIA_ID` (só leitura) com
-   quem confere os contratos. O PDF não é público.
+3. **Pasta provisória:** não compartilhe. O "Visualizar pré-contrato" entrega o
+   PDF pelo próprio portal (`verPreContrato`) a quem está logado; a pasta fica
+   privada da conta dona e o PDF nunca tem link público.
 4. **Teste:** numa casa de teste, Gerar pré-contrato → abrir o PDF e ver os grifos
    (amarelo e, no condomínio com campo vazio, vermelho) → mudar um valor no Notion
    → o "Conferi" trava → Gerar pré-contrato de novo → Conferi → o contrato em
@@ -592,6 +597,78 @@ Implantar:
 **Ainda não faz:** o carimbo cobre os dados, não o texto do modelo — trocar o
 modelo do Docs depois do pré-contrato não trava o "Conferi". O último PDF de
 pré-contrato de cada casa fica na pasta provisória (só o anterior é apagado).
+
+## Documentos do imóvel (entrega 11)
+
+No painel da casa, abaixo do dossiê do comprador, a seção **Documentos do
+imóvel** tem três espaços: **Matrícula** (certidão de matrícula / inteiro teor
+do cartório), **Alvará de construção** e **Habite-se**. Mesmo fluxo do dossiê do
+comprador: Enviar e ler / Ler de novo / Trocar → a IA (OpenAI padrão, Claude
+plano B — as mesmas Propriedades) lê → preenche as colunas do contrato da casa →
+**DOSSIÊ IMÓVEL** fica `LIDO PELA IA – CONFERIR` → alguém confere (Marcar
+conferido / Devolver, que aqui mexem só no dossiê do imóvel). Vale "o último
+documento enviado vale": valor lido substitui o atual; Trocar remove os arquivos
+anteriores do espaço. O ping passa a responder `"versao":"venda-v6"`.
+
+O que a IA lê de cada documento:
+
+| Documento | Campos lidos | Onde grava |
+|---|---|---|
+| Matrícula | nº da matrícula individual, cartório (CRI), área total (m², número), confrontações | `CONTRATO - MATRÍCULA INDIVIDUAL`, `CONTRATO - CRI DA MATRÍCULA`, `CONTRATO - ÁREA DO LOTE (M²)`, `CONTRATO - CONFRONTAÇÕES` |
+| Matrícula | loteamento (denominação, matrícula do loteamento, cartório), se a certidão citar | **não grava na casa**: aparece na tela e na observação como "dados do loteamento encontrados — preencher uma vez no cadastro do setor (LOTEAMENTOS – CONTRATO)" |
+| Alvará | número e data | `CONTRATO - ALVARÁ Nº`, `CONTRATO - ALVARÁ DATA` |
+| Habite-se | número e data | `CONTRATO - HABITE-SE Nº`; a **data não grava**: o contrato usa a `DATA HABITE-SE` da obra (DOCUMENTOS) — a data lida vai para a observação para conferir |
+
+Validação: datas viram ISO e só se existirem no calendário (31/02 não grava e
+avisa); a área tem de ser número > 0 (`360,50 m²` → 360,5); textos sem espaços
+sobrando. Documento trocado de lugar (alvará no espaço do habite-se, outra coisa
+qualquer) não preenche nada e avisa. O estado fica `FALTA DOCUMENTO` até ter
+matrícula **e** alvará; o habite-se não segura (só existe com a obra pronta, e o
+contrato só o exige nesse caso). Os logs continuam só com espaço e tokens.
+
+**Casa de condomínio:** a seção só avisa que os dados do imóvel vêm da linha do
+condomínio (VENDAS CONDOMÍNIO). O cartão do condomínio (`.cd-cardbox`) não tem
+dossiê, então lá não muda nada.
+
+**Colunas são opcionais para o resto do app:** se faltarem na VENDAS, o dossiê
+do comprador, contrato, assinatura e Mais Controle seguem; só a seção do imóvel
+mostra "A base não tem a coluna … — avise o desenvolvedor".
+
+### O que criar na VENDAS de produção (nomes exatos)
+
+| Coluna | Tipo |
+|---|---|
+| `IMÓVEL - MATRÍCULA` | Arquivos e mídia (files) |
+| `IMÓVEL - ALVARÁ` | Arquivos e mídia (files) |
+| `IMÓVEL - HABITE-SE` | Arquivos e mídia (files) |
+| `DOSSIÊ IMÓVEL` | Seleção (select) com `FALTA DOCUMENTO`, `LIDO PELA IA – CONFERIR`, `CONFERIDO`, `DEVOLVIDO` (o travessão é o mesmo do DOSSIÊ) |
+| `DOSSIÊ IMÓVEL - OBSERVAÇÃO` | Texto (rich_text) |
+
+As sete `CONTRATO - *` do imóvel são as da entrega 2 (mesmos nomes e tipos;
+`CONTRATO - ÁREA DO LOTE (M²)` número, `CONTRATO - ALVARÁ DATA` data, as outras
+texto) — na produção elas já estão na lista de colunas a criar do contrato
+(`ferramentas/contrato/previa-producao.json`, junto com as 5 novas). Nenhuma
+Propriedade nova no Apps Script.
+
+Implantar:
+
+1. **Notion (produção):** criar as 5 colunas acima (já criadas na base de TESTE).
+2. **PORTAL-VENDA:** colar de novo `RegrasVenda`, `OpenAILeitor`, `ClaudeLeitor` e
+   `PortalVenda`; nova versão; ping `venda-v6`.
+3. **Portal (site):** publicar `venda-dossie.js` com a `URL_PORTAL_VENDA` do
+   ambiente.
+4. **Code.gs do portal (ESCRITA):** o `DISTRATO_MANTIDOS` passa a manter
+   `TIPO DE CASA`, as sete `CONTRATO - *` do imóvel, as três `IMÓVEL - *`,
+   `DOSSIÊ IMÓVEL` e `DOSSIÊ IMÓVEL - OBSERVAÇÃO` (são dados da casa, não do
+   comprador: sobrevivem ao distrato).
+5. **Teste:** numa casa de rua de teste, enviar uma matrícula (PDF) → conferir os
+   4 campos e o aviso do loteamento → enviar o alvará → estado `LIDO PELA IA –
+   CONFERIR` → Marcar conferido → gerar o pré-contrato e ver matrícula, CRI, área,
+   confrontações e alvará grifados.
+
+**Ainda não faz:** não grava o loteamento no cadastro do setor (só mostra); não
+confere se a matrícula é da mesma quadra/lote do endereço; certidão com mais de
+4 arquivos no espaço só tem os 4 últimos lidos.
 
 ## Plano B — Anthropic
 
