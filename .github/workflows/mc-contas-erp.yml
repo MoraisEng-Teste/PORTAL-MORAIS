@@ -40,6 +40,6 @@ jobs:
           pip install -q requests
           case "$MODO" in
             sondar|previa|conferir_saldo|previa_saldo) python -m venda.mc.contas_erp "$MODO" ;;
-            aplicar|aplicar1|restaurar_saldo) if [ "$CONFIRMAR" = "APLICAR" ]; then python -m venda.mc.contas_erp "$MODO"; else echo "faltou digitar APLICAR"; exit 1; fi ;;
+            aplicar|aplicar1|restaurar_saldo|reparar1|reparar) if [ "$CONFIRMAR" = "APLICAR" ]; then python -m venda.mc.contas_erp "$MODO"; else echo "faltou digitar APLICAR"; exit 1; fi ;;
             *) echo "modo inválido"; exit 1 ;;
           esac
