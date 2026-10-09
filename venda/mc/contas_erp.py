@@ -97,6 +97,44 @@ def main(argv=None) -> int:
                   + ("" if v is not None else " (campo do saldo não veio)"))
         print("contas conferidas:", len(antes), "| com diferença:", dif)
         return 1 if dif else 0
+    if modo in ("previa_saldo", "restaurar_saldo"):
+        # Volta o saldo inicial das contas que DIFEREM da cópia de antes (autorização do dono, 09/10/2026).
+        # Teto de 2 contas: mais que isso é sinal de cópia errada, e nada é gravado. Log sem valor.
+        antes = json.loads(os.environ.get("CONTAS_SALDO_JSON") or "{}")
+        todos = {round(float(a["valor"]), 2) for a in antes.values()}
+        alvo = []
+        for i, (cid, a) in enumerate(sorted(antes.items()), 1):
+            d = erp.pedir_core("GET", CAMINHO_UMA % cid) or {}
+            campo = "openingBalance" if "openingBalance" in d else "openingBalanceValue"
+            v = d.get(campo)
+            if v is not None and abs(float(v) - float(a["valor"])) < 0.005:
+                continue
+            como = ("vazio" if v is None else "zero" if abs(float(v)) < 0.005 else "negativo" if float(v) < 0
+                    else "igual ao saldo de outra conta da lista" if round(float(v), 2) in todos else "outro valor")
+            print(f"{i:02d}: saldo hoje {como}; campo {campo}; data {'igual' if str(d.get('openingBalanceDate') or '')[:10] == str(a['data'])[:10] else 'DIFERENTE'}")
+            alvo.append((i, cid, a, d, campo))
+        print("a restaurar:", len(alvo))
+        if modo == "previa_saldo" or not alvo:
+            return 0
+        if len(alvo) > 2:
+            print("mais de 2 contas diferentes: nada gravado"); return 1
+        erros = 0
+        for i, cid, a, d, campo in alvo:
+            valor = round(float(a["valor"]), 2)
+            try:
+                erp.pedir_core("PATCH", CAMINHO_UMA % cid, corpo={campo: valor})
+                d2 = erp.pedir_core("GET", CAMINHO_UMA % cid) or {}
+                if abs(float(d2.get(campo) or 0) - valor) >= 0.005:   # PATCH ignorado: PUT do detalhe com só o saldo trocado
+                    corpo = dict(d2); corpo[campo] = valor
+                    erp.pedir_core("PUT", CAMINHO_UMA % cid, corpo=corpo)
+                    d2 = erp.pedir_core("GET", CAMINHO_UMA % cid) or {}
+                ok = abs(float(d2.get(campo) or 0) - valor) < 0.005
+                ok_banco = all(str(d2.get(k) or "") == str(d.get(k) or "") for k in ("bankCode", "agency", "account", "accountDigit"))
+                print(f"{i:02d}: saldo {'restaurado' if ok else 'NÃO gravou'}; banco/agência/conta {'intactos' if ok_banco else 'MUDARAM'}")
+                erros += 0 if ok and ok_banco else 1
+            except ErpErro as e:
+                print(f"{i:02d}: ERRO ao gravar: {str(e)[:300]}"); erros += 1
+        return 1 if erros else 0
     pedidos = json.loads(os.environ.get("CONTAS_ERP_JSON") or "[]")
     erros = 0
     for i, p in enumerate(pedidos, 1):
