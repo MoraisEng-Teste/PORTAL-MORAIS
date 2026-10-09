@@ -80,6 +80,23 @@ def main(argv=None) -> int:
                     print(f"  {k}: tipo {type(v).__name__}, {'vazio' if v in (None, '', {}) else 'preenchido'}"
                           + (f", chaves {sorted(v.keys())}" if isinstance(v, dict) else ""))
         return 0
+    if modo == "conferir_saldo":
+        # Só LÊ: compara saldo inicial e data de cada conta com a cópia de antes (segredo CONTAS_SALDO_JSON =
+        # {id: {"valor": n, "data": "AAAA-MM-DD"}}). O log mostra só posição e igual/DIFERENTE, nunca valor.
+        antes = json.loads(os.environ.get("CONTAS_SALDO_JSON") or "{}")
+        dif = 0
+        for i, (cid, a) in enumerate(sorted(antes.items()), 1):
+            d = erp.pedir_core("GET", CAMINHO_UMA % cid) or {}
+            v = d.get("openingBalance", d.get("openingBalanceValue"))
+            dt = str(d.get("openingBalanceDate") or "")[:10]
+            ok_v = v is not None and abs(float(v) - float(a["valor"])) < 0.005
+            ok_d = dt == str(a["data"])[:10]
+            if not (ok_v and ok_d):
+                dif += 1
+            print(f"{i:02d}: saldo {'igual' if ok_v else 'DIFERENTE'} | data {'igual' if ok_d else 'DIFERENTE'}"
+                  + ("" if v is not None else " (campo do saldo não veio)"))
+        print("contas conferidas:", len(antes), "| com diferença:", dif)
+        return 1 if dif else 0
     pedidos = json.loads(os.environ.get("CONTAS_ERP_JSON") or "[]")
     erros = 0
     for i, p in enumerate(pedidos, 1):
