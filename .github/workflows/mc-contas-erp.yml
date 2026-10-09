@@ -32,13 +32,14 @@ jobs:
           MC_ROBO_SENHA: ${{ secrets.MC_ROBO_SENHA }}
           MC_ROBO_APARELHO: ${{ secrets.MC_ROBO_APARELHO }}
           CONTAS_ERP_JSON: ${{ secrets.CONTAS_ERP_JSON }}
+          CONTAS_SALDO_JSON: ${{ secrets.CONTAS_SALDO_JSON }}
           MODO: ${{ inputs.modo }}
           CONFIRMAR: ${{ inputs.confirmar }}
         shell: bash
         run: |
           pip install -q requests
           case "$MODO" in
-            sondar|previa) python -m venda.mc.contas_erp "$MODO" ;;
+            sondar|previa|conferir_saldo) python -m venda.mc.contas_erp "$MODO" ;;
             aplicar|aplicar1) if [ "$CONFIRMAR" = "APLICAR" ]; then python -m venda.mc.contas_erp "$MODO"; else echo "faltou digitar APLICAR"; exit 1; fi ;;
             *) echo "modo inválido"; exit 1 ;;
           esac
