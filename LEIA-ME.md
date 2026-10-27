@@ -25,12 +25,12 @@ Cada pasta vai para um destino. Só estão os arquivos que mudaram (completos).
 
 ## Links de teste
 - Versão do simulador (deve mostrar `2026-09-29 r66`):
-  https://script.google.com/macros/s/AKfycbzwUIApU5nKXi1vG3cEs_V2DWCdkLDwY_vo0zBxO59ZBLbEihIxuOqbHdNLm-8pVVwVJQ/exec?acao=versao
+  https://script.google.com/macros/s/AKfycbxciC7C575zSGZgyoTeBFs48MR_apksHIxT03AV6elzJ6_c4ZtNTuTJVo9Ysjb4ik6w1g/exec?acao=versao
 - Colunas das bases (para conferir o que foi criado):
-  https://script.google.com/macros/s/AKfycbzwUIApU5nKXi1vG3cEs_V2DWCdkLDwY_vo0zBxO59ZBLbEihIxuOqbHdNLm-8pVVwVJQ/exec?acao=esquema
+  https://script.google.com/macros/s/AKfycbxciC7C575zSGZgyoTeBFs48MR_apksHIxT03AV6elzJ6_c4ZtNTuTJVo9Ysjb4ik6w1g/exec?acao=esquema
 - Proposta: https://devmoraiseng.github.io/SIMULADOR-RESERVA-DO-IP-S/proposta.html
 - Completar venda: sai do portal (botão "Link para completar as informações da venda" dentro da proposta)
-- Portal, aba Simulações/Propostas: https://devmoraiseng.github.io/PORTAL-MORAIS/simulacoes.html
+- Portal, aba Simulações/Propostas: https://moraiseng-teste.github.io/PORTAL-MORAIS/simulacoes.html
 
 ## O que mudou
 **Proposta (passo 1):** o proponente e o cônjuge (se casado/união estável) podem anexar CNH **ou** RG + CPF (um campo para cada). O documento é lido e preenche só os campos vazios; se não ler, aparece "preencha manualmente". Opcional, não trava nada. No passo 4 o item aparece com ✓ "Anexado na página 1".

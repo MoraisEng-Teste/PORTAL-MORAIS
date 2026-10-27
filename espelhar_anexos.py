@@ -36,7 +36,7 @@ import requests
 
 from fetch_vendas import ler_banco, TOKEN
 
-ID_LIGACOES = "313c5ab532d3801e974ced0bb656c9d5"
+ID_LIGACOES = "007c5ab532d383ac9ec081556377772d"
 BUCKET = "anexos"
 MANIFESTO = "_manifesto.json"
 LIMITE_NOVOS = 400          # por rodada; o resto entra no build seguinte

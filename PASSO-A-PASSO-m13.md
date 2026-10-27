@@ -19,7 +19,7 @@ Em **PORTAL-LEITURA** e em **PORTAL-ESCRITA**:
 3. **Salvar** → **Implantar → Gerenciar implantações → lápis → Nova versão → Implantar**.
 
 ✅ **Conferir:** o ping da **escrita** mostra `"melhorias":"2026-09-25 m13"`:
-<https://script.google.com/macros/s/AKfycbyoEOQfmuuN_jG817TeDK_aVMv6BiD6WFv61ZkgulUQBgYfxxyYPttzv1AMH2PcmZ31Jw/exec?action=ping>
+<https://script.google.com/macros/s/AKfycbzYFHAodPoiS79pAqdGVEQmpMcAptrnGLtKoouN4n96L09djHViq467IH1wDLSh2920/exec?action=ping>
 
 (O ping da leitura pode continuar lento por alguns minutos até as execuções travadas acabarem. Isso é esperado.)
 

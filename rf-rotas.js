@@ -61,7 +61,7 @@
  *    ESCRITA, como hoje. Depois de copiar, mova o acionador rfAquecerAtividades
  *    para o projeto novo (e apague-o na ESCRITA). A cota diária de UrlFetch da
  *    conta continua sendo uma só. */
-const API_ATIVIDADES = "https://script.google.com/macros/s/AKfycbwmGaVaSo9kt2gIdpEbRof0WAoDFmamQjV87v5Vn2YTBGNXV1s_NmMFfGMNyEqIm0ut/exec";   // <<< URL /exec do projeto PORTAL-ATIVIDADES (opcional)
+const API_ATIVIDADES = "https://script.google.com/macros/s/AKfycbzYFHAodPoiS79pAqdGVEQmpMcAptrnGLtKoouN4n96L09djHViq467IH1wDLSh2920/exec";   // <<< URL /exec do projeto PORTAL-ATIVIDADES (opcional)
 (function(){
   try{
     if(typeof _faixas!=="object") return;

@@ -53,14 +53,14 @@ API = "https://api.notion.com/v1"
 # IDs das bases (não são segredo — ver comentário no topo).
 # PREENCHER: o ID da base VENDAS está no seu Code.gs, ou na URL da base no
 # Notion (o bloco de 32 caracteres depois de /p/ ou do nome do workspace).
-ID_VENDAS_PADRAO = "33cc5ab532d38047ae3aee8b87ac1f4d"  # base VENDAS
-ID_DOCUMENTOS_PADRAO = "32fc5ab532d380a0900dd7f4bfc619bd"
+ID_VENDAS_PADRAO = "f53c5ab532d38325aa4a0193011aad24"  # base VENDAS
+ID_DOCUMENTOS_PADRAO = "a74c5ab532d38374a4170155196788f9"
 # Mesma base METAS já usada pelo Code.gs (CONFIG.DB.METAS) — reaproveitada
 # aqui pra calcular o card "Meta de Casas" do dashboard (portal.json).
-ID_METAS_PADRAO = "358c5ab532d3804fbcbfebc3656b1220"
+ID_METAS_PADRAO = "e50c5ab532d382a188ad81a19cfb207b"
 # LIGAÇÕES DE ÁGUA E ENERGIA — uma linha por casa, com a UC de cada
 # concessionária (SANEAGO/SANESC para água, EQUATORIAL para energia).
-ID_LIGACOES_PADRAO = "313c5ab532d3801e974ced0bb656c9d5"
+ID_LIGACOES_PADRAO = "007c5ab532d383ac9ec081556377772d"
 
 TOKEN = os.environ.get("NOTION_TOKEN", "").strip()
 DB_VENDAS = (os.environ.get("VENDAS_DB_ID") or ID_VENDAS_PADRAO).strip()

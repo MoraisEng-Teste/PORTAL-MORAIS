@@ -15,8 +15,8 @@ Faça igual no **PORTAL-LEITURA** e no **PORTAL-ESCRITA**:
 
 ✅ **Conferir:** os dois pings mostram `"melhorias":"2026-09-25 m12"`.
 
-- Leitura: <https://script.google.com/macros/s/AKfycbwvMnVHZd7y5k-GP8_Dg9zkWyD2fqqH8UI4gaXsQ0iJnm9QNSsyyUhODFMyMW6BfAk/exec?action=ping>
-- Escrita: <https://script.google.com/macros/s/AKfycbyoEOQfmuuN_jG817TeDK_aVMv6BiD6WFv61ZkgulUQBgYfxxyYPttzv1AMH2PcmZ31Jw/exec?action=ping>
+- Leitura: <https://script.google.com/macros/s/AKfycbzYFHAodPoiS79pAqdGVEQmpMcAptrnGLtKoouN4n96L09djHViq467IH1wDLSh2920/exec?action=ping>
+- Escrita: <https://script.google.com/macros/s/AKfycbzYFHAodPoiS79pAqdGVEQmpMcAptrnGLtKoouN4n96L09djHViq467IH1wDLSh2920/exec?action=ping>
 
 ---
 
@@ -53,7 +53,7 @@ Espere o **Publicar site (GitHub Pages)** ficar verde em **Actions** e dê **�
 
 ## Etapa 4 — Testes (o que cada item da sua lista virou)
 
-**Atividades** — <https://devmoraiseng.github.io/PORTAL-MORAIS/atividades.html>
+**Atividades** — <https://moraiseng-teste.github.io/PORTAL-MORAIS/atividades.html>
 
 - [ ] **Página cortando seco** → agora tem respiro no fim da página.
 - [ ] **Checklist item a item** → em "+ Nova atividade", "Checklist": escreva um item e aperte **Enter** → aparece a próxima linha. Colar uma lista inteira também separa sozinho. **×** tira o item.
@@ -66,13 +66,13 @@ Espere o **Publicar site (GitHub Pages)** ficar verde em **Actions** e dê **�
 - [ ] **Histórico demorando** → abrir a atividade não fica mais girando para sempre: se o servidor não responder, aparece o motivo e **Tentar de novo**. (Com o gatilho da Etapa 2 ativo, abre bem mais rápido.)
 - [ ] **Novas atividades aparecem na hora** → crie uma para outra pessoa: na tela dela (Atividades e sino) aparece sozinha em poucos segundos.
 
-**Processos** — <https://devmoraiseng.github.io/PORTAL-MORAIS/processos.html> · **Arquivos** — <https://devmoraiseng.github.io/PORTAL-MORAIS/arquivos.html>
+**Processos** — <https://moraiseng-teste.github.io/PORTAL-MORAIS/processos.html> · **Arquivos** — <https://moraiseng-teste.github.io/PORTAL-MORAIS/arquivos.html>
 
 - [ ] **Sempre carregando** → depois da primeira vez abre na hora (cópia guardada); o painel já deixa as duas listas prontas.
 - [ ] **Só categorias com itens** → as zeradas não aparecem mais na barra.
 - [ ] **Barra cortada** → as categorias quebram em linhas, nada fica escondido.
 
-**Tipo PORTAL** — painel <https://devmoraiseng.github.io/PORTAL-MORAIS/index.html>
+**Tipo PORTAL** — painel <https://moraiseng-teste.github.io/PORTAL-MORAIS/index.html>
 
 - [ ] Crie uma atividade com **Tipo = PORTAL** (já aparece na lista de tipos), com texto e checklist.
 - [ ] No painel aparece o bloco **📌 Portal** (acima dos aniversariantes) com o conteúdo e o checklist dela.

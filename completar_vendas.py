@@ -22,7 +22,7 @@ import sys
 
 from fetch_vendas import ler_banco, api, valor
 
-ID_VENDAS = (os.environ.get("VENDAS_DB_ID") or "33cc5ab532d38047ae3aee8b87ac1f4d").strip()
+ID_VENDAS = (os.environ.get("VENDAS_DB_ID") or "f53c5ab532d38325aa4a0193011aad24").strip()
 ID_OBRAS = "306c5ab532d3812fa14fe9a281510128"     # (EMP) Projeto 2.0
 APLICAR = os.environ.get("APLICAR", "").strip() == "1"
 

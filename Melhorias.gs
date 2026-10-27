@@ -148,7 +148,7 @@ function melPai_(pg) { return melSemHifen_((pg.parent || {}).database_id); }
  * "Nome na obra"), mais PESSOA FÍSICA, CRIAR CONTA e DÚVIDA. É o mesmo nome
  * que o robô escolhe na lista do Mais Controle ao criar a obra.
  * ===================================================================== */
-var CONTAS_DB_FIXO = "3e4c5ab532d380afbd3bf9f7af31d2a7";
+var CONTAS_DB_FIXO = "3f1c5ab532d3812caaedf6c9a383aace";
 var CONTAS_COL_OBRA = "CONTA";
 var CONTA_PF = "PESSOA FÍSICA", CONTA_CRIAR = "CRIAR CONTA", CONTA_DUVIDA = "DÚVIDA";
 
@@ -609,7 +609,7 @@ function ligArquivo_(sess, p) {
  * quando alguém clica em "Carregar CPFs", e isso fica no log.
  * Editar: só ADM e MASTER.
  * ===================================================================== */
-var INV_DB = "3e2c5ab532d38055a241db35f74e7bbc";
+var INV_DB = "3f1c5ab532d381c8bb86ef8eff482456";
 var INV_SENS_FRAG = ["CPF", "CNPJ", "RG", "IDENTIDADE", "NASCIMENTO", "CONTA", "AGENCIA", "PIX",
                      "TELEFONE", "CELULAR", "WHATSAPP", "EMAIL", "E-MAIL", "RENDA", "ENDERECO"];
 function invSensivel_(nome) {
