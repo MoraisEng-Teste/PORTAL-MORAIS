@@ -405,6 +405,9 @@ var ContratoVenda = (function () {
     /* 29/10: valor da casa mudado no Alterar fluxo (só JC/JV) — a comissão sai da regra sobre o valor novo */
     var precoMudou = !!co.livre && preco !== null && Math.round(preco * 100) !== Math.round((fl.valorVenda || 0) * 100);
     var comissao = positivo(co.comissao) && !precoMudou ? co.comissao : (pctRegra !== null && preco !== null ? so2(preco * pctRegra) : null);
+    /* 30/10: desconto "isentar a comissão" (venda direta, sem corretor) — comissão zero; imóvel = o preço inteiro */
+    var semComissao = !!(co.livre && co.livre.semComissao);
+    if (semComissao) comissao = 0;
     /* dono 22/10: a comissão está DENTRO do VALOR DE VENDA (305 mil a 5% = 15.250 do corretor); o cliente paga à
        Morais e a Morais repassa ao corretor depois que o sinal inteiro é pago. Operação = VALOR DE VENDA;
        imóvel = venda − comissão. Sinal = ato + 30/60/90; entrada (4.2.1 a) = tudo que não é CAIXA/FGTS/subsídio,
@@ -413,7 +416,7 @@ var ContratoVenda = (function () {
     var entrada = preco === null ? null : so2(preco - financiamento);
     return {
       preco: preco, financiamento: financiamento, temFgtsSubsidio: G.fgts + G.subsidio > 0,
-      pctRegra: pctRegra, comissao: comissao, operacao: preco, precoMudou: precoMudou,
+      pctRegra: pctRegra, comissao: comissao, operacao: preco, precoMudou: precoMudou, semComissao: semComissao,
       imovel: preco !== null && comissao !== null ? so2(preco - comissao) : null,
       sinal: sinal, entrada: entrada, saldoEntrada: entrada === null ? null : so2(entrada - sinal)
     };
@@ -525,12 +528,57 @@ var ContratoVenda = (function () {
     return {
       nome: txt(x.nome), cpf: R().cpfValido(x.cpf) ? R().formatarCpf(x.cpf) : txt(x.cpf), rg: txt(x.rg),
       nacionalidade: txt(x.nacionalidade), endereco: txt(x.endereco), numero: txt(x.numero),
-      setor: txt(x.setor), cidade: txt(x.cidade), cep: txt(x.cep), email: txt(x.email)
+      setor: txt(x.setor), cidade: txt(x.cidade), cep: txt(x.cep), email: txt(x.email),
+      /* 30/10/2026 (dono, Súmula 332 do STJ): estado civil e cônjuge do fiador */
+      estadoCivil: txt(x.estadoCivil).toUpperCase(),
+      conjugeLido: { nome: txt(x.conjugeNome), cpf: R().cpfValido(x.conjugeCpf) ? R().formatarCpf(x.conjugeCpf) : txt(x.conjugeCpf),
+                     email: txt(x.conjugeEmail).toLowerCase() }
     };
   }
   /* Só os fiadores com nome, na ordem (o 1º preenchido é o FIADOR 1). */
   function fiadoresPreenchidos(lista) {
-    return (lista || []).map(fiadorNormal).filter(function (fi) { return fi.nome !== ""; });
+    return ligarConjugesFiadores((lista || []).map(fiadorNormal).filter(function (fi) { return fi.nome !== ""; }));
+  }
+  /* 30/10/2026 (dono, Súmula 332 do STJ: fiança de casado sem o cônjuge é ineficaz) — casado ou em união estável,
+     o cônjuge do fiador também assina. O preferido é o CASAL ser os 2 fiadores: o CPF do cônjuge é o do outro
+     fiador (conjugeEhOutroFiador, ninguém a mais assina). De famílias diferentes, fi.conjuge = {nome, cpf, email}
+     é quem a Clicksign tem de incluir. Solteiro, divorciado, viúvo ou sem estado civil: fi.conjuge = null. */
+  function fiadorCasado(estadoCivil) {
+    return /CASAD|UNI[AÃ]O/.test(txt(estadoCivil).toUpperCase());
+  }
+  function soDigitos(v) { return txt(v).replace(/\D/g, ""); }
+  function ligarConjugesFiadores(fis) {
+    fis.forEach(function (fi, i) {
+      var lido = fi.conjugeLido, outro = fis[1 - i];
+      delete fi.conjugeLido;
+      fi.conjugeEhOutroFiador = !!(outro && fiadorCasado(fi.estadoCivil) && soDigitos(lido.cpf) !== "" &&
+                                   soDigitos(lido.cpf) === soDigitos(outro.cpf));
+      fi.conjuge = fiadorCasado(fi.estadoCivil) && !fi.conjugeEhOutroFiador ? lido : null;
+    });
+    return fis;
+  }
+  /* Com parcela depois das chaves há fiador (36x/48x ou 24x alterado). Mesma regra do comPosChaves do branch do
+     24x (venda/24x-sem-fiador); quando os dois estiverem no main, este vira um apelido dele. */
+  function posChavesFiador(co) {
+    return !!co && gruposFluxo(co).pos.some(function (s) { return s.n > 0 && positivo(s.v); });
+  }
+  /* Faltas do estado civil / cônjuge dos fiadores — só com pós-chaves (em 24x não há fiador). Só nomes de campo. */
+  function faltasConjugeFiadores(co) {
+    var f = [];
+    if (!posChavesFiador(co)) return f;
+    (co.fiadores || []).forEach(function (fi, i) {
+      var gf = "Fiador " + (i + 1);
+      if (vazio(fi.estadoCivil)) { f.push(gf + ": estado civil"); return; }
+      if (!fi.conjuge) return;
+      var c = fi.conjuge;
+      if (vazio(c.nome)) f.push(gf + ": nome do cônjuge (ou o cônjuge como o outro fiador)");
+      if (vazio(c.cpf)) f.push(gf + ": CPF do cônjuge");
+      else if (!R().cpfValido(c.cpf)) f.push(gf + ": CPF do cônjuge inválido");
+      else if (soDigitos(c.cpf) === soDigitos(fi.cpf)) f.push(gf + ": CPF do cônjuge igual ao do fiador");
+      if (vazio(c.email)) f.push(gf + ": e-mail do cônjuge (para assinar)");
+      else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.email)) f.push(gf + ": e-mail do cônjuge inválido");
+    });
+    return f;
   }
   function enderecoFiador(fi) {
     var partes = [];
@@ -740,7 +788,8 @@ var ContratoVenda = (function () {
     else faltasCasaDeRua(d, faltas, pronto);
 
     var k = d.corretor;
-    if (!k) {
+    if (d.condominio && d.condominio.livre && d.condominio.livre.semComissao) { /* 30/10: venda direta, sem corretor */ }
+    else if (!k) {
       faltas.push(vazio(d.corretorNaVenda) ? "Corretor: corretor na venda" : "Corretor: cadastro em CORRETORES – CONTRATO");
     } else {
       exige(!vazio(k.nome), "Corretor", "nome");
@@ -803,13 +852,16 @@ var ContratoVenda = (function () {
           "%) dá R$ " + moedaBR(pelaRegra));
     }
 
-    co.fiadores.forEach(function (fi, i) {
+    /* 30/10 (dono, parecer do 24x): sem parcela depois das chaves não há fiador — os dados de fiador nem são lidos */
+    if (comPosChaves(co)) co.fiadores.forEach(function (fi, i) {
       var gf = "Fiador " + (i + 1);
       if (vazio(fi.cpf)) faltas.push(gf + ": CPF");
       else if (!R().cpfValido(fi.cpf)) faltas.push(gf + ": CPF inválido");
       /* 28/10 (dono com a diretoria): dos fiadores só nome e CPF (e o e-mail para assinar os termos de
          confissão) — o contrato final só os cita; RG e endereço deixaram de ser exigidos */
     });
+
+    faltasConjugeFiadores(co).forEach(function (x) { faltas.push(x); });   /* 30/10: fiador casado (Súmula 332) */
   }
 
   /* Avisos (não impedem gerar): campos que saem em branco ("____") no contrato do condomínio e
@@ -1012,7 +1064,7 @@ var ContratoVenda = (function () {
     m.FRACAO_IDEAL_PCT = tb ? tb.fracaoPct : "";
     m.VALOR_OPERACAO_EXTENSO = ext(va.operacao);
     m.VALOR_IMOVEL_EXTENSO = ext(va.imovel);
-    m.COMISSAO_EXTENSO = ext(va.comissao);
+    m.COMISSAO_EXTENSO = va.semComissao ? "" : ext(va.comissao);
     m.SINAL_EXTENSO = positivo(va.sinal) ? valorExtenso(va.sinal) : "";
     m.SINAL_VENCIMENTO = vencimentosSinal(G) + (co.preReserva ? ", sendo " + valorExtenso(co.preReserva.valor) +
       " já pagos a título de pré-reserva (Termo de Pré-Reserva), abatidos do sinal" : "");
@@ -1025,14 +1077,29 @@ var ContratoVenda = (function () {
     m.FINANCIAMENTO_VALOR = moedaBR(va.financiamento);
     m.FINANCIAMENTO_PCT = pct2(va.financiamento, va.preco);
     m.FINANCIAMENTO_FRASE = va.temFgtsSubsidio ? ", incluídos os recursos do FGTS e/ou subsídio, quando houver" : "";
-    m.COMISSAO_PCT = va.pctRegra === null ? "" : pctBR(va.pctRegra);
+    m.COMISSAO_PCT = va.pctRegra === null || va.semComissao ? "" : pctBR(va.pctRegra);
     return m;
   }
 
+  /* 30/10 (dono, parecer do 24x): o plano é "com pós-chaves" quando o fluxo (gavetas ou Alterar fluxo) tem parcela depois das
+     chaves — 36x/48x, ou um 24x alterado. Só com pós-chaves há fiador e Termos de Confissão; sem, a confissão vai no 4.2.1. */
+  function comPosChaves(co) {
+    return !!co && gruposFluxo(co).pos.some(function (s) { return s.n > 0 && positivo(s.v); });
+  }
+
   function blocos(d) {
-    var v = d.vendedor || {}, n = d.negociacao, fis = d.condominio ? d.condominio.fiadores : [];
+    var v = d.vendedor || {}, n = d.negociacao, pos = d.condominio ? comPosChaves(d.condominio) : false;
+    var fis = pos ? d.condominio.fiadores : [];
     var temInterm = n.intermediariaValor !== null && n.intermediariaValor > 0;
-    return {
+    /* 30/10: venda direta (Alterar fluxo → isentar a comissão). O modelo do advogado ainda NÃO tem estes blocos; a
+       geração recusa a venda sem comissão enquanto o modelo não tiver {{#SEM_COMISSAO}} (GerarContrato.ctrGerarPdf_).
+       No modelo: o texto de hoje do 4.1.2 e do item 5 dentro de {{#COM_COMISSAO}}…{{/COM_COMISSAO}}; o novo dentro de
+       {{#SEM_COMISSAO}}…{{/SEM_COMISSAO}} ("Comissão de corretagem: não há (venda direta)" e "Não há intermediação de
+       corretor nesta venda"). Fora do condomínio COM_COMISSAO é sempre verdadeiro (nada muda nos outros modelos). */
+    var semCom = !!(d.condominio && d.condominio.livre && d.condominio.livre.semComissao);
+    var b = {
+      SEM_COMISSAO: semCom,
+      COM_COMISSAO: !semCom,
       SE_VENDEDOR_PJ: v.tipo === "PJ",
       SE_VENDEDOR_PF: v.tipo === "PF",
       SE_INTERMEDIARIA: temInterm,
@@ -1042,6 +1109,8 @@ var ContratoVenda = (function () {
       TEM_FIADOR1: fis.length > 0,
       TEM_FIADOR2: fis.length > 1
     };
+    if (d.condominio) { b.COM_POS = pos; b.SEM_POS = !pos; }
+    return b;
   }
 
   /* ---- entrega 12: campos abertos na tela do contrato ----
@@ -1280,9 +1349,10 @@ var ContratoVenda = (function () {
     COL: COL, TIPOS: TIPOS, moedaBR: moedaBR, valorPorExtenso: valorPorExtenso,
     dataBR: dataBR, dataPorExtenso: dataPorExtenso, loteQuadra: loteQuadra,
     escolherModelo: escolherModelo, qualificacao: qualificacao, nomeComprador1: nomeComprador1,
-    montarDadosContrato: montarDadosContrato, faltasContrato: faltasContrato,
-    marcadores: marcadores, blocos: blocos, avisosContrato: avisosContrato,
+    montarDadosContrato: montarDadosContrato, faltasContrato: faltasContrato, montarCondominio: montarCondominio,
+    marcadores: marcadores, blocos: blocos, comPosChaves: comPosChaves, avisosContrato: avisosContrato,
     formaPagamentoCondominio: formaPagamentoCondominio, qualificacaoFiadores: qualificacaoFiadores,
+    fiadorCasado: fiadorCasado, faltasConjugeFiadores: faltasConjugeFiadores,   /* 30/10: fiador casado (Súmula 332) */
     comissaoPctPelaRegra: comissaoPctPelaRegra, qualificacaoQuadro: qualificacaoQuadro, valorExtenso: valorExtenso, meioPagamentoCondominio: meioPagamentoCondominio, excedenteSinal: excedenteSinal,
     somaFluxo: function (fl) { return somaFluxo(fluxoCondominio(fl)); }, negritoDaLinha: negritoDaLinha,
     parcelasPreChaves: parcelasPreChaves, parcelasPosChaves: parcelasPosChaves,

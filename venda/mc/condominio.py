@@ -56,7 +56,24 @@ def fluxo(props: dict) -> dict:
     out["personalizado"] = bool(texto)
     out["livre"] = ler_livre(texto)
     out["prazo"] = R._num(R._valor(por_chave.get(R.chave("PRAZO ENTRADA"))))
+    # 30/10/2026: a proposta guarda o VALOR PARA ENTRADA; o que passa do sinal é pago na assinatura (excedente_sinal)
+    out["id_proposta"] = R.so_hex(R._valor(por_chave.get(R.chave("ID PROPOSTA"))))
     return out
+
+
+def valor_para_entrada(props: dict) -> float | None:
+    """VALOR PARA ENTRADA da página da proposta (GerarContrato.ctrValorParaEntrada_)."""
+    por_chave = {R.chave(n): p for n, p in (props or {}).items()}
+    return R._num(R._valor(por_chave.get(R.chave("VALOR PARA ENTRADA"))))
+
+
+def excedente_sinal(fx: dict, vpe) -> float:
+    """O VALOR PARA ENTRADA da proposta paga o sinal (ato → 30 → 60 → 90) e o que passa dele é "pagamento único na
+    assinatura" — igual ao ContratoVenda.excedenteSinal. No fluxo alterado o excedente já é linha da lista: 0."""
+    if fx.get("livre"):
+        return 0.0
+    s = sum(v for v in (fx.get(k) for k in ("vAto", "vS30", "vS60", "vS90")) if v and v > 0)
+    return round(max(0.0, (vpe if vpe and vpe > 0 else 0) - s), 2)
 
 
 def ler_livre(texto: str) -> dict | None:
@@ -76,7 +93,10 @@ def ler_livre(texto: str) -> dict | None:
         linhas.append({"t": str(l.get("t") or ""), "v": R._num(l.get("v")) or 0, "n": int(l.get("n") or 0),
                        "d": str(l.get("d") or "")[:10], "i": int(l.get("i") or 1) or 1, "x": str(l.get("x") or "").strip(),
                        "u": R._num(l.get("u")) or None})
-    return {"valor": R._num(o.get("valor")) or 0, "entrega": str(o.get("entrega") or "")[:10], "linhas": linhas}
+    out = {"valor": R._num(o.get("valor")) or 0, "entrega": str(o.get("entrega") or "")[:10], "linhas": linhas}
+    if o.get("semComissao") is True:   # 30/10: desconto "isentar a comissão" no Alterar fluxo = venda direta
+        out["semComissao"] = True
+    return out
 
 
 def _total_linha(l: dict) -> float:
@@ -107,6 +127,12 @@ def ajustar_dados_livre(fx: dict, dados: dict) -> None:
     da observação sai da regra sobre ele — igual ao contrato (ContratoVenda.valoresCondominio)."""
     livre = fx.get("livre")
     if not livre or not livre["valor"]:
+        return
+    if livre.get("semComissao"):
+        # 30/10: venda direta (isenção da comissão, só JC/JV) — comissão zero, como o contrato (valoresCondominio)
+        dados["total"] = dados["aquisicao"] = livre["valor"]
+        dados["comissao"] = 0
+        dados["sem_comissao"] = True
         return
     if dados.get("total") is None or round(livre["valor"], 2) != round(dados["total"], 2):
         dados["total"] = dados["aquisicao"] = livre["valor"]
@@ -245,6 +271,7 @@ def parcelas(fx: dict, dados: dict, dias_financiamento: int = R.DIAS_FINANCIAMEN
     add(R.TIPO_SINAL, "Sinal 30 dias", fx.get("vS30"), fx.get("dS30"))
     add(R.TIPO_SINAL, "Sinal 60 dias", fx.get("vS60"), fx.get("dS60"))
     add(R.TIPO_SINAL, "Sinal 90 dias", fx.get("vS90"), fx.get("dS90"))
+    add(R.TIPO_ENTRADA, "Entrada à vista", fx.get("excedente"), fx.get("assinatura") or dados.get("data_venda"))
     serie(R.TIPO_PARCELA, "Pré-chaves 1ª parte", fx.get("n1"), fx.get("v1"), fx.get("d1"), TABELA_PRE)
     serie(R.TIPO_PARCELA, "Pré-chaves 2ª parte", fx.get("n2"), fx.get("v2"), fx.get("d2"), TABELA_PRE)
     add(R.TIPO_INTERMEDIARIA, "Balão 12/27", fx.get("vB1"), fx.get("dB1"), TABELA_PRE)

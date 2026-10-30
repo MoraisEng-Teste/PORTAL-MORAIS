@@ -251,7 +251,10 @@ function ctrDadosCondominio_(c) {
   function fiador(i) {
     return { nome: t("FIADOR " + i), cpf: RegrasVenda.cpfDoNotion(t("CPF FIADOR " + i)), rg: t("RG FIADOR " + i), nacionalidade: t("NACIONALIDADE FIADOR " + i),
              endereco: t("ENDERECO FIADOR " + i), numero: t("NUMERO FIADOR " + i), setor: t("SETOR FIADOR " + i),
-             cidade: t("CIDADE FIADOR " + i), cep: t("CEP FIADOR " + i), email: t("EMAIL FIADOR " + i) };
+             cidade: t("CIDADE FIADOR " + i), cep: t("CEP FIADOR " + i), email: t("EMAIL FIADOR " + i),
+             /* 30/10/2026 (Súmula 332): estado civil e cônjuge do fiador — gravados pelo SIMULADOR (proposta e link da venda) */
+             estadoCivil: t("ESTADO CIVIL FIADOR " + i), conjugeNome: t("CONJUGE FIADOR " + i),
+             conjugeCpf: RegrasVenda.cpfDoNotion(t("CPF CONJUGE FIADOR " + i)), conjugeEmail: t("EMAIL CONJUGE FIADOR " + i) };
   }
   return {
     condominio: {
@@ -751,6 +754,13 @@ function ctrGerarPdf_(prep, pid, rot, grifar) {
   try {
     copia = prep.modelo.makeCopy("contrato-provisorio-" + pid + "-" + Date.now(), prep.pasta);
     var doc = DocumentApp.openById(copia.getId());
+    /* 30/10: venda direta (desconto "isentar a comissão" no Alterar fluxo) só sai com o modelo que já tem o bloco
+       {{#SEM_COMISSAO}} — sem ele o contrato sairia com o item 5 do corretor e a comissão na conta */
+    if (prep.blocos && prep.blocos.SEM_COMISSAO && doc.getBody().getText().indexOf("{{#SEM_COMISSAO}}") < 0) {
+      ctrLog_(rot + " " + pid + " venda sem comissão e o modelo não tem o bloco SEM_COMISSAO");
+      doc.saveAndClose();
+      return { resp: { ok: false, erro: "MODELO_SEM_BLOCO_SEM_COMISSAO" } };
+    }
     aplicarBlocos_(doc.getBody(), prep.blocos);
     ctrParagrafosVazios_(doc.getBody(), prep.marcadores);
     ctrExpandirParagrafos_(doc.getBody(), prep.marcadores, grifar);
