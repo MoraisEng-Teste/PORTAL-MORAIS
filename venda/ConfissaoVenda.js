@@ -29,27 +29,37 @@ var ConfissaoVenda = (function () {
   function fiadores(d) { return (d && d.condominio && d.condominio.fiadores) || []; }
 
   /* Quais termos esta venda tem: PRÉ quando há parcelas antes das chaves; PÓS quando há pós-chaves. */
+  /* 29/10: dos grupos do contrato (gavetas do simulador ou fluxo alterado no portal) */
+  function grupos(d) { return C().gruposFluxo((d && d.condominio) || {}); }
+  /* aceita os grupos ou o fluxo das gavetas (os testes antigos passam o fluxo) */
+  function comoGrupos(x) { return x && Array.isArray(x.pre) ? x : C().gruposFluxo({ fluxo: x || {} }, 0); }
   function quais(d) {
-    var fl = (d && d.condominio && d.condominio.fluxo) || {}, out = [];
-    if (totalPre(fl) > 0) out.push("PRE");
-    if (positivo(fl.posN) && positivo(fl.posValor)) out.push("POS");
+    var G = grupos(d), out = [];
+    if (totalPre(G) > 0) out.push("PRE");
+    if (totalPos(G) > 0) out.push("POS");
     return out;
   }
-  function totalPre(fl) {
+  function serieTotal(s) { return s.u ? s.v * (s.n - 1) + s.u : s.v * s.n; }
+  function totalPre(G) {
+    G = comoGrupos(G);
     var t = 0;
-    [[fl.pre1N, fl.pre1Valor], [fl.pre2N, fl.pre2Valor]].forEach(function (s) { if (positivo(s[0]) && positivo(s[1])) t += s[0] * s[1]; });
-    if (positivo(fl.balao1Valor)) t += fl.balao1Valor;
-    if (positivo(fl.balao2Valor)) t += fl.balao2Valor;
+    G.pre.forEach(function (s) { t += serieTotal(s); });
+    G.baloes.forEach(function (b) { t += b.v; });
     return so2(t);
   }
-  function totalPos(fl) { return positivo(fl.posN) && positivo(fl.posValor) ? so2(fl.posN * fl.posValor) : 0; }
+  function totalPos(G) { G = comoGrupos(G); return so2(G.pos.reduce(function (t, s) { return t + serieTotal(s); }, 0)); }
 
-  /* O que falta para gerar os termos (só nomes de campo). Os dois fiadores são obrigatórios (8.1 do termo). */
+  /* 30/10/2026 (dono): entrada em 24x, sem parcelas pós-chaves = fiador NÃO é necessário. */
+  function fiadorDispensado(d) { return quais(d).indexOf("POS") < 0; }
+
+  /* O que falta para gerar os termos (só nomes de campo). Os dois fiadores são obrigatórios (8.1 do termo),
+     menos em 24x sem pós-chaves (30/10/2026): aí só se confere o fiador que tiver sido informado. */
   function faltas(d) {
     if (!quais(d).length) return [];
-    var f = [], fis = fiadores(d);
+    var f = [], fis = fiadores(d), disp = fiadorDispensado(d);
     [0, 1].forEach(function (i) {
       var fi = fis[i] || {}, rot = "Fiador " + (i + 1) + " (termo de confissão)";
+      if (disp && !txt(fi.nome) && !txt(fi.cpf)) return;
       if (!txt(fi.nome)) f.push(rot + ": nome");
       if (!txt(fi.cpf)) f.push(rot + ": CPF");
       else if (!R().cpfValido(fi.cpf)) f.push(rot + ": CPF inválido");
@@ -61,8 +71,8 @@ var ConfissaoVenda = (function () {
 
   /* Marcadores de um termo (tipo "PRE" ou "POS"). Do contrato vêm comprador, casa e data; o resto é do termo. */
   function marcadores(d, tipo) {
-    var mc = C().marcadores(d), fl = d.condominio.fluxo, fis = fiadores(d);
-    var total = tipo === "POS" ? totalPos(fl) : totalPre(fl);
+    var mc = C().marcadores(d), fl = d.condominio.fluxo, fis = fiadores(d), G = grupos(d);
+    var total = tipo === "POS" ? totalPos(G) : totalPre(G);
     var m = {
       COMPRADORES_QUADRO: mc.COMPRADORES_QUADRO,
       CASA_NUMERO: mc.CASA_NUMERO, CASA_TIPO: mc.CASA_TIPO,
@@ -70,7 +80,7 @@ var ConfissaoVenda = (function () {
       CIDADE_DATA: mc.CIDADE_DATA,
       TCD_TOTAL_EXTENSO: C().valorExtenso(total),
       /* o mesmo resumo do contrato (4.2.1 c / e) — sem o excedente do sinal, que é pago na assinatura */
-      TCD_PARCELAS: tipo === "POS" ? C().parcelasPosChaves(fl) : C().parcelasPreChaves(fl, 0),
+      TCD_PARCELAS: tipo === "POS" ? C().textoPosChaves(G) : C().textoPreChaves(G, true),
       ASSINATURA_COMPRADORES_NOMES: mc.ASSINATURA_COMPRADORES_NOMES,
       ASSINATURA_COMPRADORES_CPFS: mc.ASSINATURA_COMPRADORES_CPFS
     };
@@ -91,7 +101,7 @@ var ConfissaoVenda = (function () {
     return "";
   }
 
-  var api = { COL: COL, TIPOS: TIPOS, PREFIXO: PREFIXO, MODELO: MODELO, quais: quais, faltas: faltas,
+  var api = { COL: COL, TIPOS: TIPOS, PREFIXO: PREFIXO, MODELO: MODELO, quais: quais, faltas: faltas, fiadorDispensado: fiadorDispensado,
               marcadores: marcadores, totalPre: totalPre, totalPos: totalPos, colunaAssinadaDoNome: colunaAssinadaDoNome };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   return api;

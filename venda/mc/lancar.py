@@ -119,6 +119,7 @@ def processar(page_id: str, notion, erp, aplicar: bool = False, dias: int = R.DI
         d["comissao_paga_por"] = "VENDEDOR"
         d["aquisicao"] = d.get("total")
         d["corretor_contato"] = C.contato_corretor(cpg.get("properties") or {})
+        C.ajustar_dados_livre(fx, d)   # 29/10: fluxo alterado com valor da casa novo (só JC/JV)
         d["parcelas_prontas"] = C.parcelas(fx, d, dias)
 
     f = (C.faltas_do_fluxo(fx, d.get("casa")) if fx is not None else []) + R.faltas(d, dias)
@@ -270,7 +271,15 @@ def processar(page_id: str, notion, erp, aplicar: bool = False, dias: int = R.DI
         corpo["seller"] = {"id": cv["id"]}
         res["vendedor"] = {"criado": True, "id": cv["id"]}
     if cliente_novo:
-        criado = erp.criar_cliente(cliente_novo) or {}
+        try:
+            criado = erp.criar_cliente(cliente_novo) or {}
+        except Exception as e:
+            # 30/10: se o ERP recusar o endereço (formato que a tela não manda), cadastra sem ele e avisa
+            if "address" not in cliente_novo or "HTTP 4" not in str(e):
+                raise
+            sem_end = {k: v for k, v in cliente_novo.items() if k != "address"}
+            criado = erp.criar_cliente(sem_end) or {}
+            res["aviso_endereco"] = "O Mais Controle recusou o endereço da unidade; cliente cadastrado sem endereço"
         if not criado.get("id"):
             res["motivos"] = ["O ERP não devolveu o id do cliente criado"]
             return fim("ERRO", "ERRO: cliente não confirmado — confira no Mais Controle antes de repetir",

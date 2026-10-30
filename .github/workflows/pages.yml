@@ -56,6 +56,7 @@ jobs:
       # Controle usa, dispara os Robôs do MC. Trava: mais de 120 linhas numa
       # rodada não grava (rodar à mão com "forcar"). Falhar não derruba o site.
       - name: Levar os dados da obra para Documentos e Vendas
+        if: ${{ false }}
         continue-on-error: true
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}

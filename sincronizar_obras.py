@@ -45,15 +45,15 @@ from pathlib import Path
 from fetch_vendas import ler_banco, api
 
 ID_OBRAS = "306c5ab532d3812fa14fe9a281510128"          # (EMP) Projeto 2.0
-ID_DOCS = (os.environ.get("DOCUMENTOS_DB_ID") or "32fc5ab532d380a0900dd7f4bfc619bd").strip()
-ID_VENDAS = (os.environ.get("VENDAS_DB_ID") or "33cc5ab532d38047ae3aee8b87ac1f4d").strip()
+ID_DOCS = (os.environ.get("DOCUMENTOS_DB_ID") or "a74c5ab532d38374a4170155196788f9").strip()
+ID_VENDAS = (os.environ.get("VENDAS_DB_ID") or "f53c5ab532d38325aa4a0193011aad24").strip()
 APLICAR = os.environ.get("APLICAR", "").strip() == "1"
 FORCAR = os.environ.get("FORCAR", "").strip() == "1"
 LIMITE_SEGURO = 120
 COL_ALERTA = "ENDEREÇO ALTERADO"       # mesma coluna do alerta de endereço (MapaObras.gs)
 COL_REL = "OBRA-AUTO"
 SNAP = Path("dist/obras_sinc.json")
-URL_SNAP = "https://devmoraiseng.github.io/PORTAL-MORAIS/dist/obras_sinc.json"
+URL_SNAP = "https://moraiseng-teste.github.io/PORTAL-MORAIS/dist/obras_sinc.json"
 
 # (rótulo, colunas possíveis na OBRA, colunas possíveis em DOCUMENTOS, em VENDAS)
 # A primeira que existir em cada base é a usada. Coluna que não existe numa

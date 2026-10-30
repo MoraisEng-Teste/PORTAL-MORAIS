@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Completar proposta · Reserva do Ipês</title>
+<style>
+  :root{
+    --marrom:#7A4A16; --amarelo:#EFB700; --fundo:#FBF7EF; --borda:#E7DCC7;
+    --texto:#2A2118; --texto-suave:#6B5A45; --verde:#1D5433; --vermelho:#8A2E17;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fundo);color:var(--texto);
+       font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;font-size:15px;line-height:1.5}
+  header{background:linear-gradient(90deg,#5A3410,#7A4A16);color:#fff;padding:14px 18px}
+  header h1{margin:0;font-size:17px}
+  header span{font-size:12px;color:#F3DFB8}
+  main{max-width:860px;margin:0 auto;padding:18px 14px 60px}
+  .card{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:18px;margin-bottom:14px}
+  h2{font-size:15px;color:var(--marrom);margin:0 0 4px}
+  .sub{font-size:13px;color:var(--texto-suave);margin:0 0 14px}
+  .grade{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:680px){.grade{grid-template-columns:1fr}}
+  /* 06/10 — celular: campos (inclusive data) do tamanho da tela */
+  .grade input,.grade select{box-sizing:border-box;max-width:100%;min-width:0}
+  .grade > *{min-width:0}
+  input[type=date]{min-height:42px}
+  label{display:block;font-size:12px;font-weight:700;color:var(--texto-suave);margin-bottom:3px}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--borda);border-radius:7px;
+    font:inherit;font-size:14px;background:#fff;color:var(--texto)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amarelo);
+    box-shadow:0 0 0 3px rgba(239,183,0,.18)}
+  .falta input,.falta select{border-color:#E2A493;background:#FFFBFA}
+  .marca{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#FBEDEA;
+    color:var(--vermelho);font-size:10px;font-weight:800;vertical-align:middle}
+  .ok-marca{background:#EAF6EF;color:var(--verde)}
+  .doc{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--borda)}
+  .doc label{flex:1;min-width:0}
+  .doc input[type=file]{flex:0 0 auto;max-width:56%}
+  /* r58 — no celular o campo de arquivo espremia o rótulo até ele ficar em
+     pé, uma letra por linha. Cada parte passa a ocupar a própria linha. */
+  @media(max-width:680px){
+    .doc{flex-direction:column;align-items:stretch;gap:6px;padding:12px 0}
+    .doc input[type=file]{max-width:100%;width:100%}
+    .doc label{font-size:13.5px}
+    .marca{margin-left:6px}
+  }
+  .doc.pedido{background:#FFFBEF;border-left:3px solid var(--amarelo);padding-left:8px}
+  .doc label{flex:1;font-size:13.5px;color:var(--texto);font-weight:600;margin:0}
+  .doc small{display:block;font-weight:400;font-size:11.5px;color:var(--texto-suave)}
+  .doc input[type=file]{width:auto;border:none;padding:0;font-size:12px;background:transparent}
+  button{border:none;border-radius:8px;padding:11px 20px;font-weight:800;font-size:14px;cursor:pointer}
+  .primario{background:var(--amarelo);color:var(--marrom)}
+  .primario:disabled{opacity:.6;cursor:default}
+  .aviso{padding:12px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px}
+  .aviso.erro{background:#FDECEA;border:1px solid #E2A493;color:var(--vermelho)}
+  .aviso.ok{background:#EAF6EF;border:1px solid #8CC9A5;color:var(--verde)}
+  .aviso.info{background:#FBEEC8;border:1px solid var(--amarelo);color:var(--marrom)}
+  .legal{font-size:11px;color:var(--texto-suave);line-height:1.5;border:1px solid var(--borda);
+    border-left:4px solid var(--marrom);border-radius:6px;padding:11px 13px;background:#FFFDF7}
+  .resumo{background:#FBEEC8;border:1px solid var(--amarelo);border-radius:8px;padding:11px 13px;
+    font-size:13.5px;color:var(--marrom);margin-bottom:14px}
+  details.outros{margin-top:10px} details.outros summary{cursor:pointer;font-weight:700;color:var(--marrom);font-size:13px}
+  /* r63 — trava da análise: fica no topo e diz o que ainda falta */
+  .trava{padding:13px 15px;border-radius:10px;font-size:14px;margin-bottom:14px;line-height:1.5}
+  .trava.pend{background:#FDECEA;border:1px solid #E2A493;border-left:5px solid #C0392B;color:var(--vermelho)}
+  .trava.ok{background:#EAF6EF;border:1px solid #8CC9A5;border-left:5px solid #1D7A45;color:var(--verde)}
+  .trava ul{margin:6px 0 0 18px;padding:0}
+  .marca.opc{background:#F1ECE2;color:var(--texto-suave)}
+  input.lido{border-color:#8CC9A5 !important;background:#F3FAF6}
+  .lst{font-size:12px;margin-top:3px;font-weight:600}
+  .lst.ok{color:var(--verde)} .lst.err{color:var(--vermelho)} .lst.lendo{color:var(--texto-suave);font-weight:400}
+  .dono{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#EFE6D3;color:var(--marrom);
+    font-size:10px;font-weight:800;vertical-align:middle}
+  /* r96i — abas: dados pessoais / dados da venda */
+  .abas{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+  .abas button{flex:1;min-width:160px;background:#fff;border:1.5px solid var(--borda);color:var(--marrom);padding:12px 16px;border-radius:10px}
+  .abas button.on{background:var(--amarelo);border-color:var(--amarelo);color:#3A2408}
+  .v-secao{font-size:12.5px;font-weight:800;color:var(--marrom);text-transform:uppercase;letter-spacing:.4px;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--borda)}
+  .v-opts{display:flex;gap:8px;flex-wrap:wrap}
+  .v-opt{flex:1;min-width:110px;border:1px solid var(--borda);border-radius:8px;padding:10px;text-align:center;cursor:pointer;background:#fff;font-size:13px}
+  .v-opt input{display:none} .v-opt b{display:block;font-size:15px;color:var(--marrom)} .v-opt small{color:var(--texto-suave)}
+  .v-opt:has(input:checked){border-color:var(--marrom);background:#FBEEC8}
+  /* 27/10/2026 — quadro da UNIDADE (tipo, número e valor) com opção de trocar */
+  .un-box{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  .un-item{flex:1;min-width:120px;border:1px solid var(--borda);border-radius:8px;padding:10px 12px;background:#FFFBEF}
+  .un-item small{display:block;font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px}
+  .un-item b{display:block;font-size:17px;color:var(--marrom);margin-top:2px}
+  .un-alt{margin-top:10px;padding:10px 12px;border:1px dashed var(--borda);border-radius:8px;background:#fff}
+  .un-mudou{margin-top:10px;padding:9px 12px;border-left:4px solid #B7791F;background:#FFF4D6;border-radius:6px;font-size:13px}
+  #vComp h3,#vFluxo h3{display:none}
+  .ajuda{display:block;font-size:11.5px;color:var(--texto-suave);margin-top:3px}
+  .secao{grid-column:1/-1;font-size:12.5px;font-weight:800;color:var(--marrom);text-transform:uppercase;
+    letter-spacing:.4px;margin-top:6px;padding-top:10px;border-top:1px dashed var(--borda)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Completar proposta</h1>
+  <span>Condomínio Reserva dos Ipês · Morais Engenharia e Construção</span>
+</header>
+
+<main>
+  <div id="estado" class="aviso info">Carregando a proposta…</div>
+  <div id="conteudo" style="display:none">
+
+    <div class="resumo" id="resumo"></div>
+
+    <!-- 27/10/2026 — UNIDADE: tipo, número e valor, com opção de trocar -->
+    <div class="card" id="cardUnidade">
+      <h2>Unidade</h2>
+      <div class="un-box">
+        <div class="un-item"><small>Unidade</small><b id="un-numero">—</b></div>
+        <div class="un-item"><small>Tipo</small><b id="un-tipo">—</b></div>
+        <div class="un-item"><small>Valor de venda</small><b id="un-valor">—</b></div>
+      </div>
+      <div style="margin-top:10px"><button type="button" class="bt-sec" id="un-btAlterar" onclick="unAbrir()"
+        style="background:#fff;border:1.5px solid var(--marrom);color:var(--marrom);padding:8px 16px">Alterar unidade</button></div>
+      <div class="un-alt" id="un-alt" style="display:none">
+        <label for="un-select" style="font-weight:700;font-size:13px">Escolha a nova unidade (só aparecem as disponíveis)</label>
+        <select id="un-select" onchange="unEscolher(this.value)" style="margin-top:6px"></select>
+        <div class="ajuda" style="margin-top:6px">Ao trocar, o valor da proposta, a comissão e o fluxo de pagamento são refeitos com o valor da nova unidade
+          (confira na aba <b>Dados da venda</b>). A troca só é gravada quando você clicar em <b>Enviar para a Morais</b>.</div>
+      </div>
+      <div class="un-mudou" id="un-mudou" style="display:none"></div>
+    </div>
+
+    <!-- r63 (item 6) — a análise só anda com tudo anexado -->
+    <div class="trava pend" id="trava"></div>
+
+    <!-- r96i (21/10/26) — duas abas: dados pessoais e dados da venda (valor para o sinal, FGTS,
+         subsídio e todo o fluxo de pagamento podem ser alterados aqui) -->
+    <div class="abas">
+      <button type="button" id="btAbaPessoal" class="on" onclick="mostrarAba('pessoal')">Dados pessoais</button>
+      <button type="button" id="btAbaVenda" onclick="mostrarAba('venda')">Dados da venda</button>
+    </div>
+
+    <div id="abaVenda" style="display:none">
+      <div class="card" id="cardVenda">
+        <h2>Dados da venda</h2>
+        <p class="sub">Se o cliente quiser mudar a forma de pagamento, altere aqui: o fluxo é refeito na hora e
+          gravado na proposta quando você clicar em <b>Enviar para a Morais</b>.</p>
+        <div class="v-secao">1. Financiamento</div>
+        <div class="grade">
+          <div class="campo"><label>Valor financiado (R$)</label><input id="v-financiado" readonly>
+            <span class="ajuda" id="v-notaFin"></span></div>
+        </div>
+        <div class="v-secao">2. Valor para o sinal</div>
+        <div class="grade">
+          <div class="campo"><label>Valor para o Sinal (R$)<span class="marca">obrigatório</span></label><input id="sl-valorEntrada" inputmode="numeric">
+            <span class="ajuda" id="v-ajudaSinal">Todo este valor vai para o sinal.</span></div>
+          <div class="campo"><label>FGTS do proponente (R$)</label><input id="sl-saldoFgts" inputmode="numeric"></div>
+          <div class="campo" id="v-boxFgtsConj"><label>FGTS do cônjuge (R$)</label><input id="sl-saldoFgtsConjuge" inputmode="numeric"></div>
+          <div class="campo"><label>Subsídio (R$)</label><input id="sl-subsidio" inputmode="numeric"></div>
+        </div>
+        <div id="v-aviso" class="aviso erro" style="display:none;margin-top:10px"></div>
+        <div class="v-secao">3. Composição do fluxo de pagamento</div>
+        <div id="vComp"></div>
+        <div class="v-secao">4. Prazo de parcelamento da entrada</div>
+        <div class="v-opts" id="vPrazos"></div>
+        <div class="ajuda" id="v-comissao"></div>
+        <div class="v-secao">5. Sinal</div>
+        <div class="v-opts">
+          <label class="v-opt"><input type="radio" name="vSinal" value="1" onchange="vendaPintar()"><b>1x</b><small>à vista, no ato</small></label>
+          <label class="v-opt"><input type="radio" name="vSinal" value="2" onchange="vendaPintar()"><b>2x</b><small>R$ 1.000 no ato + 30 dias</small></label>
+          <label class="v-opt"><input type="radio" name="vSinal" value="3" onchange="vendaPintar()"><b>3x</b><small>R$ 1.000 no ato + 30 e 60 dias</small></label>
+          <label class="v-opt"><input type="radio" name="vSinal" value="4" onchange="vendaPintar()"><b>4x</b><small>R$ 1.000 no ato + 30, 60 e 90 dias</small></label>
+        </div>
+        <span class="ajuda">Em <b>1x</b> o sinal inteiro é pago no ato da assinatura.</span>
+        <div class="v-secao">6. Fluxo de pagamento</div>
+        <div id="vFluxo"></div>
+        <div class="v-secao">7. Diluição dos balões</div>
+        <div id="vDil"></div>
+      </div>
+    </div>
+
+    <div id="abaPessoal">
+    <div class="card">
+      <h2>Dados do proponente</h2>
+      <p class="sub">Os campos marcados com <b>falta</b> são obrigatórios e estão vazios no cadastro.
+        O que já está preenchido aparece do jeito que a Morais recebeu — corrija se estiver errado.</p>
+      <div class="grade" id="campos"></div>
+    </div>
+
+    <div class="card" id="cardCorretor" style="display:none">
+      <h2>Dados do corretor</h2>
+      <p class="sub">Estão faltando no cadastro desta proposta.</p>
+      <div class="grade" id="camposCorretor"></div>
+    </div>
+
+    <div class="card" id="cardFiador" style="display:none">
+      <h2>Fiadores <span class="marca" id="fiaMarca">obrigatório</span></h2>
+      <!-- 30/10/2026 — entrada em 24x (sem pós-chaves): fiador não é necessário -->
+      <div id="fiaDispensado" style="display:none;margin:0 0 10px;padding:10px 12px;background:#E3F4EA;border:2px solid #2E9E5B;border-radius:8px;color:#1D5E37;font-size:13.5px;line-height:1.5">
+        <b>Fiador não é necessário.</b> A entrada está em <b>24 meses</b>, sem parcelas pós-chaves.
+        Se o prazo da entrada for aumentado para 36 ou 48 meses (aba <b>Dados da venda</b>), os dois fiadores passam a ser obrigatórios.
+      </div>
+      <p class="sub" id="fiaSub">A venda sempre tem <b>dois fiadores</b>. Preencha <b>tudo</b> de cada um — dados, documento e
+        comprovante de endereço (os dois são pedidos em “Documentos obrigatórios” e lidos automaticamente).</p>
+      <div class="grade" id="camposFiador"></div>
+    </div>
+
+    <div class="card">
+      <h2>Documentos obrigatórios</h2>
+      <p class="sub"><b>A análise de crédito só segue depois que TODOS os documentos abaixo estiverem
+        anexados.</b> A lista depende da origem da renda e do estado civil. Limite de 20 MB por envio.
+        Documento pessoal e comprovante de endereço são <b>lidos automaticamente</b> e preenchem os campos sozinhos, corrigindo o que estiver diferente do documento — confira sempre.</p>
+      <div id="docs"></div>
+      <div id="resumoAnexos" class="sub" style="margin-top:10px"></div>
+    </div>
+    </div><!-- /abaPessoal -->
+
+    <div class="card">
+      <div class="legal">
+        <b>Aviso.</b> Os dados enviados aqui entram direto no cadastro desta proposta e são
+        usados apenas para a análise de crédito junto à CAIXA. Os valores da proposta são
+        estimativas e não representam aprovação de crédito. Dados pessoais tratados conforme
+        a LGPD (Lei nº 13.709/2018).
+      </div>
+      <div id="avisoEnvio" class="aviso" style="display:none;margin-top:12px"></div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="primario" id="btEnviar" onclick="enviar()">Enviar para a Morais</button>
+        <span class="sub" style="margin:0">Você pode enviar em partes: cada envio atualiza o cadastro.
+          A análise começa quando <b>tudo</b> estiver completo.</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="fluxo-calc.js"></script>
+<script src="fluxo-bloco.js"></script>
+<script src="diluir-ui.js"></script>
+<script>
+/* =====================================================================
+ * COMPLETAR PROPOSTA (r49)
+ * ---------------------------------------------------------------------
+ * Aberta pelo link que o portal gera: ?p=<id da proposta>&t=<token>.
+ * Sem token válido o Apps Script não devolve nada, então a página não
+ * expõe proposta nenhuma por id solto. O que o corretor manda aqui vai
+ * para as MESMAS colunas do Notion — sem status, preço nem unidade.
+ * =================================================================== */
+var APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxciC7C575zSGZgyoTeBFs48MR_apksHIxT03AV6elzJ6_c4ZtNTuTJVo9Ysjb4ik6w1g/exec';
+var LIMITE=20*1024*1024;
+var P=new URLSearchParams(location.search), ID=P.get('p')||'', TOKEN=P.get('t')||'';
+var DADOS=null;
+
+var ORIGENS=['CLT','SERVIDOR PÚBLICO','EMPRESÁRIO','AUTÔNOMO','MEI','MOTORISTA DE APLICATIVO',
+             'APOSENTADO / PENSIONISTA','PROFISSIONAL LIBERAL','RURAL','OUTRO'];
+var ESTADOS=['SOLTEIRO','CASADO','UNIÃO ESTÁVEL','DIVORCIADO','VIÚVO'];
+/* 01/10 — regime de bens: mesma lista da proposta */
+var REGIMES=['COMUNHAO PARCIAL DE BENS','COMUNHAO UNIVERSAL DE BENS','SEPARACAO TOTAL DE BENS',
+             'SEPARACAO OBRIGATORIA DE BENS','PARTICIPACAO FINAL NOS AQUESTOS'];
+/* 01/10 — leitura automática: coluna do documento -> o que a leitura preenche */
+var LEITURA={
+  'DOC. PROP.':{tipo:'pessoa', quem:'proponente', mapa:{nome:'cliente', cpf:'cpf', rg:'identidade', dataNascimento:'dataNascimento', nacionalidade:'nacionalidade'}},
+  'DOC. CONJUGE':{tipo:'pessoa', quem:'conjuge', mapa:{nome:'conjuge', cpf:'cpfConjuge', rg:'rgConjuge', nacionalidade:'nacionalidadeConjuge'}},
+  'COMPROVANTE DE ENDERECO':{tipo:'endereco', quem:'proponente', mapa:{cep:'cep', logradouro:'logradouro', numero:'numero', bairro:'setor', cidade:'cidade'}, inteiro:'endereco'},
+  'DOC. FIADOR 1':{tipo:'pessoa', quem:'fiador1', mapa:{nome:'fiador1', cpf:'cpfFiador1', rg:'rgFiador1', nacionalidade:'nacionalidadeFiador1'}},
+  'DOC. FIADOR 2':{tipo:'pessoa', quem:'fiador2', mapa:{nome:'fiador2', cpf:'cpfFiador2', rg:'rgFiador2', nacionalidade:'nacionalidadeFiador2'}},
+  'COMP. END. FIADOR 1':{tipo:'endereco', quem:'fiador1', mapa:{cep:'cepFiador1', logradouro:'logradouroFiador1', numero:'numeroFiador1', bairro:'setorFiador1', cidade:'cidadeFiador1'}, inteiro:'enderecoFiador1'},
+  'COMP. END. FIADOR 2':{tipo:'endereco', quem:'fiador2', mapa:{cep:'cepFiador2', logradouro:'logradouroFiador2', numero:'numeroFiador2', bairro:'setorFiador2', cidade:'cidadeFiador2'}, inteiro:'enderecoFiador2'}
+};
+/* de quem é cada documento fixo (o selo aparece ao lado do nome) */
+var DONO_DOC={'PRINT APROVACAO CAIXA':'proponente','DOC. PROP.':'proponente','DOC. CONJUGE':'cônjuge','COMPROVANTE DE ENDERECO':'proponente',
+  'DOC. FIADOR 1':'fiador 1','DOC. FIADOR 2':'fiador 2','COMP. END. FIADOR 1':'fiador 1','COMP. END. FIADOR 2':'fiador 2'};
+
+/* Mesma regra da proposta: o documento pedido depende da origem da renda
+   e da situação do cliente. */
+var REGRA_DOC={
+  'CONTRACHEQUES':['CLT','SERVIDOR PÚBLICO'],
+  'CARTEIRA DE TRABALHO':['CLT'],
+  'EXTRATO FGTS':['CLT'],
+  'PRO LABORE':['EMPRESÁRIO'],
+  'MOVIMENTACAO BANCARIA':['AUTÔNOMO','MEI','OUTRO'],
+  'EXTRATO PLATAFORMA':['MOTORISTA DE APLICATIVO'],
+  'IR + EXTRATOS':['EMPRESÁRIO','AUTÔNOMO','MEI','PROFISSIONAL LIBERAL','RURAL']
+};
+var DOC_SEMPRE=['DOC. PROP.','CERTIDOES','COMPROVANTE DE ENDERECO'];
+
+var DICA_DOC={
+  'DOC. PROP.':'RG e CPF do proponente, com foto, dos dois lados.',
+  'DOC. CONJUGE':'RG e CPF do cônjuge.',
+  'DOC. PARTICIPANTES':'Fiadores e outros compradores que entram na análise.',
+  'CERTIDOES':'Certidão de nascimento, de casamento ou averbação de divórcio.',
+  'COMPROVANTE DE ENDERECO':'Conta de água, luz ou telefone dos últimos 3 meses.',
+  'IR + EXTRATOS':'Declaração completa + recibo de entrega.',
+  'CONTRACHEQUES':'Os dois últimos.',
+  'CARTEIRA DE TRABALHO':'Física ou digital (PDF do app).',
+  'PRO LABORE':'Empresário, exceto MEI.',
+  'MOVIMENTACAO BANCARIA':'4 últimos meses. Pelo extrato, a renda máxima considerada é R$ 2.550,00.',
+  'EXTRATO PLATAFORMA':'4 últimos meses (Uber, iFood, 99).',
+  'EXTRATO FGTS':'Extrato do app ou do site da CAIXA, com o saldo.',
+  'DOC. DEPENDENTE':'Criança: certidão de nascimento. Maior de idade: documento pessoal + estado civil.',
+  'COMPROVANTE DE DIVORCIO':'Averbação do divórcio ou sentença.',
+  'ANEXOS':'Qualquer outro documento pedido pela análise.',
+  'DOC. FIADOR 1':'CNH (frente e verso) ou RG + CPF do fiador 1. É lido e preenche os dados dele.',
+  'DOC. FIADOR 2':'CNH (frente e verso) ou RG + CPF do fiador 2. É lido e preenche os dados dele.',
+  'COMP. END. FIADOR 1':'Conta de água, luz ou telefone dos últimos 3 meses. É lido e preenche o endereço do fiador 1.',
+  'COMP. END. FIADOR 2':'Conta de água, luz ou telefone dos últimos 3 meses. É lido e preenche o endereço do fiador 2.',
+  'PRINT APROVACAO CAIXA':'Print da tela de aprovação de crédito da CAIXA (com o campo "Valor Financiamento").'
+};
+var ROTULO_DOC={
+  'DOC. PROP.':'RG e CPF do proponente','DOC. CONJUGE':'RG e CPF do cônjuge',
+  'DOC. PARTICIPANTES':'RG e CPF dos demais participantes','CERTIDOES':'Comprovante de estado civil',
+  'COMPROVANTE DE ENDERECO':'Comprovante de endereço','IR + EXTRATOS':'Imposto de renda',
+  'CONTRACHEQUES':'Dois últimos contracheques','CARTEIRA DE TRABALHO':'Carteira de trabalho',
+  'PRO LABORE':'Pró-labore','MOVIMENTACAO BANCARIA':'Movimentação bancária - 4 últimos meses',
+  'EXTRATO PLATAFORMA':'Extrato da plataforma - 4 últimos meses','EXTRATO FGTS':'Extrato do FGTS',
+  'DOC. DEPENDENTE':'Documentos do dependente ou 2º comprador',
+  'COMPROVANTE DE DIVORCIO':'Comprovante de divórcio','ANEXOS':'Outros documentos',
+  'DOC. FIADOR 1':'Documento do fiador 1','DOC. FIADOR 2':'Documento do fiador 2',
+  'COMP. END. FIADOR 1':'Comprovante de endereço do fiador 1','COMP. END. FIADOR 2':'Comprovante de endereço do fiador 2',
+  'PRINT APROVACAO CAIXA':'Print da aprovação da CAIXA'
+};
+/* 06/10 (item 3) — documentos do CÔNJUGE e dos COMPRADORES, cada um no seu quadro */
+var CONJ_BASE={'CONTRACHEQUES CONJUGE':'CONTRACHEQUES','CARTEIRA DE TRABALHO CONJUGE':'CARTEIRA DE TRABALHO','EXTRATO FGTS CONJUGE':'EXTRATO FGTS',
+  'PRO LABORE CONJUGE':'PRO LABORE','MOVIMENTACAO BANCARIA CONJUGE':'MOVIMENTACAO BANCARIA','EXTRATO PLATAFORMA CONJUGE':'EXTRATO PLATAFORMA','IR CONJUGE':'IR + EXTRATOS'};
+(function(){
+  Object.keys(CONJ_BASE).forEach(function(c){ var b=CONJ_BASE[c];
+    ROTULO_DOC[c]=(ROTULO_DOC[b]||b)+' do cônjuge'; DICA_DOC[c]=DICA_DOC[b]||''; DONO_DOC[c]='cônjuge'; });
+  ROTULO_DOC['COMP. END. CONJUGE']='Comprovante de endereço do cônjuge'; DONO_DOC['COMP. END. CONJUGE']='cônjuge';
+  DICA_DOC['COMP. END. CONJUGE']='O cônjuge mora em outro endereço: conta de água, luz ou telefone dos últimos 3 meses.';
+  [1,2].forEach(function(n){
+    ROTULO_DOC['DOC. COMPRADOR '+n]='Documento do comprador '+n; DICA_DOC['DOC. COMPRADOR '+n]='CNH ou RG + CPF do comprador '+n+'.';
+    ROTULO_DOC['COMP. END. COMPRADOR '+n]='Comprovante de endereço do comprador '+n; DICA_DOC['COMP. END. COMPRADOR '+n]='Conta de água, luz ou telefone dos últimos 3 meses.';
+    ROTULO_DOC['COMP. RENDA COMPRADOR '+n]='Comprovantes de renda do comprador '+n; DICA_DOC['COMP. RENDA COMPRADOR '+n]='Conforme a origem da renda: contracheques, carteira de trabalho, IR ou extratos.';
+    ['DOC. COMPRADOR ','COMP. END. COMPRADOR ','COMP. RENDA COMPRADOR '].forEach(function(k){ DONO_DOC[k+n]='comprador '+n; });
+  });
+})();
+
+function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function dig(v){ return String(v||'').replace(/\D/g,''); }
+function fmtCep(v){ var d=dig(v).slice(0,8); return d.length>5 ? d.slice(0,5)+'-'+d.slice(5) : d; }
+function fmtCpf(v){ var d=dig(v).slice(0,11); if(d.length<=3) return d; if(d.length<=6) return d.slice(0,3)+'.'+d.slice(3);
+  if(d.length<=9) return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6); return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9); }
+function semAcento(v){ return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); }
+function brl(v){ return 'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function estado(tipo, msg){
+  var e=document.getElementById('estado');
+  e.className='aviso '+tipo; e.innerHTML=msg; e.style.display='block';
+}
+
+function carregar(){
+  if(!ID || !TOKEN){ estado('erro','<b>Link incompleto.</b> Peça um novo link para a Morais.'); return; }
+  fetch(APPS_SCRIPT_URL+'?acao=propostaCompletar&p='+encodeURIComponent(ID)+'&t='+encodeURIComponent(TOKEN))
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j || !j.ok){
+        estado('erro', j && j.erro==='LINK_INVALIDO'
+          ? '<b>Este link expirou ou não vale mais.</b> Peça um novo para a Morais.'
+          : '<b>Não consegui abrir a proposta.</b> '+esc((j&&j.erro)||'')); 
+        return;
+      }
+      DADOS=j; pintar();
+    })
+    .catch(function(){ estado('erro','<b>Sem conexão com o servidor.</b> Tente de novo em instantes.'); });
+}
+
+/* r58 — cônjuge só aparece para casado ou união estável. Solteiro não pode
+   ver "Nome do cônjuge · falta". */
+var CAMPOS_CONJUGE=['conjuge','cpfConjuge','profissaoConjuge','origemRendaConjuge','rendaAprovadaConjuge',
+                    'regimeBens','rgConjuge','nacionalidadeConjuge'];
+/* 01/10 — casado/união estável: estes do cônjuge passam a ser obrigatórios */
+var CONJ_OBRIG=['conjuge','cpfConjuge','rgConjuge','nacionalidadeConjuge','regimeBens'];
+/* com o endereço separado, o texto único (ENDERECO) é montado pelo servidor e não aparece */
+function temEnderecoSeparado(){ return DADOS && DADOS.campos.some(function(c){ return c.id==='logradouro'; }); }
+var ENDERECO_INTEIRO=['endereco','enderecoFiador1','enderecoFiador2'];
+function temConjuge(){
+  var el=document.getElementById('c-estadoCivil');
+  var v=(el ? el.value : (DADOS && (DADOS.campos.filter(function(c){return c.id==='estadoCivil';})[0]||{}).valor)) || '';
+  v=String(v).toUpperCase();
+  return v.indexOf('CASAD')>=0 || v.indexOf('UNIAO')>=0 || v.indexOf('UNIÃO')>=0;
+}
+/* 03/10 (r77) — CRÉDITO APROVADO NO LINK = IGUAL À ETAPA 2 DA PROPOSTA.
+   Mesmas regras do formulário da proposta:
+     - crédito IGUAL ou ACIMA do teto (80% da avaliação): financia o teto, a parcela sai da
+       simulação da CAIXA (não se preenche) e aparecem os "Dados para a simulação da CAIXA";
+     - crédito ABAIXO do teto: a CAIXA não simula esse valor, então a PARCELA é obrigatória
+       e não há simulação.
+   Os campos vêm preenchidos com o que a proposta já tinha (DADOS.simDados). */
+var SIM_LINK_PERFIL=[['possuiImovelCidade','Possui algum imóvel'],['fgts3anos','Tem 3 anos de FGTS'],
+  ['maisDeUmComprador','Mais de um comprador ou dependente'],['jaBeneficiado','Já foi beneficiado com subsídio FGTS/União'],
+  ['relacionamentoCaixa','Tem ou gostaria de ter relacionamento com a CAIXA']];
+var SIM_LINK_SUB=[['servidorPublico','Algum dos participantes é servidor público'],['creditoSalarioCaixa','Tem ou gostaria de ter crédito salário na CAIXA ou produto de Previdência']];
+function simLinkVal(k, padrao){ var d=(DADOS&&DADOS.simDados)||{}; return (d[k]===undefined||d[k]===null||d[k]==='') ? padrao : d[k]; }
+function simLinkSim(k){ var v=simLinkVal(k,false); return v===true||String(v).toUpperCase()==='SIM'||String(v)==='true'; }
+function simLinkBRL(v){ var n=Number(v); return (v===''||v==null||isNaN(n)) ? '' : n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function brlL(v){ return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function simLinkNumTxt(t){ t=String(t||'').replace(/[^\d,.\-]/g,'').trim(); if(!t) return 0;   // tira R$, espaços etc.
+  var n=/,/.test(t) ? Number(t.replace(/\./g,'').replace(',','.')) : Number(t.replace(/\.(?=\d{3}(\D|$))/g,'')); return isNaN(n)?0:n; }
+function simLinkNum(id){ var el=document.getElementById(id); return el ? simLinkNumTxt(el.value) : 0; }
+function simLinkAval(){ return Number(simLinkVal('avaliacao',0))||0; }
+function simCamposHtml(){
+  var seg=String(simLinkVal('seguradora','CAIXA RESIDENCIAL HABITACIONAL')).toUpperCase();
+  var sis=String(simLinkVal('sistemaAmortizacao','PRICE')).toUpperCase();
+  var pe=String(simLinkVal('prazoEntrada','48'));
+  var ck=function(x){ return '<label class="check" style="display:flex;gap:8px;align-items:center;margin:4px 0"><input type="checkbox" id="sl-'+x[0]+'"'+(simLinkSim(x[0])?' checked':'')+' style="width:auto" onchange="verCreditoLink()"> '+x[1]+'</label>'; };
+  return '<div id="boxCredLink" style="display:none">'+
+    /* r96 (20/10/26) — o crédito aprovado vem SÓ do print da tela de aprovação da CAIXA (lido por IA, sem edição) */
+    '<div class="campo" style="margin:6px 0 4px;padding:10px 12px;border:2px dashed #E7C56A;border-radius:8px;background:#FFFBEF">'+
+      '<label>Print da tela de aprovação da CAIXA<span class="obrig">*</span></label>'+
+      '<input type="file" id="printAprovacaoLink" accept="image/*,application/pdf" onchange="aoAprovacaoLink(this)">'+
+      '<div id="lst-printAprovacaoLink" class="lst"></div>'+
+      '<span class="ajuda">O <b>valor do crédito aprovado</b> é lido do print (campo "Valor Financiamento") e não pode ser editado.</span></div>'+
+    /* r96i — FGTS, subsídio, valor para o sinal e prazo da entrada ficam na aba "Dados da venda" */
+    '<div class="grade" style="margin-top:6px">'+
+      '<div class="campo"><label>Renda total (proponente + cônjuge + compradores) (R$)<span class="obrig">*</span></label><input id="sl-rendaTotal" inputmode="decimal" value="'+simLinkBRL(simLinkVal('rendaTotal',''))+'"></div>'+
+    '</div>'+
+    '<div id="slAviso" class="aviso" style="display:none;margin:8px 0"></div>'+
+    '<div class="grade">'+
+      '<div class="campo"><label>Valor financiado (R$)</label><input id="sl-financiado" readonly><span class="ajuda">Crédito aprovado, limitado ao teto de 80% da avaliação.</span></div>'+
+      '<div class="campo"><label>Prazo (meses)</label><input id="sl-prazo" type="number" value="'+(Number(simLinkVal('prazoMeses',420))||420)+'"></div>'+
+      '<div class="campo"><label>Sistema de amortização</label><select id="sl-sistemaAmortizacao"><option value="PRICE"'+(sis==='PRICE'?' selected':'')+'>PRICE — parcela fixa</option><option value="SAC"'+(sis==='SAC'?' selected':'')+'>SAC — parcela decrescente</option></select></div>'+
+    '</div>'+
+    '<div id="boxSimLink" style="display:none;margin-top:12px;padding:12px 14px;border:1px dashed #C9A227;border-radius:10px;background:#FFFDF6">'+
+      '<b style="color:var(--marrom)">Dados para a simulação da CAIXA</b>'+
+      '<p class="ajuda" style="margin:4px 0 10px">Quando o crédito bate no teto de 80%, o sistema roda a simulação automaticamente. Ele precisa exatamente destes campos — são os mesmos do simulador.</p>'+
+      '<div class="grade">'+
+        '<div class="campo"><label>Prazo do financiamento (meses)</label><input id="sl-prazoMeses" type="number" min="60" max="420" step="1" value="'+(Number(simLinkVal('prazoMeses',420))||420)+'"><span class="ajuda">Máximo permitido: 420 meses.</span></div>'+
+        '<div class="campo"><label>Seguradora</label><select id="sl-seguradora">'+
+          ['CAIXA RESIDENCIAL HABITACIONAL','TOKIO MARINE SEGURADORA','TOO SEGUROS'].map(function(o){ return '<option'+(o===seg?' selected':'')+'>'+o+'</option>'; }).join('')+'</select></div>'+
+      '</div>'+
+      SIM_LINK_PERFIL.map(function(x){
+        var h=ck(x);
+        if(x[0]==='jaBeneficiado') h+='<div class="campo" id="slBoxConcessao" style="display:none;margin:2px 0 8px 26px;max-width:260px"><label>Data da concessão do benefício</label><input type="date" id="sl-dataConcessaoBeneficio" value="'+String(simLinkVal('dataConcessaoBeneficio','')).slice(0,10)+'"></div>';
+        if(x[0]==='relacionamentoCaixa') h+='<div id="slBoxRel" style="display:none;margin:2px 0 8px 26px">'+SIM_LINK_SUB.map(ck).join('')+'</div>';
+        return h;
+      }).join('')+
+      '<div style="margin-top:8px;font-size:13px"><b style="color:var(--marrom)">Linha de financiamento que será simulada:</b> <span id="slProdutos"></span></div>'+
+    '</div>'+
+  '</div>';
+}
+function simLinkProdutos(){ var el=document.getElementById('sl-possuiImovelCidade');
+  return (el&&el.checked) ? ['SBPE SFH - TR - UNIDADE PF VINCULADA A EMPREENDIMENTO FINANCIADO NA CAIXA'] : ['NPMCMV - IMÓVEL NOVO INDIVIDUAL']; }
+function simLinkColetar(simula){
+  var o={ creditoAprovadoCaixa:'SIM', saldoFgts:simLinkNum('sl-saldoFgts'), subsidio:simLinkNum('sl-subsidio'),
+    valorEntrada:simLinkNum('sl-valorEntrada'), rendaTotal:simLinkNum('sl-rendaTotal'),
+    prazo:Number((document.getElementById('sl-prazo')||{}).value)||420,
+    sistemaAmortizacao:(document.getElementById('sl-sistemaAmortizacao')||{}).value||'PRICE',
+    prazoEntrada:vPrazo(),   // r96i — prazo vem da aba Dados da venda
+    saldoFgtsConjuge:simLinkNum('sl-saldoFgtsConjuge'), sinalParcelas:vSinal(),
+    valorFinanciado:simLinkNumTxt((document.getElementById('sl-financiado')||{}).value),
+    simularParcela:!!simula };
+  if(simula){
+    o.prazoMeses=Number((document.getElementById('sl-prazoMeses')||{}).value)||420;
+    o.seguradora=(document.getElementById('sl-seguradora')||{}).value||'CAIXA RESIDENCIAL HABITACIONAL';
+    SIM_LINK_PERFIL.concat(SIM_LINK_SUB).forEach(function(x){ var el=document.getElementById('sl-'+x[0]); o[x[0]]=!!(el&&el.checked); });
+    if(!o.relacionamentoCaixa){ o.servidorPublico=false; o.creditoSalarioCaixa=false; }
+    o.dataConcessaoBeneficio = o.jaBeneficiado ? ((document.getElementById('sl-dataConcessaoBeneficio')||{}).value||'') : '';
+    o.produtos=simLinkProdutos();
+  }
+  return o;
+}
+/* mesmo quadro de aviso do teto da proposta */
+/* r96 (20/10/26) — CRÉDITO APROVADO SÓ PELO PRINT DA CAIXA (mesmo leitor dos documentos) */
+var CRED_LINK={arquivo:null, ass:'', valor:0};
+function credOriginal(){ var c=((DADOS&&DADOS.campos)||[]).filter(function(x){ return x.id==='creditoAprovado'; })[0]; return simLinkNumTxt(c&&c.valor); }
+function aoAprovacaoLink(input){
+  var arq=input.files&&input.files[0], st=document.getElementById('lst-printAprovacaoLink'), cr=document.getElementById('c-creditoAprovado');
+  CRED_LINK={arquivo:arq||null, ass:'', valor:0};
+  if(cr){ cr.value=''; cr.classList.remove('lido'); }
+  resumoAnexos();
+  if(!arq){ st.className='lst'; st.textContent=''; verCreditoLink(); return; }
+  st.className='lst lendo'; st.textContent='Lendo o print da aprovação…';
+  prepararLeitura(arq).then(function(pre){
+    if(!pre) throw {sem:'Arquivo grande demais ou em formato que não dá para ler.'};
+    return apiPost({acao:'lerDocumento', tipo:'APROVACAO_CAIXA', quem:'proponente', arquivo:pre});
+  }).then(function(r){
+    if(CRED_LINK.arquivo!==arq) return;
+    var c=(r&&r.campos)||{}, v=Number(c.valorNumero)||0;
+    if(r && r.ok && r.lido && r.assinatura && v>0){
+      CRED_LINK.ass=r.assinatura; CRED_LINK.valor=v;
+      if(cr){ cr.value=v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); cr.classList.add('lido'); }
+      /* r96k — a Prestação do print vai para a parcela do financiamento */
+      var pr=simLinkNumTxt(c.prestacao), pf=document.getElementById('c-parcelaFinanciamento');
+      if(pr>0 && pf){ pf.value=pr.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); pf.classList.add('lido'); }
+      st.className='lst ok';
+      st.innerHTML='✓ Print lido — Valor Financiamento <b>'+brlL(v)+'</b>'+(pr>0?' · Prestação <b>'+brlL(pr)+'</b>':'')+(c.cliente?' · '+esc(c.cliente):'')+'. Confira com o print.';
+    } else {
+      st.className='lst err';
+      st.innerHTML='Não consegui ler o <b>Valor Financiamento</b> neste arquivo. Anexe um print nítido da tela de aprovação da CAIXA.';
+    }
+    verCreditoLink();
+  }).catch(function(e){
+    if(CRED_LINK.arquivo!==arq) return;
+    st.className='lst err';
+    st.textContent=(e&&e.sem?e.sem+' ':'A leitura do print não respondeu agora. ')+'Anexe de novo — sem a leitura o crédito não é registrado.';
+    verCreditoLink();
+  });
+}
+function verCreditoLink(){
+  var sel=document.getElementById('c-creditoAprovadoCaixa'), cr=document.getElementById('c-creditoAprovado');
+  if(!sel||!cr) return;
+  cr.readOnly=true; cr.tabIndex=-1; cr.placeholder='lido do print da CAIXA';   // r96 — não é digitado
+  if(!cr.dataset.ouvindo){
+    cr.addEventListener('input', verCreditoLink); cr.dataset.ouvindo='1';
+    /* 03/10 — valores em dinheiro (R$ 300.000,00): formata ao sair do campo e já na abertura */
+    ['c-creditoAprovado','c-parcelaFinanciamento','sl-rendaTotal'].forEach(function(id){   // r96i: os da venda são formatados em vendaIniciar
+      var el=document.getElementById(id); if(!el || el.dataset.moeda) return;
+      el.dataset.moeda='1'; el.setAttribute('inputmode','numeric'); el.dataset.tipo='numero';
+      var fmt=function(){ var n=simLinkNumTxt(el.value); el.value = n ? n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : ''; };
+      fmt();
+      /* 05/10 (item 9) — formata enquanto digita (centavos), não só ao sair do campo */
+      el.addEventListener('input', function(){ mascarar(el); verCreditoLink(); });
+      el.addEventListener('blur', verCreditoLink);
+    });
+  }
+  var sim = sel.value==='SIM';
+  var bc=document.getElementById('boxCredLink'); if(bc) bc.style.display = sim ? '' : 'none';
+  ['c-creditoAprovado','c-correspondente'].forEach(function(id){
+    var el=document.getElementById(id); if(!el) return; var cx=el.closest('.campo'); if(!cx) return;
+    cx.style.display = sim ? '' : 'none'; cx.dataset.obrig = sim ? '1' : '0';
+  });
+  var aval=simLinkAval(), teto=aval*0.8, cred=simLinkNumTxt(cr.value);
+  var fin=document.getElementById('sl-financiado'); if(fin) fin.value = cred ? brlL(teto ? Math.min(cred,teto) : cred) : '';
+  var av=document.getElementById('slAviso'), pf=document.getElementById('c-parcelaFinanciamento');
+  var pcx=pf && pf.closest('.campo'), bs=document.getElementById('boxSimLink');
+  var noTeto = sim && cred>0 && teto>0 && cred>=teto-0.5, abaixo = sim && cred>0 && teto>0 && cred<teto-0.5;
+  if(pcx){ pcx.style.display = abaixo ? '' : 'none'; pcx.dataset.obrig = abaixo ? '1' : '0'; }
+  if(bs) bs.style.display = noTeto ? '' : 'none';
+  if(av){
+    if(!sim || !cred || !teto){ av.style.display='none'; }
+    else if(noTeto){
+      var acima=cred>teto+0.5;
+      av.style.display='block'; av.className='aviso ok';
+      av.innerHTML='<b>Crédito '+(acima?'acima do':'igual ao')+' teto da Caixa.</b><br>Avaliação '+brlL(aval)+' → teto de financiamento <b>'+brlL(teto)+'</b> (80%).<br>'+
+        (acima ? 'O crédito informado ('+brlL(cred)+') foi limitado a esse teto, e a diferença de <b>'+brlL(cred-teto)+'</b> voltou para a entrada.<br>'
+               : 'O crédito informado ('+brlL(cred)+') é exatamente o teto.<br>')+
+        '<span style="font-size:12px">Como o valor bate no teto, a parcela sai da simulação da CAIXA — não precisa preencher.</span>';
+    } else {
+      av.style.display='block'; av.className='aviso info';
+      av.innerHTML='<b>Crédito dentro do teto da Caixa.</b><br>Avaliação '+brlL(aval)+' → teto de financiamento <b>'+brlL(teto)+'</b> (80%).<br>'+
+        'O crédito informado é '+brlL(cred)+', ou seja, <b>'+brlL(teto-cred)+'</b> abaixo do teto.<br>'+
+        '<span style="font-size:12px">A CAIXA não simula um valor abaixo do teto, então a <b>parcela precisa ser informada</b> logo abaixo.</span>';
+    }
+  }
+  var jb=document.getElementById('sl-jaBeneficiado'), bcc=document.getElementById('slBoxConcessao'); if(bcc) bcc.style.display = (jb&&jb.checked) ? '' : 'none';
+  var rc=document.getElementById('sl-relacionamentoCaixa'), br=document.getElementById('slBoxRel'); if(br) br.style.display = (rc&&rc.checked) ? '' : 'none';
+  var sp=document.getElementById('slProdutos'); if(sp) sp.textContent=simLinkProdutos()[0];
+  try{ vendaPintar(); }catch(e){}
+  try{ atualizarTrava(); }catch(e){}
+}
+/* 06/10 — endereço do cônjuge só aparece (e é cobrado) quando ele mora em outro endereço */
+function conjMoraJunto(){ var el=document.getElementById('c-conjugeMesmoEndereco');
+  if(el) return el.value!=='NAO'; return ((DADOS&&DADOS.pessoasDocs)||{}).conjMesmoEnd!==false; }
+function verEndConjLink(){
+  var junto=conjMoraJunto(), com=temConjuge();
+  ['cepConjuge','enderecoConjuge','numeroConjuge','setorConjuge','cidadeConjuge'].forEach(function(id){
+    var el=document.getElementById('c-'+id); if(!el) return; var cx=el.closest('.campo'); if(!cx) return;
+    cx.style.display=(com && !junto)?'':'none';
+    cx.dataset.obrig=(com && !junto && /^(cep|endereco|cidade)/.test(id))?'1':'0';
+  });
+  var cc=document.getElementById('cardConjuge'); if(cc && cc.innerHTML) cc.style.display = com ? '' : 'none';
+}
+function verConjuge(){
+  var com=temConjuge();
+  try{ verEndConjLink(); }catch(e){}
+  CAMPOS_CONJUGE.forEach(function(id){
+    var el=document.getElementById('c-'+id);
+    if(!el) return;
+    var cx=el.closest('.campo');
+    if(cx) cx.style.display = com ? '' : 'none';
+    if(!com) el.value='';
+  });
+  montarDocs();
+}
+
+function pintar(){
+  document.getElementById('estado').style.display='none';
+  document.getElementById('conteudo').style.display='';
+  document.getElementById('resumo').innerHTML=
+    '<b>Proposta '+esc(DADOS.proposta)+'</b> · Unidade '+esc(DADOS.unidade)+
+    ' (Tipo '+esc(DADOS.tipo)+') · '+brl(DADOS.preco)+'<br>'+
+    'Corretor: '+esc(DADOS.corretor||'—')+(DADOS.imobiliaria?' · '+esc(DADOS.imobiliaria):'')+
+    ' · Situação: '+esc(DADOS.status||'—');
+
+  /* r63 — cada campo diz se é obrigatório (c.obrig) e o grupo. Servidor
+     antigo não manda isso: aí vale a lista padrão abaixo. */
+  var htmlProp='', htmlCorr='', htmlFiad='', fiadorAtual='', htmlCred='', htmlConj='', htmlComp={};
+  var CRED=['creditoAprovadoCaixa','creditoAprovado','correspondente','parcelaFinanciamento'];
+  DADOS.campos.forEach(function(c){
+    if(SEMPRE_FORA.indexOf(c.id)>=0) return;           // referências: saíram
+    if(ENDERECO_INTEIRO.indexOf(c.id)>=0 && temEnderecoSeparado()) return;   // 01/10: vai separado
+    var grupo = c.grupo || (CAMPOS_CONJUGE.indexOf(c.id)>=0 ? 'conjuge' : 'prop');
+    var h = htmlCampo(c);
+    if(CRED.indexOf(c.id)>=0){ htmlCred += h; return; }   // 02/10 (item 2): quadro próprio do crédito
+    if(grupo==='corretor') htmlCorr += h;
+    else if(grupo==='conjuge') htmlConj += h;                       // 06/10: cônjuge em quadro próprio
+    else if(/^comprador[12]$/.test(grupo)) htmlComp[grupo]=(htmlComp[grupo]||'')+h;   // 06/10: cada comprador no seu quadro
+    else if(grupo==='fiador'){
+      var n = /2$/.test(c.id) ? '2' : '1';
+      if(n!==fiadorAtual){ htmlFiad += '<div class="secao">Fiador '+n+'</div>'; fiadorAtual=n; }
+      htmlFiad += h;
+    }
+    else htmlProp += h;
+  });
+  document.getElementById('campos').innerHTML=htmlProp;
+  /* 06/10 — CÔNJUGE e COMPRADORES em quadros próprios, logo depois do proponente */
+  var cardProp=document.getElementById('campos').closest('.card'), depois=cardProp;
+  [['cardConjuge','Cônjuge',htmlConj,'Dados do cônjuge. Se ele mora em outro endereço, informe o endereço dele e anexe o comprovante em "Documentos obrigatórios".'],
+   ['cardComprador1','Comprador 1',htmlComp.comprador1||'','Dados do 2º comprador, que entra na compra junto com o proponente.'],
+   ['cardComprador2','Comprador 2',htmlComp.comprador2||'','Dados do 3º comprador.']].forEach(function(q){
+    var cx=document.getElementById(q[0]);
+    if(!cx){ cx=document.createElement('div'); cx.className='card'; cx.id=q[0]; depois.parentNode.insertBefore(cx, depois.nextSibling); }
+    depois=cx;
+    var nComp=/Comprador (\d)/.exec(q[1]), mostra = q[2] && (!nComp || Number(nComp[1])<=((DADOS.pessoasDocs||{}).compradores||0));
+    cx.innerHTML = mostra ? '<h2>'+q[1]+'</h2><p class="sub">'+q[3]+'</p><div class="grade">'+q[2]+'</div>' : '';
+    cx.style.display = mostra ? '' : 'none';
+    /* 06/10 — comprador que existe: todos os dados dele são obrigatórios (menos o RG) */
+    if(mostra && nComp) cx.querySelectorAll('.campo').forEach(function(cp){
+      var inp=cp.querySelector('input,select'); if(!inp || /^c-rgComprador/.test(inp.id)) return;
+      cp.dataset.obrig='1'; var lb=cp.querySelector('label');
+      if(lb && !lb.querySelector('.marca')){ var mk=document.createElement('span'); mk.className='marca'; mk.textContent='falta'; lb.appendChild(mk); }
+    });
+  });
+  /* 02/10 (item 2) — CRÉDITO NA CAIXA em quadro próprio, no alto: quem enviou sem crédito e foi
+     aprovado marca SIM, informa o correspondente e o valor; a simulação roda de novo (ou, abaixo
+     de 80% da avaliação, informa a parcela). */
+  var cxCred=document.getElementById('cardCredito');
+  if(!cxCred){
+    cxCred=document.createElement('div'); cxCred.className='card'; cxCred.id='cardCredito';
+    cxCred.style.cssText='border:2px solid #EFB700;background:#FFFBEF';
+    var alvoC=document.getElementById('cardVenda');   // r96i — crédito na CAIXA fica na aba "Dados da venda"
+    alvoC.parentNode.insertBefore(cxCred, alvoC);
+  }
+  cxCred.innerHTML = htmlCred ? '<h2 style="color:var(--marrom)">Crédito na CAIXA</h2>'+
+    '<p class="ajuda" style="margin:0 0 10px">Se o crédito foi aprovado depois do envio, marque <b>SIM</b> e preencha como na proposta: '+
+    '<b>correspondente</b>, <b>valor do crédito</b> e entrada. Crédito no teto de 80% da avaliação: a simulação da CAIXA roda e a parcela chega por e-mail. '+
+    'Abaixo do teto: informe a <b>parcela</b>.</p>'+
+    '<div class="grade">'+htmlCred+'</div>'+simCamposHtml() : '';
+  cxCred.style.display = htmlCred ? '' : 'none';
+  document.getElementById('camposCorretor').innerHTML=htmlCorr;
+  document.getElementById('cardCorretor').style.display = htmlCorr ? '' : 'none';
+  document.getElementById('camposFiador').innerHTML=htmlFiad;
+  document.getElementById('cardFiador').style.display = htmlFiad ? '' : 'none';
+  document.querySelectorAll('#conteudo input:not([type=file]),#conteudo select,#conteudo textarea')
+    .forEach(function(el){
+      el.addEventListener('input', function(){ mascarar(el); atualizarTrava(); });
+      el.addEventListener('change', atualizarTrava);
+      mascarar(el);
+    });
+  window.CEP_PRONTO=true;
+
+  verConjuge();
+  unIniciar();   // 27/10 — quadro da unidade (antes do fluxo: o preço vem dele)
+  vendaIniciar();
+  verCreditoLink();
+}
+
+/* r63 — campos que não aparecem mais e os obrigatórios (para servidor antigo) */
+var SEMPRE_FORA=['referencia1','telRef1','referencia2','telRef2','saldoFgts'];   // r96i: FGTS na aba Dados da venda
+var OBRIG_PADRAO=['cliente','cpf','identidade','dataNascimento','estadoCivil','profissao','celular',
+                  'emailProponente','endereco','origemRenda','rendaAprovada','vendedor','creci','email'];
+function ehObrig(c){ if(CONJ_OBRIG.indexOf(c.id)>=0) return true;      // só valem visíveis (casado)
+  return (c.obrig===undefined) ? OBRIG_PADRAO.indexOf(c.id)>=0 : !!c.obrig; }
+function mascarar(el){
+  var t=el.dataset.tipo;
+  if(t==='cep'){ el.value=fmtCep(el.value); if(window.CEP_PRONTO && dig(el.value).length===8) buscarCepLink(el); }   // só quando a pessoa digita
+  else if(t==='tel'){ var dt=dig(el.value).slice(0,11);   // 06/10 — celular no formato (00) 00000-0000
+    el.value = dt.length>10 ? '('+dt.slice(0,2)+') '+dt.slice(2,7)+'-'+dt.slice(7) : (dt.length>6 ? '('+dt.slice(0,2)+') '+dt.slice(2,6)+'-'+dt.slice(6) : (dt.length>2 ? '('+dt.slice(0,2)+') '+dt.slice(2) : dt)); }
+  else if(t==='cpf'){ if(/^0+$/.test(dig(el.value))) el.value=''; else el.value=fmtCpf(el.value); }
+  /* 05/10 (item 9) — dinheiro no formato R$ ENQUANTO digita (mesma máscara de centavos da proposta) */
+  else if(t==='numero'){ var d=dig(el.value); el.value = d ? (parseInt(d,10)/100).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.') : ''; }
+}
+/* 06/10 — CEP preenche o endereço sozinho (ViaCEP): proponente, cônjuge, compradores e fiadores */
+var CEP_LINK={cep:['logradouro','setor','cidade','endereco'], cepConjuge:['enderecoConjuge','setorConjuge','cidadeConjuge'],
+  cepFiador1:['logradouroFiador1','setorFiador1','cidadeFiador1','enderecoFiador1'], cepFiador2:['logradouroFiador2','setorFiador2','cidadeFiador2','enderecoFiador2'],
+  cepComprador1:['enderecoComprador1'], cepComprador2:['enderecoComprador2']};
+var CEP_LINK_ULT={};
+function buscarCepLink(el){
+  var id=String(el.id||'').replace(/^c-/,''), c=dig(el.value), alvo=CEP_LINK[id]; if(!alvo || c.length!==8 || CEP_LINK_ULT[id]===c) return;
+  CEP_LINK_ULT[id]=c;
+  fetch('https://viacep.com.br/ws/'+c+'/json/').then(function(r){ return r.json(); }).then(function(j){
+    if(!j || j.erro){ CEP_LINK_ULT[id]=''; return; }
+    var g=function(n){ return document.getElementById('c-'+n); }, so=alvo.length===1 || !g(alvo[1]);
+    if(so){   // só um campo de endereço: monta a linha inteira
+      var un=g(alvo[0]) || g(alvo[3]); if(un){ un.value=semAcento([j.logradouro,j.bairro,j.localidade].filter(Boolean).join(', ')); un.classList.add('lido'); }
+    } else {
+      [[alvo[0],j.logradouro],[alvo[1],j.bairro],[alvo[2],j.localidade]].forEach(function(p){ var e=g(p[0]); if(e && p[1]){ e.value=semAcento(p[1]); e.classList.add('lido'); } });
+      if(!g(alvo[0]) && alvo[3] && g(alvo[3])){ g(alvo[3]).value=semAcento([j.logradouro,j.bairro,j.localidade].filter(Boolean).join(', ')); }
+    }
+    atualizarTrava();
+  }).catch(function(){ CEP_LINK_ULT[id]=''; });
+}
+
+/* =====================================================================
+ * r96i (21/10/26) — ABA "DADOS DA VENDA"
+ * O corretor pode mudar o valor para o sinal, o FGTS, o subsídio, o prazo
+ * da entrada, a forma do sinal e a diluição dos balões. O fluxo é refeito
+ * na hora com a mesma conta da proposta (fpcGerar) e só vai para o servidor
+ * se algo mudou. Enquanto nada muda, a tela mostra o fluxo GRAVADO.
+ * =================================================================== */
+var VENDA0=null, VDIL=[0,0];
+/* 27/10/2026 — UNIDADE da proposta: mostra tipo, número e valor e deixa trocar por outra
+   DISPONÍVEL. A troca refaz preço, comissão e fluxo (aba Dados da venda) e só é gravada no
+   envio — o servidor confere de novo se a unidade ainda está disponível. */
+var UN_ORIG=null, UN_NOVA=null, UN_LISTA=[];
+function unNum(u){ return parseInt(String(u||'').replace(/\D/g,''),10)||0; }
+function unAtual(){ return UN_NOVA || UN_ORIG || {}; }
+function unIniciar(){
+  var v=vendaDados();
+  UN_ORIG={unidade:String(DADOS.unidade||''), tipo:String(DADOS.tipo||''), valorVenda:Number(v.preco)||Number(DADOS.preco)||0,
+           avaliacao:Number(v.avaliacao)||simLinkAval()};
+  UN_NOVA=null;
+  unPintar();
+  var bloqueada = /VENDID/.test(semAcento(DADOS.status||''));
+  document.getElementById('un-btAlterar').style.display = bloqueada ? 'none' : '';
+  if(Array.isArray(DADOS.unidades) && DADOS.unidades.length){ UN_LISTA=DADOS.unidades; unOpcoes(); }
+  else fetch('unidades.json?t='+Date.now()).then(function(r){ return r.json(); })
+    .then(function(l){ UN_LISTA=Array.isArray(l)?l:[]; unOpcoes(); }).catch(function(){});
+}
+function unOpcoes(){
+  var sel=document.getElementById('un-select'); if(!sel) return;
+  var atual=String(UN_ORIG.unidade);
+  var disp=UN_LISTA.filter(function(u){ return String(u.unidade)!==atual && u.disponivel && !u.vendido && !u.reservado && Number(u.valorVenda)>0; })
+    .sort(function(a,b){ return unNum(a.unidade)-unNum(b.unidade); });
+  sel.innerHTML='<option value="">— manter a unidade '+esc(atual)+' —</option>'+disp.map(function(u){
+    return '<option value="'+esc(u.unidade)+'">Unidade '+esc(u.unidade)+' · Tipo '+esc(u.tipo)+' · '+brl(u.valorVenda)+'</option>'; }).join('');
+  if(!disp.length) sel.innerHTML+='<option value="" disabled>Nenhuma outra unidade disponível agora</option>';
+}
+function unAbrir(){ var a=document.getElementById('un-alt'); a.style.display = a.style.display==='none' ? '' : 'none'; }
+function unPintar(){
+  var u=unAtual();
+  document.getElementById('un-numero').textContent=u.unidade||'—';
+  document.getElementById('un-tipo').textContent=u.tipo ? 'Tipo '+u.tipo : '—';
+  document.getElementById('un-valor').textContent=brl(u.valorVenda);
+  var m=document.getElementById('un-mudou');
+  if(UN_NOVA){
+    m.style.display='';
+    m.innerHTML='<b>Unidade alterada:</b> '+esc(UN_ORIG.unidade)+' (Tipo '+esc(UN_ORIG.tipo)+', '+brl(UN_ORIG.valorVenda)+') → <b>'+
+      esc(UN_NOVA.unidade)+' (Tipo '+esc(UN_NOVA.tipo)+', '+brl(UN_NOVA.valorVenda)+')</b>. Valor, comissão e fluxo foram refeitos — confira na aba '+
+      '<a href="#" onclick="mostrarAba(\'venda\');return false">Dados da venda</a>. Clique em <b>Enviar para a Morais</b> para gravar.';
+  } else m.style.display='none';
+}
+function unEscolher(num){
+  var u = num ? UN_LISTA.filter(function(x){ return String(x.unidade)===String(num); })[0] : null;
+  UN_NOVA = u ? {unidade:String(u.unidade), tipo:String(u.tipo||''), valorVenda:Number(u.valorVenda)||0,
+                 avaliacao:Number(u.avaliacao)||UN_ORIG.avaliacao} : null;
+  unPintar();
+  try{ vendaPintar(); }catch(e){}
+}
+function vendaDados(){ return (DADOS && DADOS.venda) || {}; }
+function credSim(){ var el=document.getElementById('c-creditoAprovadoCaixa'); return !!(el ? el.value==='SIM' : (DADOS&&DADOS.comCredito)); }
+function mostrarAba(a){
+  document.getElementById('abaPessoal').style.display = a==='venda' ? 'none' : '';
+  document.getElementById('abaVenda').style.display = a==='venda' ? '' : 'none';
+  document.getElementById('btAbaPessoal').classList.toggle('on', a!=='venda');
+  document.getElementById('btAbaVenda').classList.toggle('on', a==='venda');
+  try{ window.scrollTo({top:document.querySelector('.abas').offsetTop-8, behavior:'smooth'}); }catch(e){}
+}
+/* r97a (24/10/2026) — sem a aba "Dados da venda" aberta não existem os botões vPrazo/vSinal e o
+   link mandava 48 meses / sinal em 4x, trocando o que o corretor escolheu na proposta. Agora, sem
+   botão marcado, vale o que está gravado na proposta. */
+function prazoNormal(n){ n=Number(n)||0; if(!n) return 0; return n<=24 ? 24 : (n<=36 ? 36 : 48); }
+function vPrazo(){ var el=document.querySelector('input[name="vPrazo"]:checked');
+  if(el) return Number(el.value)||48;
+  return prazoNormal(vendaDados().prazoEntrada) || prazoNormal(simLinkVal('prazoEntrada',0)) ||
+         prazoNormal(DADOS && DADOS.prazoEntrada) || 48; }
+function vSinal(){ var el=document.querySelector('input[name="vSinal"]:checked');
+  if(el) return Number(el.value)||4;
+  return Number(vendaDados().sinalParcelas) || Number(simLinkVal('sinalParcelas',0)) ||
+         Number(DADOS && DADOS.sinalParcelas) || 4; }
+function vendaMoeda(id, v){ var el=document.getElementById(id); if(!el) return;
+  el.value = (Number(v)||0) ? Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : ''; }
+function vendaIniciar(){
+  var v=vendaDados();
+  vendaMoeda('sl-valorEntrada', v.valorEntrada); vendaMoeda('sl-saldoFgts', v.saldoFgts);
+  vendaMoeda('sl-saldoFgtsConjuge', v.saldoFgtsConjuge); vendaMoeda('sl-subsidio', v.subsidio);
+  var pz=Number(v.prazoEntrada)||48; pz = pz<=24 ? 24 : (pz<=36 ? 36 : 48);
+  var COM={24:0.05,36:0.0475,48:0.045};
+  document.getElementById('vPrazos').innerHTML=[24,36,48].map(function(n){
+    return '<label class="v-opt"><input type="radio" name="vPrazo" value="'+n+'"'+(n===pz?' checked':'')+' onchange="vendaPintar()"><b>'+n+' meses</b>'+
+      '<small>comissão '+(COM[n]*100).toLocaleString('pt-BR',{minimumFractionDigits:2})+'%</small></label>'; }).join('');
+  var ns=Number(v.sinalParcelas)||4; var rs=document.querySelector('input[name="vSinal"][value="'+ns+'"]'); if(rs) rs.checked=true;
+  VDIL=(v.diluicao && v.diluicao.length ? v.diluicao.slice(0,2) : [0,0]).map(function(x){ return Number(x)||0; });
+  ['sl-valorEntrada','sl-saldoFgts','sl-saldoFgtsConjuge','sl-subsidio'].forEach(function(id){
+    var el=document.getElementById(id); if(!el || el.dataset.venda) return;
+    el.dataset.venda='1'; el.dataset.tipo='numero'; el.setAttribute('inputmode','numeric');
+    el.addEventListener('input', function(){ mascarar(el); vendaPintar(); });
+  });
+  var bc=document.getElementById('v-boxFgtsConj'); if(bc) bc.style.display = (temConjuge() || Number(v.saldoFgtsConjuge)) ? '' : 'none';
+  VENDA0=vendaEstado();
+  vendaPintar();
+}
+function vendaEstado(){
+  return JSON.stringify([simLinkNum('sl-valorEntrada'), simLinkNum('sl-saldoFgts'), simLinkNum('sl-saldoFgtsConjuge'),
+    simLinkNum('sl-subsidio'), vPrazo(), vSinal(), VDIL]);
+}
+function vendaMudou(){ return !!UN_NOVA || (VENDA0!==null && vendaEstado()!==VENDA0); }   // 27/10 — trocar a unidade refaz o fluxo
+function vendaFin(){
+  var v=vendaDados(), aval=Number(v.avaliacao)||simLinkAval(), teto=aval*0.8;
+  var cr=document.getElementById('c-creditoAprovado'), cred=cr ? simLinkNumTxt(cr.value) : 0;
+  if(credSim() && cred>0) return {fin: teto ? Math.min(cred, teto) : cred,
+    nota: (teto && cred>teto+0.5) ? 'crédito de '+brlL(cred)+' limitado a 80% da avaliação' : 'crédito aprovado na CAIXA'};
+  var f=Number(v.financiado)||teto;
+  return {fin:f, nota: Number(v.financiado) ? 'valor financiado gravado na proposta (estimativa sem crédito aprovado)' : 'estimativa: teto de 80% da avaliação'};
+}
+function vendaCalc(){
+  var v=vendaDados(), F=vendaFin(), hoje=new Date();
+  var preco=(UN_NOVA && UN_NOVA.valorVenda) || Number(v.preco)||Number(DADOS.preco)||0;   // 27/10 — unidade trocada
+  var fgts=simLinkNum('sl-saldoFgts')+simLinkNum('sl-saldoFgtsConjuge'), sub=simLinkNum('sl-subsidio'), inf=simLinkNum('sl-valorEntrada');
+  var o={preco:preco, financiado:F.fin, fgts:fgts, subsidio:sub, nSinal:vSinal(), prazoEntrada:vPrazo(), ano:hoje.getFullYear(), mes:hoje.getMonth()+1};
+  var g0=fpcGerar(Object.assign({}, o, {informado:0}));
+  var g=fpcGerar(Object.assign({}, o, {informado:inf, diluir:VDIL}));
+  return {preco:preco, F:F, fgts:fgts, sub:sub, inf:inf, g0:g0, g:g, min:g0.sinalMinimo,
+          max:Math.max(10000, Math.round(g0.entradaCliente*100)/100)};
+}
+/* fluxo gravado (ESQUEMA ENTRADA) no formato do quadro */
+function vendaFluxoSalvo(txt){
+  return String(txt||'').split(';').map(function(l){ return l.trim(); }).filter(String).map(function(l, i){
+    var m=l.match(/^(.*?):\s*(R\$\s?[\d.,]+)\s*\((.*)\)$/); if(!m) return null;
+    var desc=m[3].trim(), n=semAcento(desc), g='outro';
+    if(n.indexOf('SINAL')===0) g='sinal'; else if(n.indexOf('POS-CHAVES')>=0||n.indexOf('POS CHAVES')>=0||n.indexOf('POS A OBRA')>=0) g='pos';
+    else if(n.indexOf('BALAO')===0) g='balao'; else if(n.indexOf('PARCELA')===0) g='obra';
+    return {quando:m[1].trim(), valor:simLinkNumTxt(m[2]), desc:desc, grupo:g, i:i};
+  }).filter(Boolean);
+}
+function vDilEscolher(b, o){ VDIL[b]=o; vendaPintar(); }
+function vendaEsquema(fl){ return fl.map(function(x){ return x[0]+': '+brlL(x[1])+' ('+x[2]+')'; }).join('; '); }
+function vendaPintar(){
+  if(!DADOS || !document.getElementById('vComp')) return;
+  var v=vendaDados(), c=vendaCalc(), mudou=vendaMudou();
+  document.getElementById('v-financiado').value=brlL(c.F.fin);
+  document.getElementById('v-notaFin').textContent=c.F.nota;
+  document.getElementById('v-ajudaSinal').innerHTML='Todo este valor vai para o sinal. Mínimo <b>'+brlL(c.min)+'</b> (sinal mínimo), máximo <b>'+brlL(c.max)+'</b> (a entrada inteira).';
+  var av=document.getElementById('v-aviso');
+  if(mudou && (c.inf < c.min-0.005 || c.inf > c.max+0.005)){
+    av.style.display='block';
+    av.innerHTML = c.inf < c.min-0.005 ? 'O valor para o sinal precisa ser de pelo menos <b>'+brlL(c.min)+'</b>.' : 'O valor para o sinal não pode passar de <b>'+brlL(c.max)+'</b>.';
+  } else av.style.display='none';
+  var COM={24:0.05,36:0.0475,48:0.045}, pz=vPrazo();
+  document.getElementById('v-comissao').innerHTML='Comissão do corretor: <b>'+(COM[pz]*100).toLocaleString('pt-BR',{minimumFractionDigits:2})+'% · '+brlL(c.preco*COM[pz])+'</b>';
+  /* r96i — o quadro mostra SEMPRE o fluxo refeito com os valores da tela: mais sinal = entrada
+     menor = parcelas menores (e o contrário), nunca abaixo do sinal mínimo */
+  var fluxo=c.g.fluxo.map(function(x, i){ return {quando:x[0], valor:x[1], desc:x[2], grupo:x[3], i:i, dilTxt:x[4]||''}; });
+  var r=fpResumo_({preco:c.preco, financiado:c.F.fin, fgts:c.fgts, subsidio:c.sub, informado:c.inf, devolucao:c.g.devolucao, fluxo:fluxo});
+  var difSalvo = !mudou && v.esquema && vendaEsquema(c.g.fluxo).replace(/\s+/g,' ') !== String(v.esquema).replace(/\s+/g,' ');
+  document.getElementById('vComp').innerHTML=fpHtml_(r, {parte:'composicao', notaFinanciado:c.F.nota, B:brlL});
+  document.getElementById('vFluxo').innerHTML=(difSalvo ? '<div class="ajuda" style="margin:0 0 6px">Fluxo pelos valores acima. A proposta só passa a usar este fluxo quando você alterar algum valor e clicar em <b>Enviar para a Morais</b>.</div>' : '')+
+    fpHtml_(r, {parte:'fluxo', mudou:DiluirUI.mudou(c.g.fluxo), B:brlL});
+  document.getElementById('vDil').innerHTML=DiluirUI.html(c.g, VDIL, 'vDilEscolher') || '<span class="ajuda">Sem balões neste fluxo.</span>';
+  try{ atualizarTrava(); }catch(e){}
+}
+function vendaPayload(c){
+  var temDil = (VDIL[0]||VDIL[1]);
+  return {valorEntrada:c.inf, saldoFgts:simLinkNum('sl-saldoFgts'), saldoFgtsConjuge:simLinkNum('sl-saldoFgtsConjuge'),
+    subsidio:c.sub, prazoEntrada:vPrazo(), sinalParcelas:vSinal(), diluicao:VDIL.slice(),
+    esquema:vendaEsquema(c.g.fluxo), esquemaOriginal: temDil ? vendaEsquema(c.g.fluxoOriginal) : '',
+    financiado:c.F.fin, entradaTotal:c.g.total, sinal:c.g.sinaisTotal, devolucao:c.g.devolucao};
+}
+
+/* 30/10/2026 — fiador só é exigido quando a entrada tem parcelas pós-chaves (36 ou 48 meses).
+   Em 24x não há pós-chaves: fiador dispensado. Se o prazo for aumentado aqui, volta a ser exigido. */
+function fiadorExigido(){ return vPrazo() > 24; }
+function pintarFiadorExigido(){
+  var ex=fiadorExigido(), a=document.getElementById('fiaDispensado'), m=document.getElementById('fiaMarca'),
+      sb=document.getElementById('fiaSub');
+  if(a) a.style.display = ex ? 'none' : 'block';
+  if(sb) sb.style.display = ex ? '' : 'none';
+  if(m){ m.className = ex ? 'marca' : 'marca opc'; m.textContent = ex ? 'obrigatório' : 'não necessário'; }
+}
+/* fiador com qualquer dado preenchido: tudo dele vira obrigatório (menos e-mail) */
+function fiadorAtivo(n){
+  if(fiadorExigido()) return true;   // r96i — com pós-chaves a venda sempre tem os dois fiadores
+  var at=false;
+  document.querySelectorAll('[data-fia="'+n+'"] input:not([type=file])').forEach(function(i){
+    if(!/^c-emailFiador/.test(i.id) && String(i.value||'').trim()) at=true;
+  });
+  document.querySelectorAll('.doc[data-fia="'+n+'"]').forEach(function(d){
+    var inp=d.querySelector('input[type=file]'); if(inp && inp.files.length) at=true;
+  });
+  return at;
+}
+/* 30/09: o valor gravado vem sem acento (AUTONOMO) e a opção tem acento (AUTÔNOMO):
+   comparando sem acento, a origem da renda já escolhida não aparece mais como "falta"
+   — e a lista de documentos, que depende dela, sai certa. */
+function mesmaOpcao(a,b){
+  var n=function(x){ return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); };
+  return n(a)===n(b);
+}
+function htmlCampo(c){
+  var vazio=!String(c.valor||'').trim();
+  var campo;
+  if(c.id==='conjugeMesmoEndereco'){
+    var mv=semAcento(c.valor);
+    campo='<select id="c-'+c.id+'" onchange="verEndConjLink();montarDocs()"><option value="SIM"'+(mv!=='NAO'?' selected':'')+'>SIM — mesmo endereço</option>'+
+          '<option value="NAO"'+(mv==='NAO'?' selected':'')+'>NÃO — mora em outro endereço</option></select>';
+  } else if(/^origemRendaComprador[12]$/.test(c.id)){
+    campo='<select id="c-'+c.id+'" onchange="montarDocs()"><option value="">Selecione…</option>'+
+      ORIGENS.map(function(o){ return '<option'+(mesmaOpcao(c.valor,o)?' selected':'')+'>'+o+'</option>'; }).join('')+'</select>';
+  } else if(c.id==='origemRenda'||c.id==='origemRendaConjuge'){
+    campo='<select id="c-'+c.id+'" onchange="montarDocs()">'+
+      '<option value="">Selecione…</option>'+
+      ORIGENS.map(function(o){ return '<option'+(mesmaOpcao(c.valor,o)?' selected':'')+'>'+o+'</option>'; }).join('')+
+      '</select>';
+  } else if(c.id==='estadoCivil'){
+    campo='<select id="c-'+c.id+'" onchange="verConjuge()"><option value="">Selecione…</option>'+
+      ESTADOS.map(function(o){ return '<option'+(mesmaOpcao(c.valor,o)?' selected':'')+'>'+o+'</option>'; }).join('')+
+      '</select>';
+  } else if(c.id==='correspondente'){
+    /* 02/10 (item 8) — qual correspondente aprovou o crédito */
+    /* 05/10 (item 8) — vem preenchido com o correspondente para quem a Morais ENVIOU a proposta
+       (o portal grava o nome ao enviar: AUDICRED, DANIELA…). DANIELA/DANILO viram a empresa. */
+    var cv=semAcento(c.valor);
+    var alvo = (cv.indexOf('AUDICRED')>=0||cv.indexOf('DANILO')>=0) ? 'AUDICRED'
+             : (cv.indexOf('AMAZONAS')>=0||cv.indexOf('DANIELA')>=0) ? 'AMAZONAS'
+             : (cv==='OUTRO' ? 'OUTRO' : '');
+    var extra = (cv && !alvo) ? '<option value="'+esc(c.valor)+'" selected>'+esc(c.valor)+'</option>' : '';
+    campo='<select id="c-'+c.id+'"><option value="">Selecione…</option>'+
+          ['AUDICRED','AMAZONAS','OUTRO'].map(function(o){ return '<option value="'+o+'"'+(o===alvo?' selected':'')+'>'+
+            (o==='AUDICRED'?'AUDICRED (Danilo)':(o==='AMAZONAS'?'AMAZONAS (Daniela)':'Outro correspondente'))+'</option>'; }).join('')+extra+'</select>';
+  } else if(c.id==='creditoAprovadoCaixa'){
+    /* 02/10 (item 13) — enviou SEM crédito aprovado e foi aprovado depois: muda para SIM,
+       informa o valor e a simulação roda de novo com o crédito aprovado */
+    var cav=semAcento(c.valor)==='SIM'?'SIM':'NAO';
+    campo='<select id="c-'+c.id+'" onchange="verCreditoLink();montarDocs()">'+
+          '<option value="NAO"'+(cav==='NAO'?' selected':'')+'>NÃO — ainda sem crédito aprovado</option>'+
+          '<option value="SIM"'+(cav==='SIM'?' selected':'')+'>SIM — já tem carta de crédito aprovada</option></select>'+
+          '<span style="font-size:11.5px;color:var(--texto-suave)">Se o crédito foi aprovado depois do envio, marque SIM e informe o valor: a simulação roda de novo com o crédito aprovado e a nova parcela chega por e-mail.</span>';
+  } else if(c.id==='regimeBens'){
+    var atual=semAcento(c.valor), achou=false;
+    campo='<select id="c-'+c.id+'"><option value="">Selecione…</option>'+REGIMES.map(function(r){
+      var sel=atual && atual.indexOf(r.replace(' DE BENS',''))===0; if(sel) achou=true;
+      return '<option'+(sel?' selected':'')+'>'+r+'</option>'; }).join('')+
+      (atual && !achou ? '<option selected>'+esc(c.valor)+'</option>' : '')+'</select>';
+  } else if(c.id==='observacoes'){
+    campo='<textarea id="c-'+c.id+'" rows="2">'+esc(c.valor)+'</textarea>';
+  } else {
+    var t=(c.tipo==='data')?'date':(c.tipo==='email'?'email':'text');
+    var v=c.valor;
+    if(c.tipo==='numero' && v) v=Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    if((c.tipo==='cpf'||c.tipo==='tel'||c.tipo==='cep') && /^0*$/.test(String(v||'').trim())) v='';   // "0" não é CPF
+    campo='<input id="c-'+c.id+'" type="'+t+'" value="'+esc(v)+'" data-tipo="'+esc(c.tipo||'')+'"'+
+          (c.tipo==='numero'||c.tipo==='cpf'||c.tipo==='tel'||c.tipo==='cep' ? ' inputmode="numeric"' : '')+
+          (c.tipo==='cep' ? ' maxlength="9"' : '')+'>';
+  }
+  var ob=ehObrig(c);
+  var full=(c.id==='observacoes'||c.id==='endereco'||/^enderecoFiador/.test(c.id)||/^logradouro/.test(c.id)) ? ' style="grid-column:1/-1"' : '';
+  var fia=(c.grupo==='fiador') ? ' data-fia="'+(/2$/.test(c.id)?2:1)+'"' : '';
+  if(fia && !/^emailFiador/.test(c.id)) ob=true;           // vale só se o fiador existir (ver atualizarTrava)
+  return '<div class="campo'+(vazio&&ob&&!fia?' falta':'')+'"'+full+fia+' data-obrig="'+(ob?1:0)+'"><label>'+esc(c.rotulo)+
+         (ob ? (vazio?'<span class="marca">falta</span>':'<span class="marca ok-marca">ok</span>') : '')+
+         '</label>'+campo+'</div>';
+}
+/* r63 (item 6) — o que ainda trava a análise: obrigatório vazio e documento
+   exigido sem arquivo (nem já enviado, nem escolhido agora). */
+function atualizarTrava(){
+  var el=document.getElementById('trava'); if(!el || !DADOS) return;
+  var campos=[];
+  try{ pintarFiadorExigido(); }catch(eF){}
+  var fAt={1:fiadorAtivo(1), 2:fiadorAtivo(2)};
+  document.querySelectorAll('.campo[data-obrig="1"]').forEach(function(cx){
+    if(cx.style.display==='none') return;
+    if(cx.dataset.fia && !fAt[cx.dataset.fia]){                 // fiador em branco = não existe
+      cx.classList.remove('falta'); var mm=cx.querySelector('.marca'); if(mm){ mm.className='marca opc'; mm.textContent=fiadorExigido() ? 'se houver' : 'não necessário'; }
+      return;
+    }
+    var inp=cx.querySelector('input,select,textarea');
+    var vazio=!inp || !String(inp.value||'').trim();
+    cx.classList.toggle('falta', vazio);
+    var m=cx.querySelector('.marca');
+    if(m){ m.className='marca'+(vazio?'':' ok-marca'); m.textContent=vazio?'falta':'ok'; }
+    if(vazio) campos.push(cx.querySelector('label').childNodes[0].textContent);
+  });
+  var docs=[];
+  document.querySelectorAll('#docs .doc[data-fia]').forEach(function(d){
+    var at=fAt[d.dataset.fia];
+    d.dataset.exigido = at ? '1' : '0';
+    d.classList.toggle('pedido', at && d.dataset.enviado!=='1');
+    var mk=d.querySelector('label .marca');
+    if(mk && d.dataset.enviado!=='1'){ mk.className = at ? 'marca' : 'marca opc'; mk.textContent = at ? 'falta' : (fiadorExigido() ? 'se houver fiador' : 'não necessário'); }
+  });
+  document.querySelectorAll('#docs .doc[data-exigido="1"]').forEach(function(d){
+    var inp=d.querySelector('input[type=file]');
+    if(d.dataset.print==='1' && CRED_LINK.arquivo) return;   // r96i — o print anexado no quadro do crédito vale
+    if(d.dataset.enviado!=='1' && !(inp && inp.files.length)) docs.push(d.dataset.nome);
+  });
+  /* r96i — aba Dados da venda alterada com o sinal fora do mínimo/máximo */
+  try{ if(vendaMudou()){ var vc=vendaCalc();
+    if(vc.inf < vc.min-0.005) campos.push('Valor para o sinal (mínimo '+brlL(vc.min)+')');
+    else if(vc.inf > vc.max+0.005) campos.push('Valor para o sinal (máximo '+brlL(vc.max)+')'); } }catch(eV){}
+  if(!campos.length && !docs.length){
+    el.className='trava ok';
+    el.innerHTML='<b>Tudo pronto.</b> Os dados obrigatórios e todos os documentos exigidos estão preenchidos'+
+      ' — é só clicar em <b>Enviar para a Morais</b> (se ainda não enviou) para a análise seguir.';
+  } else {
+    el.className='trava pend';
+    el.innerHTML='<b>A análise de crédito só segue depois que TUDO abaixo for enviado.</b>'+
+      '<ul>'+(docs.length?'<li><b>Documentos ('+docs.length+'):</b> '+docs.map(esc).join(' · ')+'</li>':'')+
+      (campos.length?'<li><b>Dados ('+campos.length+'):</b> '+campos.map(esc).join(' · ')+'</li>':'')+'</ul>';
+  }
+}
+
+function origensEscolhidas(){
+  var a=document.getElementById('c-origemRenda'), b=document.getElementById('c-origemRendaConjuge');
+  return [(a&&a.value)||'', (b&&b.value)||''];
+}
+function regraTem(lista, o){ return (lista||[]).some(function(x){ return semAcento(x)===semAcento(o); }); }   // compara sem acento
+function montarDocs(){
+  var origens=origensEscolhidas();
+  var civil=(document.getElementById('c-estadoCivil')||{}).value||'';
+  var guardados={};
+  document.querySelectorAll('#docs input[type=file]').forEach(function(el){ if(el.files.length) guardados[el.id]=el.files; });
+
+  /* r63 (item 4) — só aparecem os documentos EXIGIDOS para este cliente
+     (mesma regra do portal). Os já enviados continuam na lista, marcados,
+     para ninguém achar que sumiram; dá para mandar mais arquivos neles. */
+  var linhas=[];
+  DADOS.documentos.forEach(function(d){
+    var regra=REGRA_DOC[d.coluna];
+    var fiaN = (/FIADOR ([12])$/.exec(d.coluna)||[])[1];          // 01/10: documento e comprovante de cada fiador
+    /* 06/10 (item 3) — cada documento olha a PESSOA dele */
+    var PD=DADOS.pessoasDocs||{}, compN=(/COMPRADOR ([12])$/.exec(d.coluna)||[])[1], baseC=CONJ_BASE[d.coluna];
+    /* r96i — print da tela de aprovação da CAIXA: obrigatório quando há crédito aprovado */
+    var ehPrint = d.coluna==='PRINT APROVACAO CAIXA';
+    var exigido = (ehPrint && credSim()) || DOC_SEMPRE.indexOf(d.coluna)>=0 ||
+                  (regra && origens[0] && regraTem(regra, origens[0])) ||
+                  (baseC && temConjuge() && origens[1] && regraTem(REGRA_DOC[baseC], origens[1])) ||
+                  (d.coluna==='COMPROVANTE DE DIVORCIO' && civil.indexOf('DIVORC')>=0) ||
+                  (d.coluna==='DOC. CONJUGE' && temConjuge()) ||
+                  (d.coluna==='COMP. END. CONJUGE' && temConjuge() && !conjMoraJunto()) ||
+                  (compN && Number(compN)<=(PD.compradores||0));
+    if(!exigido && !fiaN && !(d.temArquivo && (baseC||compN||d.coluna==='COMP. END. CONJUGE'))) return;
+    if(ehPrint && !exigido && !d.temArquivo) return;
+    var nome=ROTULO_DOC[d.coluna]||d.rotulo;
+    var id='d-'+d.coluna.replace(/\W/g,'');
+    /* 01/10 — selo de quem é o documento: proponente, cônjuge, fiador… */
+    var dono=DONO_DOC[d.coluna]||'';
+    if(!dono && regra) dono='proponente'+(origens[0]?' · '+origens[0]:'');
+    if(baseC && origens[1]) dono='cônjuge · '+origens[1];
+    if(!dono && (d.coluna==='CERTIDOES'||d.coluna==='COMPROVANTE DE DIVORCIO')) dono = temConjuge() ? 'proponente e cônjuge' : 'proponente';
+    /* 06/10 (item 2) — renda do comprador: um campo para CADA comprovante, pela origem dele */
+    var mRC=/^COMP\. RENDA COMPRADOR ([12])$/.exec(d.coluna);
+    if(mRC && !d.temArquivo){
+      var selOC=document.getElementById('c-origemRendaComprador'+mRC[1]);
+      var oC=(selOC&&selOC.value)||((PD.origensComp||[])[Number(mRC[1])-1])||'';
+      var basesC=Object.keys(REGRA_DOC).filter(function(b){ return oC && regraTem(REGRA_DOC[b], oC); });
+      if(basesC.length){
+        basesC.forEach(function(b){
+          var nomeC=(ROTULO_DOC[b]||b)+' do comprador '+mRC[1], idC='d-'+b.replace(/\W/g,'')+'C'+mRC[1];
+          linhas.push('<!--G:Comprador '+mRC[1]+'--><div class="doc pedido" data-exigido="1" data-enviado="0" data-nome="'+esc(nomeC)+'">'+
+            '<label for="'+idC+'">'+esc(nomeC)+'<span class="dono">do comprador '+mRC[1]+' · '+esc(oC)+'</span><span class="marca">falta</span>'+
+            '<small>'+esc(DICA_DOC[b]||'')+'</small></label>'+
+            '<input type="file" accept="image/*,application/pdf" id="'+idC+'" data-rotulo="'+esc(nomeC)+'" data-col="'+esc(d.coluna)+'" multiple onchange="aoArquivo(this)"></div>');
+        });
+        return;
+      }
+    }
+    var le=LEITURA[d.coluna];
+    var gPessoa = /^fiador/.test(dono) ? dono.replace(/^./,function(x){return x.toUpperCase();}).replace(/ ·.*/,'')
+                : (/^cônjuge/.test(dono) ? 'Cônjuge' : (/^comprador/.test(dono) ? dono.replace('comprador','Comprador') : 'Proponente'));
+    linhas.push('<!--G:'+gPessoa+'--><div class="doc'+(d.temArquivo||fiaN?'':' pedido')+'" data-exigido="'+(fiaN?0:1)+'" data-enviado="'+(d.temArquivo?1:0)+'"'+(ehPrint?' data-print="1"':'')+
+      (fiaN?' data-fia="'+fiaN+'"':'')+' data-nome="'+esc(nome)+'">'+
+      '<label for="'+id+'">'+esc(nome)+(dono?'<span class="dono">do '+esc(dono)+'</span>':'')+
+      (d.temArquivo?'<span class="marca ok-marca">já enviado</span>':'<span class="marca">falta</span>')+
+      '<small>'+esc(DICA_DOC[d.coluna]||'')+(le?' É lido automaticamente.':'')+'</small>'+
+      (le?'<span class="lst" id="lst-'+id+'"></span>':'')+'</label>'+
+      '<input type="file" accept="image/*,application/pdf" id="'+id+'" data-rotulo="'+esc(d.rotulo)+'" data-col="'+esc(d.coluna)+'" multiple onchange="aoArquivo(this)"></div>');
+  });
+  /* 06/10 (item 3) — um quadro por pessoa, como na proposta */
+  var gr={}, ord=['Proponente','Cônjuge','Comprador 1','Comprador 2','Fiador 1','Fiador 2'];
+  linhas.forEach(function(h){ var m=/^<!--G:(.*?)-->/.exec(h); var g=m?m[1]:'Proponente'; (gr[g]=gr[g]||[]).push(h.replace(/^<!--G:.*?-->/,'')); });
+  linhas = Object.keys(gr).sort(function(a,b){ return (ord.indexOf(a)+99)%99-(ord.indexOf(b)+99)%99; }).map(function(g){
+    return '<div style="border:1.5px solid #E7DCC7;border-radius:10px;padding:8px 12px;margin:0 0 12px;background:#FFFDF8">'+
+      '<b style="display:block;margin:2px 0 6px;color:#6B4A12;font-size:14px">'+esc(g)+'</b>'+gr[g].join('')+'</div>'; });
+  document.getElementById('docs').innerHTML = linhas.join('') ||
+    '<div class="sub">Escolha a <b>origem da renda</b> acima para ver os documentos exigidos.</div>';
+
+  Object.keys(guardados).forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    var dt=new DataTransfer();
+    for(var i=0;i<guardados[id].length;i++) dt.items.add(guardados[id][i]);
+    el.files=dt.files;
+  });
+  resumoAnexos();
+}
+
+/* ---------------- leitura automática (01/10) ---------------- */
+function apiPost(p){
+  return fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)})
+    .then(function(r){ return r.json(); });
+}
+function prepararLeitura(file){
+  return new Promise(function(ok){
+    var t=file.type||'';
+    if(t==='application/pdf'){
+      if(file.size>6*1024*1024) return ok(null);
+      return lerBase64(file).then(function(b){ ok({nome:file.name, tipo:t, base64:b}); }).catch(function(){ ok(null); });
+    }
+    if(t.indexOf('image/')!==0) return ok(null);
+    var img=new Image(), url=URL.createObjectURL(file);
+    img.onload=function(){
+      var s=Math.min(1, 1800/Math.max(img.width,img.height));
+      var c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      ok({nome:file.name.replace(/\.[^.]+$/,'')+'.jpg', tipo:'image/jpeg', base64:c.toDataURL('image/jpeg',0.85).split(',')[1]});
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); ok(null); };
+    img.src=url;
+  });
+}
+function preencherCampo(id, v, chave){
+  var el=document.getElementById('c-'+id); if(!el || !v) return 0;
+  /* 06/10 — o documento lido SEMPRE corrige o campo (antes só preenchia o que estava vazio) */
+  if(chave==='cep') v=fmtCep(v); else if(chave==='cpf') v=fmtCpf(v);
+  else if(chave==='dataNascimento'){ var m=String(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m) v=m[3]+'-'+m[2]+'-'+m[1]; }
+  else if(el.type!=='date') v=semAcento(v);
+  el.value=v; el.classList.add('lido');
+  return 1;
+}
+function aoArquivo(input){
+  resumoAnexos();
+  var le=LEITURA[input.dataset.col], st=document.getElementById('lst-'+input.id);
+  if(!le || !st) return;
+  var arq=input.files && input.files[0];
+  if(!arq){ st.className='lst'; st.textContent=''; return; }
+  st.className='lst lendo'; st.textContent='Lendo o documento…';
+  prepararLeitura(arq).then(function(pre){
+    if(!pre) throw {sem:'Arquivo grande demais ou em formato que não dá para ler.'};
+    if(le.tipo==='endereco') return apiPost({acao:'lerDocumento', tipo:'COMPROVANTE_ENDERECO', quem:le.quem, arquivo:pre});
+    return apiPost({acao:'lerDocumento', tipo:'CNH', quem:le.quem, arquivo:pre}).then(function(r){
+      if(r && r.ok && r.lido) return r;
+      return apiPost({acao:'lerDocumento', tipo:'RG', quem:le.quem, arquivo:pre});
+    });
+  }).then(function(r){
+    if(!(r && r.ok && r.lido)){ st.className='lst err'; st.textContent='Não consegui ler — preencha os dados manualmente.'; return; }
+    var c=r.campos||{}, n=0;
+    Object.keys(le.mapa).forEach(function(k){ n+=preencherCampo(le.mapa[k], c[k], k); });
+    /* proposta antiga, só com o endereço em texto único */
+    if(le.tipo==='endereco' && !n && le.inteiro){
+      var partes=[c.logradouro, c.numero, c.bairro, c.cidade].filter(Boolean).join(', ');
+      if(partes) n+=preencherCampo(le.inteiro, partes+(c.cep?' - CEP '+fmtCep(c.cep):''), 'inteiro');
+    }
+    st.className='lst ok';
+    st.textContent = n ? '✓ Lido — '+n+' campo(s) preenchido(s). Confira.' : '✓ Lido — os campos já estavam preenchidos.';
+    atualizarTrava();
+  }).catch(function(e){
+    st.className='lst err';
+    st.textContent=(e&&e.sem?e.sem+' ':'Leitura indisponível agora. ')+'Preencha manualmente.';
+  });
+}
+
+function arquivos(){
+  var out=[];
+  /* r96 — print da aprovação da CAIXA */
+  var selA=document.getElementById('c-creditoAprovadoCaixa');
+  if(CRED_LINK.arquivo && selA && selA.value==='SIM') out.push({rotulo:'Print da aprovação da CAIXA', arquivo:CRED_LINK.arquivo});
+  document.querySelectorAll('#docs input[type=file]').forEach(function(el){
+    for(var i=0;i<el.files.length;i++) out.push({rotulo:el.dataset.rotulo, arquivo:el.files[i]});
+  });
+  return out;
+}
+function resumoAnexos(){
+  var l=arquivos(), total=l.reduce(function(a,x){ return a+x.arquivo.size; },0);
+  document.getElementById('resumoAnexos').innerHTML = l.length
+    ? l.length+' arquivo(s) · '+(total/1048576).toFixed(1)+' MB'+
+      (total>LIMITE?' <b style="color:#8A2E17">— acima do limite de 20 MB</b>':'')
+    : 'Nenhum arquivo escolhido ainda.';
+  atualizarTrava();
+}
+
+function lerBase64(f){
+  return new Promise(function(ok,err){
+    var r=new FileReader();
+    r.onload=function(){ ok(String(r.result).split(',')[1]); };
+    r.onerror=function(){ err(new Error('falhou')); };
+    r.readAsDataURL(f);
+  });
+}
+
+/* r60 (item 1) — nome completo: pelo menos duas palavras de 2+ letras */
+function nomeCompleto(v){
+  return String(v||'').trim().split(/\s+/).filter(function(p){
+    return p.replace(/[^A-Za-zÀ-ÿ]/g,'').length>=2; }).length>=2;
+}
+function enviar(){
+  var av=document.getElementById('avisoEnvio'), bt=document.getElementById('btEnviar');
+  var nomes=[['c-cliente','proponente'],['c-conjuge','cônjuge']];
+  for(var ni=0; ni<nomes.length; ni++){
+    var el=document.getElementById(nomes[ni][0]);
+    if(!el || !el.offsetParent) continue;                       // campo escondido (solteiro)
+    if(el.value.trim() && !nomeCompleto(el.value)){
+      av.style.display='block'; av.className='aviso erro';
+      av.innerHTML='Informe o <b>nome completo</b> do '+nomes[ni][1]+' (nome e sobrenome).';
+      el.focus(); return;
+    }
+  }
+  var lista=arquivos();
+  var total=lista.reduce(function(a,x){ return a+x.arquivo.size; },0);
+  if(total>LIMITE){
+    av.style.display='block'; av.className='aviso erro';
+    av.innerHTML='Os arquivos somam mais de 20 MB. Envie em duas vezes — o link continua valendo.';
+    return;
+  }
+  var campos={};
+  DADOS.campos.forEach(function(c){
+    var el=document.getElementById('c-'+c.id); if(!el) return;
+    if(String(el.value||'').trim()) campos[c.id]=el.value;
+  });
+  /* 03/10 (r77) — crédito aprovado pelo link: mesmas regras da etapa 2 da proposta */
+  var selC=document.getElementById('c-creditoAprovadoCaixa');
+  if(selC && selC.value==='SIM'){
+    var falta=[], aval=simLinkAval(), teto=aval*0.8, cred=simLinkNum('c-creditoAprovado');
+    if(!cred || (Math.abs(cred-credOriginal())>0.5 && !CRED_LINK.ass)) falta.push('print da tela de aprovação da CAIXA (o crédito é lido dele)');
+    if(!String((document.getElementById('c-correspondente')||{}).value||'').trim()) falta.push('correspondente');
+    var vcC=vendaCalc(); if(vcC.inf < vcC.min-0.005) falta.push('valor para o sinal (mínimo '+brlL(vcC.min)+', aba Dados da venda)');
+    if(!simLinkNum('sl-rendaTotal')) falta.push('renda total');
+    var simula = teto>0 && cred>=teto-0.5;
+    if(cred && !simula && !simLinkNum('c-parcelaFinanciamento')) falta.push('parcela do financiamento (crédito abaixo do teto)');
+    if(simula){ var nasc=document.getElementById('c-dataNascimento'); if(nasc && !nasc.value) falta.push('data de nascimento do proponente'); }
+    if(falta.length){ av.style.display='block'; av.className='aviso erro';
+      av.innerHTML='Para registrar o crédito aprovado, informe: <b>'+falta.join(', ')+'</b>.'; return; }
+    var sd=simLinkColetar(simula); Object.keys(sd).forEach(function(k){ campos[k]=sd[k]; });
+    campos.creditoAssinatura=CRED_LINK.ass;   // r96 — crédito lido do print
+  }
+  /* r96i — aba Dados da venda: só vai se algo mudou */
+  var venda=null;
+  if(vendaMudou()){
+    var vc=vendaCalc();
+    if(vc.inf < vc.min-0.005 || vc.inf > vc.max+0.005){
+      mostrarAba('venda');
+      av.style.display='block'; av.className='aviso erro';
+      av.innerHTML = vc.inf < vc.min-0.005 ? 'O <b>valor para o sinal</b> precisa ser de pelo menos <b>'+brlL(vc.min)+'</b> (aba Dados da venda).'
+                                           : 'O <b>valor para o sinal</b> não pode passar de <b>'+brlL(vc.max)+'</b> (aba Dados da venda).';
+      return;
+    }
+    venda=vendaPayload(vc);
+  }
+
+
+  bt.disabled=true;
+  av.style.display='block'; av.className='aviso info';
+  av.innerHTML='<b>Enviando…</b> não feche a página.';
+
+  Promise.all(lista.map(function(x){
+    return lerBase64(x.arquivo).then(function(b64){
+      return {rotulo:x.rotulo, nome:x.arquivo.name, tipo:x.arquivo.type||'application/octet-stream', base64:b64};
+    });
+  })).then(function(anexos){
+    return fetch(APPS_SCRIPT_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({acao:'completarProposta', pageId:ID, token:TOKEN, campos:campos, anexos:anexos, venda:venda,
+                           unidadeNova: UN_NOVA ? UN_NOVA.unidade : ''})   // 27/10 — troca de unidade
+    }).then(function(r){ return r.json(); });
+  }).then(function(j){
+    bt.disabled=false;
+    if(j && j.ok){
+      av.className='aviso ok';
+      av.innerHTML='<b>Enviado.</b> '+(j.gravados&&j.gravados.length ? j.gravados.length+' campo(s) atualizados. ' : '')+
+        ((j.anexos&&j.anexos.ok) ? j.anexos.ok+' documento(s) anexados.' : '')+
+        (j.unidade&&j.unidade.ok ? ' <b>Unidade alterada para '+esc(j.unidade.unidade)+'</b> (Tipo '+esc(j.unidade.tipo)+', '+brl(j.unidade.preco)+').' :
+          (j.unidade&&j.unidade.erro ? '<br><b style="color:#8A2E17">Unidade NÃO alterada:</b> '+esc(j.unidade.erro) : ''))+
+        (j.venda&&j.venda.ok ? ' Fluxo de pagamento atualizado na proposta.' : (j.venda&&j.venda.erro ? '<br><b style="color:#8A2E17">Fluxo não gravado:</b> '+esc(j.venda.erro) : ''))+
+        ((j.anexos&&j.anexos.falhas&&j.anexos.falhas.length)
+          ? '<br><b style="color:#8A2E17">Não subiram:</b> '+j.anexos.falhas.map(esc).join(' · ') : '')+
+        '<br>A Morais já foi avisada. Confira o quadro no topo: se ainda faltar algo, a análise '+
+        'só segue depois que for enviado.';
+      carregar();   // recarrega para mostrar o que ficou gravado
+    } else {
+      av.className='aviso erro';
+      av.innerHTML='Não consegui gravar: '+esc((j&&j.erro)||'erro desconhecido');
+    }
+  }).catch(function(){
+    bt.disabled=false;
+    av.className='aviso erro';
+    av.innerHTML='A resposta não chegou. Confira com a Morais antes de enviar de novo.';
+  });
+}
+
+carregar();
+</script>
+</body>
+</html>

@@ -253,3 +253,18 @@ class SimuladorJaApontado(unittest.TestCase):
             r = rodar(d, "--exec", EXEC, "--venda", EXEC_VENDA, "--sim", self.SIM)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertIn(self.SIM, (d / "proposta.html").read_text(encoding="utf-8"))
+
+
+class SiteDoCondominio(unittest.TestCase):
+    """30/10/2026: o site do condomínio tem cópia em simulador/; nenhum link pode sobrar para o de produção."""
+    def test_links_e_email_vao_para_o_teste(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = pathlib.Path(t); (d / "simulador").mkdir()
+            (d / "simulador" / "proposta.html").write_text(
+                '<a href="https://DEVMoraisEng.github.io/SIMULADOR-RESERVA-DO-IP-S/index.html">mapa</a>\n'
+                "var EMAIL_COPIA = 'vendasreservadosipes@gmail.com';\n", encoding="utf-8")
+            r = rodar(d, "--exec", EXEC, "--venda", EXEC_VENDA)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            s = (d / "simulador" / "proposta.html").read_text(encoding="utf-8")
+            self.assertIn("https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/index.html", s)
+            self.assertIn("var EMAIL_COPIA = 'moraisengdev@gmail.com';", s)

@@ -33,6 +33,12 @@ SIM_PROD = "https://script.google.com/macros/s/AKfycbzwUIApU5nKXi1vG3cEs_V2DWCdk
 MARCA_SIM = "@@URL-DO-SIMULADOR-TESTE@@"
 REPO_PROD, REPO_TESTE = "DEVMoraisEng/PORTAL-MORAIS", "MoraisEng-Teste/PORTAL-MORAIS"
 DOMINIO_PROD, DOMINIO_TESTE = "devmoraiseng.github.io/PORTAL-MORAIS", "moraiseng-teste.github.io/PORTAL-MORAIS"
+# 30/10/2026: o site do condomínio (mapa, SUBIR PASTA, simulador, proposta) tem cópia em simulador/
+# deste fork; todo link para o site de produção passa a ir para ela
+SITE_SIM_PROD, SITE_SIM_TESTE = ("devmoraiseng.github.io/SIMULADOR-RESERVA-DO-IP-S",
+                                 "moraiseng-teste.github.io/PORTAL-MORAIS/simulador")
+# cópia do e-mail da simulação/proposta vai para a conta de desenvolvimento (como no SIMULADOR-TESTE)
+EMAIL_COPIA_RE = (r"var EMAIL_COPIA = '[^']*';", "var EMAIL_COPIA = 'moraisengdev@gmail.com';")
 # ids de produção conhecidos além dos 10 do IDS acima — ficam desligados no
 # fork (os passos/robôs que os usariam já são desligados por PASSOS_DESLIGAR
 # e pelo apagamento de robos-mc.yml), então só viram AVISO, não erro.
@@ -111,6 +117,8 @@ def main():
             s = s.replace(prod, teste)
         s = s.replace(REPO_PROD, REPO_TESTE)
         s = s.replace(DOMINIO_PROD, DOMINIO_TESTE)
+        s = re.sub(r"(?i)" + re.escape(SITE_SIM_PROD), SITE_SIM_TESTE, s)
+        s = re.sub(*EMAIL_COPIA_RE, s)
         if str(rel) == VENDA_DOSSIE:
             # venda-dossie.js fala com um Apps Script SEPARADO (PORTAL-VENDA);
             # a troca genérica da URL /exec de baixo pularia este arquivo e
@@ -158,6 +166,8 @@ def main():
             for i, nome in IDS_AVISO.items():
                 if i in t:
                     avisos.append(f"{rel}: {i} ({nome}) — desligado no fork (passos/robôs desligados)")
+            if re.search(r"(?i)" + re.escape(SITE_SIM_PROD), t):
+                urls_sobras.append(f"{rel}: link para o site do condomínio de produção")
             for m in re.finditer(r"DEVMoraisEng/[\w.-]+", t):
                 avisos.append(f"{rel}: {m.group(0)} — repositório de produção fora do PORTAL-MORAIS")
     print("alterados:", len(alterados))

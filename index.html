@@ -457,7 +457,7 @@ const SISTEMAS=[
      lote, prazos 150/180 dias, medições da semana e calendários. Público como
      o Mapa de Vendas; quem tem acesso a DOCUMENTOS preenche o status lá. */
   {chave:"MAPA DE OBRAS",nome:"Mapa de Obras",desc:"Status das obras por lote, prazos e medições",ico:"M",link:"https://devmoraiseng.github.io/OBRAS-GERAL/",externo:true,grupo:"MAPAS",publico:true},
-  {chave:"MAPA RESERVA DOS IPÊS",nome:"Mapa Reserva dos Ipês",desc:"Mapa de vendas e simulador do empreendimento",ico:"M",link:"https://devmoraiseng.github.io/SIMULADOR-RESERVA-DO-IP-S/",externo:true,grupo:"MAPAS",publico:true},
+  {chave:"MAPA RESERVA DOS IPÊS",nome:"Mapa Reserva dos Ipês",desc:"Mapa de vendas e simulador do empreendimento",ico:"M",link:"https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/",externo:true,grupo:"MAPAS",publico:true},
 
   {chave:"RAS LÍDERES",nome:"RAS Líderes",desc:"Reunião de alinhamento — Líderes",ico:"R",link:"https://devmoraiseng.github.io/RAS-SEMANAL/",externo:true,grupo:"REUNIÕES"},
   {chave:"RAS FINANCEIRO",nome:"RAS Financeiro",desc:"Reunião de alinhamento — Financeiro",ico:"R",link:"https://devmoraiseng.github.io/RAS-FINANCEIRO/",externo:true,grupo:"REUNIÕES"},
@@ -485,9 +485,15 @@ const SISTEMAS=[
      ela usa a sessão deste portal e o Apps Script AUT-CONFERENCIA-NF recusa
      quem não tem "CONFERÊNCIA DE NF" na coluna ACESSOS do LOGINS (ADM,
      MASTER e TESTES passam sempre) — é ele que guarda a chave da OpenAI. */
-  {chave:"CONFERÊNCIA DE NF",nome:"Conferência OC × NF",desc:"Ordem de compra × nota fiscal: itens, quantidades e valores",ico:"C",link:"https://devmoraiseng.github.io/CONFER-NCIA-COMPRAS/",externo:true,grupo:"AUTOMAÇÕES",publico:true}
+  {chave:"CONFERÊNCIA DE NF",nome:"Conferência OC × NF",desc:"Ordem de compra × nota fiscal: itens, quantidades e valores",ico:"C",link:"https://devmoraiseng.github.io/CONFER-NCIA-COMPRAS/",externo:true,grupo:"AUTOMAÇÕES",publico:true},
+
+  /* ---------- ENTRETENIMENTO (29/10/26) ----------
+     Morais Royale: o servidor do jogo roda no servidor da empresa; a página
+     entretenimento.html abre o jogo já logado com a sessão do portal.
+     Público (todo usuário logado vê). */
+  {chave:"ENTRETENIMENTO",nome:"Morais Royale",desc:"Jogo de tiro da obra — jogue com a equipe",ico:"J",link:"entretenimento.html",grupo:"ENTRETENIMENTO",publico:true}
 ];
-const GRUPOS_ORDEM=["SETORES","PROCESSOS E ARQUIVOS","ANÁLISES","MAPAS","REUNIÕES","AUTOMAÇÕES"]; // setores, análises, mapas, reuniões e automações — nessa ordem
+const GRUPOS_ORDEM=["SETORES","PROCESSOS E ARQUIVOS","ANÁLISES","MAPAS","REUNIÕES","AUTOMAÇÕES","ENTRETENIMENTO"]; // setores, análises, mapas, reuniões, automações e entretenimento — nessa ordem
 const S=exigirSessao(); atualizarStatus();
 
 function pintarUsuario(s){ document.getElementById("u-nome").textContent=s.nome||s.login; const tb=document.getElementById("u-tipo"); tb.textContent=s.tipo; tb.className="badge"+(s.tipo==="ADM"?" adm":""); }

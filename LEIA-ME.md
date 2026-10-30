@@ -28,7 +28,7 @@ Cada pasta vai para um destino. Só estão os arquivos que mudaram (completos).
   https://script.google.com/macros/s/AKfycbxciC7C575zSGZgyoTeBFs48MR_apksHIxT03AV6elzJ6_c4ZtNTuTJVo9Ysjb4ik6w1g/exec?acao=versao
 - Colunas das bases (para conferir o que foi criado):
   https://script.google.com/macros/s/AKfycbxciC7C575zSGZgyoTeBFs48MR_apksHIxT03AV6elzJ6_c4ZtNTuTJVo9Ysjb4ik6w1g/exec?acao=esquema
-- Proposta: https://devmoraiseng.github.io/SIMULADOR-RESERVA-DO-IP-S/proposta.html
+- Proposta: https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/proposta.html
 - Completar venda: sai do portal (botão "Link para completar as informações da venda" dentro da proposta)
 - Portal, aba Simulações/Propostas: https://moraiseng-teste.github.io/PORTAL-MORAIS/simulacoes.html
 
