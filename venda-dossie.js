@@ -594,12 +594,23 @@
     h += htmlTestemunhas(e.testemunhas, dis);
     h += htmlFluxo(e.fluxo, u, dis);
     h += htmlCondicoes(e.condicoes, u, dis);
+    h += htmlHistorico(e.historico);
     if (u.msg) h += '<div class="dz-msg">' + esc(u.msg) + "</div>";
     if (u.link && /^https:\/\//.test(u.link)) {
       h += '<div class="dz-msg">O navegador bloqueou a janela — clique em Abrir contrato. ' +
         '<a href="' + esc(u.link) + '" target="_blank" rel="noopener">Abrir contrato</a></div>';
     }
     return h;
+  }
+
+  /* 30/10 (dono): histórico do contrato — quem fez o quê e quando (coluna HISTÓRICO DO CONTRATO; só leitura).
+     Fechado por padrão; a mais nova em cima. */
+  function htmlHistorico(l) {
+    if (!Array.isArray(l)) return "";   /* base sem a coluna HISTÓRICO DO CONTRATO */
+    var h = '<details class="dz-hist"><summary><b>Histórico do contrato</b> <span class="dz-nota">(' +
+      (l.length ? l.length + (l.length === 1 ? " registro" : " registros") : "nada registrado ainda") + " — quem fez o quê e quando)</span></summary>";
+    if (l.length) h += '<ul class="dz-hist-lista">' + l.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
+    return h + "</details>";
   }
 
   /* 29/10: "Condições especiais desta venda" (item 16). O texto vai para o contrato só desta casa; vazio = "Não há.".
@@ -2157,7 +2168,7 @@
        Carrega mesmo sem o painel da casa: o cartão do condomínio também usa. */
     /* 30/10: leitor das rubricas do comprador (pdf.js só carrega na hora de enviar) */
     var sr = document.createElement("script"); sr.src = "venda/RubricasVenda.js?v=1"; document.head.appendChild(sr);
-    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=11";
+    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=12";
     sa.onload = function () { [blocosCasa, blocosCond, blocosPR].forEach(function (b) { if (b) b.pintarAssinatura(); }); };
     document.head.appendChild(sa);
     var body = document.getElementById("pn-body"); if (!body) return;
