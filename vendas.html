@@ -383,6 +383,23 @@ tr.setor-detalhe td{background:var(--bg2);padding:12px 16px}
 .cd-prog{margin-top:8px;font-size:12.5px;color:var(--azul,#2B5A7A)}
 .cd-prog .barra{height:6px;border-radius:4px;background:rgba(43,90,122,.15);overflow:hidden;margin-top:4px}
 .cd-prog .barra i{display:block;height:100%;width:0;background:var(--verde-btn,#4CD964);transition:width .4s}
+/* 31/10/2026 (dono): o cartão do condomínio em abas — mesma pílula das abas do setor, menor. Cada parte do
+   cartão tem data-sec; os blocos do venda-dossie.js (#cd-venda) vão para a aba pela classe. Só esconde/mostra:
+   nada é desenhado de novo ao trocar de aba. */
+.cd-abas{display:flex;justify-content:center;margin:6px 0 14px;overflow-x:auto}
+.cd-abas .tabs{padding:4px;gap:4px;border-width:2px}
+.cd-abas .tab{padding:7px 14px;font-size:13.5px;letter-spacing:.06em}
+.cd-cardbox[data-aba] [data-sec],.cd-cardbox[data-aba] #cd-venda>div{display:none}
+.cd-cardbox[data-aba="resumo"] [data-sec="resumo"],.cd-cardbox[data-aba="contrato"] [data-sec="contrato"],
+.cd-cardbox[data-aba="andamento"] [data-sec="andamento"],
+.cd-cardbox[data-aba="prereserva"] #cd-venda>.vb-pr,.cd-cardbox[data-aba="prereserva"] #cd-venda>.vb-pr-ass,
+.cd-cardbox[data-aba="documentos"] #cd-venda>.vb-conf,
+.cd-cardbox[data-aba="contrato"] #cd-venda>.vb-ct,.cd-cardbox[data-aba="contrato"] #cd-venda>.vb-ass,
+.cd-cardbox[data-aba="contrato"] #cd-venda>.vb-mc,
+.cd-cardbox[data-aba="financeiro"] #cd-venda>.vb-fin,.cd-cardbox[data-aba="financeiro"] #cd-venda>.vb-antec{display:block}
+details.cd-dobra{border:1.5px solid var(--border2);border-radius:10px;background:var(--bg2);margin:0 0 14px}
+details.cd-dobra>summary{cursor:pointer;padding:9px 12px;font-weight:700;font-size:13px;color:var(--azul)}
+details.cd-dobra>div{padding:0 12px 12px}
 .cd-falta{margin-top:8px;padding:9px 12px;background:#FDECEA;border-left:3px solid #C0392B;font-size:12.5px;color:#8A2E17;border-radius:0 6px 6px 0}
 /* ===== Painel Casas Vendidas (era casas-vendidas.html) — escopado em #st-vendidas ===== */
 #st-vendidas *, #st-vendidas *::before, #st-vendidas *::after{box-sizing:border-box;margin:0;padding:0}
@@ -1129,7 +1146,9 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
 <script src="app.js?v=45"></script>
 <script src="venda/painel-casa.js?v=1"></script>
 <script src="venda/FluxoLivre.js?v=3"></script><!-- 29/10: Alterar fluxo -->
-<script src="venda-dossie.js?v=20"></script>
+<script src="venda/quadro-fluxo.js?v=1"></script><!-- 31/10: quadro do pro soluto segue o fluxo alterado -->
+<script src="venda-dossie.js?v=25"></script>
+<script src="venda/contrato-vendida.js?v=2"></script>
 <script>
 /* claro/escuro — a escolha vale só para quem clicou, no navegador dele.
    Mesma chave (morais_tema) das outras páginas do portal. */
@@ -1663,6 +1682,9 @@ function abaSetor(t){
    linha atualizada.
    ===================================================================== */
 let COND=null, COND_ABERTA=null, COND_CARREGANDO=false;
+/* 31/10/2026: aba aberta no cartão do condomínio — fica a mesma ao redesenhar e ao abrir outra unidade */
+let COND_ABA="resumo";
+const CD_ABAS=[["resumo","Resumo"],["prereserva","Pré-reserva"],["documentos","Documentos"],["contrato","Contrato"],["financeiro","Financeiro"],["andamento","Andamento"]];
 const CD_PADRAO=["UNIDADE","CONDOMÍNIO","PROPONENTE","CORRETOR","CPF CORRETOR","STATUS DO CADASTRO","DATA DA VENDA","VALOR DE VENDA","COMISSÃO",
   "VALOR DO CRÉDITO","VALOR DA PARCELA","DATA DE ASSINATURA DO CONTRATO","DIA PAGAMENTO PARCELAS","DATA DA ENTREGA",
   "DATA SINAL 30 DIAS","DATA SINAL 60 DIAS","DATA SINAL 90 DIAS",
@@ -1710,6 +1732,7 @@ async function condCarregar(forcar){
     return;
   }
   COND=r; condOpcoesCond(); condRender();
+  setTimeout(condVarrerContratosEnviados, 1500);   /* 31/10: contrato enviado → proposta e unidade VENDIDA */
 }
 /* 30/09 — filtro por CONDOMÍNIO (hoje só o Reserva dos Ipês; entra sozinho quem vier) */
 function condOpcoesCond(){
@@ -1828,6 +1851,9 @@ function condEditar(td){
   campo.addEventListener("change",()=>{ if(campo.tagName==="SELECT"||campo.type==="date") fim(true); });
 }
 async function condSalvar(id,prop,valor){
+  if(/E-?MAIL/i.test(prop) && String(valor||"").trim() && !emailOk(valor)){
+    toast("E-mail inválido — confira o @ e o ponto (ex.: nome@gmail.com), sem vírgula nem espaço. Não salvei."); condRender(); return false;
+  }
   toast("Salvando "+prop+"…");
   let r=null;
   try{ r=await chamar({action:"simsVendaSalvar",pageId:id,prop:prop,valor:valor},70000); }catch(e){ r=null; }
@@ -1841,6 +1867,10 @@ async function condSalvar(id,prop,valor){
 /* ---- card da unidade ---- */
 function condFechar(){ COND_ABERTA=null; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; }
 function condFluxo(l){
+  /* 31/10/2026 (dono): venda com o fluxo alterado no portal (Alterar fluxo) — o quadro mostra a lista que vai para o
+     contrato e para o Mais Controle (venda/quadro-fluxo.js), não as colunas do simulador */
+  const livre=window.QuadroFluxo?QuadroFluxo.doTexto(cdVal(l,"FLUXO PERSONALIZADO")):null;
+  if(livre) return livre;
   const g=n=>cdVal(l,n), dia=Number(g("DIA PAGAMENTO PARCELAS"))||0;
   const L=[]; let total=0;
   const add=(rot,qtd,val,quando)=>{ if(val==null||val===""||!Number(val)) return;   /* 07/10: parcela zerada no recálculo (assinatura tardia) some do quadro */ const sub=(qtd||1)*Number(val); total+=sub; L.push({rot,qtd:qtd||1,val:Number(val),sub,quando}); };
@@ -1874,22 +1904,25 @@ function cdAchaNum(l,re,excl){
   }
   return null;
 }
-/* 30/09 — mostra de onde sai o pro soluto: valor de venda − crédito = entrada; FGTS e subsídio abatem a entrada */
-function condAbatimentos(l,totalFluxo){
-  const g=n=>cdVal(l,n);
-  const venda=Number(g("VALOR DE VENDA"))||null, cred=Number(g("VALOR DO CRÉDITO"))||null;
-  const fgts=cdAchaNum(l,/FGTS/,/TEVE|DOC|EXTRATO|ANOS|SALDO|N[ºO°] /);
-  const sub=cdAchaNum(l,/SUBSIDIO/,/DOC|N[ºO°] /);
-  const entr=cdAchaNum(l,/ENTRADA/,/PRAZO|DATA|DOC|N[ºO°] /);
+/* 30/09 — mostra de onde sai o pro soluto: valor de venda − crédito = entrada; FGTS e subsídio abatem a entrada.
+   31/10: com o fluxo alterado, os números saem da lista (valor da casa, financiamento, FGTS e subsídio dela). */
+function condAbatimentos(l,fx){
+  const g=n=>cdVal(l,n), alt=!!fx.alterado, totalFluxo=fx.total;
+  const vProp=Number(g("VALOR DE VENDA"))||null;
+  const venda=alt?fx.valor:vProp, cred=alt?(fx.credito||null):(Number(g("VALOR DO CRÉDITO"))||null);
+  const fgts=alt?(fx.fgts||null):cdAchaNum(l,/FGTS/,/TEVE|DOC|EXTRATO|ANOS|SALDO|N[ºO°] /);
+  const sub=alt?(fx.subsidio||null):cdAchaNum(l,/SUBSIDIO/,/DOC|N[ºO°] /);
+  const entr=alt?null:cdAchaNum(l,/ENTRADA/,/PRAZO|DATA|DOC|N[ºO°] /);
   const entradaCalc=(venda!=null&&cred!=null)?venda-cred:null;
   const entrada=entr!=null?entr:entradaCalc;
   if(venda==null&&fgts==null&&sub==null&&entrada==null) return "";
   const linha=(rot,val,neg)=>val==null?"":'<tr><td>'+rot+'</td><td class="r'+(neg?" neg":"")+'">'+(neg?"− ":"")+cdBRL(Math.abs(val))+'</td></tr>';
   const abat=(fgts||0)+(sub||0);
   const esperado=entrada!=null?Math.max(entrada-abat,0):null;
+  const mudouPreco=alt&&vProp!=null&&Math.round(venda*100)!==Math.round(vProp*100);
   let h='<div class="cd-abat"><b style="color:var(--azul);font-size:14px">COMO SE CHEGA NO PRO SOLUTO</b>'+
     '<table class="cd-fl" style="margin-top:6px"><tbody>'+
-    linha("Valor de venda",venda)+
+    linha(mudouPreco?"Valor de venda (alterado no fluxo; na proposta "+cdBRL(vProp)+")":"Valor de venda",venda)+
     linha("Crédito aprovado (financiamento)",cred,true)+
     (entr!=null?linha("Entrada (valor para entrada informado)",entr):linha("Entrada (valor de venda − crédito)",entradaCalc))+
     linha("FGTS usado na entrada",fgts,true)+
@@ -1916,7 +1949,7 @@ function condEtapas(l){
      prox:prSit==="ENVIADO"?"esperar a assinatura do termo (ou reenviar o link)":cdTemArq(g("PRÉ-RESERVA - TERMO GERADO"))?"enviar o termo de pré-reserva para assinatura":"preencher a conta para devolução e gerar o termo de pré-reserva"},
     {nome:"Datas do fluxo", alvo:"#cd-ass", feito:!!(g("DATA DE ASSINATURA DO CONTRATO")&&g("DIA PAGAMENTO PARCELAS")&&g("DATA DA ENTREGA")),
      sub:"", prox:"preencher data de assinatura, dia de pagamento e entrega e salvar o fluxo"},
-    {nome:"Contrato", alvo:".vb-pr-ass + .grp", feito:cdTemArq(g("CONTRATO GERADO"))||!!aSit,
+    {nome:"Contrato", alvo:".vb-ct", feito:cdTemArq(g("CONTRATO GERADO"))||!!aSit,
      sub:"", prox:"gerar o pré-contrato, conferir e gerar o contrato"},
     {nome:"Assinaturas", alvo:".vb-ass", feito:aSit==="ASSINADO",
      sub:aSit==="ENVIADO"?"assinando":aSit==="ASSINADO"?"assinado":"", prox:aSit==="ENVIADO"?"esperar as assinaturas (ou reenviar o link)":"enviar o contrato para assinatura na Clicksign"},
@@ -1925,7 +1958,10 @@ function condEtapas(l){
   ];
   it[1].sub=it[1].feito?"preenchidas":"faltam datas"; it[2].sub=it[2].sub||(it[2].feito?"gerado":"");
   if(it[3].feito) it[3].sub="assinado"; if(it[4].feito) it[4].sub="lançada";
-  let atual=it.findIndex(x=>!x.feito);
+  /* 31/10/2026 (dono): contrato gerado, assinando ou assinado sobrepõe a pré-reserva — a etapa da linha passa a ser
+     a do contrato em diante, mesmo com o termo de pré-reserva pendente */
+  const ini=it[2].feito?2:0;
+  let atual=it.findIndex((x,i)=>i>=ini&&!x.feito);
   return {itens:it, atual:atual};   /* atual = -1: tudo feito */
 }
 function condEtapaTag(l){
@@ -1948,27 +1984,102 @@ function condEtapasHtml(l){
 function condIrEtapa(sel){
   const box=document.getElementById("cd-card"); if(!box) return;
   const el=box.querySelector(sel); if(!el) return;
+  const aba=condAbaDoBloco(el); if(aba) condTrocarAba(aba);
   el.scrollIntoView({behavior:"smooth",block:"start"});
+}
+/* 31/10/2026: em que aba do cartão mora um bloco (data-sec do vendas.html ou classe do venda-dossie.js) */
+const CD_ABA_DO_BLOCO={"vb-pr":"prereserva","vb-pr-ass":"prereserva","vb-conf":"documentos","vb-ct":"contrato","vb-ass":"contrato","vb-mc":"contrato","vb-fin":"financeiro","vb-antec":"financeiro"};
+function condAbaDoBloco(el){
+  const sec=el.closest&&el.closest("[data-sec]"); if(sec) return sec.getAttribute("data-sec");
+  let n=el; while(n&&n.parentElement&&n.parentElement.id!=="cd-venda") n=n.parentElement;
+  if(!n||!n.classList) return null;
+  for(const c of n.classList) if(CD_ABA_DO_BLOCO[c]) return CD_ABA_DO_BLOCO[c];
+  return null;
+}
+function condAbasHtml(){
+  return '<div class="cd-abas"><div class="tabs" role="tablist">'+CD_ABAS.map(a=>'<button type="button" role="tab" class="tab'+(a[0]===COND_ABA?" on":"")+'" aria-selected="'+(a[0]===COND_ABA)+'" data-aba="'+a[0]+'" onclick="condTrocarAba(this.dataset.aba)">'+a[1]+'</button>').join("")+'</div></div>';
+}
+function condTrocarAba(aba){
+  if(!CD_ABAS.some(a=>a[0]===aba)) return;
+  COND_ABA=aba;
+  const box=document.querySelector("#cd-card .cd-cardbox"); if(!box) return;
+  box.setAttribute("data-aba",aba);
+  box.querySelectorAll(".cd-abas .tab").forEach(b=>{ const on=b.getAttribute("data-aba")===aba; b.classList.toggle("on",on); b.setAttribute("aria-selected",on); });
+  if(window.VendaBlocos&&VendaBlocos.aba) VendaBlocos.aba(aba);   /* o Financeiro só lê as parcelas quando abre */
+}
+/* 31/10/2026: valor de venda e comissão do topo do cartão. Com o fluxo alterado o valor é o da lista; a comissão
+   continua a da proposta, avisando quando o contrato a refaz (valor da casa ou prazo das pós-chaves mudou) */
+function condKpisHtml(l,fx){
+  const g=n=>cdVal(l,n);
+  const pct=Number(g("PERCENTUAL COMISSÃO"));
+  const pctTxt=pct?((pct<1?pct*100:pct).toLocaleString("pt-BR",{maximumFractionDigits:2})+"%"):"";
+  const vProp=Number(g("VALOR DE VENDA"))||null;
+  const mudouPreco=fx.alterado&&vProp!=null&&Math.round(fx.valor*100)!==Math.round(vProp*100);
+  const mudouPrazo=fx.alterado&&fx.posN!==(Number(g("Nº PARCELAS PÓS CHAVES"))||0);
+  let com='<b>'+cdBRL(g("COMISSÃO"))+'</b>'+(pctTxt?'<span>'+pctTxt+(g("PRAZO ENTRADA")?' · prazo '+g("PRAZO ENTRADA")+' meses':'')+'</span>':'');
+  if(fx.alterado&&fx.semComissao) com='<b>'+cdBRL(0)+'</b><span>isenta no fluxo alterado (venda direta)</span>';
+  else if(mudouPreco||mudouPrazo) com+='<span>da proposta — o contrato refaz pelo fluxo alterado</span>';
+  return '<div class="cd-kpi"><small>Valor de venda</small><b>'+cdBRL(fx.alterado?fx.valor:g("VALOR DE VENDA"))+'</b>'+
+      (mudouPreco?'<span>alterado no fluxo · proposta '+cdBRL(vProp)+'</span>':'')+'</div>'+
+    '<div class="cd-kpi"><small>Comissão</small>'+com+'</div>';
+}
+/* 31/10/2026: "como se chega", o quadro do pro soluto e os avisos — redesenhados sozinhos quando o fluxo é salvo */
+function condQuadroHtml(l,fx){
+  const g=n=>cdVal(l,n);
+  const ass=g("DATA DE ASSINATURA DO CONTRATO"), dia=g("DIA PAGAMENTO PARCELAS"), ent=g("DATA DA ENTREGA");
+  const falta=[]; if(!ass) falta.push("data de assinatura do contrato"); if(!dia) falta.push("dia de pagamento (o cliente escolhe)"); if(!ent) falta.push("data da entrega (para as parcelas pós-chaves)");
+  const linhasH=fx.L.map(x=>x.grupo?'<tr class="gr"><td colspan="4">'+x.grupo+'</td></tr>'
+    :'<tr><td>'+esc(x.rot)+'</td><td class="r">'+(x.qtd>1?x.qtd+" × ":"")+cdBRL(x.val)+(x.ult?'<br><small>última '+cdBRL(x.ult)+'</small>':'')+'</td><td>'+esc(x.quando||"—")+'</td><td class="r">'+cdBRL(x.sub)+'</td></tr>').join("");
+  return condAbatimentos(l,fx)+
+    '<b style="color:var(--azul);font-size:14px">FLUXO DE PAGAMENTO PRO SOLUTO</b>'+(fx.alterado?' <span class="cd-etapa">alterado no portal</span>':'')+
+    '<table class="cd-fl" style="margin-top:6px"><thead><tr><th>Parcela</th><th>Valor</th><th>Quando</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>'+linhasH+
+    '<tr class="tot"><td colspan="3">TOTAL DO PRO SOLUTO</td><td class="r">'+cdBRL(fx.total)+'</td></tr></tbody></table>'+
+    (falta.length?'<div class="cd-falta"><b>Para fechar o fluxo falta:</b> '+falta.join("; ")+'.</div>':'')+
+    (fx.alterado
+      ?'<div class="cd-aviso"><b>Fluxo alterado no portal</b> (botão Alterar fluxo, na Tela de venda acima): é este fluxo que vai para o contrato e para o Mais Controle. Mudar a data de assinatura, o dia de pagamento ou a entrega aqui em cima <b>não</b> mexe nestas parcelas — ajuste pelo Alterar fluxo.</div>'
+      :'<div class="cd-aviso"><b>Atenção:</b> As parcelas e os valores do fluxo podem sofrer alteração de acordo com a data de assinatura do contrato.</div>');
+}
+/* 31/10/2026 (dono): o dossiê avisa o que gravou (Alterar fluxo → FLUXO PERSONALIZADO, venda-dossie.js
+   detalheFluxoGravado). A linha do condomínio recebe o valor novo e o cartão aberto redesenha o topo e o quadro do
+   pro soluto sem reler a base (o bloco do contrato embaixo não é remontado). Só as colunas da lista. */
+const CD_GRAVADOS_APLICA=["FLUXO PERSONALIZADO"];
+function condAplicarGravados(id,gravados){
+  if(!COND||!gravados||typeof gravados!=="object") return;
+  const semTraco=s=>String(s||"").replace(/-/g,"");
+  const l=COND.linhas.find(x=>semTraco(x.id)===semTraco(id)); if(!l||!l.v) return;
+  let mudou=false;
+  Object.keys(gravados).forEach(nome=>{
+    const a=cdNormK(nome); if(CD_GRAVADOS_APLICA.indexOf(a)<0) return;
+    const k=Object.keys(l.v).find(x=>cdNormK(x)===a);
+    l.v[k===undefined?nome:k]=gravados[nome]; mudou=true;
+  });
+  if(!mudou) return;
+  condRender();
+  if(COND_ABERTA!==l.id) return;
+  const fx=condFluxo(l), kp=document.getElementById("cd-kpis"), qd=document.getElementById("cd-quadro");
+  if(kp) kp.innerHTML=condKpisHtml(l,fx);
+  if(qd) qd.innerHTML=condQuadroHtml(l,fx);
 }
 function condAbrir(id){
   const l=COND.linhas.find(x=>x.id===id); if(!l) return;
   COND_ABERTA=id;
   const g=n=>cdVal(l,n), fx=condFluxo(l), tit=COND.titulo;
   const ass=g("DATA DE ASSINATURA DO CONTRATO"), dia=g("DIA PAGAMENTO PARCELAS"), ent=g("DATA DA ENTREGA");
-  const pct=Number(g("PERCENTUAL COMISSÃO"));
-  const pctTxt=pct?((pct<1?pct*100:pct).toLocaleString("pt-BR",{maximumFractionDigits:2})+"%"):"";
-  const falta=[]; if(!ass) falta.push("data de assinatura do contrato"); if(!dia) falta.push("dia de pagamento (o cliente escolhe)"); if(!ent) falta.push("data da entrega (para as parcelas pós-chaves)");
-  const linhasH=fx.L.map(x=>x.grupo?'<tr class="gr"><td colspan="4">'+x.grupo+'</td></tr>'
-    :'<tr><td>'+esc(x.rot)+'</td><td class="r">'+(x.qtd>1?x.qtd+" × ":"")+cdBRL(x.val)+'</td><td>'+esc(x.quando||"—")+'</td><td class="r">'+cdBRL(x.sub)+'</td></tr>').join("");
-  document.getElementById("cd-card").innerHTML='<div class="cd-cardbox">'+
+  document.getElementById("cd-card").innerHTML='<div class="cd-cardbox" data-aba="'+COND_ABA+'">'+
     '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div>'+
     '<h3>Unidade '+esc(g(tit)||"")+(g("CONDOMÍNIO")?' · '+esc(g("CONDOMÍNIO")):'')+'</h3><div class="sub">'+esc(g("PROPONENTE")||"—")+' · Proposta '+esc(g("PROPOSTA")||"—")+' · Corretor: '+esc(g("CORRETOR")||"—")+(g("CPF CORRETOR")?' · CPF '+esc(g("CPF CORRETOR")):'')+'</div></div>'+
     '<button class="cd-bt" onclick="condFechar()">✕ Fechar</button></div>'+
     condEtapasHtml(l)+
-    '<div class="cd-kpis">'+
-      '<div class="cd-kpi"><small>Valor de venda</small><b>'+cdBRL(g("VALOR DE VENDA"))+'</b></div>'+
-      '<div class="cd-kpi"><small>Comissão</small><b>'+cdBRL(g("COMISSÃO"))+'</b>'+(pctTxt?'<span>'+pctTxt+(g("PRAZO ENTRADA")?' · prazo '+g("PRAZO ENTRADA")+' meses':'')+'</span>':'')+'</div>'+
+    condAbasHtml()+
+    /* aba Resumo: valores, link para completar a venda e pendências */
+    '<div data-sec="resumo">'+
+    '<div class="cd-kpis" id="cd-kpis">'+condKpisHtml(l,fx)+'</div>'+
+    condLinkVendaHtml(l)+
+    (g("PENDÊNCIAS")&&g("PENDÊNCIAS")!=="nenhuma"?'<div class="cd-falta" style="margin-top:8px"><b>Pendências do cadastro:</b> '+esc(g("PENDÊNCIAS"))+'</div>':'')+
     '</div>'+
+    /* aba Contrato: datas que entram no contrato e o quadro do pro soluto (recolhido); os blocos do contrato,
+       assinatura e Mais Controle vêm do venda-dossie.js logo abaixo, em #cd-venda */
+    '<div data-sec="contrato">'+
     '<div class="cd-ent">'+
       '<div><label>Data de assinatura do contrato</label><input type="date" id="cd-ass" value="'+esc(ass?String(ass).slice(0,10):"")+'"></div>'+
       '<div><label>Dia de pagamento (cliente escolhe)</label><select id="cd-dia"><option value="">—</option>'+Array.from({length:27},(_,i)=>'<option value="'+(i+5)+'"'+(String(dia)===String(i+5)?" selected":"")+'>Dia '+(i+5)+'</option>').join("")+'</select></div>'+
@@ -1976,25 +2087,43 @@ function condAbrir(id){
       '<button class="cd-bt pri" id="cd-calc" onclick="condCalcular(\''+esc(id)+'\')">Salvar e recalcular o fluxo</button>'+
       '<div class="cd-prog" id="cd-prog" style="display:none;flex-basis:100%"></div>'+
     '</div>'+
-    condAndamentoHtml(l)+
+    '<details class="cd-dobra"><summary>Quadro do pro soluto (sinal, pré-chaves, balões, pós-chaves)</summary><div id="cd-quadro">'+condQuadroHtml(l,fx)+'</div>'+
+      '<div style="margin-top:10px"><button type="button" class="cd-bt" onclick="condPdfFluxo(COND_ABERTA)">📄 PDF do fluxo para o cliente</button></div></details>'+
+    /* 31/10/2026 (etapa 3): o que acontece sozinho quando todos assinam (AssinaturaVigia.gs no PORTAL-VENDA) */
+    '<div class="cd-dica">Quando todos assinarem o contrato, o portal guarda o PDF assinado na venda e marca “Assinou e armazenou contrato” no Andamento — confere a Clicksign a cada 10 minutos, sem precisar abrir o cartão.</div>'+
+    '</div>'+
+    '<div data-sec="andamento">'+condAndamentoHtml(l)+'</div>'+
     condTelaVendaHtml()+
-    condLinkVendaHtml(l)+
-    condAbatimentos(l,fx.total)+
-    '<b style="color:var(--azul);font-size:14px">FLUXO DE PAGAMENTO PRO SOLUTO</b>'+
-    '<table class="cd-fl" style="margin-top:6px"><thead><tr><th>Parcela</th><th>Valor</th><th>Quando</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>'+linhasH+
-    '<tr class="tot"><td colspan="3">TOTAL DO PRO SOLUTO</td><td class="r">'+cdBRL(fx.total)+'</td></tr></tbody></table>'+
-    (falta.length?'<div class="cd-falta"><b>Para fechar o fluxo falta:</b> '+falta.join("; ")+'.</div>':'')+
-    '<div class="cd-aviso"><b>Atenção:</b> As parcelas e os valores do fluxo podem sofrer alteração de acordo com a data de assinatura do contrato.</div>'+
-    (g("PENDÊNCIAS")&&g("PENDÊNCIAS")!=="nenhuma"?'<div class="cd-falta" style="margin-top:8px"><b>Pendências do cadastro:</b> '+esc(g("PENDÊNCIAS"))+'</div>':'')+
     '</div>';
   document.getElementById("cd-card").style.display="block";
-  if(window.VendaBlocos) VendaBlocos.montar(document.getElementById("cd-venda"),id);   /* entrega 7: contrato, assinatura e Mais Controle da linha */
+  if(window.VendaBlocos){ VendaBlocos.montar(document.getElementById("cd-venda"),id); if(VendaBlocos.aba) VendaBlocos.aba(COND_ABA); }   /* entrega 7: contrato, assinatura e Mais Controle da linha */
 }
 /* 07/10 (entrega 7) — TELA DE VENDA do condomínio: os blocos CONTRATO / ASSINATURA / MAIS CONTROLE
    da tela de venda das casas, para a própria linha (venda-dossie.js desenha em #cd-venda). */
+/* 31/10/2026 (dono): PDF do fluxo para mandar ao cliente — o mesmo quadro do pro soluto numa página limpa,
+   com a impressão do navegador aberta ("Salvar como PDF"). Sem servidor: sai do que está na tela. */
+function condPdfFluxo(id){
+  const l=COND&&COND.linhas.find(x=>x.id===id); if(!l) return;
+  const g=n=>cdVal(l,n), fx=condFluxo(l);
+  const corpo=document.createElement("div"); corpo.innerHTML=condQuadroHtml(l,fx);
+  corpo.querySelectorAll(".cd-falta,.cd-aviso,.cd-abat").forEach(x=>x.remove());
+  const w=window.open("","_blank"); if(!w){ alert("O navegador bloqueou a janela — libere pop-ups para o portal e clique de novo."); return; }
+  const tit="Fluxo de pagamento - Unidade "+(g(COND.titulo)||"")+" - "+(g("CONDOMÍNIO")||"");
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(tit)+'</title><style>'+
+    'body{font-family:Inter,Arial,sans-serif;color:#1a3347;margin:28px}h1{font-size:20px;margin:0 0 4px;color:#295778}'+
+    '.sub{color:#5a8099;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:13px}'+
+    'th{background:#295778;color:#fff;padding:7px 10px;text-align:left}td{padding:7px 10px;border-bottom:1px solid #d0e4ec}'+
+    'td.r{text-align:right;white-space:nowrap}tr.gr td{background:#dceaef;font-weight:800;font-size:11.5px;color:#295778}'+
+    'tr.tot td{background:#FBEEC8;font-weight:800;color:#7A4A16}.cd-etapa{display:none}small{color:#5a8099}'+
+    '.rod{margin-top:18px;font-size:11.5px;color:#5a8099}@media print{body{margin:12mm}}</style></head><body>'+
+    '<h1>'+esc(tit)+'</h1><div class="sub">'+esc(g("PROPONENTE")||"")+' · valores sujeitos a reajuste conforme o contrato</div>'+
+    corpo.innerHTML+'<div class="rod">Morais Engenharia · gerado em '+new Date().toLocaleDateString("pt-BR")+'</div>'+
+    '<script>setTimeout(function(){window.print()},300)<\/script></body></html>');
+  w.document.close();
+}
 function condTelaVendaHtml(){
   if(!window.VendaBlocos) return "";
-  return '<div class="cd-and"><h4>TELA DE VENDA <span style="font-weight:400;color:var(--text3)">· contrato, assinatura e Mais Controle desta unidade</span></h4><div id="cd-venda"></div></div>';
+  return '<div id="cd-venda"></div>';   /* 31/10/2026: sem a caixa "TELA DE VENDA" — cada bloco aparece na sua aba */
 }
 /* 02/10 — ANDAMENTO DO PROCESSO: as colunas de preenchimento do BANCO DE DADOS VENDAS
    CONDOMÍNIO (SIM/NÃO e datas — conformidade, assinatura, protocolo, manual, água, energia,
@@ -2023,6 +2152,14 @@ function condColunasTodas(){
   COND.colunas.forEach(c=>{ if(!usados.has(c.nome)&&c.nome!==tit){ usados.add(c.nome); out.push(c); } });
   return out;
 }
+/* grupos do Andamento, pela ordem: o primeiro que casar com o nome da coluna (sem acento) leva o campo */
+const CD_AND_GRUPOS=[
+  ["BANCO E CORRESPONDENTE",/CORR?ESS?PONDENTE|CONFORMIDADE|CONFORME|BANCO|RECEBEU|ENVIO DOS DOC/],
+  ["CARTÓRIO E IMPOSTOS",/ITBI|CARTORIO|REGISTRO|GCAP/],
+  ["ENTREGA DA CASA",/VISTORIA|MANUAL|ENTREGA|ENTEGOU|PESQUISA/],
+  ["ÁGUA E ENERGIA",/AGUA|ENERGIA|CONTAS/],
+  ["CONTRATO",/CONTRATO|PREFERENCIA/]
+];
 function condAndamentoHtml(l){
   const cols=condAndamentoCols(); if(!cols.length) return "";
   const campos=cols.map((c,k)=>{
@@ -2036,14 +2173,21 @@ function condAndamentoHtml(l){
       ctl='<select id="'+idc+'"><option value="">—</option>'+ops.map(o=>'<option'+(o===v?" selected":"")+'>'+esc(o)+'</option>').join("")+'</select>';
     }
     return '<div><label title="'+esc(c.nome)+'">'+esc(c.nome)+'</label>'+ctl+'<div class="st" id="'+idc+'-st"></div></div>';
-  }).join("");
+  });
   setTimeout(()=>{
     cols.forEach((c,k)=>{
       const el=document.getElementById("cd-and-"+k); if(!el) return;
       el.addEventListener("change",()=>condAndSalvar(l.id,c.nome,el.value,"cd-and-"+k+"-st"));
     });
   },0);
-  return '<div class="cd-and"><h4>ANDAMENTO DO PROCESSO <span style="font-weight:400;color:var(--text3)">· cada mudança salva sozinha no Notion</span></h4><div class="grid">'+campos+'</div></div>';
+  /* 31/10/2026 (dono): os campos separados por quem cuida, cada grupo numa caixa; coluna nova cai em OUTROS */
+  const grupos=CD_AND_GRUPOS.map(g=>({nome:g[0],itens:[]})).concat([{nome:"OUTROS",itens:[]}]);
+  cols.forEach((c,k)=>{
+    const i=CD_AND_GRUPOS.findIndex(g=>g[1].test(cdNorm(c.nome)));
+    grupos[i<0?grupos.length-1:i].itens.push(campos[k]);
+  });
+  return '<div class="cd-dica">Cada mudança salva sozinha no Notion.</div>'+grupos.filter(g=>g.itens.length).map(g=>
+    '<div class="cd-and"><h4>'+esc(g.nome)+'</h4><div class="grid">'+g.itens.join("")+'</div></div>').join("");
 }
 async function condAndSalvar(id,prop,valor,stId){
   const st=document.getElementById(stId); if(st){ st.style.color="#7A6A2E"; st.textContent="⏳ salvando…"; }
@@ -2109,6 +2253,9 @@ async function condCalcular(id){
   const mudou={};
   novos.forEach(([prop,val])=>{ const atual=cdVal(l,prop), a=atual==null?"":String(atual).slice(0,10);
     if(String(val)===a) return; mudou[prop]=val; });
+  /* 31/10/2026 (dono): no condomínio a DATA DA VENDA é sempre a data de assinatura do contrato */
+  const assNova=document.getElementById("cd-ass").value, dvAtual=String(cdVal(l,"DATA DA VENDA")||"").slice(0,10);
+  if(assNova!==dvAtual) mudou["DATA DA VENDA"]=assNova;
   if(!Object.keys(mudou).length){ fimProg(true); toast("Nada mudou."); bt.disabled=false; bt.textContent="Salvar e recalcular o fluxo"; return; }
   let r=null;
   try{ r=await chamar({action:"simsVendaSalvarVarios",pageId:id,valores:mudou},90000); }catch(e){ r=null; }
@@ -3411,9 +3558,34 @@ async function recarregarCamposCasa(pageId){
   cabecalhoObra(V); renderPainel(V,pageId,false);
   if(body) body.scrollTop=topo;
 }
+/* 31/10/2026 (dono): contrato do condomínio ENVIADO/ASSINADO = proposta VENDIDA e unidade VENDIDA = SIM.
+   A regra mora em venda/contrato-vendida.js (a aba Propostas usa a mesma). Aqui: ao enviar/abrir o cartão
+   (evento "venda:contrato-enviado" do venda-dossie.js) e numa varredura depois de carregar a planilha. */
+function cdAvisoUnidade(id,tipo,txt){
+  const semT=x=>String(x||"").replace(/-/g,"").toLowerCase();
+  if(semT(COND_ABERTA)!==semT(id)) return;
+  const alvo=document.getElementById("cd-venda"); if(!alvo||!alvo.parentNode) return;
+  let d=document.getElementById("cd-un-aviso");
+  if(!d){ d=document.createElement("div"); d.id="cd-un-aviso"; alvo.parentNode.insertBefore(d,alvo); }
+  d.className=tipo==="ok"?"cd-aviso":"cd-falta"; d.style.margin="6px 0"; d.innerHTML=txt;
+}
+function condMarcarVendidaFila(ids){
+  if(!window.ContratoVendida||!COND) return;
+  return ContratoVendida.rodar(COND.linhas, COND.titulo, ids, { chamar: chamar, aviso: cdAvisoUnidade });
+}
+function condVarrerContratosEnviados(){
+  if(!window.ContratoVendida||!COND||!COND.linhas) return;
+  const ids=ContratoVendida.pendentes(COND.linhas, COND.titulo);
+  if(ids.length) condMarcarVendidaFila(ids);
+}
+window.addEventListener("venda:contrato-enviado", ev=>{
+  const id=ev && ev.detail && ev.detail.pageId;
+  if(id) condMarcarVendidaFila([String(id)]);
+});
 window.addEventListener("venda:dados-gravados", ev=>{
   const id=ev && ev.detail && ev.detail.pageId;
   if(id) recarregarCamposCasa(String(id));
+  if(id) condAplicarGravados(String(id),ev.detail.gravados);   /* 31/10: quadro do pro soluto do cartão do condomínio */
 });
 
 function cabecalhoObra(V){
@@ -3845,7 +4017,13 @@ function aplicarLocal(pageId,prop,valor){
     }
   });
 }
+/* 31/10/2026 (dono): bloquear e-mail inválido ("fulano@gmail,com") antes de gravar no Notion */
+function emailOk(v){ return /^[^@\s,;]+@[^@\s,;]+\.[A-Za-z]{2,}$/.test(String(v||"").trim()); }
 async function editar(pageId,prop,tipo,valor,el){
+  if((tipo==="email"||/E-?MAIL/i.test(prop)) && String(valor||"").trim() && !emailOk(valor)){
+    if(el) el.style.borderColor="#C0392B";
+    toast("E-mail inválido — confira o @ e o ponto (ex.: nome@gmail.com), sem vírgula nem espaço. Não salvei."); return;
+  }
   if(el)el.style.borderColor="#F0C36D";
   aplicarLocal(pageId,prop,valor);
   const r=await escrever({action:"updateVenda",pageId:pageId,prop:prop,tipo:tipo,valor:valor},"Editar "+prop);

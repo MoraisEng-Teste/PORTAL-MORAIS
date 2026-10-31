@@ -140,6 +140,17 @@ def _num(x):
 
 _RE_ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _RE_BR = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
+#: 31/10/2026: a casa 15 foi ao ERP com DATA DA VENDA 0002-10-31 e voltou HTTP 400 (IsAfter...referenceDate)
+ANO_MIN, ANO_MAX = 2000, 2100
+
+
+def _falta_de_data(nome: str, d) -> str | None:
+    """Texto da falta de uma data já convertida (None = data boa); o ano fora de ANO_MIN..ANO_MAX é digitação."""
+    if not _RE_ISO.match(d):
+        return "%s em formato que não entendi" % nome
+    if not ANO_MIN <= int(d[:4]) <= ANO_MAX:
+        return "%s com ano %s — corrija na planilha" % (nome, d[:4])
+    return None
 
 
 def _data(x):
@@ -373,8 +384,8 @@ def faltas(dados: dict, dias_financiamento: int = DIAS_FINANCIAMENTO) -> list[st
         f.append("Venda sem número da CASA")
     if not dados.get("data_venda"):
         f.append("Falta a DATA DA VENDA")
-    elif not _RE_ISO.match(dados["data_venda"]):
-        f.append("DATA DA VENDA em formato que não entendi")
+    elif erro := _falta_de_data("DATA DA VENDA", dados["data_venda"]):
+        f.append(erro)
     pp = dados.get("comissao_paga_por")
     if pp not in ("COMPRADOR", "VENDEDOR"):
         f.append("Falta COMISSÃO PAGA POR (comprador ou vendedor)")
@@ -394,8 +405,8 @@ def faltas(dados: dict, dias_financiamento: int = DIAS_FINANCIAMENTO) -> list[st
     for p in ps:
         if not p["data"]:
             f.append("Parcela %s sem data" % p["rotulo"])
-        elif not _RE_ISO.match(p["data"]):
-            f.append("Data da parcela %s em formato que não entendi" % p["rotulo"])
+        elif erro := _falta_de_data("Data da parcela %s" % p["rotulo"], p["data"]):
+            f.append(erro)
     if not ps:
         f.append("Nenhuma parcela com valor (sinal, entrada, FGTS, financiamento)")
     elif dados.get("aquisicao"):
@@ -409,19 +420,30 @@ def faltas(dados: dict, dias_financiamento: int = DIAS_FINANCIAMENTO) -> list[st
 
 # ---------------------------------------------------------------- corpos
 
+_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+
+
+def email_valido(texto) -> str | None:
+    """31/10/2026: o POST /participants volta 400 ("Email.participant.email") com e-mail fora do formato —
+    espaço, dois e-mails na mesma célula, "mailto:", nome junto. Fica o PRIMEIRO e-mail válido do texto,
+    em minúsculas; sem nenhum válido o campo não vai (no ERP o e-mail não é obrigatório)."""
+    m = _EMAIL.search(str(texto or "").replace("mailto:", " "))
+    return m.group(0).lower() if m else None
+
+
 def corpo_cliente(dados: dict) -> dict:
     """POST {legado}/participants — o mesmo objeto que a tela "Clientes > Novo" grava."""
     c = dados["comprador"]
     corpo = {"status": "ACTIVE", "type": "PERSON", "role": "CUSTOMER",
              "name": " ".join(str(c["nome"]).upper().split()), "cpf": so_digitos(c["cpf"]),
              "contacts": [], "phones": []}
-    if c.get("email"):
-        corpo["email"] = c["email"]
+    if email_valido(c.get("email")):
+        corpo["email"] = email_valido(c.get("email"))
     if c.get("telefone"):
         corpo["phones"] = [{"number": c["telefone"]}]
     # 30/10/2026 (dono): condomínio — o endereço do cliente é a unidade comprada
     if dados.get("endereco_cliente"):
-        corpo["address"] = {"address": dados["endereco_cliente"]}
+        corpo["address"] = dict(dados["endereco_cliente"])
     return corpo
 
 
@@ -465,8 +487,8 @@ def corpo_corretor(dados: dict) -> dict:
     for k, v in (dados.get("corretor_cadastro") or {}).items():   # o cadastro do corretor vale mais que a pasta
         if v and k in ("email", "creci"):
             c[k] = v
-    if c.get("email"):
-        corpo["email"] = c["email"]
+    if email_valido(c.get("email")):
+        corpo["email"] = email_valido(c.get("email"))
     if c.get("telefone"):
         corpo["phones"] = [{"number": c["telefone"]}]
     if c.get("creci"):

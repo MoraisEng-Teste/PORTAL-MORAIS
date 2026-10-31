@@ -58,7 +58,39 @@ def fluxo(props: dict) -> dict:
     out["prazo"] = R._num(R._valor(por_chave.get(R.chave("PRAZO ENTRADA"))))
     # 30/10/2026: a proposta guarda o VALOR PARA ENTRADA; o que passa do sinal é pago na assinatura (excedente_sinal)
     out["id_proposta"] = R.so_hex(R._valor(por_chave.get(R.chave("ID PROPOSTA"))))
+    # 31/10/2026 (dono): a pré-reserva paga (valor + data do pagamento da venda, ou termo assinado das vendas de antes)
+    # é a 1ª parcela do sinal, já recebida — igual ao ContratoVenda.preReservaPaga
+    out["pre_reserva"] = pre_reserva_paga(por_chave)
     return out
+
+
+def pre_reserva_paga(por_chave: dict) -> dict | None:
+    """{valor, data} ou None. `data` vazia = termo assinado sem data do pagamento (vale a assinatura)."""
+    valor = R._num(R._valor(por_chave.get(R.chave("PRÉ-RESERVA - VALOR"))))
+    if not valor or valor <= 0:
+        return None
+    data = R._data(R._valor(por_chave.get(R.chave("PRÉ-RESERVA - DATA PAGAMENTO"))))
+    assinado = str(R._valor(por_chave.get(R.chave("PRÉ-RESERVA - SITUAÇÃO"))) or "").strip().upper() == "ASSINADO"
+    if not data and not assinado:
+        return None
+    return {"valor": round(float(valor), 2), "data": data}
+
+
+def abater_sinal(valores: list, pr: float) -> tuple[list, float]:
+    """A pré-reserva sai do ato, depois do 30, 60 e 90 dias (FluxoLivre.abaterSinal). -> (valores, abatido)."""
+    falta = round(pr * 100)
+    out = []
+    for v in valores:
+        x = round(v * 100) if v and v > 0 else 0
+        s = min(falta, x)
+        falta -= s
+        out.append((x - s) / 100 if x - s > 0 else None)
+    return out, (round(pr * 100) - falta) / 100
+
+
+def rotulo_pre_reserva(data: str | None) -> str:
+    """Comentário da parcela no Mais Controle: quem dá a baixa vê que o dinheiro já entrou e quando."""
+    return "Pré-reserva (já recebida%s)" % (" em %s/%s/%s" % (data[8:10], data[5:7], data[:4]) if data else "")
 
 
 def valor_para_entrada(props: dict) -> float | None:
@@ -107,19 +139,26 @@ def _total_linha(l: dict) -> float:
     return round(l["v"] * (n - 1) + u, 2)
 
 
-# comissão (ContratoVenda.comissaoPctPelaRegra): prazo da entrada 24/36/48 = 5% / 4,75% / 4,5%; sem prazo, pelas pós-chaves
+# comissão (ContratoVenda.planoDoFluxo, dono 31/10/2026): sai do FLUXO — sem pós-chaves = 24x (5%); com pós-chaves,
+# total de parcelas da entrada (pré + pós) até 36 = 36x (4,75%), acima = 48x (4,5%). O PRAZO ENTRADA não manda mais.
 _PCT_POR_PRAZO = {24: 0.05, 36: 0.0475, 48: 0.045}
-_PRAZO_POR_POS = {0: 24, 12: 36, 24: 48}
+
+
+def plano_do_fluxo(fx: dict) -> int:
+    livre = fx.get("livre")
+    if livre:
+        pre = sum(l["n"] for l in livre.get("linhas", []) if l["t"] == "pre" and l["n"] > 0 and l.get("v"))
+        pos = sum(l["n"] for l in livre.get("linhas", []) if l["t"] == "pos" and l["n"] > 0 and l.get("v"))
+    else:
+        pre = sum(int(fx.get(n) or 0) for n, v in (("n1", "v1"), ("n2", "v2")) if fx.get(v))
+        pos = int(fx.get("nP") or 0) if fx.get("vP") else 0
+    if pos <= 0:
+        return 24
+    return 36 if pre + pos <= 36 else 48
 
 
 def comissao_pela_regra(fx: dict, valor: float) -> float | None:
-    p = fx.get("prazo")
-    if p:
-        op = 24 if p <= 24 else 36 if p <= 36 else 48 if p <= 48 else None
-    else:
-        n = sum(l["n"] for l in (fx.get("livre") or {}).get("linhas", []) if l["t"] == "pos") if fx.get("livre") else int(fx.get("nP") or 0)
-        op = _PRAZO_POR_POS.get(n)
-    return round(valor * _PCT_POR_PRAZO[op], 2) if op else None
+    return round(valor * _PCT_POR_PRAZO[plano_do_fluxo(fx)], 2) if valor else None
 
 
 def ajustar_dados_livre(fx: dict, dados: dict) -> None:
@@ -157,6 +196,7 @@ def contato_corretor(props: dict) -> dict:
 #: tela de venda do condomínio (entrega 7): o robô lê direto a linha da BANCO DE DADOS VENDAS CONDOMÍNIO
 COL_LINHA = {
     "condominio": "CONDOMÍNIO", "unidade": "UNIDADE", "data_venda": "DATA DA VENDA",
+    "assinatura": "DATA DE ASSINATURA DO CONTRATO",
     "proponente": "PROPONENTE", "cpf": "CPF PROPONENTE", "email": "Email", "telefone": "Nº Whatsapp",
     "total": "VALOR DE VENDA", "comissao": "COMISSÃO", "fgts": "VALOR DO FGTS", "financiado": "VALOR DO CRÉDITO",
     "subsidio": "SUBISÍDIO", "corretor": "CORRETOR", "imobiliaria": "IMOBILIÁRIA",
@@ -179,17 +219,27 @@ def e_linha_do_condominio(pg: dict, db_cond: str | None) -> bool:
     return False
 
 
-# 30/10/2026 (dono): no cadastro do CLIENTE no Mais Controle, o endereço é a unidade que ele está comprando
-CIDADE_DO_CONDOMINIO = {"RESERVA DOS IPES": "SENADOR CANEDO"}
+# 30/10/2026 (dono): no cadastro do CLIENTE no Mais Controle, o endereço é a unidade que ele está comprando.
+# Campos separados (CEP, bairro, cidade/UF): o boleto do Cobrança Fácil exige o endereço completo do pagador.
+# CEP geral da cidade (decisão do dono, 30/10); cidade e estado pelos ids da tabela de cidades do ERP.
+_GO = {"id": "4802f081-039d-43c9-a803-7141386fc93b", "abbreviation": "GO", "name": "Goiás"}
+CIDADE_DO_CONDOMINIO = {"RESERVA DOS IPES": {"cep": "75250000", "cidade": {
+    "id": "df17a44f-2193-462c-aad6-3496dd0082ce", "name": "Senador Canedo", "state": _GO}}}
 
 
-def endereco_do_cliente(nome_condominio, casa) -> str:
-    """"CONDOMÍNIO RESERVA DOS IPÊS - SENADOR CANEDO, UNIDADE 31" ("" sem condomínio ou sem unidade)."""
+def endereco_do_cliente(nome_condominio, casa) -> dict:
+    """O `address` do cadastro do cliente: rua = o condomínio, complemento = "UNIDADE 31", bairro = o
+    condomínio, CEP e cidade do condomínio. {} sem condomínio ou sem unidade."""
     cond = endereco_do_condominio(nome_condominio)
     if not cond or casa in (None, ""):
-        return ""
-    cidade = next((c for k, c in CIDADE_DO_CONDOMINIO.items() if k in R.chave(cond)), "")
-    return "%s%s, UNIDADE %02d" % (cond.upper(), " - " + cidade if cidade else "", int(casa))
+        return {}
+    cond = cond.upper()
+    end = {"address": cond, "addressNumber": "S/N", "complement": "UNIDADE %02d" % int(casa), "neighborhood": cond}
+    lugar = next((c for k, c in CIDADE_DO_CONDOMINIO.items() if k in R.chave(cond)), None)
+    if lugar:
+        end["zipCode"] = lugar["cep"]
+        end["city"] = lugar["cidade"]
+    return end
 
 
 def endereco_do_condominio(nome) -> str:
@@ -218,7 +268,9 @@ def dados_da_linha(props: dict, page_id: str) -> dict:
         "casa": R._casa(unidade),
         "endereco_cliente": endereco_do_cliente(campo("condominio"), R._casa(unidade)),
         "casa_ambigua": unidade not in (None, "") and R._casa(unidade) is None,
-        "data_venda": R._data(campo("data_venda")),
+        # 31/10/2026 (dono): no condomínio a data da venda é SEMPRE a data de assinatura do contrato;
+        # a coluna DATA DA VENDA só vale quando a assinatura ainda não foi preenchida
+        "data_venda": R._data(campo("assinatura")) or R._data(campo("data_venda")),
         "comprador": {"nome": " ".join(str(campo("proponente") or "").split()), "cpf": R.so_digitos(campo("cpf")),
                       "email": campo("email") or ler("EMAIL"), "telefone": R.so_digitos(campo("telefone"))},
         "aquisicao": total,
@@ -267,10 +319,16 @@ def parcelas(fx: dict, dados: dict, dias_financiamento: int = R.DIAS_FINANCIAMEN
             data = data_no_dia(primeira, i, dia) if primeira and R._RE_ISO.match(primeira) else None
             add(tipo, "%s %d/%d" % (nome, i + 1, n), valor, data, tabela)
 
-    add(R.TIPO_SINAL, "Sinal ato", fx.get("vAto"), fx.get("assinatura") or dados.get("data_venda"))
-    add(R.TIPO_SINAL, "Sinal 30 dias", fx.get("vS30"), fx.get("dS30"))
-    add(R.TIPO_SINAL, "Sinal 60 dias", fx.get("vS60"), fx.get("dS60"))
-    add(R.TIPO_SINAL, "Sinal 90 dias", fx.get("vS90"), fx.get("dS90"))
+    sv = [fx.get("vAto"), fx.get("vS30"), fx.get("vS60"), fx.get("vS90")]
+    pr = fx.get("pre_reserva")
+    if pr:
+        sv, abatido = abater_sinal(sv, pr["valor"])
+        add(R.TIPO_SINAL, rotulo_pre_reserva(pr["data"]), abatido or None,
+            pr["data"] or fx.get("assinatura") or dados.get("data_venda"))
+    add(R.TIPO_SINAL, "Sinal ato", sv[0], fx.get("assinatura") or dados.get("data_venda"))
+    add(R.TIPO_SINAL, "Sinal 30 dias", sv[1], fx.get("dS30"))
+    add(R.TIPO_SINAL, "Sinal 60 dias", sv[2], fx.get("dS60"))
+    add(R.TIPO_SINAL, "Sinal 90 dias", sv[3], fx.get("dS90"))
     add(R.TIPO_ENTRADA, "Entrada à vista", fx.get("excedente"), fx.get("assinatura") or dados.get("data_venda"))
     serie(R.TIPO_PARCELA, "Pré-chaves 1ª parte", fx.get("n1"), fx.get("v1"), fx.get("d1"), TABELA_PRE)
     serie(R.TIPO_PARCELA, "Pré-chaves 2ª parte", fx.get("n2"), fx.get("v2"), fx.get("d2"), TABELA_PRE)
@@ -286,7 +344,7 @@ def parcelas(fx: dict, dados: dict, dias_financiamento: int = R.DIAS_FINANCIAMEN
 
 
 # tipo da linha livre -> (tipo no MC, tabela de reajuste); balão na data do balão da entrega vira CHAVES, como nas gavetas
-_TIPO_LIVRE = {"sinal": (R.TIPO_SINAL, None, "Sinal"), "entrada": (R.TIPO_ENTRADA, None, "Entrada à vista"),
+_TIPO_LIVRE = {"prereserva": (R.TIPO_SINAL, None, "Pré-reserva"), "sinal": (R.TIPO_SINAL, None, "Sinal"), "entrada": (R.TIPO_ENTRADA, None, "Entrada à vista"),
                "pre": (R.TIPO_PARCELA, TABELA_PRE, "Pré-chaves"), "balao": (R.TIPO_INTERMEDIARIA, TABELA_PRE, "Balão"),
                "pos": (R.TIPO_PARCELA, TABELA_POS, "Pós-chaves"), "permuta": (R.TIPO_ENTRADA, None, "Permuta")}
 
@@ -312,6 +370,8 @@ def parcelas_livres(fx: dict, dados: dict, dias_financiamento: int = R.DIAS_FINA
             v = l["u"] if (j == n - 1 and n > 1 and l.get("u")) else l["v"]
             t = R.TIPO_CHAVES if (l["t"] == "balao" and data and data == fx.get("dB2")) else tipo
             rot = ("Permuta - " + l["x"])[:120] if l["t"] == "permuta" else (nome if n == 1 else "%s %d/%d" % (nome, j + 1, n))
+            if l["t"] == "prereserva":
+                rot = rotulo_pre_reserva(data)
             out.append({"tipo": t, "rotulo": rot, "valor": round(float(v), 2), "data": data, "tabela": tabela})
     dv = fx.get("assinatura") or dados.get("data_venda")
     prev = R._mais_dias(dv, dias_financiamento) if dv and R._RE_ISO.match(dv) else None
@@ -331,6 +391,11 @@ def faltas_do_fluxo(fx: dict, casa: int | None) -> list[str]:
         soma = round(sum(_total_linha(l) for l in livre["linhas"]), 2)
         if not livre["valor"] or abs(soma - livre["valor"]) > 0.005:
             f.append("Fluxo alterado não fecha: soma R$ %.2f × valor da casa R$ %.2f" % (soma, livre["valor"] or 0))
+    pr = fx.get("pre_reserva")
+    if pr and not livre:
+        _, abatido = abater_sinal([fx.get("vAto"), fx.get("vS30"), fx.get("vS60"), fx.get("vS90")], pr["valor"])
+        if abatido + 0.005 < pr["valor"]:
+            f.append("A pré-reserva paga (R$ %.2f) passa do sinal — confira o valor da pré-reserva" % pr["valor"])
     if not fx.get("assinatura"):
         f.append("Falta a DATA DE ASSINATURA DO CONTRATO na venda do condomínio")
     if not fx.get("dia"):

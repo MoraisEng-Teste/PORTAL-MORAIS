@@ -367,6 +367,13 @@
     if (r && r.gravados && typeof r.gravados === "object" && Object.keys(r.gravados).length) d.gravados = r.gravados;
     return d;
   }
+  /* 31/10 (dono): salvar ou voltar o fluxo avisa a tela com a coluna FLUXO PERSONALIZADO como ficou gravada — o cartão
+     do condomínio redesenha o quadro do pro soluto sem reler a base. Mesma conta do servidor (FluxoLivre.serializar). */
+  function detalheFluxoGravado(pageId, ed, voltar) {
+    var f = { valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas };
+    if (ed.semComissao) f.semComissao = true;
+    return { pageId: pageId, gravados: { "FLUXO PERSONALIZADO": voltar ? "" : FL().serializar(f) } };
+  }
   /* espaço IMOVEL_* = seção do imóvel (a mensagem aparece lá) */
   function grupoDoEspaco(id) { return /^IMOVEL_/.test(String(id || "")) ? "imovel" : "comprador"; }
 
@@ -677,7 +684,7 @@
     ed.linhas.forEach(function (l, k) {
       var tp = F.TIPOS[l.t] || { reajuste: "" };
       if (tp.fixo) {
-        h += '<tr data-fx-linha="' + k + '"><td><b>' + esc(tp.nome) + '</b><div class="dz-nota">não muda (da proposta)</div></td><td></td>' +
+        h += '<tr data-fx-linha="' + k + '"><td><b>' + esc(tp.nome) + '</b><div class="dz-nota">' + (l.t === "prereserva" ? "já recebida — abate o sinal" : "não muda (da proposta)") + '</div></td><td></td>' +
           '<td style="text-align:right">' + esc(numBR(l.v)) + "</td><td>" + esc(l.n) + "</td><td>" + esc(l.d ? F.dataBR(l.d) : "—") + "</td><td></td><td></td>" +
           '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
         return;
@@ -900,6 +907,7 @@
 
   var exportar = { URL_PORTAL_VENDA: URL_PORTAL_VENDA, DOCS: DOCS, html: html, mensagemDeErro: mensagemDeErro,
                    htmlRecebimentos: htmlRecebimentos, mensagemRec: mensagemRec,
+                   htmlConferencia: htmlConferencia, htmlCorrigir: htmlCorrigir, htmlFinanceiro: htmlFinanceiro,
                    DOCS_IMOVEL: DOCS_IMOVEL, htmlImovel: htmlImovel, dadosImovel: dadosImovel, htmlLoteamento: htmlLoteamento,
                    grupoDoEspaco: grupoDoEspaco,
                    linhaDoc: linhaDoc, htmlLerTodos: htmlLerTodos, resultadosLote: resultadosLote, resumoLote: resumoLote,
@@ -910,7 +918,7 @@
                    htmlContrato: htmlContrato, etapaContrato: etapaContrato, estadoContrato: estadoContrato, mensagemContrato: mensagemContrato, htmlMC: htmlMC, mensagemMC: mensagemMC,
                    topicosMC: topicosMC, MC_URL_VENDA: MC_URL_VENDA, htmlTestemunhas: htmlTestemunhas,
                    htmlCampos: htmlCampos, htmlConta: htmlConta, htmlFluxo: htmlFluxo, htmlFluxoVivo: htmlFluxoVivo, htmlFluxoDesconto: htmlFluxoDesconto, lerNumBR: lerNumBR, contaDoEstado: contaDoEstado, pedidoCampos: pedidoCampos,
-                   contaDasEntradas: contaDasEntradas, faltasDaResposta: faltasDaResposta };
+                   contaDasEntradas: contaDasEntradas, faltasDaResposta: faltasDaResposta, detalheFluxoGravado: detalheFluxoGravado };
   if (typeof module !== "undefined" && module.exports) { module.exports = exportar; return; }
 
   /* ---------------- navegador ---------------- */
@@ -1262,8 +1270,71 @@
   /* ---- 28/10/2026: Conferência dos documentos (Conferencia.gs) ----
    * e = { feito, linhas, confirmados, em, por, atual } (conferenciaEstado); u = { ocupado, msg, testes }.
    * Comandos: d-conferir, d-abrir-<i> (o documento pelo portal), d-ok-<i> ("Conferi, está certo"). */
-  var SIT_CONF = { ok: ["ass-ok", "✓ confere"], diverge: ["ass-recusou", "⚠ diverge"], ilegivel: ["ass-pend", "? ilegível"] };
+  /* 31/10/2026 (dono, etapa 4): aba Financeiro do cartão do condomínio — as parcelas da venda lidas do Mais Controle
+   * (financeiroEstado no PORTAL-VENDA) para o coordenador comercial ver o que está pago, a vencer e em atraso.
+   * e = { lancada, lidoEm, semLeitura, parcelas: [{ grupo, numero, de, vencimento, valor, valorCorrigido, situacao
+   * ("paga" | "aberta" | "atrasada"), pagoEm, diasAtraso }] }; u = { filtro, todas, msg, carregando }. */
+  function htmlFinanceiro(e, u) {
+    u = u || {};
+    var h = '<div class="grp">Financeiro · parcelas no Mais Controle</div>';
+    if (u.carregando || !e) return h + '<div class="vazio">' + esc(u.msg || "lendo as parcelas…") + "</div>";
+    if (!e.lancada) return h + '<div class="vazio">A venda ainda não foi lançada no Mais Controle — as parcelas aparecem aqui depois do lançamento (aba Contrato).</div>';
+    if (e.semLeitura || !(e.parcelas || []).length)
+      return h + '<div class="vazio">Venda lançada no Mais Controle. A leitura diária das parcelas ainda não chegou para esta venda.</div>';
+    function brl(v) { return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function dt(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "")); return m ? m[3] + "/" + m[2] + "/" + m[1] : esc(s || "—"); }
+    var P = e.parcelas;
+    function soma(k) { return P.filter(function (x) { return x.situacao === k; }).reduce(function (a, x) { return a + Number(x.valorCorrigido || x.valor || 0); }, 0); }
+    function qt(k) { return P.filter(function (x) { return x.situacao === k; }).length; }
+    var atr = P.filter(function (x) { return x.situacao === "atrasada"; });
+    if (atr.length) h += '<div class="cd-falta"><b>' + atr.length + (atr.length > 1 ? " parcelas em atraso" : " parcela em atraso") + "</b> — a mais antiga: " +
+      esc(atr[0].grupo) + " " + atr[0].numero + "/" + atr[0].de + ", venceu em " + dt(atr[0].vencimento) + " (" + Number(atr[0].diasAtraso || 0) + " dias).</div>";
+    h += '<div class="cd-kpis" style="margin-top:10px">' +
+      '<div class="cd-kpi"><small>Pago</small><b>' + brl(soma("paga")) + "</b><span>" + qt("paga") + " parcelas</span></div>" +
+      '<div class="cd-kpi"><small>Em atraso</small><b>' + brl(soma("atrasada")) + "</b><span>" + qt("atrasada") + " parcelas</span></div>" +
+      '<div class="cd-kpi"><small>A vencer (corrigido)</small><b>' + brl(soma("aberta")) + "</b><span>" + qt("aberta") + " parcelas</span></div></div>";
+    var f = u.filtro || "todas", FILTROS = [["todas", "Todas"], ["atrasada", "Em atraso"], ["aberta", "A vencer"], ["paga", "Pagas"]];
+    h += '<div class="dz-linha">' + FILTROS.map(function (x) {
+      return '<button type="button" class="bt bt-mini' + (x[0] === f ? "" : " ghost") + '" data-acao="f-filtro-' + x[0] + '">' + x[1] + "</button>";
+    }).join(" ") + ' <span class="ass-data">lido do Mais Controle em ' + esc(String(e.lidoEm || "").replace("T", " ").slice(0, 16)) + "</span></div>";
+    var lista = P.filter(function (x) { return f === "todas" || x.situacao === f; });
+    var corte = !u.todas && f === "todas" && lista.length > 12 ? 12 : lista.length;
+    var SIT = { paga: '<b class="ass-ok">✓ paga</b>', aberta: '<span class="ass-data">a vencer</span>', atrasada: '<b class="ass-rec">⚠ em atraso</b>' };
+    h += '<div style="overflow-x:auto"><table class="cd-fl"><thead><tr><th>Parcela</th><th>Vencimento</th><th style="text-align:right">Valor</th><th style="text-align:right">Corrigido</th><th>Situação</th></tr></thead><tbody>' +
+      lista.slice(0, corte).map(function (x) {
+        return "<tr><td>" + esc(x.grupo) + " " + x.numero + "/" + x.de + "</td><td>" + dt(x.vencimento) + '</td><td class="r">' + brl(x.valor) + '</td><td class="r">' + brl(x.valorCorrigido || x.valor) +
+          "</td><td>" + (SIT[x.situacao] || esc(x.situacao)) + (x.situacao === "paga" && x.pagoEm ? ' <span class="ass-data">em ' + dt(x.pagoEm) + "</span>" : "") +
+          (x.situacao === "atrasada" ? ' <span class="ass-data">' + Number(x.diasAtraso || 0) + " dias</span>" : "") + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+    if (corte < lista.length) h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="f-todas">Mostrar as ' + lista.length + " parcelas</button></div>";
+    if (u.msg) h += '<div class="dz-msg">' + esc(u.msg) + "</div>";
+    return h;
+  }
+  /* 31/10/2026 (dono): "Corrigir aqui" — o campo da venda que alimenta a linha, aberto na própria conferência.
+   * c = { i, carregando, erro, campos: [{ coluna, rotulo, valor, opcoes }] } (corrigirConferenciaCampos). */
+  function htmlCorrigir(l, c, dis) {
+    if (c.carregando) return '<div class="dz-linha"><b>abrindo o campo…</b></div>';
+    if (c.erro) return '<div class="dz-aviso">' + esc(c.erro) + '</div><div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="d-corr-cancelar">Fechar</button></div>';
+    var h = (c.campos || []).map(function (x) {
+      var attr = ' data-corr-col="' + esc(x.coluna) + '"' + dis, inp;
+      if (x.opcoes && x.opcoes.length) {
+        inp = "<select" + attr + '><option value="">—</option>' + x.opcoes.map(function (o) {
+          return '<option value="' + esc(o) + '"' + (o === x.valor ? " selected" : "") + ">" + esc(o) + "</option>";
+        }).join("") + "</select>";
+      } else inp = '<input type="text" maxlength="300" style="flex:1 1 240px"' + attr + ' value="' + esc(x.valor || "") + '">';
+      return '<div class="dz-linha"><label class="dz-rot" style="flex:0 0 90px">' + esc(x.rotulo) + "</label>" + inp + "</div>";
+    }).join("");
+    var cols = (c.campos || []).map(function (x) { return x.coluna; }).join(", ");
+    h += '<div class="dz-aviso">Grava em ' + esc(cols) + " na venda. Depois, gere o contrato de novo; se ele já foi para a Clicksign, cancele o envelope e envie de novo.</div>";
+    h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="d-corr-salvar"' + dis + ">Salvar correção</button> " +
+      ((c.campos || []).length === 1 && l.lido && !(c.campos[0].opcoes && c.campos[0].opcoes.length)
+        ? '<button type="button" class="bt ghost bt-mini" data-acao="d-corr-usar"' + dis + ">Usar o do documento</button> " : "") +
+      '<button type="button" class="bt ghost bt-mini" data-acao="d-corr-cancelar">Cancelar</button></div>';
+    return h;
+  }
   function htmlConferencia(e, u) {
+    /* dentro da função: o node (testes) não roda as atribuições desta parte do arquivo */
+    var SIT_CONF = { ok: ["ass-ok", "✓ confere"], diverge: ["ass-recusou", "⚠ diverge"], ilegivel: ["ass-pend", "? ilegível"] };
     u = u || {};
     var h = '<div class="grp">Conferência dos documentos</div>';
     if (!e) return h + '<div class="vazio">' + esc(u.msg || "carregando…") + "</div>";
@@ -1282,12 +1353,14 @@
           var acao = "";
           if (l.situacao !== "ok") {
             acao = conf ? '<div class="ass-data">conferido' + (conf.por ? " por " + esc(conf.por) : "") + "</div>"
-              : '<div style="margin-top:4px"><button type="button" class="bt ghost bt-mini" data-acao="d-abrir-' + i + '"' + dis + ">Abrir documento</button> " +
+              : '<div style="margin-top:4px"><button type="button" class="bt bt-mini" data-acao="d-corr-' + i + '"' + dis + ">Corrigir aqui</button> " +
+                '<button type="button" class="bt ghost bt-mini" data-acao="d-abrir-' + i + '"' + dis + ">Abrir documento</button> " +
                 '<button type="button" class="bt bt-mini" data-acao="d-ok-' + i + '"' + dis + ">Conferi, está certo</button></div>";
           }
           return "<tr><td>" + esc(l.pessoa) + " · " + esc(l.documento) + "</td><td>" + esc(l.rotulo) + "</td><td>" + esc(l.esperado) +
             "</td><td>" + (l.lido ? esc(l.lido) : '<span class="ass-data">' + esc(l.motivo || "não lido") + "</span>") +
-            '</td><td><b class="' + s[0] + '">' + s[1] + "</b>" + acao + "</td></tr>";
+            '</td><td><b class="' + s[0] + '">' + s[1] + "</b>" + acao + "</td></tr>" +
+            (u.corr && u.corr.i === i ? '<tr class="dz-corr"><td colspan="5">' + htmlCorrigir(l, u.corr, dis) + "</td></tr>" : "");
         }).join("") + "</table></div>";
     }
     h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="d-conferir"' + dis + ">" +
@@ -1299,8 +1372,19 @@
     u = u || {};
     var h = '<div class="grp">Termo de pré-reserva</div>';
     if (!e) return h + '<div class="vazio">' + esc(u.msg || "carregando…") + "</div>";
-    h += '<div class="dz-linha"><span class="dz-rot">Pré-reserva de R$ ' + esc(brl(e.valor) || "—") + " até " + esc(dataBRpr(e.dataLimite) || "—") + "</span></div>";
     var trava = u.testes || !!u.ocupado, dis = trava ? " disabled" : "";
+    /* 31/10 (dono): valor e data do pagamento de cada venda; prazo para decidir = pagamento + 7 dias corridos */
+    var pg = u.pagDigitado || { valor: brl(e.valor), data: e.dataPagamento || "" };
+    h += '<div class="dz-linha">' +
+      '<label style="display:inline-block;margin:4px 12px 4px 0"><span class="dz-rot" style="display:block">Valor da pré-reserva (R$)</span>' +
+      '<input type="text" data-pr-p="valor" inputmode="decimal" maxlength="15" style="width:120px" placeholder="0,00" value="' + esc(pg.valor || "") + '"' + dis + "></label>" +
+      '<label style="display:inline-block;margin:4px 12px 4px 0"><span class="dz-rot" style="display:block">Data do pagamento</span>' +
+      '<input type="date" data-pr-p="data" value="' + esc(pg.data || "") + '"' + dis + "></label>" +
+      '<button type="button" class="bt ghost bt-mini" data-acao="pr-salvar-pag"' + dis + ">Salvar valor e data</button></div>";
+    h += '<div class="dz-linha"><span class="dz-rot">' + (e.dataLimite ? "Prazo para decidir a compra: " + esc(dataBRpr(e.dataLimite)) + " (pagamento + 7 dias corridos)"
+      : "Informe a data do pagamento para calcular o prazo (pagamento + 7 dias corridos).") + "</span></div>";
+    if (u.ocupado === "pag") h += '<div class="dz-linha"><b>salvando valor e data…</b></div>';
+    if (e.historico) h += '<details class="dz-linha"><summary class="dz-rot">Histórico de alterações</summary><pre style="white-space:pre-wrap;margin:4px 0">' + esc(e.historico) + "</pre></details>";
     /* 27/10 (dono): PIX (chave + banco) ou dados bancários (banco com busca, agência, conta e tipo) */
     var c = u.contaDigitada || contaDaTela(e), sel = function (v) { return c.forma === v ? " selected" : ""; };
     var caixa = function (rot, inner) {
@@ -1345,6 +1429,7 @@
               TIPO_CONTA_INVALIDO: "Escolha o tipo de conta.", CONTA_LONGA: "A chave ou o banco ficou longo demais.",
               MODELO_NAO_CONFIGURADO: "O modelo do termo (MODELO_PRE_RESERVA_ID) não está configurado — avise o desenvolvedor.",
               SEM_TERMO_GERADO: "Ainda não há termo gerado.", SO_CONDOMINIO: "O termo de pré-reserva é só do condomínio.",
+              PR_VALOR_INVALIDO: "Valor da pré-reserva inválido.", PR_DATA_INVALIDA: "Informe a data do pagamento.",
               SEM_PERMISSAO_TESTES: "Perfil TESTES não gera nem grava.", SEM_RESPOSTA: "O servidor não respondeu — tente de novo." };
     if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "A base não tem a coluna " + e.slice(17) + " — avise o desenvolvedor.";
     return M[e] || (e ? mensagemContrato(r) : "");
@@ -1363,6 +1448,14 @@
   function avisarDadosGravados(pageId) {
     try { window.dispatchEvent(new CustomEvent("venda:dados-gravados", { detail: { pageId: pageId } })); } catch (e) {}
   }
+  /* 31/10/2026 (dono): contrato enviado para assinatura (ou já assinado) = unidade vendida. Avisa a página
+   * (vendas.html marca VENDIDA = SIM na base UNIDADES do condomínio). Vale ao abrir o cartão também: pega as
+   * vendas que saíram sem o botão Vendida na proposta. */
+  function avisarContratoEnviado(pageId, estado) {
+    var s = String((estado && estado.situacao) || "").toUpperCase();
+    if (s !== "ENVIADO" && s !== "ASSINADO") return;
+    try { window.dispatchEvent(new CustomEvent("venda:contrato-enviado", { detail: { pageId: pageId, situacao: s } })); } catch (e) {}
+  }
 
   /* opts.recebimentos: o bloco Recebimentos (só a casa da VENDAS; o cartão do condomínio não tem) */
   function criarBlocosVenda(pageId, ativo, opts) {
@@ -1370,6 +1463,7 @@
     var raiz = null, seqC = 0, carregandoC = false, estadoC = null, uiC = novoUiC();
     var estadoM = null, uiM = novoUiM(), esperaM = null, ctxA = novoCtxA();
     var estadoR = null, uiR = novoUiR();
+    var estadoF = null, uiF = { filtro: "todas", todas: false, msg: "", carregando: false };   /* 31/10: aba Financeiro */
     /* 27/10/2026: termo de pré-reserva (condomínio) */
     /* 28/10: soPR = só os blocos da pré-reserva (a janela do "Pagou preferência" na tela de propostas) */
     var soPR = !!(opts && opts.soPreReserva);
@@ -1406,9 +1500,28 @@
       if (soPR) { raiz.innerHTML = '<div class="vb-pr">' + htmlPreReserva(estadoP, uiP) + '</div><div class="vb-pr-ass">' + htmlAssPR() + "</div>"; return; }
       raiz.innerHTML = (comPR ? '<div class="vb-pr">' + htmlPreReserva(estadoP, uiP) + '</div><div class="vb-pr-ass">' + htmlAssPR() + "</div>" +
                                  '<div class="vb-conf">' + htmlConferencia(estadoD, uiD) + "</div>" : "") +
-        htmlContrato(estadoC, uiC) + '<div class="vb-ass">' + htmlAss() + "</div>" +
+        /* 31/10/2026: no cartão do condomínio o contrato ganha a própria caixa (.vb-ct) para ir à aba Contrato;
+         * no painel da casa (sem pré-reserva) continua solto, com as margens do painel */
+        (comPR ? '<div class="vb-ct">' + htmlContrato(estadoC, uiC) + "</div>" : htmlContrato(estadoC, uiC)) +
+        '<div class="vb-ass">' + htmlAss() + "</div>" +
         (comRec ? '<div class="vb-rec">' + htmlRecebimentos(estadoR, uiR) + "</div>" : "") +
-        '<div class="vb-mc">' + htmlMC(estadoM, uiM) + "</div>";
+        '<div class="vb-mc">' + htmlMC(estadoM, uiM) + "</div>" +
+        (comPR ? '<div class="vb-fin">' + htmlFinanceiro(estadoF, uiF) + "</div>" : "");   /* 31/10: aba Financeiro (só condomínio) */
+    }
+    function pintarF() { var w = dentro(".vb-fin"); if (w) w.innerHTML = htmlFinanceiro(estadoF, uiF); }
+    /* lida só quando a aba Financeiro abre (VendaBlocos.aba) — não pesa a abertura do cartão */
+    async function carregarF() {
+      if (uiF.carregando) return;
+      uiF.carregando = true; uiF.msg = ""; pintarF();
+      var r = await chamarVenda({ action: "financeiroEstado", pageId: pageId }, 90000);
+      if (!vivo()) return;
+      if (r.ok) { estadoF = r; uiF.carregando = false; pintarF(); return; }
+      uiF.msg = mensagemContrato(r); pintarF(); uiF.carregando = false;
+    }
+    function aoClicarFin(acao) {
+      var m = /^f-filtro-(\w+)$/.exec(acao);
+      if (m) { uiF.filtro = m[1]; uiF.todas = false; pintarF(); return; }
+      if (acao === "f-todas") { uiF.todas = true; pintarF(); }
     }
     /* entrega 14: Recebimentos — a data digitada sobrevive ao redesenho; o arquivo escolhido fica em uiR.arquivos */
     function guardarRascunhoR() {
@@ -1486,6 +1599,13 @@
       var c = uiP.contaDigitada || contaDaTela(estadoP);
       Array.prototype.forEach.call(w.querySelectorAll("[data-pr-c]"), function (x) { c[x.getAttribute("data-pr-c")] = x.value; });
       uiP.contaDigitada = c;
+      guardarPagPR();
+    }
+    function guardarPagPR() {
+      var w = dentro(".vb-pr"); if (!w || !w.querySelector("[data-pr-p]")) return;
+      var g = {};
+      Array.prototype.forEach.call(w.querySelectorAll("[data-pr-p]"), function (x) { g[x.getAttribute("data-pr-p")] = x.value; });
+      uiP.pagDigitado = g;
     }
     function pintarP() {
       var w = dentro(".vb-pr"); if (w) { guardarContaPR(); w.innerHTML = htmlPreReserva(estadoP, uiP); }
@@ -1510,6 +1630,7 @@
         pintarD();
         return;
       }
+      if (/^d-corr-/.test(acao)) return aoCorrigir(acao);
       var m = /^d-(abrir|ok)-(\d+)$/.exec(acao), i = m ? Number(m[2]) : -1, l = estadoD && estadoD.linhas && estadoD.linhas[i];
       if (!l) return;
       if (m[1] === "abrir") {
@@ -1540,10 +1661,50 @@
       if (ro.ok) estadoD.confirmados = ro.confirmados; else uiD.msg = mensagemContrato(ro);
       pintarD();
     }
+    /* 31/10/2026: Corrigir aqui — abre (lê as colunas da venda), usa o valor lido, salva ou cancela */
+    async function aoCorrigir(acao) {
+      var c = uiD.corr, l;
+      if (acao === "d-corr-cancelar") { uiD.corr = null; pintarD(); return; }
+      if (acao === "d-corr-usar") {
+        l = c && estadoD.linhas[c.i];
+        var inp = dentro(".vb-conf [data-corr-col]");
+        if (l && inp) { inp.value = l.lido; inp.focus(); }
+        return;
+      }
+      if (acao === "d-corr-salvar") {
+        if (!c || !c.campos) return;
+        l = estadoD.linhas[c.i]; var valores = {};
+        raiz.querySelectorAll(".vb-conf [data-corr-col]").forEach(function (x) { valores[x.getAttribute("data-corr-col")] = x.value; });
+        c.campos.forEach(function (x) { if (x.coluna in valores) x.valor = valores[x.coluna]; });
+        uiD.ocupado = "corrigir"; pintarD();
+        var rs = await chamarVenda({ action: "corrigirConferencia", pageId: pageId, item: l.item, campo: l.campo, valores: valores });
+        if (!vivo()) return;
+        uiD.ocupado = null;
+        if (!rs.ok) { uiD.msg = rs.erro === "CPF_INVALIDO" ? "CPF inválido — confira os números." : mensagemContrato(rs); pintarD(); return; }
+        uiD.corr = null;
+        uiD.msg = rs.mudou && rs.mudou.length ? "Corrigido (" + rs.mudou.join(", ") + "). Gere o contrato de novo para sair com o dado certo." : "Nada mudou.";
+        if (rs.mudou && rs.mudou.length) {
+          try { window.dispatchEvent(new CustomEvent("venda:dados-gravados", { detail: { pageId: pageId } })); } catch (e) {}
+          await carregarConf();
+        } else pintarD();
+        return;
+      }
+      var m = /^d-corr-(\d+)$/.exec(acao), i = m ? Number(m[1]) : -1;
+      l = estadoD && estadoD.linhas && estadoD.linhas[i];
+      if (!l) return;
+      uiD.corr = { i: i, carregando: true }; pintarD();
+      var r = await chamarVenda({ action: "corrigirConferenciaCampos", pageId: pageId, item: l.item, campo: l.campo });
+      if (!vivo() || !uiD.corr || uiD.corr.i !== i) return;
+      if (r.ok) uiD.corr = { i: i, campos: r.campos };
+      else uiD.corr = { i: i, erro: r.erro === "NAO_CORRIGE_AQUI" ? "Este campo não se corrige aqui — use o link para completar a venda." :
+                                    r.erro === "COLUNA_FALTANDO" ? "A venda não tem a coluna " + (r.faltas || []).join(", ") + "." : mensagemContrato(r) };
+      pintarD();
+    }
     async function carregarPR() {
       var r = await chamarVenda({ action: "preReservaEstado", pageId: pageId });
       if (!vivo()) return;
-      if (r.ok) { estadoP = { conta: r.conta || "", contaCampos: r.contaCampos || null, gerado: !!r.gerado, nome: r.nome || "", valor: r.valor, dataLimite: r.dataLimite || "" }; uiP.msg = ""; }
+      if (r.ok) { estadoP = { conta: r.conta || "", contaCampos: r.contaCampos || null, gerado: !!r.gerado, nome: r.nome || "", valor: r.valor,
+                              dataPagamento: r.dataPagamento || "", dataLimite: r.dataLimite || "", historico: r.historico || "" }; uiP.msg = ""; }
       else uiP.msg = mensagemPR(r);
       pintarP();
     }
@@ -1574,6 +1735,21 @@
         var rv = await chamarVenda({ action: "verTermoPreReserva", pageId: pageId }, 90000);
         if (!vivo()) { if (w) { try { w.close(); } catch (e) {} } return; }
         uiP.ocupado = null; abrirPdf(w, rv, uiP, mensagemPR); pintarP();
+        return;
+      }
+      if (acao === "pr-salvar-pag") {
+        guardarPagPR();
+        var pd = uiP.pagDigitado || {};
+        uiP.ocupado = "pag"; uiP.msg = ""; pintarP();
+        var rp = await chamarVenda({ action: "salvarPagamentoPreReserva", pageId: pageId, valor: lerNumBR(pd.valor), data: pd.data || "" });
+        if (!vivo()) return;
+        uiP.ocupado = null;
+        if (rp.ok) {
+          estadoP.valor = rp.valor; estadoP.dataPagamento = rp.dataPagamento; estadoP.dataLimite = rp.dataLimite; estadoP.historico = rp.historico || "";
+          uiP.pagDigitado = undefined;
+          uiP.msg = !rp.mudou ? "Nada mudou." : "Valor e data salvos." + (estadoP.gerado ? " Gere o termo de novo para valer." : "");
+        } else uiP.msg = mensagemPR(rp);
+        pintarP();
         return;
       }
       if (acao === "pr-salvar-conta") {
@@ -1636,6 +1812,7 @@
       if (r.ok) { ctxA.estado = { situacao: r.situacao || "", envelope: !!r.envelope, signatarios: r.signatarios || [], temAssinado: !!r.temAssinado }; ctxA.msg = ""; }
       else ctxA.msg = window.VendaAssinatura ? window.VendaAssinatura.mensagemAssinatura(r) : "";
       pintarA();
+      if (r.ok) avisarContratoEnviado(pageId, ctxA.estado);
     }
     async function aoClicarAss(acao) {
       if (!window.VendaAssinatura || ctxA.ocupado) return;
@@ -1649,6 +1826,7 @@
       });
       if (!vivo()) return;
       ctxA = novo; pintarA();
+      avisarContratoEnviado(pageId, ctxA.estado);
     }
 
     /* Mais Controle */
@@ -1701,6 +1879,7 @@
       var acao = b.getAttribute("data-acao"), r, seq;
       if (/^mc-/.test(acao)) return aoClicarMC(acao);
       if (/^pr-/.test(acao)) return aoClicarPR(acao);
+      if (/^f-/.test(acao)) return aoClicarFin(acao);
       if (/^d-/.test(acao)) return aoClicarConf(acao);
       if (acao === "p-ver-assinado") return verAssinadoPR();
       if (/^p-/.test(acao)) return aoClicarAssPR(acao);
@@ -1908,6 +2087,8 @@
         uiC.fluxoEd = null;
         if (estadoC.pre) estadoC.pre.desatualizado = true;
         uiC.msg = voltar ? "Fluxo da proposta restaurado — gere o pré-contrato de novo." : "Fluxo salvo.";
+        try { window.dispatchEvent(new CustomEvent(EVENTO_GRAVADO, { detail: detalheFluxoGravado(pageId, ed, voltar) })); }
+        catch (e) { /* sem CustomEvent: o quadro do cartão só atualiza ao reabrir a unidade */ }
       } else uiC.msg = mensagemContrato(rs);
       pintar();
     }
@@ -2074,6 +2255,7 @@
     eu.raiz = function () { return raiz; };
     eu.pintarAssinatura = function () { pintarA(); if (comPR) { var a = dentro(".vb-pr-ass"); if (a) a.innerHTML = htmlAssPR(); } };
     eu.parar = function () { if (esperaM) clearTimeout(esperaM); esperaM = null; };
+    eu.abrirAba = function (aba) { if (aba === "financeiro" && comPR && !soPR && !estadoF) carregarF(); };
     return eu;
   }
 
@@ -2128,7 +2310,9 @@
     blocosPR.anexar(el);
   }
   function soltarPreReserva() { if (blocosPR) blocosPR.parar(); blocosPR = null; }
-  window.VendaBlocos = { montar: montarCondominio, soltar: soltarCondominio, montarPreReserva: montarPreReserva, soltarPreReserva: soltarPreReserva };
+  /* 31/10/2026: o cartão avisa a aba aberta — o Financeiro só lê quando abre */
+  function abaCondominio(aba) { if (blocosCond) blocosCond.abrirAba(aba); }
+  window.VendaBlocos = { montar: montarCondominio, soltar: soltarCondominio, montarPreReserva: montarPreReserva, soltarPreReserva: soltarPreReserva, aba: abaCondominio };
 
   function garantirBloco(body) {
     var id = obraAberta();
@@ -2168,7 +2352,7 @@
        Carrega mesmo sem o painel da casa: o cartão do condomínio também usa. */
     /* 30/10: leitor das rubricas do comprador (pdf.js só carrega na hora de enviar) */
     var sr = document.createElement("script"); sr.src = "venda/RubricasVenda.js?v=1"; document.head.appendChild(sr);
-    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=12";
+    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=13";
     sa.onload = function () { [blocosCasa, blocosCond, blocosPR].forEach(function (b) { if (b) b.pintarAssinatura(); }); };
     document.head.appendChild(sa);
     var body = document.getElementById("pn-body"); if (!body) return;

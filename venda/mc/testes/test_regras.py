@@ -197,3 +197,34 @@ def test_corretor_vai_na_observacao():
     assert c["comment"] == "Corretor: Corretor Exemplo | Imobiliária: Imob Exemplo | Comissão: R$ 10.000,00 (paga pelo comprador)"
     d = R.dados_da_pagina(pagina(**{"COMISSÃO": num(None), "CORRETOR": {"type": "select", "select": None}}))
     assert "comment" not in R.corpo_venda(d, {"id": "o"}, "c", {"id": "k"})
+
+
+def test_data_com_ano_absurdo_e_falta_antes_do_erp():
+    """31/10/2026: a casa 15 foi ao ERP com DATA DA VENDA 0002-10-31 (ano digitado errado) e voltou HTTP 400
+    (IsAfter.sale.tradeReceivable.referenceDate). Ano fora de 2000-2100 é falta, na venda e nas parcelas."""
+    d = R.dados_da_pagina(pagina(**{"DATA DA VENDA": data("0002-10-31")}))
+    assert "DATA DA VENDA com ano 0002 — corrija na planilha" in R.faltas(d)
+    d = R.dados_da_pagina(pagina(**{"DATA DA VENDA": data("2206-10-31")}))
+    assert "DATA DA VENDA com ano 2206 — corrija na planilha" in R.faltas(d)
+    d = R.dados_da_pagina(pagina(**{"DATA DA VENDA": data("2026-10-31")}))
+    assert R.faltas(d) == []
+    d = R.dados_da_pagina(pagina())
+    d["parcelas_prontas"] = [{"tipo": R.TIPO_SINAL, "rotulo": "Sinal ato", "valor": 1000.0, "data": "0026-11-30"}]
+    assert "Data da parcela Sinal ato com ano 0026 — corrija na planilha" in R.faltas(d)
+
+
+def test_email_valido_limpa_o_que_o_erp_recusa():
+    assert R.email_valido(" Maria@Gmail.com ") == "maria@gmail.com"
+    assert R.email_valido("joao@gmail.com / maria@hotmail.com") == "joao@gmail.com"
+    assert R.email_valido("mailto:ana@uol.com.br") == "ana@uol.com.br"
+    assert R.email_valido("ana@gmail") is None
+    assert R.email_valido("não tem") is None
+    assert R.email_valido(None) is None
+
+
+def test_corpo_cliente_sem_email_valido_nao_manda_email():
+    d = R.dados_da_pagina(pagina())
+    d["comprador"]["email"] = "fulano gmail.com"
+    assert "email" not in R.corpo_cliente(d)
+    d["comprador"]["email"] = "Fulano@Gmail.com;"
+    assert R.corpo_cliente(d)["email"] == "fulano@gmail.com"

@@ -274,6 +274,8 @@ function ctrDadosCondominio_(c) {
         credito: n("VALOR DO CRÉDITO"), fgts: n("VALOR DO FGTS"), subsidio: n("SUBISÍDIO")
       },
       fiadores: [fiador(1), fiador(2)],
+      /* 31/10/2026 (dono): cônjuge do comprador assina (colunas da proposta) — ContratoVenda.conjugeDoComprador */
+      conjugeComprador: { estadoCivil: t("ESTADO CIVIL"), nome: t("CONJUGE"), cpf: RegrasVenda.cpfDoNotion(t("CPF CONJUGE")), email: t("EMAIL CONJUGE") },
       /* 29/10: "Alterar fluxo" (FluxoVenda.gs) — a lista livre; vazia = fluxo do simulador */
       fluxoPersonalizado: t("FLUXO PERSONALIZADO"),
       /* quadro-resumo (21/10): a comissão gravada pelo simulador; vazia, o contrato calcula pela regra */
@@ -282,7 +284,8 @@ function ctrDadosCondominio_(c) {
       /* 27/10 (dono): sinal "por PIX ou abatimento" — o abatimento é o VALOR PARA ENTRADA da proposta (ctrFontes_) */
       idProposta: t("ID PROPOSTA"),
       preReserva: { assinado: t("PRÉ-RESERVA - SITUAÇÃO").toUpperCase() === "ASSINADO",
-                    valor: typeof PreReservaVenda !== "undefined" ? PreReservaVenda.valorDe(prop_("PRE_RESERVA_VALOR")) : null }
+                    /* 31/10: o valor é da venda (coluna), não mais da Propriedade PRE_RESERVA_VALOR */
+                    valor: n("PRÉ-RESERVA - VALOR"), dataPagamento: t("PRÉ-RESERVA - DATA PAGAMENTO") }
     },
     /* o imóvel do condomínio mora na linha do condomínio; a casa só completa o que faltar */
     imovel: { MATRICULA_INDIVIDUAL: t("CONTRATO - MATRÍCULA INDIVIDUAL"), CRI: t("CONTRATO - CRI DA MATRÍCULA"),
