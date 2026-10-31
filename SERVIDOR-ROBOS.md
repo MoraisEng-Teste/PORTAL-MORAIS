@@ -95,7 +95,7 @@ já logada — sem login, sem código. Decisão do dono em 29/10.
 Ordem: 1–4 o dono faz no PC dele; 5–9 o Claude do servidor faz, pedindo o ok antes de gravar ou agendar.
 
 ## 1. (dono) Mesclar o PR do robô do servidor
-GitHub › MoraisEng-Teste/PORTAL-MORAIS › PR "Robôs da venda pelo servidor" › Merge pull request › Confirm merge.
+GitHub › DEVMoraisEng/PORTAL-MORAIS › PR "Robôs da venda pelo servidor" › Merge pull request › Confirm merge.
 Sem a Propriedade DB_FILA_ROBO nada muda no portal (continua indo para o GitHub).
 
 ## 2. (dono) Publicar o PORTAL-VENDA de produção
@@ -118,7 +118,7 @@ A partir daqui, "Ver prévia" e "Lançar no Mais Controle" vão para a fila do s
 ## 5. (servidor) Atualizar o clone e testar
 ```powershell
 cd "C:\AUTOMAÇÕES MAIS CONTROLE\_portal"
-git pull https://github.com/MoraisEng-Teste/PORTAL-MORAIS.git main
+git pull https://github.com/DEVMoraisEng/PORTAL-MORAIS.git main
 python -m pytest -q venda/mc/testes tests/test_robo_fila.py
 ```
 
@@ -133,7 +133,7 @@ Ao lado da fila "teste", com `pode_gravar: true`:
  "db_fila": "<id do passo 3>",
  "notion_token_arquivo": "C:\AUTOMAÇÕES MAIS CONTROLE\_central\notion-producao.txt",
  "pode_gravar": true,
- "vars": {"DB_VENDAS_COND": "3f1c5ab532d381d38ba0d495b1bc8123",
+ "vars": {"DB_VENDAS_COND": "bfdc5ab532d3833983fc0130cffb8bac",
           "DB_CORRETORES": "<igual à variável DB_CORRETORES do GitHub de produção>",
           "DB_DISTRATOS": "<igual à variável DB_DISTRATOS do GitHub de produção>",
           "NATUREZA_DEVOLUCAO_ID": "86f2fad4-29c7-4427-8a7f-bffa4caab99b"}}
@@ -171,7 +171,7 @@ sem login"; o robô de contas pega o acesso da aba. A Auditoria Financeira NÃO 
 ## 1. (servidor) Atualizar o clone e testar
 ```powershell
 cd "C:\AUTOMAÇÕES MAIS CONTROLE\_portal"
-git pull https://github.com/MoraisEng-Teste/PORTAL-MORAIS.git main
+git pull https://github.com/DEVMoraisEng/PORTAL-MORAIS.git main
 python -m pytest -q tests venda/mc/testes
 ```
 Esperado: tudo passando, menos 6 testes antigos de `tests/test_robo_mc_obras.py` que já falhavam antes.
@@ -187,15 +187,32 @@ Ao lado de "filas":
 ```json
 "robos": {"notion_token_arquivo": "C:\AUTOMAÇÕES MAIS CONTROLE\_chaves\notion-producao-leitura.txt",
           "github_token_arquivo": "C:\AUTOMAÇÕES MAIS CONTROLE\_chaves\github-portal.txt",
-          "vars": {"CONTAS_DB_ID": "3f1c5ab532d3812caaedf6c9a383aace", "MC_CRED": "robo"}}
+          "vars": {"CONTAS_DB_ID": "3e4c5ab532d380afbd3bf9f7af31d2a7", "MC_CRED": "robo",
+                   "DB_VENDAS_COND": "<id da VENDAS CONDOMÍNIO>"}}
 ```
 
+### Robô `retratos` (31/10/2026, antecipação e aba Financeiro)
+Lê, no Mais Controle, cada venda da base BANCO DE DADOS VENDAS CONDOMÍNIO que já tem "MC - VENDA ID" e grava o
+"retrato" (parcelas, valores, fatores, pagas) em "MC - RETRATO" e a hora em "MC - RETRATO EM". **Só lê o ERP**
+(nunca grava nele; `ROBOS_APLICAR.txt` não muda nada aqui). Se a leitura falha e já existe um retrato bom, ele é
+mantido e só "MC - RETRATO EM" ganha `<hora do último bom> | ERRO <agora>: <motivo>`. Se nunca houve retrato bom, "MC - RETRATO"
+fica com `ERRO: <motivo>` e "MC - RETRATO EM" com ` | ERRO <agora>: <motivo>` (sem hora de leitura na frente). Log: "retratos: N ok, M erro".
+**Premissa do fuso:** a hora gravada é a hora local do servidor (`datetime.now()`), e o portal compara o mês dela com o mês de hoje
+em America/Sao_Paulo. O servidor precisa estar no fuso de Brasília/Goiânia (UTC-3); em outro fuso a leitura da virada do mês
+(e a das 05:00) cairia no mês errado e a tela pediria "Ler de novo" sem necessidade.
+Script: `robo_mc_retratos.py` (chama `python -m venda.mc.retrato --todas`). Tarefa agendada sugerida: todo dia às
+05:00, `python servidor\robo_fila.py --robo retratos`. **A chave "robos" de `robos-portal.json` precisa de
+`DB_VENDAS_COND` em "vars"** (id da base de vendas do condomínio), senão o robô sai com código 2 e avisa o motivo.
+
 ## 4. (servidor) Rodada de prova, SEM gravar
-Sem o arquivo `_central\ROBOS_APLICAR.txt` os robôs só simulam (como o GitHub sem APLICAR):
+Sem o arquivo `_central\ROBOS_APLICAR.txt` os robôs só simulam (como o GitHub sem APLICAR).
+**Exceção: `--robo retratos` GRAVA no Notion** (as colunas "MC - RETRATO" e "MC - RETRATO EM" das vendas do condomínio), com ou sem
+`ROBOS_APLICAR.txt`; ele só não grava no ERP (nunca grava). Rode esse com a certeza de que pode mexer nessas duas colunas:
 ```powershell
 python servidor\robo_fila.py --robo bases
 python servidor\robo_fila.py --robo contas
 python servidor\robo_fila.py --robo medicoes
+python servidor\robo_fila.py --robo retratos
 python servidor\robo_fila.py --indices
 python servidor\robo_fila.py --verificar
 ```
@@ -213,6 +230,7 @@ Mesmo Python (`pythonw.exe`, caminho completo), mesma conta e "só com o usuári
 | MoraisEng - Robo contas | todo dia 06:23 | `robo_fila.py --robo contas` |
 | MoraisEng - Robo bases | todo dia 07:17 | `robo_fila.py --robo bases` |
 | MoraisEng - Robo medicoes | seg a sáb, 07:20 a 19:20 de 2 em 2 h | `robo_fila.py --robo medicoes` |
+| MoraisEng - Robo retratos | todo dia 05:00 | `robo_fila.py --robo retratos` |
 | MoraisEng - Robo indices | todo dia 09:00 | `robo_fila.py --indices` |
 Rodar cada uma uma vez (`schtasks /Run`) e mostrar o `Last Result`.
 
