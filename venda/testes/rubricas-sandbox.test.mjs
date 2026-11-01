@@ -176,3 +176,96 @@ test("calibração: memorial e projeto — compradores e vendedor em pontos dife
   /* testemunha, corretor e fiador não entram no memorial/projeto */
   for (const s of [TE, CO, FI]) assert.ok(!CS.requisitosRubrica(s, DOCS, rub, LISTA2.indexOf(s), LISTA2).some((r) => r.docId === "m" || r.docId === "p"), s.papel);
 });
+
+/* ---- revisão do 43166e2 ---- */
+const MEM = { page: "13", position: [0.53, 0.7] };
+const LETTER = { W: 612, H: 792 }, A2 = { W: 1684, H: 1191 };
+const naoSobrepoe = (ps, pg) => { for (let a = 0; a < ps.length; a++) for (let b = a + 1; b < ps.length; b++) {
+  const dx = Math.abs(ps[a].position[0] - ps[b].position[0]) * pg.W, dy = Math.abs(ps[a].position[1] - ps[b].position[1]) * pg.H;
+  assert.ok(dx >= 100 || dy >= 50, "sobrepõe: " + JSON.stringify([ps[a], ps[b]]));
+} };
+
+test("revisão A: memorial — o vendedor assina na PRÓPRIA linha (coluna da Vendedora do modelo, x≈0,116), os compradores na deles", () => {
+  const rub = { campos: [], valores: null, memorial: MEM, projeto: [], linhas: [], termos: {} };
+  const mem = (s) => CS.requisitosRubrica(s, DOCS, rub, LISTA2.indexOf(s), LISTA2).find((r) => r.docId === "m").positions[0];
+  assert.deepEqual(mem(VEND), { page: "13", position: [0.116, 0.7] });
+  assert.deepEqual(mem(C2), MEM, "a última fileira (comprador 2) no ponto medido; comprador 1 e cônjuge 52 pt acima");
+  naoSobrepoe([C1, CJ, C2, VEND].map(mem), LETTER);
+  /* Propriedade MEMORIAL_POSICAO.vendedor muda a linha do vendedor */
+  const r2 = Object.assign({}, rub, { memorialVendedor: { page: "13", position: [0.2, 0.71] } });
+  assert.deepEqual(CS.requisitosRubrica(VEND, DOCS, r2, 3, LISTA2).find((r) => r.docId === "m").positions[0], { page: "13", position: [0.2, 0.71] });
+});
+
+test("revisão B: perto do topo as fileiras extras vão PARA BAIXO (nunca y<0, nada sobreposto); sem lugar = sem posição e aviso", () => {
+  const avisos = [];
+  const campo = (y) => ({ campos: [{ page: "5", position: [420 / W, y / H] }], valores: null, memorial: null, projeto: [], linhas: [], termos: {} });
+  const ps = [C1, CJ, C2].map((s) => CS.requisitosRubrica(s, DOCS, campo(30), LISTA2.indexOf(s), LISTA2, avisos)[0].positions[0]);
+  assert.deepEqual(ps.map(topo), [30, 82, 134], "a 1ª no ponto, as outras abaixo");
+  assert.ok(ps.every((p) => p.position[1] >= 0));
+  naoSobrepoe(ps, { W, H });
+  /* 3 fileiras subindo dariam y<0 (ponto em 80): também para baixo */
+  assert.deepEqual([C1, CJ, C2].map((s) => topo(CS.requisitosRubrica(s, DOCS, campo(80), LISTA2.indexOf(s), LISTA2)[0].positions[0])), [80, 132, 184]);
+  assert.deepEqual(avisos, []);
+});
+
+test("revisão D: projeto em A2 (x≈0,9) — 4 pessoas preenchem para a ESQUERDA na mesma altura, nunca para cima do carimbo", () => {
+  const P = { page: "5", position: [0.9, 0.95] }, rub = { campos: [], valores: null, memorial: null, projeto: [P], linhas: [], termos: {} };
+  const proj = [C1, CJ, C2, VEND].map((s) => CS.requisitosRubrica(s, DOCS, rub, LISTA2.indexOf(s), LISTA2).find((r) => r.docId === "p").positions[0]);
+  const x0 = 0.9 * A2.W;
+  assert.deepEqual(proj.map((p) => Math.round(p.position[0] * A2.W)), [x0, x0 - 105, x0 - 210, x0 - 315].map(Math.round));
+  assert.ok(proj.every((p) => p.position[1] === 0.95), "mesma altura");
+  /* sem lugar à esquerda e sem lugar abaixo (pé da página): fica sem posição para quem não cabe, com aviso */
+  const avisos = [], canto = { campos: [], valores: null, memorial: null, projeto: [{ page: "5", position: [0.03, 0.97] }], linhas: [], termos: {} };
+  const p2 = CS.requisitosRubrica(CJ, DOCS, canto, LISTA2.indexOf(CJ), LISTA2, avisos).find((r) => r.docId === "p");
+  assert.equal(p2, undefined, "sem posição no projeto para o 2º");
+  assert.match(avisos.join(" | "), /Cônjuge do comprador 1: sem lugar para a assinatura posicionada no projeto, pág\. 5/);
+  assert.ok(CS.requisitosRubrica(C1, DOCS, canto, 0, LISTA2).find((r) => r.docId === "p"), "o 1º fica no ponto medido");
+});
+
+test("revisão C: tamanho real das páginas lido do PDF (MediaBox, árvore /Kids, /Rotate); sem dá para ler = padrão", () => {
+  const pdf = ["%PDF-1.4", "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+    "2 0 obj << /Type /Pages /Kids [4 0 R 3 0 R] /Count 2 /MediaBox [0 0 612 792] >> endobj",
+    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 1191 1684] /Rotate 90 >> endobj",
+    "4 0 obj << /Type /Page /Parent 2 0 R >> endobj", "%%EOF"].join("\n");
+  assert.deepEqual(CS.tamanhosPaginasPdf(pdf), [{ W: 612, H: 792 }, { W: 1684, H: 1191 }], "na ordem dos /Kids; a 2ª deitada");
+  assert.equal(CS.tamanhosPaginasPdf("%PDF-1.5\n1 0 obj << /Type /ObjStm >> endobj"), null);
+  assert.equal(CS.tamanhosPaginasPdf(""), null);
+  /* com o tamanho lido, o deslocamento usa a página de verdade (aqui o projeto inteiro em A4 retrato) */
+  const P = { page: "1", position: [0.9, 0.95] };
+  const rub = { campos: [], valores: null, memorial: null, projeto: [P], linhas: [], termos: {}, tamanhos: { projeto: [{ W: 595, H: 842 }] } };
+  const p = CS.requisitosRubrica(CJ, DOCS, rub, 1, LISTA2).find((r) => r.docId === "p").positions[0];
+  assert.ok(Math.abs(p.position[0] * 595 - (0.9 * 595 - 105)) < 1, String(p.position[0] * 595));
+});
+
+/* ---- envelope da unidade 22 (sandbox, 01/11) ---- */
+test("unidade 22 (1): nome contido no outro — 'COMPRADOR VINTE E DOIS TESTE' × 'OUTRO COMPRADOR VINTE E DOIS TESTE': cada um com a sua linha", () => {
+  const a = { papel: "Comprador 1", role: "buyer", nome: "COMPRADOR VINTE E DOIS TESTE", origem: "comprador1", rubrica: true };
+  const b = { papel: "Comprador 2", role: "buyer", nome: "OUTRO COMPRADOR VINTE E DOIS TESTE", origem: "comprador2", rubrica: true };
+  const linhas = [{ page: "1", position: [0.1, 0.1], texto: "Nome: COMPRADOR VINTE E DOIS TESTE\nCPF: 1\nCOMPRADOR" },
+                  { page: "1", position: [0.1, 0.2], texto: "Nome: OUTRO COMPRADOR VINTE E DOIS TESTE\nCPF: 2\nCOMPRADOR" }];
+  for (const tipo of ["contrato", "termo"]) {
+    const r = CS.atribuirLinhas([a, b, VEND], linhas, tipo);
+    assert.deepEqual(r.map((x) => x.map((p) => p.position[1])), [[0.1], [0.2], []], tipo);
+  }
+  /* caso da vida: "JOSE SILVA" × "MARIA JOSE SILVA" */
+  const j = { papel: "Comprador 1", role: "buyer", nome: "JOSE SILVA", origem: "comprador1", rubrica: true };
+  const m = { papel: "Cônjuge do comprador 1", role: "buyer", nome: "MARIA JOSE SILVA", origem: "conjugeComprador1", rubrica: true };
+  const lj = [{ page: "2", position: [0.1, 0.3], texto: "Nome: MARIA JOSE SILVA\nCÔNJUGE DO COMPRADOR" }, { page: "2", position: [0.1, 0.4], texto: "Nome: JOSE SILVA\nCOMPRADOR" }];
+  assert.deepEqual(CS.atribuirLinhas([j, m], lj, "contrato").map((x) => x.map((p) => p.position[1])), [[0.4], [0.3]]);
+  /* linha antiga com os dois nomes (nenhum contido no outro): ninguém, como antes */
+  assert.deepEqual(CS.atribuirLinhas([j, b], [{ page: "1", position: [0.1, 0.1], texto: "Nome: JOSE SILVA / OUTRO COMPRADOR VINTE E DOIS TESTE" }], "contrato"), [[], []]);
+});
+
+test("unidade 22 (2): traço no pé da página e o 'Nome:' no topo da seguinte — o texto vem da próxima página, a posição fica na do traço", () => {
+  const H2 = 792, pg = (n, itens) => ({ numero: n, largura: 612, altura: H2, itens });
+  const p3 = pg(3, [it("ASSINATURAS", 250, 60), traco(32, 200, 640), it("Nome: COMPRADOR VINTE E DOIS TESTE", 200, 652), it("COMPRADOR", 250, 680),
+                    traco(32, 200, 718)]);
+  const p4 = pg(4, [it("Nome: CONJUGE VINTE E DOIS TESTE", 200, 40), it("CPF: 000.000.000-00", 200, 54), it("CÔNJUGE DO COMPRADOR", 230, 68),
+                    traco(32, 200, 120), it("Nome: TESTEMUNHA UM", 200, 132), it("TESTEMUNHA 1", 240, 146)]);
+  const l = R.acharLinhas([p3, p4], ZERO);
+  const fim = l.find((x) => x.page === "3" && Math.round(x.position[1] * H2 + 46 - 11) === 718);
+  assert.ok(fim, JSON.stringify(l));
+  assert.equal(fim.texto, "Nome: CONJUGE VINTE E DOIS TESTE\nCPF: 000.000.000-00\nCÔNJUGE DO COMPRADOR");
+  const cj = { papel: "Cônjuge do comprador 1", role: "buyer", nome: "CONJUGE VINTE E DOIS TESTE", origem: "conjugeComprador1", rubrica: true };
+  assert.equal(CS.atribuirLinhas([cj], [fim], "termo")[0].length, 1);
+});

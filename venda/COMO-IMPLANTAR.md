@@ -1125,8 +1125,8 @@ passa a usar a cópia quando o dono troca a Propriedade dele. O código antigo d
 **Passo a passo do dono (uma vez):**
 1. Colar o código novo nos DOIS projetos, `PORTAL-VENDA-TESTE` e `PORTAL-VENDA`: `ClicksignVenda`, `ContratoVenda`,
    `GerarContrato`, `AssinaturaVenda`, `AssinaturaVigia`, `Confissao`, `PreReserva` e o novo `MigrarModelos`; e
-   subir o site (`venda/RubricasVenda.js` v5, `venda/assinatura-ui.js` v20, `venda-dossie.js` v52, `vendas.html`,
-   `simulacoes.html`, `sw.js` v254). Com os modelos de hoje nada muda.
+   subir o site (`venda/RubricasVenda.js` v6, `venda/assinatura-ui.js` v21, `venda-dossie.js` v53, `vendas.html`,
+   `simulacoes.html`, `sw.js` v255). Com os modelos de hoje nada muda.
 2. No projeto onde vai rodar a migração (o TESTE), ligar o serviço avançado **Google Docs API**: editor do Apps Script ›
    Serviços (+) › Google Docs API › Adicionar (identificador `Docs`). Os modelos de contrato têm quebras de seção perto dos
    blocos (a de próxima página antes do quadro-resumo e a de 2 colunas que põe vendedora | comprador lado a lado); o
@@ -1175,8 +1175,18 @@ apagadas.
   sem cobrir o "Nome:". Se o texto de cima estiver a menos de 46 pt, a imagem encosta nele (preferimos a linha).
   O ajuste padrão de `campo` e `linha` passou a 0; um `RUBRICAS_AJUSTE` gravado antes com `dy` negativo agora sobe a
   assinatura demais — apague a chave `linha`/`campo` dele.
-- Quem divide o mesmo ponto (campos de ciência, vistos dos valores, memorial, projeto) fica lado a lado, 105 pt um do
-  outro; sem espaço até a margem, vai uma fileira 52 pt abaixo e a de cima sobe.
+- Quem divide o mesmo ponto (campos de ciência, vistos dos valores, memorial) fica lado a lado, 105 pt um do outro; sem
+  espaço até a margem, nova fileira 52 pt — subindo, ou descendo quando subir passaria do topo. Nada é cortado na borda:
+  quem não cabe (passaria da margem de baixo) fica sem posição naquela página, assina só pela Clicksign, e o registro de
+  execução diz o papel e a página.
+- Projeto: as outras pessoas ficam à ESQUERDA do ponto medido, na mesma altura (nunca acima — ali está o carimbo
+  DEFERIMENTO da prefeitura); só sem espaço à esquerda, uma fileira abaixo.
+- Memorial: o modelo já tem a linha da Vendedora (à esquerda, com o nome e o CNPJ da SPE escritos no modelo) e a dos
+  compradores (à direita). O vendedor assina na linha dele (x 0,116, medido no modelo; a Propriedade `MEMORIAL_POSICAO`
+  aceita `"vendedor": [x, y]`); compradores e cônjuge, lado a lado na linha "Comprador(es)".
+- Tamanho das páginas: lido do próprio PDF no servidor (contrato, memorial e projeto, pelo MediaBox). Quando o PDF não
+  deixa ler (objetos comprimidos), vale o padrão: contrato A4, memorial Carta (o modelo é Carta), projeto págs. 1–2 A1
+  deitado e as demais A2 deitado.
 - Dono: "o comprador 1 e o 2/3 (quando tiver) têm que assinar os mesmos documentos, exatamente os mesmos, tem que ter a
   assinatura dos 2 ou 3 nos mesmos (junto com vendedor tb)" — compradores e vendedor assinam contrato, termos, memorial e
   projeto (o vendedor ao lado dos compradores no memorial e no projeto).
@@ -1185,12 +1195,26 @@ apagadas.
   (só com a caixa "Incluir o cônjuge na pré-reserva").
 - Sem mudança: fiadores só os termos; testemunhas contrato e termos; corretor só o contrato.
 
+**Envelope da unidade 22 (sandbox, 01/11):**
+- Nome contido no outro ("JOSE SILVA" × "MARIA JOSE SILVA"): a linha vai para o nome mais longo que aparece nela.
+- Traço no pé da página com o "Nome:" no topo da seguinte: o texto vem da página seguinte (a assinatura fica no traço).
+- Os vistos ("initials" — coluna de valores do contrato e projeto) não apareceram em nenhum PDF assinado, embora a
+  Clicksign tenha aceitado os pedidos (um pedido recusado para o envio inteiro). No próximo envio, o registro de execução
+  mostra para cada rubrica: "… rubrica initials <documento>: N posições pedidas → guardada kind=…, M posições". Se a
+  Clicksign guardar o visto sem as posições ou com outro tipo, o envio volta com o aviso RUBRICA_DIVERGENTE (a tela
+  mostra em "Atenção:"). Para mandar os vistos como assinatura (o tipo que aparece), ponha a Propriedade
+  `RUBRICAS_VISTO_COMO_ASSINATURA` = `1`.
+- Se a tela não achar o item 4.2.1 do quadro-resumo, não há visto nos valores — agora isso volta como aviso
+  "tela: item 4.2.1 do quadro-resumo não achado" no envio e no registro.
+
 ## Selfie com documento para comprador, cônjuge e fiadores (01/11/2026, plano 23 C)
 
-Desligada até o dono conferir. Com a Propriedade `CLICKSIGN_SELFIE` = `1`, o comprador 1 e 2, o cônjuge do comprador,
-os fiadores e os cônjuges dos fiadores ganham, em cada documento que assinam, mais dois requisitos `provide_evidence`
-além do token por e-mail: `selfie` (foto da pessoa pela câmera) e `official_document` (foto do documento, frente e
-verso). Liga só com o valor `1` exato. Vendedora, corretor e testemunhas continuam só com o e-mail. Vale para contrato e termos, rua e condomínio.
-Valores lidos em developers.clicksign.com/reference/criar-requisito-de-autenticacao (01/11/2026). A doc não diz com
-todas as letras que eles somam com o token por e-mail: conferir no 1º envelope do sandbox (e se o Plano Plus libera e
-quanto custa). Sem a Propriedade (ou com `0`), nada muda.
+Desligada até o dono ligar: só com a Propriedade `CLICKSIGN_SELFIE` = `1` (exatamente). Ligada, vale a regra do dono
+(01/11/2026): **selfie quando o vendedor é empresa** (venda PJ → PF) — no condomínio (SPE) sempre; na casa de rua só com
+vendedor de CNPJ. Vendedor pessoa física (PF → PF): sem selfie.
+- Quem faz: comprador 1 e 2, cônjuge do comprador, fiadores e cônjuges dos fiadores, em cada documento que assinam.
+  Vendedor, corretor e testemunhas: só o token por e-mail.
+- O que é: um requisito `provide_evidence` com `auth: "selfie"` além do token por e-mail. No contrato assinado que o dono
+  mostrou, a Clicksign registra isso como UMA autenticação "Foto de face & documento" (selfie com o documento na mão) —
+  por isso o requisito `official_document` separado saiu.
+- Sem a Propriedade (ou com `0`), nada muda.

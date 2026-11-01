@@ -1043,19 +1043,14 @@ test("30/10: memorial e projeto aprovado no mesmo envelope, assinados pelo compr
   assert.deepEqual(docsDo(vendedor.id), ["doc-1", "doc-2", "doc-3"]);
   for (const s of sigs.filter((x) => x !== comprador && x !== vendedor)) assert.deepEqual(docsDo(s.id), ["doc-1"], s.attributes.email);
   const rubr = rq.filter((q) => q.attributes.action === "rubricate").map((q) => [q.relationships.document.data.id, q.attributes.kind, q.attributes.positions]);
-  /* calibração 01/11: comprador e vendedor dividem o ponto — no memorial lado a lado (105 pt); no projeto (perto da margem)
-     um em cima do outro, o comprador 52 pt acima */
-  /* projeto: págs. 1–2 A1 deitado, as demais A2 deitado; cabe ao lado (x + 105 + 100 ≤ largura − 36)? senão o comprador sobe 52 pt */
-  const pg = (p) => (Number(p.page) <= 2 ? [2384, 1684] : [1684, 1191]), r4 = (v) => +v.toFixed(4);
-  const cabe = (p) => p.position[0] * pg(p)[0] + 105 + 100 <= pg(p)[0] - 36;
-  const projC = CS.POSICOES_PROJETO.map((p) => (cabe(p) ? p : { page: p.page, position: [p.position[0], r4((p.position[1] * pg(p)[1] - 52) / pg(p)[1])] }));
-  const projV = CS.POSICOES_PROJETO.map((p) => (cabe(p) ? { page: p.page, position: [r4((p.position[0] * pg(p)[0] + 105) / pg(p)[0]), p.position[1]] } : p));
-  assert.ok(projC.some((p, i) => p !== CS.POSICOES_PROJETO[i]) && projV.some((p, i) => p !== CS.POSICOES_PROJETO[i]), "os dois casos aparecem");
+  /* revisão 01/11: no memorial o vendedor assina na linha dele (x 0,116); no projeto o vendedor fica à ESQUERDA do
+     comprador, na mesma altura (nunca acima do carimbo da prefeitura) */
+  const larg = (p) => (Number(p.page) <= 2 ? 2384 : 1684), r4 = (v) => +v.toFixed(4);
   assert.deepEqual(rubr.slice(2), [
     ["doc-2", "manuscript", [{ page: "3", position: [0.53, 0.7] }]],   /* última página do memorial (3 aqui) */
-    ["doc-3", "initials", projC],
-    ["doc-2", "manuscript", [{ page: "3", position: [r4((0.53 * 595 + 105) / 595), 0.7] }]],
-    ["doc-3", "initials", projV]]);
+    ["doc-3", "initials", CS.POSICOES_PROJETO],
+    ["doc-2", "manuscript", [{ page: "3", position: [0.116, 0.7] }]],
+    ["doc-3", "initials", CS.POSICOES_PROJETO.map((p) => ({ page: p.page, position: [r4((p.position[0] * larg(p) - 105) / larg(p)), p.position[1]] }))]]);
   /* tudo assinado: só o contrato vai para CONTRATO ASSINADO (o principal continua sendo o contrato) */
   c.c.estado.status = "closed";
   const e = c.acao("assinaturaEstado");
@@ -1375,7 +1370,7 @@ test("plano 23 C: condomínio com CLICKSIGN_SELFIE=1 — fiadores com selfie e d
     return reqs.filter((q) => q.attributes.action === "provide_evidence" && q.relationships.signer.data.id === s.id)
       .map((q) => q.relationships.document.data.id + ":" + q.attributes.auth);
   };
-  assert.deepEqual(auths("f1@teste.example"), ["doc-2:email", "doc-2:selfie", "doc-2:official_document", "doc-3:email", "doc-3:selfie", "doc-3:official_document"]);
+  assert.deepEqual(auths("f1@teste.example"), ["doc-2:email", "doc-2:selfie", "doc-3:email", "doc-3:selfie"]);
   assert.ok(auths("compradora@teste.example").includes("doc-1:selfie"));
   assert.deepEqual(auths("beltrano@teste.example"), ["doc-1:email", "doc-2:email", "doc-3:email"]);
 });
@@ -1523,4 +1518,48 @@ test("correção 3 (1): no envelope com termos, o corretor (ASSINATURA_INCLUIR_C
   const reqs = c.c.chamadas.filter((x) => x.metodo === "POST" && x.caminho === "/envelopes/env-1/requirements");
   const docs = [...new Set(reqs.filter((q) => q.corpo.data.relationships.signer.data.id === corr.id).map((q) => q.corpo.data.relationships.document.data.id))];
   assert.deepEqual(docs, ["doc-1"]);
+});
+
+/* ---- envelope da unidade 22 (3): os vistos ("initials") não apareceram em nenhum PDF assinado ---- */
+const soInitials = (sem) => (m, cam, corpo) => (m === "POST" && cam === "/envelopes/env-1/requirements" && corpo.data.attributes.kind === "initials"
+  ? { status: 201, json: { data: { id: "req-x", type: "requirements", attributes: sem } } } : null);
+
+test("unidade 22 (3): cada rubrica posicionada fica no registro; o que a Clicksign guardar diferente do pedido vira aviso no envio", () => {
+  /* resposta sem "positions" não é divergência (pode ser só a resposta que não devolve o campo): fica o registro, sem aviso */
+  const s0 = cenario({ cs: { falhar: soInitials({ action: "rubricate", kind: "initials" }) } });
+  assert.equal(s0.gerarFinal().ok, true);
+  const r0 = s0.acao("assinaturaEnviar", rub(s0));
+  assert.equal(r0.ok, true, JSON.stringify(r0));
+  assert.ok(!(r0.avisos || []).some((a) => /RUBRICA_DIVERGENTE/.test(a)), JSON.stringify(r0.avisos));
+  const c = cenario({ cs: { falhar: soInitials({ action: "rubricate", kind: "initials", positions: [] }) } });
+  assert.equal(c.gerarFinal().ok, true);
+  const r = c.acao("assinaturaEnviar", rub(c));
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.ok((r.avisos || []).some((a) => /RUBRICA_DIVERGENTE/.test(a)), JSON.stringify(r.avisos));
+  const log = c.g.logs.join("\n");
+  assert.match(log, /rubrica initials doc-1: 1 posição pedida → guardada kind=initials, 0 posição/);
+  assert.match(log, /rubrica manuscript doc-1: \d+ posições? pedidas? → guardada kind=manuscript/);
+  assert.ok(!/compradora@|Compradora de Teste/.test(log), "registro sem dado pessoal");
+});
+
+test("unidade 22 (3): aviso da tela (4.2.1 não achado = sem visto nos valores) chega ao envio e ao registro", () => {
+  const c = cenario();
+  assert.equal(c.gerarFinal().ok, true);
+  const r = c.acao("assinaturaEnviar", rub(c, { valores: null, avisos: ["item 4.2.1 do quadro-resumo não achado"] }));
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.ok(r.avisos.includes("tela: item 4.2.1 do quadro-resumo não achado"), JSON.stringify(r.avisos));
+  assert.match(c.g.logs.join("\n"), /tela: item 4\.2\.1 do quadro-resumo não achado/);
+});
+
+test("unidade 22 (3): RUBRICAS_VISTO_COMO_ASSINATURA=1 — os vistos vão como assinatura (manuscript), juntos no mesmo requisito", () => {
+  const c = cenario({ props: { RUBRICAS_VISTO_COMO_ASSINATURA: "1" } });
+  assert.equal(c.gerarFinal().ok, true);
+  assert.equal(c.acao("assinaturaEnviar", rub(c)).ok, true);
+  const rq = c.c.chamadas.filter((x) => x.metodo === "POST" && x.caminho === "/envelopes/env-1/requirements" && x.corpo.data.attributes.action === "rubricate").map((x) => x.corpo.data);
+  assert.ok(!rq.some((q) => q.attributes.kind === "initials"));
+  const doComprador = rq.filter((q) => q.relationships.document.data.id === "doc-1" && q.attributes.positions.some((p) => p.page === RUB_VALORES.page && p.position[0] === RUB_VALORES.position[0]));
+  assert.equal(doComprador.length, 1);
+  assert.equal(doComprador[0].attributes.kind, "manuscript");
+  const chaves = rq.map((q) => q.relationships.signer.data.id + "|" + q.relationships.document.data.id + "|" + q.attributes.kind);
+  assert.equal(new Set(chaves).size, chaves.length, "um requisito por pessoa, documento e tipo");
 });
