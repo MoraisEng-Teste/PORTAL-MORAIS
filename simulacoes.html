@@ -1702,7 +1702,7 @@ function simParaProposta(id){
     nomeCliente:String(s.cliente||""), cpfCliente:String(s.cpf||""), emailCorretor:String(s.email||"") };
   try{ localStorage.setItem("simParaProposta", JSON.stringify(d)); }
   catch(e){ alert("Não consegui guardar os dados da simulação neste navegador."); return; }
-  window.open("https://devmoraiseng.github.io/SIMULADOR-RESERVA-DO-IP-S/proposta.html?tipo="+encodeURIComponent(d.tipo)+
+  window.open("https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/proposta.html?tipo="+encodeURIComponent(d.tipo)+
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
 function simFecharDet(){ document.getElementById("sim-modal").classList.add("hide"); }

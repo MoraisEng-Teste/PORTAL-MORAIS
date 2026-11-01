@@ -95,7 +95,7 @@ já logada — sem login, sem código. Decisão do dono em 29/10.
 Ordem: 1–4 o dono faz no PC dele; 5–9 o Claude do servidor faz, pedindo o ok antes de gravar ou agendar.
 
 ## 1. (dono) Mesclar o PR do robô do servidor
-GitHub › DEVMoraisEng/PORTAL-MORAIS › PR "Robôs da venda pelo servidor" › Merge pull request › Confirm merge.
+GitHub › MoraisEng-Teste/PORTAL-MORAIS › PR "Robôs da venda pelo servidor" › Merge pull request › Confirm merge.
 Sem a Propriedade DB_FILA_ROBO nada muda no portal (continua indo para o GitHub).
 
 ## 2. (dono) Publicar o PORTAL-VENDA de produção
@@ -118,7 +118,7 @@ A partir daqui, "Ver prévia" e "Lançar no Mais Controle" vão para a fila do s
 ## 5. (servidor) Atualizar o clone e testar
 ```powershell
 cd "C:\AUTOMAÇÕES MAIS CONTROLE\_portal"
-git pull https://github.com/DEVMoraisEng/PORTAL-MORAIS.git main
+git pull https://github.com/MoraisEng-Teste/PORTAL-MORAIS.git main
 python -m pytest -q venda/mc/testes tests/test_robo_fila.py
 ```
 
@@ -133,7 +133,7 @@ Ao lado da fila "teste", com `pode_gravar: true`:
  "db_fila": "<id do passo 3>",
  "notion_token_arquivo": "C:\AUTOMAÇÕES MAIS CONTROLE\_central\notion-producao.txt",
  "pode_gravar": true,
- "vars": {"DB_VENDAS_COND": "bfdc5ab532d3833983fc0130cffb8bac",
+ "vars": {"DB_VENDAS_COND": "3f1c5ab532d381d38ba0d495b1bc8123",
           "DB_CORRETORES": "<igual à variável DB_CORRETORES do GitHub de produção>",
           "DB_DISTRATOS": "<igual à variável DB_DISTRATOS do GitHub de produção>",
           "NATUREZA_DEVOLUCAO_ID": "86f2fad4-29c7-4427-8a7f-bffa4caab99b"}}
@@ -171,7 +171,7 @@ sem login"; o robô de contas pega o acesso da aba. A Auditoria Financeira NÃO 
 ## 1. (servidor) Atualizar o clone e testar
 ```powershell
 cd "C:\AUTOMAÇÕES MAIS CONTROLE\_portal"
-git pull https://github.com/DEVMoraisEng/PORTAL-MORAIS.git main
+git pull https://github.com/MoraisEng-Teste/PORTAL-MORAIS.git main
 python -m pytest -q tests venda/mc/testes
 ```
 Esperado: tudo passando, menos 6 testes antigos de `tests/test_robo_mc_obras.py` que já falhavam antes.
@@ -187,7 +187,7 @@ Ao lado de "filas":
 ```json
 "robos": {"notion_token_arquivo": "C:\AUTOMAÇÕES MAIS CONTROLE\_chaves\notion-producao-leitura.txt",
           "github_token_arquivo": "C:\AUTOMAÇÕES MAIS CONTROLE\_chaves\github-portal.txt",
-          "vars": {"CONTAS_DB_ID": "3e4c5ab532d380afbd3bf9f7af31d2a7", "MC_CRED": "robo",
+          "vars": {"CONTAS_DB_ID": "3f1c5ab532d3812caaedf6c9a383aace", "MC_CRED": "robo",
                    "DB_VENDAS_COND": "<id da VENDAS CONDOMÍNIO>"}}
 ```
 

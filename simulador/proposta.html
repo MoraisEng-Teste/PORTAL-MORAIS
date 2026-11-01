@@ -263,6 +263,8 @@
   <!-- ============================ PASSO 1 ============================ -->
   <section class="card" data-etapa="1">
     <h2>Unidade e proponente</h2>
+    <!-- 31/10 — proposta aberta pelo botão "Transformar em proposta" da simulação -->
+    <div id="avisoDaSim" style="display:none;margin:0 0 14px;padding:12px 14px;border:2px solid #2a9d5c;border-radius:10px;background:#EEF8F1;color:#1a4d31;font-size:13px;line-height:1.5"></div>
 
     <div class="linha">
       <div class="campo">
@@ -494,7 +496,7 @@
       <!-- ITEM 10 — saíram: plano do simulador, score, validade da análise e
            possui financiamento / créd. pessoal / conta corrente -->
       <div class="campo" style="display:none"><label>Data de referência</label>
-        <input type="date" name="dataRef" onchange="montarFluxo()">
+        <input type="date" name="dataRef" onchange="montarPrimeira();montarFluxo()">
         <span class="ajuda">Em branco = hoje.</span></div>
       <!-- r64 — TESTE do sistema offline -->
       <div class="campo" style="display:none"><label>Sistema de simulação (teste)</label>
@@ -613,6 +615,12 @@
           <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="48" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="48">48 meses</b><small>comissão 4,50%</small></label>
         </div>
         <div class="comissao-box"><span>Comissão do corretor</span><b id="comissaoTxt">Escolha o prazo</b></div>
+      </div>
+      <!-- r97f (31/10/26, dono): mês da 1ª parcela pré-chaves -->
+      <div class="campo full" style="margin-bottom:16px;">
+        <label>1ª parcela pré-chaves<span class="obrig">*</span></label>
+        <div class="prazo-opts" id="primeiraOpts"></div>
+        <span class="ajuda">As pré-chaves e os balões terminam sempre até 30/11/2028. Começar em dezembro tira uma parcela e o valor de cada uma sobe.</span>
       </div>
     </div>
 
@@ -988,9 +996,9 @@
     var financiado=financiadoReal(credito, avaliacao);
     var g=fpcGerar({preco:preco, financiado:financiado, fgts:fgts, subsidio:subsidio, informado:entrada,
                     nSinal:sinalEscolhido(), prazoEntrada:Number(prazoEscolhido())||48, ano:dataRef.getFullYear(), mes:dataRef.getMonth()+1,
-                    diluir:DIL_PROP});   // r96e — balões diluídos pelo corretor
+                    primeira:primeiraEscolhida(), diluir:DIL_PROP});   // r96e — balões diluídos pelo corretor
     var rec=(fgts||0)+(subsidio||0)+g.excedente;
-    return {total:g.total, fluxo:g.fluxo, fluxoOriginal:g.fluxoOriginal, diluicao:g.diluicao, n1:g.n1, bruta:(preco||0)-financiado,
+    return {total:g.total, fluxo:g.fluxo, fluxoOriginal:g.fluxoOriginal, diluicao:g.diluicao, n1:g.n1, erroPrazo:g.erroPrazo, bruta:(preco||0)-financiado,
             financiado:financiado, credito:(credito||0),
             teto:tetoFinanciamento(avaliacao), avaliacao:(avaliacao||0),
             fgts:(fgts||0), subsidio:(subsidio||0),
@@ -1018,6 +1026,26 @@
   var FPC_BASE_MEIO = FPC_BALOES_BASE + FPC_M1A12 + FPC_M13A24;
   var FPC_BASE_CHEIA = FPC_SINAIS_BASE + FPC_BASE_MEIO + 24 * FPC_POS_UNIT;   // 60.200
   var FPC_POS_PARCELAS = {24: 0, 36: 12, 48: 24};
+  /* r97f (31/10/26, dono): 1ª parcela pré-chaves em novembro ou dezembro. Quem fecha até novembro/2026 escolhe
+     nov ou dez/2026; depois disso, o mês da proposta ou o seguinte. As pré-chaves e os balões terminam SEMPRE até
+     30/11/2028 (última parcela em out/2028, balão da entrega em nov/2028). */
+  var FPC_FIM_PRE = {ano: 2028, mes: 10}, FPC_LIMITE = '2028-11-30';
+  function fpcMesSeguinte(a, m){ return m === 12 ? {ano: a + 1, mes: 1} : {ano: a, mes: m + 1}; }
+  function fpcOpcoesPrimeira(ano, mes){
+    var a = Number(ano) || 2026, m = Number(mes) || 11;
+    if(a * 12 + m < 2026 * 12 + 11){ a = 2026; m = 11; }
+    return [{ano: a, mes: m}, fpcMesSeguinte(a, m)];
+  }
+  /* o.primeira = {ano, mes} (uma das opções) ou "AAAA-MM"; inválida ou fora das opções -> 1ª opção */
+  function fpcPrimeira(o){
+    var ops = fpcOpcoesPrimeira(o.ano, o.mes), p = o.primeira, mm;
+    if(typeof p === 'string' && (mm = p.match(/^(\d{4})-(\d{2})/))) p = {ano: Number(mm[1]), mes: Number(mm[2])};
+    for(var i = 0; p && i < ops.length; i++) if(ops[i].ano === Number(p.ano) && ops[i].mes === Number(p.mes)) return ops[i];
+    return ops[0];
+  }
+  /* quantas pré-chaves cabem de {ano, mes} até out/2028 (24 em nov/2026, 23 em dez/2026...) */
+  function fpcQtdPre(p){ return Math.max(0, (FPC_FIM_PRE.ano * 12 + FPC_FIM_PRE.mes) - (p.ano * 12 + p.mes) + 1); }
+
 
   function fpcR2(v){ return Math.round((Number(v) || 0) * 100) / 100; }
   function fpcQtd(q){ var m = String(q || '').match(/^(\d+)\s*X$/i); return m ? Number(m[1]) : 1; }
@@ -1058,8 +1086,13 @@
     else { g = baseMeio ? (R - basePos) / baseMeio : 0; tpos = basePos; }
     var t12 = bM1 * g, t1324 = bM13 * g;
     var fatorBaloes = R > 0.005 ? g : 0;
-    var meses = ((Number(o.ano) || 2026) - 2026) * 12 + ((Number(o.mes) || 11) - 11);
+    /* r97f (31/10/26, dono): o mês da 1ª parcela pré-chaves é escolhido (o.primeira = {ano, mes}: nov ou dez/2026);
+       sem escolha, vale o mês da proposta, como antes. A última pré-chaves é SEMPRE out/2028 e o balão da entrega
+       nov/2028: começar um mês depois tira uma parcela da 1ª parte (dez/2026 = 23/35/47) e o valor de cada sobe. */
+    var ini = fpcPrimeira(o);
+    var meses = (ini.ano - 2026) * 12 + (ini.mes - 11);
     var n1 = Math.max(1, Math.min(12, 12 - Math.max(0, meses)));
+    var erroPrazo = meses > 11 ? 'A 1ª parcela não pode passar de outubro/2027: as pré-chaves e os balões terminam até 30/11/2028' : '';
 
     var fl = [];
     if(nS === 1){
@@ -1093,6 +1126,7 @@
     var dil = fpcDiluir(fl, o.diluir);
     var cobertos = fpcR2(Math.min(inf, S));
     return {total: T, entradaCliente: fpcR2(B0), fluxo: fl, n1: n1, nPos: nPos, nSinal: nS,
+            primeira: ini, nPre: n1 + 12, erroPrazo: erroPrazo,
             devolucao: fpcR2(devolucao), totalCalculado: B0 - Math.max(0, inf - S), excedente: fpcR2(Math.max(0, inf - S)),
             sinaisTotal: S, sinalMinimo: Smin, sinaisCobertos: cobertos, faltaSinais: fpcR2(Math.max(0, S - cobertos)),
             fluxoOriginal: fluxoOriginal, diluicao: dil};
@@ -1409,7 +1443,7 @@
        sinal; o valor para a entrada é preenchido com ele (e nunca pode ficar abaixo) */
     var g0=fpcGerar({preco:u.valorVenda, financiado:financiadoReal(credito, u.avaliacao), fgts:fgtsTotal,
                      subsidio:moeda(f.subsidio.value), informado:0, nSinal:sinalEscolhido(), prazoEntrada:Number(prazoEscolhido())||48,
-                     ano:d.getFullYear(), mes:d.getMonth()+1});
+                     ano:d.getFullYear(), mes:d.getMonth()+1, primeira:primeiraEscolhida()});
     SINAL_MIN=g0.sinalMinimo;
     SINAL_MAX=Math.max(10000, Math.round(g0.entradaCliente*100)/100);   // r96i — o sinal não passa da entrada inteira
     var ajE=document.getElementById('ajudaEntradaMinP');
@@ -1692,6 +1726,8 @@
     /* união estável sem escolha: comunhão parcial é o regime legal (art. 1.725 CC) */
     if(casado && v==='UNIAO ESTAVEL' && !F().regimeBens.value) F().regimeBens.value='COMUNHAO PARCIAL DE BENS';
     verEnderecoConjuge();
+    /* 31/10 — o limite de compradores depende do estado civil do proponente: refaz os cards (os avisos aparecem neles) */
+    try{ if(F().maisDeUmComprador && F().maisDeUmComprador.checked && document.querySelectorAll('#listaDependentes .dep').length) montarDependentes(); }catch(eL){}
   }
   function conjugeAtivo(){ return document.getElementById('boxConjuge').style.display!=='none'; }
   /* 01/10 — cônjuge em outro endereço: pede comprovante + endereço dele */
@@ -1789,37 +1825,187 @@
     if(!on) document.getElementById('listaDependentes').innerHTML='';
     montarAnexos(); montarFluxo();
   }
-  function montarDependentes(){
+  /* 31/10/2026 — ESTADO CIVIL DOS COMPRADORES. Cada comprador diz o estado civil; casado ou em
+     união estável, o regime de bens é obrigatório e o CÔNJUGE entra na lista como mais um
+     COMPRADOR (a quantidade sobe sozinha e o card dele vem logo abaixo, com todos os dados
+     obrigatórios). O casal fica ligado pelo data-uid/data-par; o cônjuge herda estado civil,
+     regime e endereço.
+     LIMITE (31/10, regra do dono): no máximo 3 pessoas comprando, CONTANDO O PROPONENTE.
+       - proponente casado: proponente + cônjuge + 1 comprador, que tem de ser SOLTEIRO;
+       - proponente solteiro: + 2 compradores solteiros, ou + 1 comprador casado e o cônjuge dele. */
+  var DEP_ESTADOS=['SOLTEIRO','CASADO','DIVORCIADO','VIUVO','UNIAO ESTAVEL'];
+  var DEP_REGIMES=['COMUNHAO PARCIAL DE BENS','COMUNHAO UNIVERSAL DE BENS','SEPARACAO TOTAL DE BENS',
+                   'SEPARACAO OBRIGATORIA DE BENS','PARTICIPACAO FINAL NOS AQUESTOS'];
+  function depMaxComp(){ return conjugeAtivo() ? 1 : 2; }   // compradores além do proponente (e do cônjuge dele)
+  function depRegraTxt(){
+    return conjugeAtivo()
+      ? 'O limite é de <b>3 pessoas</b> comprando, contando o proponente: como ele é casado, entra só <b>mais 1 comprador, solteiro</b>.'
+      : 'O limite é de <b>3 pessoas</b> comprando, contando o proponente: entram <b>mais 2 compradores solteiros</b>, ou <b>1 comprador casado e o cônjuge dele</b>.';
+  }
+  /* posição do card do n-ésimo COMPRADOR (dependente na frente não muda a numeração) */
+  function idxComprador(n){ var k=0, r=-1; document.querySelectorAll('#listaDependentes .dep').forEach(function(d, i){
+    if(r<0 && d.querySelector('.dep-tipo').value==='COMPRADOR' && ++k===n) r=i; }); return r; }
+  function depLimiteMsg(){
+    return '⚠ '+depRegraTxt()+' Mude alguém para DEPENDENTE.';
+  }
+  function depCasado(v){ v=String(v||'').toUpperCase(); return v.indexOf('CASAD')>=0 || v.indexOf('UNIAO')>=0; }
+  function depUid(){ return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  /* ordem[novo]=antigo (-1 = card novo): os anexos e o "não anexar agora" acompanham o card */
+  function reindexarDependentes(ordem){
+    var nP={}, nE={}, nNA={};
+    ordem.forEach(function(ant, nv){
+      if(ant<0) return;
+      if(PDEP[ant]) nP[nv]=PDEP[ant];
+      if(PDEND[ant]) nE[nv]=PDEND[ant];
+      Object.keys(NAO_ANEXAR).forEach(function(k){
+        var m=/^(dep-[a-z]+)-(\d+)$/.exec(k); if(m && Number(m[2])===ant) nNA[m[1]+'-'+nv]=NAO_ANEXAR[k];
+      });
+    });
+    Object.keys(PDEP).forEach(function(k){ delete PDEP[k]; }); Object.keys(nP).forEach(function(k){ PDEP[k]=nP[k]; });
+    Object.keys(PDEND).forEach(function(k){ delete PDEND[k]; }); Object.keys(nE).forEach(function(k){ PDEND[k]=nE[k]; });
+    Object.keys(NAO_ANEXAR).forEach(function(k){ if(/^dep-[a-z]+-\d+$/.test(k)) delete NAO_ANEXAR[k]; });
+    Object.keys(nNA).forEach(function(k){ NAO_ANEXAR[k]=nNA[k]; });
+  }
+  function depAviso(msg){
+    var a=document.getElementById('depAviso');
+    if(!a){ a=document.createElement('div'); a.id='depAviso';
+      a.style.cssText='margin:0 0 10px;padding:8px 10px;border-radius:6px;font-size:12.5px;line-height:1.45';
+      var l=document.getElementById('listaDependentes'); l.parentNode.insertBefore(a, l); }
+    a.style.display = msg ? '' : 'none';
+    a.style.background = /^⚠/.test(msg||'') ? '#FDECEA' : '#E3F4EA';
+    a.style.color = /^⚠/.test(msg||'') ? '#8A2E17' : '#1D5E37';
+    a.innerHTML = msg || '';
+  }
+  function depCivilMudou(i){
+    var lista=pessoasExtras(), p=lista[i]; if(!p) return;
+    var cas=depCasado(p.estadoCivil), k=-1;
+    lista.forEach(function(x, j){ if(p.par && x.uid===p.par) k=j; });
+    var ordem=lista.map(function(_, j){ return j; });
+    if(cas && p.estadoCivil==='UNIAO ESTAVEL' && !p.regimeBens) p.regimeBens='COMUNHAO PARCIAL DE BENS';   // art. 1.725 CC
+    if(cas && k<0){
+      var nComp=lista.filter(function(x){ return x.tipo==='COMPRADOR'; }).length;
+      if(nComp>=depMaxComp()){
+        montarDependentes(lista);   // 31/10 — o erro aparece no próprio card (depErroCard) e trava o avanço
+        depAviso('');
+        return;
+      }
+      var s={uid:depUid(), par:p.uid, conj:true, tipo:'COMPRADOR', nome:'', cpf:'', rg:'', profissao:'', nacionalidade:'BR',
+             estadoCivil:p.estadoCivil, regimeBens:p.regimeBens,
+             cep:p.cep, logradouro:p.logradouro, numero:p.numero, setor:p.setor, cidade:p.cidade,
+             dataNascimento:'', email:'', celular:'', renda:'', origemRenda:''};
+      p.par=s.uid;
+      lista.splice(i+1, 0, s); ordem.splice(i+1, 0, -1);
+      montarDependentes(lista, ordem);
+      depAviso('✓ <b>'+esc_(p.nome||'O comprador')+'</b> é casado(a): o cônjuge entrou como <b>comprador</b> logo abaixo (agora são '+lista.length+
+        ' pessoas além do proponente). Preencha <b>todos</b> os dados dele.');
+      return;
+    }
+    if(!cas && k>=0){
+      if(lista[k].conj){ lista.splice(k, 1); ordem.splice(k, 1); }
+      else { lista[k].par=''; }
+      p.par='';
+      montarDependentes(lista, ordem);
+      depAviso('');
+      return;
+    }
+    if(cas && k>=0){ lista[k].estadoCivil=p.estadoCivil; lista[k].regimeBens=p.regimeBens; }
+    montarDependentes(lista);
+  }
+  function depRegimeMudou(i){
+    var lista=pessoasExtras(), p=lista[i]; if(!p || !p.par) return;
+    var c=document.querySelector('#listaDependentes .dep[data-uid="'+p.par+'"] .dep-regime');
+    var r=document.querySelectorAll('#listaDependentes .dep')[i].querySelector('.dep-regime');
+    if(c && r) c.value=r.value;
+  }
+  var DEP_ERRO_CARD={};   // uid -> aviso de uma vez no card (ex.: tentou passar do limite)
+  function depTipoMudou(i){
+    var lista=pessoasExtras(), p=lista[i]; if(!p) return;
+    var ordem=lista.map(function(_, j){ return j; });
+    /* 31/10 — acima do limite não vira COMPRADOR: volta para DEPENDENTE e avisa no card */
+    if(p.tipo==='COMPRADOR' && lista.filter(function(x){ return x.tipo==='COMPRADOR'; }).length>depMaxComp()){
+      p.tipo='DEPENDENTE'; p.estadoCivil=''; p.regimeBens='';
+      DEP_ERRO_CARD[p.uid]='Não dá para incluir mais um comprador. '+depRegraTxt()+' Esta pessoa ficou como DEPENDENTE.';
+      montarDependentes(lista); depAviso(''); return;
+    }
+    if(p.tipo!=='COMPRADOR' && p.par){
+      var k=-1; lista.forEach(function(x, j){ if(x.uid===p.par) k=j; });
+      if(k>=0 && lista[k].conj){ lista.splice(k, 1); ordem.splice(k, 1); }
+      else if(k>=0) lista[k].par='';
+      p.par=''; p.estadoCivil=''; p.regimeBens='';
+      montarDependentes(lista, ordem);
+      return;
+    }
+    montarDependentes(lista);
+    depAviso('');
+  }
+  function montarDependentes(lista, ordem){
+    if(lista){
+      document.getElementById('qtdDependentes').value=Math.max(1, lista.length);
+      if(ordem) reindexarDependentes(ordem);
+    }
     var n=Math.max(1, Math.min(6, parseInt(document.getElementById('qtdDependentes').value,10)||1));
-    var atuais=pessoasExtras();
+    var atuais=lista||pessoasExtras();
     var html='';
+    var nomeDe=function(uid){ var o=atuais.filter(function(x){ return x && x.uid===uid; })[0]; return o ? (o.nome||'') : ''; };
     for(var i=0;i<n;i++){
       var p=atuais[i]||{nome:'',cpf:'',tipo:'DEPENDENTE',profissao:'',nacionalidade:'',rg:'',cep:'',logradouro:'',numero:'',setor:'',cidade:''};
-      var comp=p.tipo==='COMPRADOR';
-      var obrigComp=(F().creditoAprovadoCaixa.value==='NAO')?'<span class="obrig">*</span>':'';
-      html+='<div class="dep" data-i="'+i+'" style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed var(--borda)">'+
+      if(!p.uid) p.uid=depUid();
+      var comp=p.tipo==='COMPRADOR', conj=!!p.conj && comp;
+      var civ=comp ? (p.estadoCivil||'') : '', cas=depCasado(civ);
+      var parOk=!!(p.par && atuais.slice(0, n).some(function(x){ return x && x.uid===p.par; }));
+      /* 31/10 — o cônjuge de um comprador tem TODOS os dados obrigatórios, com ou sem crédito aprovado */
+      var obrigComp=(F().creditoAprovadoCaixa.value==='NAO' || conj)?'<span class="obrig">*</span>':'';
+      var obrigConj=conj?'<span class="obrig">*</span>':'';
+      var lbl='font-size:11px;color:var(--marrom);font-weight:700';
+      /* 31/10 — erro no próprio card: casado sem o cônjuge na lista (limite) ou tentativa de passar do limite */
+      var nCompT=atuais.slice(0, n).filter(function(x){ return x && x.tipo==='COMPRADOR'; }).length;
+      var ordC=comp ? atuais.slice(0, i+1).filter(function(x){ return x && x.tipo==='COMPRADOR'; }).length : 0;
+      var erroCard=DEP_ERRO_CARD[p.uid] || (comp && ordC>depMaxComp()
+        ? 'Este comprador passa do limite. '+depRegraTxt()+' Mude para DEPENDENTE ou ajuste os estados civis — sem isso não dá para avançar.'
+        : (comp && cas && !conj && !parOk
+        ? (nCompT>=depMaxComp()
+            ? '<b>'+esc_(p.nome||'Este comprador')+'</b> é casado(a): o cônjuge também precisaria entrar como comprador e passaria do limite. '+depRegraTxt()+
+              ' Corrija o estado civil ou mude outro comprador para DEPENDENTE — sem isso não dá para avançar.'
+            : '<b>Falta o cônjuge na lista</b> — escolha o estado civil de novo para ele entrar como comprador. Sem isso não dá para avançar.')
+        : ''));
+      delete DEP_ERRO_CARD[p.uid];
+      html+='<div class="dep" data-i="'+i+'" data-uid="'+esc_(p.uid)+'" data-par="'+esc_(parOk?p.par:'')+'" data-conj="'+(conj?1:0)+'" style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed var(--borda)'+
+          (conj?';margin-left:14px;padding-left:10px;border-left:3px solid #C9A227':'')+'">'+
+        (erroCard ? '<div class="dep-erro" style="margin:0 0 8px;padding:8px 10px;border-radius:6px;background:#FDECEA;border:1.5px solid #D9534F;color:#8A2E17;font-size:12.5px;line-height:1.45">⚠ '+erroCard+'</div>' : '')+
+        (conj ? '<div style="font-size:12px;font-weight:700;color:var(--marrom);margin:0 0 6px">💍 Cônjuge de '+esc_(nomeDe(p.par)||'comprador acima')+
+                ' — entra como <b>comprador</b>. Preencha todos os dados.</div>' : '')+
         '<div class="dep-grid" style="display:grid;grid-template-columns:1fr 150px 160px;gap:8px">'+
         '<input type="text" class="dep-nome" placeholder="Nome completo" value="'+esc_(p.nome)+'" oninput="montarAnexos()">'+
         '<input type="text" class="dep-cpf" inputmode="numeric" maxlength="14" placeholder="'+(comp?'CPF':'CPF (opcional)')+'" value="'+esc_(p.cpf)+'">'+
-        '<select class="dep-tipo" onchange="montarDependentes()">'+
+        '<select class="dep-tipo" onchange="depTipoMudou('+i+')"'+(conj?' disabled':'')+'>'+
           '<option'+(!comp?' selected':'')+'>DEPENDENTE</option>'+
           '<option'+(comp?' selected':'')+'>COMPRADOR</option>'+
         '</select></div>'+
+        /* 31/10 — estado civil e regime de bens do comprador */
+        (comp ? '<div class="dep-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">'+
+          '<label style="'+lbl+'">Estado civil<span class="obrig">*</span><select class="dep-civil" onchange="depCivilMudou('+i+')"'+(conj?' disabled':'')+'>'+
+            '<option value="">Selecione…</option>'+DEP_ESTADOS.map(function(o){ return '<option'+(o===civ?' selected':'')+'>'+o+'</option>'; }).join('')+
+          '</select></label>'+
+          '<label class="dep-regime-box" style="'+lbl+(cas?'':';display:none')+'">Regime de bens<span class="obrig">*</span><select class="dep-regime" onchange="depRegimeMudou('+i+')"'+(conj?' disabled':'')+'>'+
+            '<option value="">Selecione…</option>'+DEP_REGIMES.map(function(o){ return '<option'+(o===(p.regimeBens||'')?' selected':'')+'>'+o+'</option>'; }).join('')+
+          '</select></label></div>'+
+          (cas && !conj && parOk ? '<span class="ajuda" style="display:block;margin-top:4px">O cônjuge (<b>'+esc_(nomeDe(p.par)||'card abaixo')+'</b>) entra como comprador no card logo abaixo.</span>' : '')
+        : '')+
         /* 30/09: comprador entra no contrato — profissão, nacionalidade e documento (lido na hora) */
         (comp ? '<div class="dep-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">'+
-          '<input type="text" class="dep-prof" placeholder="Profissão" value="'+esc_(p.profissao||'')+'">'+
-          '<input type="text" class="dep-nac" placeholder="Nacionalidade" value="'+esc_(p.nacionalidade||'BR')+'">'+
+          '<input type="text" class="dep-prof" placeholder="Profissão'+(conj?' *':'')+'" value="'+esc_(p.profissao||'')+'">'+
+          '<input type="text" class="dep-nac" placeholder="Nacionalidade'+(conj?' *':'')+'" value="'+esc_(p.nacionalidade||'BR')+'">'+
           '<input type="text" class="dep-rg" placeholder="RG (opcional)" value="'+esc_(p.rg||'')+'">'+
           '</div>'+
           /* 02/10 (item 12) — nascimento, e-mail, celular, renda e origem do comprador:
-             opcionais com crédito aprovado; obrigatórios SEM crédito aprovado */
+             opcionais com crédito aprovado; obrigatórios SEM crédito aprovado (31/10: e sempre no cônjuge) */
           '<div class="dep-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">'+
-          '<label style="font-size:11px;color:var(--marrom);font-weight:700">Data de nascimento'+obrigComp+'<input type="date" class="dep-nasc" value="'+esc_(p.dataNascimento||'')+'"></label>'+
-          '<label style="font-size:11px;color:var(--marrom);font-weight:700">E-mail'+obrigComp+'<input type="email" class="dep-email" value="'+esc_(p.email||'')+'"></label>'+
-          '<label style="font-size:11px;color:var(--marrom);font-weight:700">Celular'+obrigComp+'<input type="text" class="dep-cel" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000" oninput="this.value=fmtTel(this.value)" value="'+esc_(fmtTel(p.celular||''))+'"></label>'+
+          '<label style="'+lbl+'">Data de nascimento'+obrigComp+'<input type="date" class="dep-nasc" max="9999-12-31" value="'+esc_(p.dataNascimento||'')+'"></label>'+
+          '<label style="'+lbl+'">E-mail'+obrigComp+'<input type="email" class="dep-email" value="'+esc_(p.email||'')+'"></label>'+
+          '<label style="'+lbl+'">Celular'+obrigComp+'<input type="text" class="dep-cel" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000" oninput="this.value=fmtTel(this.value)" value="'+esc_(fmtTel(p.celular||''))+'"></label>'+
           '</div><div class="dep-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">'+
-          '<label style="font-size:11px;color:var(--marrom);font-weight:700">Renda (R$)'+obrigComp+'<input type="text" class="dep-renda" inputmode="numeric" placeholder="0,00" value="'+esc_(p.renda||'')+'"></label>'+
-          '<label style="font-size:11px;color:var(--marrom);font-weight:700">Origem da renda'+obrigComp+'<select class="dep-origem" onchange="montarAnexos()">'+
+          '<label style="'+lbl+'">Renda (R$)'+(F().creditoAprovadoCaixa.value==='NAO'?'<span class="obrig">*</span>':'')+'<input type="text" class="dep-renda" inputmode="numeric" placeholder="0,00" value="'+esc_(p.renda||'')+'"></label>'+
+          '<label style="'+lbl+'">Origem da renda'+obrigComp+'<select class="dep-origem" onchange="montarAnexos()">'+
             ['','CLT','SERVIDOR PÚBLICO','EMPRESÁRIO','AUTÔNOMO','MEI','MOTORISTA DE APLICATIVO','APOSENTADO / PENSIONISTA','PROFISSIONAL LIBERAL','RURAL','OUTRO']
               .map(function(o){ return '<option'+(o===(p.origemRenda||'')?' selected':'')+' value="'+o+'">'+(o||'Selecione…')+'</option>'; }).join('')+
           '</select></label></div>'+
@@ -1850,12 +2036,14 @@
       c.addEventListener('blur', function(){ if(dig(c.value).length===8) buscarCep(c); });
     });
     document.querySelectorAll('.dep-cpf').forEach(function(c){
+      c.value=fmtCpf(dig(c.value));
       c.addEventListener('input', function(){
         var v=dig(c.value).slice(0,11);
         c.value = v.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3')
                    .replace(/\.(\d{3})(\d)/,'.$1-$2');
       });
     });
+    try{ somarRenda(); }catch(eR){}
     montarAnexos();
   }
   /* 30/09 — documento do comprador anexado no próprio bloco (lido: preenche nome e CPF) */
@@ -2018,9 +2206,19 @@
                 email:String((d.querySelector('.dep-email')||{}).value||'').trim().toLowerCase(),
                 celular:dig((d.querySelector('.dep-cel')||{}).value||''),
                 renda:(d.querySelector('.dep-renda')||{}).value||'',
-                origemRenda:(d.querySelector('.dep-origem')||{}).value||''};
+                origemRenda:(d.querySelector('.dep-origem')||{}).value||'',
+                /* 31/10 — estado civil, regime de bens e o par do casal */
+                uid:d.dataset.uid||'', par:d.dataset.par||'', conj:d.dataset.conj==='1'};
+      var civ=d.querySelector('.dep-civil'), reg=d.querySelector('.dep-regime');
+      p.estadoCivil = (p.tipo==='COMPRADOR' && civ) ? civ.value : '';
+      p.regimeBens = (p.tipo==='COMPRADOR' && reg && depCasado(p.estadoCivil)) ? reg.value : '';
       p.endereco = (p.logradouro||p.cidade) ? montaEndereco(p.logradouro,p.numero,p.setor,p.cidade,p.cep) : '';
       out.push(p);
+    });
+    /* 31/10 — nome e CPF do cônjuge de cada comprador casado (o outro comprador do casal) */
+    out.forEach(function(p){
+      var o=p.par ? out.filter(function(x){ return x.uid===p.par; })[0] : null;
+      p.conjuge = o ? o.nome : ''; p.cpfConjuge = o ? o.cpf : '';
     });
     return out;
   }
@@ -2096,27 +2294,30 @@
     var extras=pessoasExtras();
     if(F().maisDeUmComprador.checked){
       if(!extras.length) extras=[{nome:'',tipo:'DEPENDENTE'}];
+      /* 31/10 — comprador 1/2 = ordem entre os COMPRADORES (igual ao banco de vendas), não a posição na lista */
+      var nCD={}, kD=0; extras.forEach(function(p,i){ if(p.tipo==='COMPRADOR') nCD[i]=++kD; });
       extras.forEach(function(p,i){
+        var nc=nCD[i]||0;
         var quem=p.nome ? (p.nome) : ((p.tipo==='COMPRADOR'?'2º comprador ':'dependente ')+(i+1));
         /* 06/10 — comprador (1 e 2) tem quadro próprio (documento, endereço e renda): sem o bloco "Documentos de" */
-        if(!(p.tipo==='COMPRADOR' && i<2)) lista.push(['dep'+i, 'Documentos de '+quem,
+        if(!(p.tipo==='COMPRADOR' && nc && nc<=depMaxComp())) lista.push(['dep'+i, 'Documentos de '+quem,
           p.tipo==='COMPRADOR'
             ? 'Documento pessoal, comprovante de endereço, comprovante de estado civil e comprovação de renda.'
             : 'Criança: certidão de nascimento ou identidade. Maior de idade: documento pessoal + comprovante de estado civil.',
           null, 'dependente']);
         /* 05/10 (item 5) — comprador: quadro próprio para os comprovantes de renda dele */
         /* 06/10 (item 2) — comprador: um quadro para CADA comprovante de renda, conforme a origem DELE */
-        if(p.tipo==='COMPRADOR' && i<2) ['imposto','contracheques','carteiraTrabalho','proLabore','extratos','plataforma','extratoFgts'].forEach(function(b){
+        if(p.tipo==='COMPRADOR' && nc && nc<=depMaxComp()) ['imposto','contracheques','carteiraTrabalho','proLabore','extratos','plataforma','extratoFgts'].forEach(function(b){
           var base=DOCS.filter(function(x){ return x[0]===b; })[0]; if(!base) return;
-          lista.push([b+'Comp'+(i+1), base[1]+' do comprador '+(i+1), (p.nome?p.nome+' — ':'')+base[2], base[3], 'comp'+(i+1)]);
+          lista.push([b+'Comp'+nc, base[1]+' do comprador '+nc, (p.nome?p.nome+' — ':'')+base[2], base[3], 'comp'+nc]);
         });
       });
     }
     /* 06/10 (item 1) — o comprador e o cônjuge (endereço diferente) também aparecem no passo 4 */
-    if(F().maisDeUmComprador.checked) extras.forEach(function(p,i){
-      if(p.tipo!=='COMPRADOR' || i>1) return;
-      lista.push(['docComp'+(i+1),'Documento do comprador '+(i+1),(p.nome?p.nome+' — ':'')+'CNH ou RG + CPF.',null,'espelhoComp']);
-      lista.push(['endComp'+(i+1),'Comprovante de endereço do comprador '+(i+1),'Conta de água, luz ou telefone dos últimos 3 meses.',null,'espelhoComp']);
+    if(F().maisDeUmComprador.checked) extras.filter(function(p){ return p.tipo==='COMPRADOR'; }).forEach(function(p,j){
+      if(j>=depMaxComp()) return;
+      lista.push(['docComp'+(j+1),'Documento do comprador '+(j+1),(p.nome?p.nome+' — ':'')+'CNH ou RG + CPF.',null,'espelhoComp']);
+      lista.push(['endComp'+(j+1),'Comprovante de endereço do comprador '+(j+1),'Conta de água, luz ou telefone dos últimos 3 meses.',null,'espelhoComp']);
     });
     if(conjugeAtivo() && !F().conjugeMesmoEndereco.checked)
       lista.push(['endConj4','Comprovante de endereço do cônjuge','O cônjuge mora em outro endereço: conta de água, luz ou telefone dos últimos 3 meses.',null,'espelhoConj']);
@@ -2129,7 +2330,8 @@
   function espelharArquivo(src, chave){
     var alvo=null;
     if(chave==='endConj4') alvo=document.getElementById('p1-endconj-comp');
-    else { var iC=Number(chave.slice(-1))-1, blk=document.querySelector('#listaDependentes .dep[data-i="'+iC+'"]');
+    else { var nCm=Number(chave.slice(-1)), blk=Array.prototype.filter.call(document.querySelectorAll('#listaDependentes .dep'),
+             function(b){ return b.querySelector('.dep-tipo').value==='COMPRADOR'; })[nCm-1];   // 31/10: n-ésimo COMPRADOR
            alvo = blk && blk.querySelector(/^doc/.test(chave) ? '.dep-doc' : '.dep-end'); }
     if(!alvo){ erro('Não achei o campo de origem deste documento.'); return; }
     var dt=new DataTransfer(); for(var i=0;i<src.files.length;i++) dt.items.add(src.files[i]);
@@ -2140,7 +2342,7 @@
   function semAcentoP(v){ return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim(); }
   function origemDoDono(d, origens){
     if(d[4]==='conj') return conjugeAtivo() ? (origens[1]||'') : '';
-    var m=/^comp(\d)$/.exec(d[4]||''); if(m){ var ex=pessoasExtras()[Number(m[1])-1]; return (ex && ex.tipo==='COMPRADOR') ? (ex.origemRenda||'') : ''; }
+    var m=/^comp(\d)$/.exec(d[4]||''); if(m){ var ex=pessoasExtras().filter(function(x){ return x.tipo==='COMPRADOR'; })[Number(m[1])-1]; return ex ? (ex.origemRenda||'') : ''; }
     return origens[0]||'';
   }
   function porOrigemDoc(d, origens){
@@ -2183,7 +2385,7 @@
       var ehCreci = d[0]==='docCreci';
       if(d[4]==='espelhoComp' || d[4]==='espelhoConj'){
         var alvoId = d[4]==='espelhoConj' ? 'p1-endconj-comp' : '';
-        var nC = d[0].slice(-1), iC = Number(nC)-1;
+        var nC = d[0].slice(-1), iC = idxComprador(Number(nC));   // 31/10: card do n-ésimo comprador
         var ja = d[4]==='espelhoConj' ? (PENDCONJ||[]).length : ((/^doc/.test(d[0]) ? PDEP[iC] : PDEND[iC])||[]).length;
         var gkE = d[4]==='espelhoConj' ? 'Cônjuge' : 'Comprador '+nC;
         if(!grupos[gkE]){ grupos[gkE]=[]; ordemG.push(gkE); }
@@ -2212,7 +2414,7 @@
       grupos[gk].push(html);
       return html;
     });
-    var ORD=['Proponente','Cônjuge','Comprador 1','Comprador 2','Compradores e dependentes','Corretor e outros documentos'];
+    var ORD=['Proponente','Cônjuge','Comprador 1','Comprador 2','Comprador 3','Compradores e dependentes','Corretor e outros documentos'];
     ordemG.sort(function(a,b){ return ORD.indexOf(a)-ORD.indexOf(b); });
     document.getElementById('anexos').innerHTML=ordemG.map(function(g){
       return '<div class="card-pessoa" style="padding:10px 12px"><h3>'+g+'</h3>'+grupos[g].join('')+'</div>';
@@ -2536,6 +2738,34 @@
 
   /* ---------- prazo da entrada -> comissão ---------- */
   var COMISSAO={'24':0.05,'36':0.0475,'48':0.045};
+  /* r97f (31/10/26, dono): 1ª parcela pré-chaves em novembro ou dezembro (opções de fpcOpcoesPrimeira pelo mês
+     da proposta). Começar um mês depois tira uma parcela pré-chaves e mostra 23/35/47. */
+  var MESES_NOME=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  function dataRefProposta(){ var f=document.getElementById('formProposta'), t=f&&f.dataRef&&f.dataRef.value; return t?new Date(t+'T12:00:00'):new Date(); }
+  function primeiraEscolhida(){
+    var el=document.querySelector('#formProposta input[name="primeiraParcela"]:checked');
+    return el?el.value:'';
+  }
+  function primeiraResolvida(){
+    var d=dataRefProposta(), p=fpcPrimeira({ano:d.getFullYear(), mes:d.getMonth()+1, primeira:primeiraEscolhida()});
+    return p.ano+'-'+String(p.mes).padStart(2,'0');
+  }
+  function montarPrimeira(){
+    var box=document.getElementById('primeiraOpts'); if(!box) return;
+    var d=dataRefProposta(), ops=fpcOpcoesPrimeira(d.getFullYear(), d.getMonth()+1), atual=primeiraEscolhida();
+    var vals=ops.map(function(o){ return o.ano+'-'+String(o.mes).padStart(2,'0'); });
+    if(vals.indexOf(atual)<0) atual=vals[0];
+    box.innerHTML=ops.map(function(o,i){
+      var n=fpcQtdPre(o);
+      return '<label class="prazo-opt"><input type="radio" name="primeiraParcela" value="'+vals[i]+'"'+(vals[i]===atual?' checked':'')+
+        ' onchange="atualizarPrazos();montarFluxo()"><b>'+MESES_NOME[o.mes-1]+'/'+o.ano+'</b><small>'+n+' parcelas pré-chaves</small></label>';
+    }).join('');
+    atualizarPrazos();
+  }
+  function atualizarPrazos(){
+    var p=primeiraResolvida().split('-'), red=24-fpcQtdPre({ano:Number(p[0]), mes:Number(p[1])});
+    document.querySelectorAll('.prazo-n').forEach(function(b){ b.textContent=(Number(b.dataset.base)-red)+' meses'; });
+  }
   function prazoEscolhido(){
     var els=document.querySelectorAll('#formProposta input[name="prazoEntrada"]');
     for(var i=0;i<els.length;i++){ if(els[i].checked) return els[i].value; }
@@ -2639,11 +2869,40 @@
            Sem crédito aprovado, o comprador também precisa de nascimento, e-mail, celular, renda e origem. */
         var semCred=f.creditoAprovadoCaixa.value==='NAO';
         var blocos=document.querySelectorAll('#listaDependentes .dep');
+        /* 31/10 — no máximo 2 compradores além do proponente (comprador 1 e 2 do banco de vendas e do contrato) */
+        var nCompV=Array.prototype.filter.call(blocos, function(b){ return b.querySelector('.dep-tipo').value==='COMPRADOR'; }).length;
+        if(nCompV>depMaxComp()){ var bL=document.querySelector('#listaDependentes .dep-erro'); if(bL) bL.scrollIntoView({behavior:'smooth', block:'center'});
+          return erro(depRegraTxt()+' Mude alguém para DEPENDENTE.', document.getElementById('qtdDependentes')); }
         for(var bi=0; bi<blocos.length; bi++){
           var b=blocos[bi], tipo=b.querySelector('.dep-tipo').value, cpfEl=b.querySelector('.dep-cpf');
           var nm=(b.querySelector('.dep-nome').value||'').trim();
           if(tipo==='COMPRADOR'){
             if(!cpfValido(cpfEl.value)) return erro('<b>CPF do comprador '+esc_(nm)+'</b> inválido ou vazio.', cpfEl);
+            /* 31/10 — estado civil de cada comprador; casado: regime de bens e o cônjuge na lista como comprador */
+            var civEl=b.querySelector('.dep-civil');
+            if(civEl && !civEl.value) return erro('Informe o <b>estado civil</b> do comprador '+esc_(nm)+'.', civEl);
+            if(civEl && depCasado(civEl.value)){
+              var regEl=b.querySelector('.dep-regime');
+              if(regEl && !regEl.value) return erro('Escolha o <b>regime de bens</b> do comprador '+esc_(nm)+'.', regEl);
+              var parB=b.dataset.par && document.querySelector('#listaDependentes .dep[data-uid="'+b.dataset.par+'"]');
+              if(!parB || parB.querySelector('.dep-tipo').value!=='COMPRADOR'){
+                b.scrollIntoView({behavior:'smooth', block:'center'});
+                return erro('O comprador <b>'+esc_(nm)+'</b> é casado: o <b>cônjuge</b> precisa entrar na lista como comprador'+
+                            (nCompV>=depMaxComp() ? ', e isso passaria do limite. '+depRegraTxt()+' Corrija o estado civil ou mude outro comprador para DEPENDENTE.'
+                                                  : '. Escolha o estado civil de novo para ele aparecer.'), civEl);
+              }
+            }
+            /* 31/10 — o cônjuge de um comprador entra com os dados COMPLETOS */
+            if(b.dataset.conj==='1'){
+              var reqC=[['.dep-prof','profissão'],['.dep-nac','nacionalidade'],['.dep-nasc','data de nascimento'],['.dep-email','e-mail'],['.dep-cel','celular'],['.dep-origem','origem da renda']];
+              for(var ci=0; ci<reqC.length; ci++){
+                var elC=b.querySelector(reqC[ci][0]);
+                if(elC && !String(elC.value||'').trim()) return erro('Informe <b>'+reqC[ci][1]+'</b> do cônjuge '+esc_(nm||'do comprador')+'.', elC);
+              }
+              var em=b.querySelector('.dep-email');
+              if(em && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(em.value||'').trim())) return erro('E-mail do cônjuge '+esc_(nm)+' inválido.', em);
+              if(dig((b.querySelector('.dep-cel')||{}).value||'').length<10) return erro('Celular do cônjuge '+esc_(nm)+' com DDD.', b.querySelector('.dep-cel'));
+            }
             /* 06/10 — endereço do comprador obrigatório */
             var endReq=[['.dep-cep','CEP'],['.dep-logr','endereço'],['.dep-setor','setor ou bairro'],['.dep-cid','cidade']];
             for(var ei=0; ei<endReq.length; ei++){
@@ -2704,6 +2963,7 @@
         return erro('Escolha a <b>origem da renda do cônjuge</b>.', f.origemRendaConjuge);
       if(!prazoEscolhido())
         return erro('Escolha o <b>prazo total da entrada</b> — é ele que define a comissão do corretor.', document.getElementById('prazoOpts'));
+      if(ULTIMO_CALCULO && ULTIMO_CALCULO.erroPrazo) return erro(ULTIMO_CALCULO.erroPrazo + '.', document.getElementById('primeiraOpts'));
       /* r96d — valor para a entrada: no mínimo o sinal desta unidade */
       montarFluxo();
       if(moeda(f.valorEntrada.value) < Math.max(VALOR_ENTRADA_MIN, SINAL_MIN)-0.005)
@@ -2885,6 +3145,113 @@
           escolhida. É ele que vale para o estado (reservada/vendida).
      Enquanto nada chegou, o campo diz "Carregando unidades…". */
   var unidadesAoVivo=false;
+  /* ===== 31/10/2026 — PROPOSTA A PARTIR DA SIMULAÇÃO ======================
+     O simulador grava o que foi preenchido (localStorage 'simParaProposta') e o print
+     da aprovação da CAIXA (IndexedDB) e abre esta página com ?daSimulacao=1. Aqui os
+     campos entram preenchidos (disparando os mesmos eventos de quem digita) e o
+     corretor só completa o resto: documentos, endereço, estado civil, fiadores… */
+  function idbPrintP(op){
+    return new Promise(function(ok){
+      try{
+        var rq=indexedDB.open('reservaIpes',1);
+        rq.onupgradeneeded=function(){ rq.result.createObjectStore('arq'); };
+        rq.onerror=function(){ ok(null); };
+        rq.onsuccess=function(){
+          try{
+            var tx=rq.result.transaction('arq', op==='get'?'readonly':'readwrite'), st=tx.objectStore('arq');
+            var r= op==='get' ? st.get('printCred') : st.delete('printCred');
+            r.onsuccess=function(){ ok(op==='get' ? r.result : true); };
+            r.onerror=function(){ ok(null); };
+          }catch(e){ ok(null); }
+        };
+      }catch(e){ ok(null); }
+    });
+  }
+  (function(){
+    if(param('daSimulacao')!=='1') return;
+    var d=null;
+    try{ d=JSON.parse(localStorage.getItem('simParaProposta')||'null'); }catch(e){}
+    if(!d || !d.ts || Date.now()-d.ts > 30*864e5) return;
+    var t0=Date.now();
+    (function esperar(){
+      var f=F();
+      if(f && UNIDADES.length && f.unidade && f.unidade.value) return setTimeout(function(){ aplicarSimulacao(d); }, 50);
+      if(Date.now()-t0 < 45000) setTimeout(esperar, 300);
+    })();
+  })();
+  function aplicarSimulacao(d){
+    var f=F();
+    function disp(el,ev){ try{ el.dispatchEvent(new Event(ev,{bubbles:true})); }catch(e){} }
+    function val(n,v){
+      var el=f.elements[n]; if(v==null || v==='' || !el || !el.tagName) return;
+      el.value=v; disp(el,'input'); disp(el,'change');
+    }
+    function chk(n,v){ var el=f.elements[n]; if(!el || !el.tagName) return; el.checked=!!v; disp(el,'change'); }
+    function radio(n,v){
+      if(!v) return;
+      var el=f.querySelector('input[name="'+n+'"][value="'+v+'"]');
+      if(el){ el.checked=true; disp(el,'change'); }
+    }
+    try{
+      /* perfil da CAIXA (o "relacionamento" antes dos dois que dependem dele) */
+      chk('possuiImovelCidade', d.possuiImovelCidade); chk('fgts3anos', d.fgts3anos);
+      chk('jaBeneficiado', d.jaBeneficiado); val('dataConcessaoBeneficio', d.dataConcessaoBeneficio);
+      chk('relacionamentoCaixa', d.relacionamentoCaixa);
+      chk('servidorPublico', d.servidorPublico); chk('creditoSalarioCaixa', d.creditoSalarioCaixa);
+      chk('maisDeUmComprador', d.maisDeUmComprador);
+      /* proponente, corretor */
+      val('cliente', d.nomeCliente); val('cpf', d.cpfCliente); val('dataNascimento', d.dataNascimento);
+      val('vendedor', d.corretor); val('imobiliaria', d.imobiliaria);
+      val('celularCorretor', d.celularCorretor); val('email', d.emailCorretor); val('cpfCorretor', d.cpfCorretor);
+      /* condições do financiamento */
+      val('prazoMeses', d.prazoMeses); val('sistemaAmortizacao', d.sistemaAmortizacao);
+      if(d.seguradora && f.seguradora){
+        var alvo=String(d.seguradora).toUpperCase(), op=[].slice.call(f.seguradora.options).filter(function(o){
+          var t=String(o.value||o.text).toUpperCase(); return t===alvo || t.indexOf(alvo)===0 || alvo.indexOf(t)===0; })[0];
+        if(op){ f.seguradora.value=op.value||op.text; disp(f.seguradora,'change'); }
+      }
+      /* renda total da simulação → renda do proponente (o corretor divide se houver mais gente) */
+      val('rendaAprovada', d.renda); val('saldoFgts', d.fgts);
+      try{ somarRenda(); }catch(e){}
+      /* crédito aprovado ou não */
+      f.creditoAprovadoCaixa.value = d.credito ? 'SIM' : 'NAO'; disp(f.creditoAprovadoCaixa,'change');
+      if(d.credito){
+        val('subsidio', d.subsidio);
+        val('parcelaFinanciamento', d.creditoParcela);
+      } else if(d.desejado){
+        chk('desejadoProp', true); val('valorDesejado', d.valorDesejado);
+      }
+      radio('prazoEntrada', d.prazoEntrada); radio('sinalParcelas', d.sinalParcelas);
+      if(d.diluicao && d.diluicao.length===2) DIL_PROP=[Number(d.diluicao[0])||0, Number(d.diluicao[1])||0];
+      try{ atualizarComissao(); }catch(e){}
+      try{ atualizarFiadorExigido(); }catch(e){}
+      try{ montarFluxo(); }catch(e){}
+      /* o valor para o sinal por último: o montarFluxo preenche o mínimo e aqui fica o da simulação */
+      if(d.valorEntrada){ ENTRADA_EDITADA_P=true; val('valorEntrada', d.valorEntrada); try{ montarFluxo(); }catch(e){} }
+    }catch(e){ try{ console.log('aplicarSimulacao:', e); }catch(x){} }
+
+    var msgs=['<b>📋 Proposta montada a partir da simulação.</b> Os dados da simulação já estão preenchidos — confira e complete o que falta (documentos, endereço, estado civil, fiadores…).'];
+    if(d.renda) msgs.push('A renda total da simulação (<b>R$ '+d.renda+'</b>) entrou como renda do <b>proponente</b>. Se houver cônjuge ou outros compradores, divida a renda entre eles no passo 2.');
+    if(d.origem==='portal') msgs.push('Veio do portal: o crédito ficou como <b>NÃO aprovado</b>. Se o cliente já tem crédito aprovado, troque para <b>SIM</b> acima e anexe o print da aprovação da CAIXA no passo 2.');
+    if(d.unidade && String(f.unidade.value)!==String(d.unidade)) msgs.push('<b style="color:#B0431F">A unidade '+d.unidade+' da simulação não está disponível para proposta — escolha outra unidade acima.</b>');
+    var av=document.getElementById('avisoDaSim');
+    function pintar(){ if(av){ av.innerHTML=msgs.join('<br>'); av.style.display='block'; } }
+    pintar();
+    /* print da aprovação da CAIXA: vem da simulação e é lido de novo aqui (o servidor exige a leitura) */
+    if(d.credito){
+      var semPrint='No passo 2, anexe o <b>print da aprovação da CAIXA</b> — sem ele o crédito aprovado não é registrado.';
+      if(!d.temPrint){ msgs.push(semPrint); pintar(); return; }
+      idbPrintP('get').then(function(blob){
+        var inp=document.getElementById('printAprovacao');
+        if(!blob || !inp || typeof DataTransfer==='undefined'){ msgs.push(semPrint); pintar(); return; }
+        var arq=(blob instanceof File) ? blob : new File([blob], d.printNome||'print-aprovacao', {type:d.printTipo||blob.type||''});
+        var dt=new DataTransfer(); dt.items.add(arq); inp.files=dt.files;
+        aoAnexarAprovacao(inp);
+        msgs.push('O <b>print da aprovação da CAIXA</b> da simulação já foi anexado e está sendo lido no passo 2.'); pintar();
+      });
+    }
+  }
+
   function carregarUnidades(){
     var sel=F().unidade;
     if(!sel.options.length) sel.innerHTML='<option value="">Carregando unidades…</option>';
@@ -3057,6 +3424,7 @@
       cpfCorretor:(f.cpfCorretor ? fmtCpf(f.cpfCorretor.value) : ''),   // 07/10
       observacoes:padrao(f.observacoes.value),
       prazoEntrada:Number(prazoEscolhido())||0,
+      primeiraParcela:primeiraResolvida(),   // r97f — mês da 1ª parcela pré-chaves (AAAA-MM)
       fiadorDispensado:!fiadorExigido(),   // 30/10/2026 — 24x sem pós-chaves
       comissaoPct:COMISSAO[prazoEscolhido()]||0,
       comissaoValor:Math.round((Number(u.valorVenda)||0)*(COMISSAO[prazoEscolhido()]||0)*100)/100,
@@ -3257,6 +3625,7 @@
       sessionStorage.setItem('envioConcluido', JSON.stringify({tipo:'proposta', id:r.id||'',
         numero:r.proposta||'', html:partes.join(''), alerta:alerta}));
     }catch(x){}
+    if(param('daSimulacao')==='1') try{ localStorage.removeItem('simParaProposta'); idbPrintP('del'); }catch(x){}   // 31/10
     location.replace('enviado.html?tipo=proposta&numero='+encodeURIComponent(r.proposta||''));
   }
 
@@ -3403,8 +3772,8 @@
    a cada mês depois disso o prazo perde uma parcela (dez/2026 = 23/35/47, jan/2027 = 22/34/46...).
    O valor gravado continua 24/36/48 (é a opção da comissão); só o número de parcelas mostrado muda. */
 (function(){
-  var h=new Date(), red=Math.max(0,(h.getFullYear()-2026)*12+(h.getMonth()+1)-11);
-  document.querySelectorAll('.prazo-n').forEach(function(b){ b.textContent=(Number(b.dataset.base)-red)+' meses'; });
+  /* r97f (31/10/26): o nº de parcelas sai do mês escolhido para a 1ª parcela (montarPrimeira) */
+  montarPrimeira();
 })();
 </script>
 </body>
