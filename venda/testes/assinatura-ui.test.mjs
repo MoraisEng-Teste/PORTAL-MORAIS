@@ -72,23 +72,19 @@ test("Reenviar: confirma, chama assinaturaReenviar e mostra quantos recebem; err
   assert.equal(lim.estado, c0.estado);
 });
 
-test("assinado: mostra Assinado e Enviar continua desabilitado", () => {
+test("assinado: mostra Assinado e, desde o plano 23 (01/11), nenhum Enviar", () => {
   const h = A.montarBlocoAssinatura(ctx({ estado: { situacao: "ASSINADO", envelope: true, signatarios: [] } }));
   assert.match(h, /Assinado por todos/);
-  assert.match(botao(h, "a-enviar")[0], /disabled/);
-  /* entrega 14: sem o PDF assinado na casa, não há o botão */
+  assert.equal(botao(h, "a-enviar").length, 0);
   assert.equal(botao(h, "a-ver-assinado").length, 0);
 });
 
-test("entrega 14: título 'Enviar contrato via Clicksign'; 'Ver contrato assinado' só com ASSINADO + PDF na casa (TESTES vê)", () => {
-  const h = A.montarBlocoAssinatura(ctx({ estado: { situacao: "ASSINADO", envelope: true, signatarios: [], temAssinado: true } }));
+test("entrega 14: título 'Enviar contrato via Clicksign' enquanto não assinou; ASSINADO vira 'Documentos assinados' (plano 23)", () => {
+  const h = A.montarBlocoAssinatura(ctx({ estado: { situacao: "ENVIADO", envelope: true, signatarios: [], temAssinado: true } }));
   assert.match(h, /<div class="grp">Enviar contrato via Clicksign<\/div>/);
-  assert.equal(botao(h, "a-ver-assinado").length, 1);
-  assert.doesNotMatch(botao(h, "a-ver-assinado")[0], /disabled/);
-  const t = A.montarBlocoAssinatura(ctx({ testes: true, estado: { situacao: "ASSINADO", envelope: true, signatarios: [], temAssinado: true } }));
-  assert.doesNotMatch(botao(t, "a-ver-assinado")[0], /disabled/);
-  const enviado = A.montarBlocoAssinatura(ctx({ estado: { situacao: "ENVIADO", envelope: true, signatarios: [], temAssinado: true } }));
-  assert.equal(botao(enviado, "a-ver-assinado").length, 0);
+  assert.equal(botao(h, "a-ver-assinado").length, 0);
+  const a = A.montarBlocoAssinatura(ctx({ estado: { situacao: "ASSINADO", envelope: true, signatarios: [], temAssinado: true } }));
+  assert.match(a, /<div class="grp">Documentos assinados<\/div>/);
   assert.match(A.mensagemAssinatura({ ok: false, erro: "SEM_ASSINADO" }), /ainda não está na casa/);
 });
 
@@ -105,11 +101,11 @@ test("envelope com situação vazia conta como aberto (não deixa mandar outro)"
   assert.match(botao(h, "a-enviar")[0], /disabled/);
 });
 
-test("rascunho que ficou na Clicksign: Enviar desabilitado e orienta apagar lá e usar Atualizar situação", () => {
+test("rascunho que ficou na Clicksign: Enviar desabilitado e orienta Descartar rascunho", () => {
   const h = A.montarBlocoAssinatura(ctx({ estado: { situacao: "RASCUNHO", envelope: true, signatarios: [] } }));
   assert.match(botao(h, "a-enviar")[0], /disabled/);
   assert.doesNotMatch(botao(h, "a-atualizar")[0], /disabled/);
-  assert.match(h, /Rascunho na Clicksign \(não foi enviado\) — apague o rascunho na Clicksign e use Atualizar situação/);
+  assert.match(h, /Rascunho na Clicksign \(não foi enviado\)\. O envio parou no meio\. Clique em Descartar rascunho e envie de novo\./);
 });
 
 test("ocupado ou perfil TESTES: botões desabilitados; TESTES também não atualiza (Atualizar grava na casa)", () => {
@@ -152,9 +148,10 @@ test("mensagens amigáveis por código", () => {
   assert.match(m({ erro: "GRAVACAO_FALHOU", rascunhoApagado: true }), /Nada foi enviado.*tente de novo/);
   assert.match(m({ erro: "ASSINATURA_OCUPADA" }), /outro envio.*em andamento/);
   assert.match(m({ erro: "CONTRATO_DESATUALIZADO" }), /Os dados mudaram depois de gerar o contrato — gere de novo/);
+  assert.equal(m({ erro: "TERMO_DESATUALIZADO" }), "Os dados mudaram depois de gerar o termo de pré-reserva — gere o termo de novo e depois envie.");
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "documento", http: 422, rascunhoApagado: true }), /Nada foi enviado aos signatários/);
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "documento", http: 422, envelopeId: "env-1", rascunhoApagado: false }),
-               /apague o rascunho na Clicksign e use Atualizar situação/);
+               /Clique em Descartar rascunho e envie de novo/);
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "ativar", http: 0, envelopeId: "env-1", rascunhoApagado: false, incerto: true }),
                /não deu para confirmar.*Atualizar situação.*não envie de novo/);
   assert.match(m({ ok: true, aviso: "ASSINATURAS_INCOMPLETAS" }), /não registrou a assinatura de todos/);
@@ -318,4 +315,123 @@ test("30/10: envelope cancelado ou vencido não lista mais os signatários pende
     assert.doesNotMatch(h, /ass-lista/, situacao);
   }
   assert.match(A.montarBlocoAssinatura(ctx({ estado: { situacao: "ENVIADO", envelope: true, signatarios: sig } })), /ass-lista/);
+});
+
+test("Descartar rascunho: botão com RASCUNHO (TESTES e ocupado não), texto sem 'apagar na Clicksign', chama assinaturaCancelar", async () => {
+  const c0 = ctx({ estado: { situacao: "RASCUNHO", envelope: true, signatarios: [] } });
+  const h = A.montarBlocoAssinatura(c0);
+  assert.equal(botao(h, "a-descartar").length, 1);
+  assert.doesNotMatch(botao(h, "a-descartar")[0], /disabled/);
+  assert.match(h, />Descartar rascunho</);
+  assert.match(h, /O envio parou no meio\. Clique em Descartar rascunho e envie de novo\./);
+  assert.doesNotMatch(h, /apague o rascunho na Clicksign/);
+  assert.equal(botao(A.montarBlocoAssinatura(ctx({ estado: { situacao: "ENVIADO", envelope: true, signatarios: [] } })), "a-descartar").length, 0);
+  assert.equal(botao(A.montarBlocoAssinatura(ctx({ testes: true, estado: c0.estado })), "a-descartar").length, 0);
+  assert.match(botao(A.montarBlocoAssinatura(ctx({ ocupado: "atualizar", estado: c0.estado })), "a-descartar")[0], /disabled/);
+  const chamadas = [];
+  const r = await A.executarAcaoAssinatura("a-descartar", c0, { pageId: "p", confirmar: () => true,
+    chamar: async (x) => { chamadas.push(x); return { ok: true, descartou: true, situacao: "", envelope: false, signatarios: [] }; } });
+  assert.deepEqual(chamadas, [{ action: "assinaturaCancelar", pageId: "p", descartar: true }]);
+  assert.equal(r.estado.envelope, false);
+  assert.match(r.msg, /Rascunho descartado/);
+  assert.equal(A.podeEnviar(r), true);
+  const falha = await A.executarAcaoAssinatura("a-descartar", c0, { pageId: "p", confirmar: () => true,
+    chamar: async () => ({ ok: false, erro: "CLICKSIGN_FALHOU", passo: "consultar envelope", http: 0 }) });
+  assert.equal(falha.estado, c0.estado);
+  const nao = await A.executarAcaoAssinatura("a-descartar", c0, { pageId: "p", confirmar: () => false, chamar: async () => { throw new Error("nao"); } });
+  assert.equal(nao, c0);
+});
+
+test("Descartar rascunho: se o servidor não descartou (já enviado), a tela mostra o avisoTexto dele", async () => {
+  const c0 = ctx({ estado: { situacao: "RASCUNHO", envelope: true, signatarios: [] } });
+  const avisoTexto = "O contrato já tinha sido enviado aos signatários. Nada foi descartado — a situação foi atualizada.";
+  const r = await A.executarAcaoAssinatura("a-descartar", c0, { pageId: "p", confirmar: () => true,
+    chamar: async () => ({ ok: true, descartou: false, situacao: "ENVIADO", envelope: true, signatarios: [], avisoTexto }) });
+  assert.equal(r.msg, avisoTexto);
+  assert.equal(r.estado.situacao, "ENVIADO");
+  /* aviso de código (sem espaço) junto: os dois textos aparecem — o "Nada foi descartado" não some */
+  const r2 = await A.executarAcaoAssinatura("a-descartar", c0, { pageId: "p", confirmar: () => true,
+    chamar: async () => ({ ok: true, descartou: false, situacao: "ASSINADO", envelope: true, signatarios: [], aviso: "ASSINATURAS_INCOMPLETAS", avisoTexto }) });
+  assert.ok(r2.msg.startsWith(avisoTexto) && /não registrou a assinatura de todos/.test(r2.msg), r2.msg);
+  /* sem avisoTexto, um aviso com espaço NÃO vira texto da tela por adivinhação */
+  const r3 = await A.executarAcaoAssinatura("a-descartar", c0, { pageId: "p", confirmar: () => true,
+    chamar: async () => ({ ok: true, descartou: false, situacao: "ENVIADO", envelope: true, signatarios: [], aviso: "texto qualquer com espaço" }) });
+  assert.equal(r3.msg, "Situação atualizada.");
+});
+
+/* 01/11/2026 (revisão final, I3): o servidor pode repetir a Clicksign por até 180 s; a tela espera 240 s no envio e,
+   se ainda assim não houver resposta, não manda "tentar de novo" (o envio pode ter dado certo). */
+const DEMORA = "A Clicksign está demorando. O envio pode ter dado certo — espere 1 minuto e clique em Atualizar situação antes de tentar de novo.";
+test("I3: envio sem resposta (contrato e termo, resposta SEM_RESPOSTA ou exceção) mostra a mensagem da demora da Clicksign", async () => {
+  const deps = (chamar) => ({ pageId: "p", confirmar: () => true, chamar });
+  const semResp = async (x) => (x.action === "assinaturaEnviar" ? { ok: false, erro: "SEM_RESPOSTA" } : { ok: true, semRubricas: true });
+  assert.equal((await A.executarAcaoAssinatura("a-enviar", ctx(), deps(semResp))).msg, DEMORA);
+  assert.equal((await A.executarAcaoAssinatura("p-enviar", ctx({ doc: "PRE_RESERVA" }), deps(semResp))).msg, DEMORA);
+  const explode = async (x) => { if (x.action === "assinaturaEnviar") throw new Error("abortou"); return { ok: true, semRubricas: true }; };
+  assert.equal((await A.executarAcaoAssinatura("a-enviar", ctx(), deps(explode))).msg, DEMORA);
+  /* Atualizar situação sem resposta continua com a mensagem de sempre */
+  const at = await A.executarAcaoAssinatura("a-atualizar", ctx({ estado: ENVIADO }), deps(async () => ({ ok: false, erro: "SEM_RESPOSTA" })));
+  assert.match(at.msg, /não respondeu/);
+  assert.equal(A.mensagemAssinatura({ ok: false, erro: "SEM_RESPOSTA_ENVIO" }), DEMORA);
+});
+
+test("I3: a tela espera 240 s nas ações da assinatura (contrato e termo), mais que os 180 s de repetição do servidor", async () => {
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("../../venda-dossie.js", import.meta.url), "utf8");
+  assert.match(src, /var ESPERA_ASSINATURA = 240000;/);
+  assert.equal((src.match(/chamar: function \(p\) \{ return chamarVenda\(p, ESPERA_ASSINATURA\); \}/g) || []).length, 2);
+  assert.doesNotMatch(src, /chamar: function \(p\) \{ return chamarVenda\(p, 150000\); \}/);
+});
+
+/* ---- 01/11/2026 (plano 23, tarefa A): depois de assinado por todos, só os documentos assinados ---- */
+const ASSINADO = { situacao: "ASSINADO", envelope: true, temAssinado: true, signatarios: [{ papel: "Comprador 1", nome: "Maria S.", situacao: "assinou", data: "" }] };
+const DOCS = [{ id: "doc-1", nome: "CONDOMINIO TESTE CASA 1 - Maria.pdf", tipo: "contrato" }, { id: "doc-2", nome: "MEMORIAL DESCRITIVO - CONDOMINIO TESTE CASA 1 - Maria.pdf", tipo: "memorial" }];
+
+test("plano 23 A: nomeArquivoAssinado põe ' - ASSINADO.pdf' e tira carimbo e prefixo antigo", () => {
+  assert.equal(A.nomeArquivoAssinado("CONDOMINIO TESTE CASA 1 - Maria.pdf"), "CONDOMINIO TESTE CASA 1 - Maria - ASSINADO.pdf");
+  assert.equal(A.nomeArquivoAssinado("CONTRATO ASSINADO - RUA TESTE - 01-10-2026.pdf"), "CONTRATO - RUA TESTE - 01-10-2026 - ASSINADO.pdf");
+  assert.equal(A.nomeArquivoAssinado("CONTRATO - RUA [#0123abcd].pdf"), "CONTRATO - RUA - ASSINADO.pdf");
+  assert.equal(A.nomeArquivoAssinado("X - ASSINADO.pdf"), "X - ASSINADO.pdf");
+  assert.equal(A.nomeArquivoAssinado(""), "documento - ASSINADO.pdf");
+});
+
+test("plano 23 A: ASSINADO mostra só 'Documentos assinados' (Ver e Baixar de cada um) e Atualizar situação", () => {
+  const h = A.montarBlocoAssinatura(ctx({ estado: ASSINADO, assinados: DOCS }));
+  assert.match(h, /Documentos assinados/);
+  assert.equal(botao(h, "a-enviar").length, 0, "sem Enviar");
+  assert.equal(botao(h, "a-cancelar").length + botao(h, "a-descartar").length + botao(h, "a-reenviar").length, 0);
+  assert.equal(botao(h, "a-ver-assinado").length, 0, "o Ver antigo vira a lista");
+  assert.equal(botao(h, "a-doc-ver").length, 2);
+  assert.equal(botao(h, "a-doc-baixar").length, 2);
+  assert.match(botao(h, "a-doc-ver")[0], /data-doc="doc-1"/);
+  assert.match(h, /Memorial descritivo/);
+  assert.doesNotMatch(botao(h, "a-atualizar")[0], /disabled/);
+  /* o perfil TESTES vê e baixa (só leitura) */
+  const t = A.montarBlocoAssinatura(ctx({ testes: true, estado: ASSINADO, assinados: DOCS }));
+  assert.doesNotMatch(botao(t, "a-doc-baixar")[0], /disabled/);
+  /* termo: mesmo bloco com o prefixo p- */
+  const p = A.montarBlocoAssinatura(ctx({ doc: "PRE_RESERVA", estado: ASSINADO, assinados: DOCS.slice(0, 1) }));
+  assert.equal(botao(p, "p-doc-ver").length, 1);
+  /* lista ainda não carregada / erro */
+  assert.match(A.montarBlocoAssinatura(ctx({ estado: ASSINADO })), /carregando os documentos assinados/);
+  assert.match(A.montarBlocoAssinatura(ctx({ estado: ASSINADO, assinados: [], msg: "falhou" })), /falhou/);
+  assert.ok(A.precisaCarregarAssinados(ctx({ estado: ASSINADO })));
+  assert.ok(!A.precisaCarregarAssinados(ctx({ estado: ASSINADO, assinados: DOCS })));
+  assert.ok(!A.precisaCarregarAssinados(ctx({ estado: ENVIADO })));
+});
+
+test("plano 23 A: carregarAssinados e baixarAssinado falam com o servidor (doc do termo junto) e devolvem o nome final", async () => {
+  const chamadas = [];
+  const chamar = async (x) => { chamadas.push(x); return x.action === "documentosAssinados" ? { ok: true, documentos: DOCS } : { ok: true, nome: DOCS[1].nome, base64: "QUJD" }; };
+  const c1 = await A.carregarAssinados(ctx({ doc: "PRE_RESERVA", estado: ASSINADO }), { pageId: "p", chamar });
+  assert.deepEqual(c1.assinados, DOCS);
+  const r = await A.baixarAssinado(ctx({ estado: ASSINADO, assinados: DOCS }), "doc-2", { pageId: "p", chamar });
+  assert.deepEqual(chamadas, [{ action: "documentosAssinados", pageId: "p", doc: "PRE_RESERVA" }, { action: "verDocumentoAssinado", pageId: "p", docId: "doc-2" }]);
+  assert.deepEqual(r.arquivo, { nome: "MEMORIAL DESCRITIVO - CONDOMINIO TESTE CASA 1 - Maria - ASSINADO.pdf", base64: "QUJD" });
+  const ruim = await A.baixarAssinado(ctx({ estado: ASSINADO, assinados: DOCS }), "doc-2", { pageId: "p", chamar: async () => ({ ok: false, erro: "DOWNLOAD_ASSINADO_FALHOU" }) });
+  assert.equal(ruim.arquivo, null);
+  assert.match(ruim.ctx.msg, /Não consegui baixar o PDF assinado/);
+  const sem = await A.carregarAssinados(ctx({ estado: ASSINADO }), { pageId: "p", chamar: async () => { throw new Error("x"); } });
+  assert.deepEqual(sem.assinados, []);
+  assert.match(sem.msg, /não respondeu/);
 });

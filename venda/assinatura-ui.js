@@ -1,6 +1,7 @@
 /* assinatura-ui.js — bloco "Assinatura" do painel da casa (entrega 3).
  * JS puro do navegador, no estilo do venda-dossie.js. Fala só com o Apps Script
- * PORTAL-VENDA (ações assinaturaEnviar, assinaturaEstado, assinaturaReenviar e assinaturaCancelar). A integração no
+ * PORTAL-VENDA (ações assinaturaEnviar, assinaturaEstado, assinaturaReenviar e assinaturaCancelar; 01/11: documentosAssinados
+ * e verDocumentoAssinado). A integração no
  * vendas.html / venda-dossie.js fica com quem coordena: este arquivo só desenha
  * o bloco e executa as ações, recebendo de fora como chamar o servidor.
  * Nunca mostra e-mail: o servidor devolve só papel, nome mascarado ("Maria S."), situação e data. */
@@ -14,7 +15,7 @@
     RECUSADO: "Recusado por um signatário — confira o motivo na Clicksign e envie de novo",
     CANCELADO: "Cancelado na Clicksign — pode enviar de novo",
     EXPIRADO: "Prazo vencido sem todas as assinaturas — pode enviar de novo",
-    RASCUNHO: "Rascunho na Clicksign (não foi enviado) — apague o rascunho na Clicksign e use Atualizar situação"
+    RASCUNHO: "Rascunho na Clicksign (não foi enviado). O envio parou no meio. Clique em Descartar rascunho e envie de novo."
   };
   var MSG = {
     NAO_AUTORIZADO: "Sua sessão expirou — entre de novo no portal.",
@@ -22,11 +23,15 @@
     SEM_PERMISSAO_TESTES: "O perfil TESTES não envia, não reenvia, não cancela nem atualiza a assinatura.",
     ASSINATURA_OCUPADA: "Há outro envio para assinatura em andamento — espere um minuto e tente de novo.",
     CONTRATO_DESATUALIZADO: "Os dados mudaram depois de gerar o contrato — gere de novo e depois envie.",
+    TERMO_DESATUALIZADO: "Os dados mudaram depois de gerar o termo de pré-reserva — gere o termo de novo e depois envie.",
     CONFISSAO_DESATUALIZADA: "Os termos de confissão não são deste contrato — gere o contrato de novo (os termos saem junto) e envie.",
     SEM_RESPOSTA: "O servidor não respondeu — confira a internet e tente de novo.",
+    /* 01/11/2026 (revisão final, I3): o envio sem resposta pode ter dado certo (o servidor repete a Clicksign por até 180 s) */
+    SEM_RESPOSTA_ENVIO: "A Clicksign está demorando. O envio pode ter dado certo — espere 1 minuto e clique em Atualizar situação antes de tentar de novo.",
     PORTAL_VENDA_NAO_CONFIGURADO: "A assinatura ainda não foi ligada neste ambiente.",
     CLICKSIGN_SEM_TOKEN: "A assinatura ainda não foi ligada neste ambiente (falta o token da Clicksign) — avise o administrador.",
     CLICKSIGN_URL_INVALIDA: "O endereço da Clicksign está errado nas configurações — avise o administrador.",
+    RASCUNHO_NAO_APAGADO: "A Clicksign não apagou o rascunho — tente Descartar rascunho de novo em 1 minuto.",
     ENVELOPE_ABERTO: "Este contrato já está com a Clicksign — use Atualizar situação.",
     SEM_CONTRATO_GERADO: "Gere o contrato antes de enviar para assinatura.",
     FALTAM_DADOS: "Complete os dados abaixo e envie de novo.",
@@ -50,7 +55,12 @@
     RUBRICAS_SEM_LEITOR: "Não consegui abrir o leitor de PDF do navegador — confira a internet e tente de novo.",
     MEMORIAL_NAO_CONFIGURADO: "O modelo do memorial descritivo não abre — avise o administrador.",
     MEMORIAL_FALHOU: "Não consegui gerar o memorial descritivo — tente de novo ou avise o desenvolvedor.",
-    PROJETO_NAO_CONFIGURADO: "O PDF do projeto aprovado não abre — avise o administrador."
+    PROJETO_NAO_CONFIGURADO: "O PDF do projeto aprovado não abre — avise o administrador.",
+    /* 01/11/2026 (plano 23 A): depois de assinado por todos, só visualizar */
+    NAO_ASSINADO: "Ainda não foi assinado por todos — use Atualizar situação.",
+    DOCUMENTO_NAO_ENCONTRADO: "Esse documento não está mais no envelope — recarregue a página.",
+    CONTRATO_ASSINADO: "O contrato já foi assinado por todos — nada mais muda nele. Recarregue a página.",
+    TERMO_ASSINADO: "O termo de pré-reserva já foi assinado por todos — nada mais muda nele. Recarregue a página."
   };
 
   function esc(s) {
@@ -80,6 +90,10 @@
   function podeCancelar(c) {
     return !!(c.estado && c.estado.envelope && situacaoDe(c.estado) === "ENVIADO" && !c.ocupado && !c.testes);
   }
+  /* Descartar rascunho: o envio parou no meio e o envelope ficou em rascunho (ninguém recebeu nada) */
+  function podeDescartar(c) {
+    return !!(c.estado && c.estado.envelope && situacaoDe(c.estado) === "RASCUNHO" && !c.ocupado && !c.testes);
+  }
   /* "2026-10-07T10:20:30.000-03:00" → "07/10/2026 10:20" (hora como a Clicksign mandou) */
   function dataCurta(iso) {
     var m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(iso || ""));
@@ -103,7 +117,7 @@
         return "A Clicksign não respondeu ao ativar o envelope " + r.envelopeId + " e não deu para confirmar se ele foi enviado — use Atualizar situação daqui a pouco; não envie de novo.";
       /* rascunho que não foi apagado: barra novo envio até sumir da Clicksign */
       var sobra = r.envelopeId && r.rascunhoApagado === false
-        ? " O envelope ficou como rascunho na Clicksign (nada foi enviado aos signatários): apague o rascunho na Clicksign e use Atualizar situação." : "";
+        ? " O envelope ficou como rascunho na Clicksign (nada foi enviado aos signatários). O envio parou no meio. Clique em Descartar rascunho e envie de novo." : "";
       if (!r.http) return "A Clicksign não respondeu (passo: " + r.passo + ")" +
         (consulta ? " — tente Atualizar situação daqui a pouco." : (sobra ? "." + sobra : ". Nada foi enviado aos signatários — tente de novo em alguns minutos."));
       return "A Clicksign recusou " + (consulta ? "a consulta" : "o envio") + " (passo: " + r.passo + ", código " + r.http +
@@ -126,6 +140,64 @@
     return MSG[e] || "Algo deu errado (" + e + ") — tente de novo.";
   }
 
+  /* ---- 01/11/2026 (plano 23 A) ----
+   * Dono: "depois do contrato assinado por todos, tem que tirar essas opções e deixar só para visualizar os documentos todos
+   * assinados (inclusive o projeto)". Com ASSINADO o bloco vira "Documentos assinados": Ver e Baixar de cada documento do
+   * envelope (lista da ação documentosAssinados, em c.assinados) e Atualizar situação. O arquivo baixado se chama
+   * "<nome do documento> - ASSINADO.pdf". */
+  function nomeArquivoAssinado(nome) {
+    var n = String(nome || "").trim().replace(/\.pdf$/i, "").replace(/\s*\[#[0-9a-f]{8}\]\s*$/i, "").trim();
+    n = n.replace(/^(CONTRATO|TERMO DE PRÉ-RESERVA) ASSINADO - /, "$1 - ").replace(/^ASSINADO - /, "").replace(/\s*-\s*ASSINADO$/i, "").trim();
+    return (n || "documento") + " - ASSINADO.pdf";
+  }
+  var ROTULO_DOC = { contrato: "Contrato", termo: "Termo de confissão de dívida", memorial: "Memorial descritivo", projeto: "Projeto aprovado" };
+  function assinado(c) { return !!(c && c.estado && situacaoDe(c.estado) === "ASSINADO"); }
+  function precisaCarregarAssinados(c) { return assinado(c) && !Array.isArray(c.assinados) && c.ocupado !== "assinados"; }
+  function montarDocumentosAssinados(c) {
+    var x = pre(c), e = c.estado, h = '<div class="grp">Documentos assinados</div>';
+    h += '<div class="dz-linha"><span class="dz-rot">Situação: ' + esc(SITUACAO.ASSINADO) + "</span></div>";
+    if (c.ocupado === "atualizar") h += '<div class="dz-linha"><b>consultando…</b></div>';
+    if (c.ocupado === "baixar") h += '<div class="dz-linha"><b>abrindo o documento assinado…</b></div>';
+    if (!Array.isArray(c.assinados)) h += '<div class="vazio">carregando os documentos assinados…</div>';
+    else if (!c.assinados.length && !c.msg) h += '<div class="vazio">Nenhum documento no envelope.</div>';
+    else if (c.assinados.length) h += '<ul class="ass-lista ass-docs">' + c.assinados.map(function (d) {
+      var rot = ehTermo(c) && d.tipo === "contrato" ? "Termo de pré-reserva" : (ROTULO_DOC[d.tipo] || "Documento");
+      var dis = c.ocupado ? " disabled" : "";
+      return '<li><span><b>' + esc(rot) + '</b> <span class="ass-data">' + esc(d.nome) + "</span></span> " +
+        '<button type="button" class="bt ghost bt-mini" data-acao="' + x + 'doc-ver" data-doc="' + esc(d.id) + '"' + dis + ">Ver</button> " +
+        '<button type="button" class="bt ghost bt-mini" data-acao="' + x + 'doc-baixar" data-doc="' + esc(d.id) + '"' + dis + ">Baixar</button></li>";
+    }).join("") + "</ul>";
+    var sigs = (e && e.signatarios) || [];
+    if (sigs.length) h += '<details class="dz-linha"><summary class="ass-data">Quem assinou (' + sigs.length + ")</summary><ul class=\"ass-lista\">" +
+      sigs.map(function (s) {
+        var d = dataCurta(s.data);
+        return "<li><span>" + (s.nome ? "<b>" + esc(s.nome) + "</b> (" + esc(s.papel) + ")" : esc(s.papel)) + "</span>" +
+          (d ? ' <span class="ass-data">em ' + esc(d) + "</span>" : "") + "</li>";
+      }).join("") + "</ul></details>";
+    h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="' + x + 'atualizar"' + (podeAtualizar(c) ? "" : " disabled") + ">Atualizar situação</button></div>";
+    if (c.msg) h += '<div class="dz-msg">' + esc(c.msg) + "</div>";
+    return h;
+  }
+  /* lista do envelope (ação documentosAssinados) → contexto novo com c.assinados (lista vazia + msg se falhar) */
+  async function carregarAssinados(c, deps) {
+    var r;
+    try { r = await deps.chamar(comDoc(c, { action: "documentosAssinados", pageId: deps.pageId })); }
+    catch (err) { r = { ok: false, erro: "SEM_RESPOSTA" }; }
+    r = r || { ok: false, erro: "SEM_RESPOSTA" };
+    if (!r.ok) return copia(c, { ocupado: null, assinados: [], msg: mensagemAssinatura(r) });
+    return copia(c, { ocupado: null, assinados: Array.isArray(r.documentos) ? r.documentos : [] });
+  }
+  /* PDF assinado de um documento (ação verDocumentoAssinado): { ctx, arquivo: { nome, base64 } | null } */
+  async function baixarAssinado(c, docId, deps) {
+    var r;
+    try { r = await deps.chamar({ action: "verDocumentoAssinado", pageId: deps.pageId, docId: String(docId || "") }); }
+    catch (err) { r = { ok: false, erro: "SEM_RESPOSTA" }; }
+    r = r || { ok: false, erro: "SEM_RESPOSTA" };
+    if (!r.ok || typeof r.base64 !== "string" || !r.base64)
+      return { ctx: copia(c, { ocupado: null, msg: mensagemAssinatura(r.ok ? { erro: "DOWNLOAD_ASSINADO_FALHOU" } : r) }), arquivo: null };
+    return { ctx: copia(c, { ocupado: null, msg: "" }), arquivo: { nome: nomeArquivoAssinado(r.nome), base64: r.base64 } };
+  }
+
   function ehTermo(c) { return !!(c && c.doc === "PRE_RESERVA"); }
   function pre(c) { return ehTermo(c) ? "p-" : "a-"; }
   function montarBlocoAssinatura(c) {
@@ -133,6 +205,7 @@
     var h = '<div class="grp">' + (termo ? "Enviar termo de pré-reserva via Clicksign" : "Enviar contrato via Clicksign") + "</div>";
     if (c.testes) h += '<div class="dz-aviso">Perfil TESTES não envia, não reenvia, não cancela nem atualiza a assinatura.</div>';
     if (!c.estado) return h + '<div class="vazio">' + esc(c.msg || "carregando…") + "</div>";
+    if (assinado(c)) return montarDocumentosAssinados(c);   /* 01/11 (plano 23 A): só visualizar */
     var e = c.estado, sit = situacaoDe(e);
     if (c.ocupado === "enviar") h += '<div class="dz-linha"><b>enviando… (até 1 minuto)</b></div>';
     if (c.ocupado === "atualizar") h += '<div class="dz-linha"><b>consultando…</b></div>';
@@ -172,6 +245,8 @@
       h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'reenviar"' + (podeReenviar(c) ? "" : " disabled") + ">Reenviar link de assinatura</button>";
     if (e.envelope && situacaoDe(e) === "ENVIADO")
       h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'cancelar"' + (podeCancelar(c) ? "" : " disabled") + ">Cancelar envelope</button>";
+    if (e.envelope && situacaoDe(e) === "RASCUNHO" && !c.testes)
+      h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'descartar"' + (podeDescartar(c) ? "" : " disabled") + ">Descartar rascunho</button>";
     /* só leitura: o perfil TESTES também vê */
     if (podeVerAssinado(c)) h += ' <button type="button" class="bt bt-mini" data-acao="' + x + 'ver-assinado"' + (c.ocupado ? " disabled" : "") + ">Ver " + (termo ? "termo" : "contrato") + " assinado</button>";
     h += "</div>";
@@ -197,12 +272,24 @@
     try { r = await deps.chamar({ action: "assinaturaPdf", pageId: deps.pageId }); }
     catch (err) { r = null; }
     if (!r || !r.ok || r.semRubricas || typeof r.base64 !== "string" || !r.base64) return { ok: true };
-    var R = deps.rubricas || (typeof window !== "undefined" ? window.RubricasVenda : null), ach;
+    var R = deps.rubricas || (typeof window !== "undefined" ? window.RubricasVenda : null), ach, pags;
     if (!R) return { ok: false, erro: "RUBRICAS_SEM_LEITOR" };
-    try { ach = R.acharNoContrato(await R.paginasDoPdf(r.base64), r.ajuste); }
+    try { pags = await R.paginasDoPdf(r.base64); ach = R.acharNoContrato(pags, r.ajuste); }
     catch (err) { return { ok: false, erro: "RUBRICAS_SEM_LEITOR" }; }
     if (!ach.campos.length) return { ok: false, erro: "RUBRICAS_NAO_ACHADAS" };
-    return { ok: true, rubricas: { nome: r.nome, campos: ach.campos, valores: ach.valores } };
+    /* 01/11 (plano 23 B): linhas de assinatura do contrato e dos termos (o servidor casa cada uma com a pessoa) */
+    var rubricas = { nome: r.nome, campos: ach.campos, valores: ach.valores };
+    /* correção 1 (C-1): só com as linhas ligadas no servidor (ASSINATURA_LINHAS=1 → assinaturaPdf diz linhas: true) */
+    if (r.linhas !== true || typeof R.acharLinhas !== "function") return { ok: true, rubricas: rubricas };
+    var linhas = [], termos = [];
+    try {
+      linhas = R.acharLinhas(pags, r.ajuste);
+      var ts = Array.isArray(r.termos) ? r.termos : [];
+      for (var i = 0; i < ts.length; i++)
+        if (ts[i] && ts[i].nome && ts[i].base64) termos.push({ nome: ts[i].nome, linhas: R.acharLinhas(await R.paginasDoPdf(ts[i].base64), r.ajuste) });
+    } catch (err) { return { ok: false, erro: "RUBRICAS_SEM_LEITOR" }; }
+    rubricas.linhas = linhas; rubricas.termos = termos;
+    return { ok: true, rubricas: rubricas };
   }
 
   /* Executa um clique. deps: { pageId, confirmar(texto) -> bool, chamar(payload) -> Promise<resposta>,
@@ -212,6 +299,7 @@
     acao = String(acao || "").replace(/^p-/, "a-");   /* termo: mesmos cliques com prefixo p- */
     if (acao === "a-reenviar") return reenviarLink(c, deps);
     if (acao === "a-cancelar") return cancelarEnvelope(c, deps);
+    if (acao === "a-descartar") return descartarRascunho(c, deps);
     var enviar = acao === "a-enviar";
     if (enviar ? !podeEnviar(c) : (acao !== "a-atualizar" || !podeAtualizar(c))) return c;
     if (enviar && !deps.confirmar("Enviar o " + (ehTermo(c) ? "termo de pré-reserva" : "contrato") + " para assinatura? Cada signatário recebe um e-mail da Clicksign para assinar.")) return c;
@@ -228,6 +316,7 @@
       r = { ok: false, erro: "SEM_RESPOSTA" };
     }
     r = r || { ok: false, erro: "SEM_RESPOSTA" };
+    if (enviar && r.erro === "SEM_RESPOSTA") r = { ok: false, erro: "SEM_RESPOSTA_ENVIO" };
     if (!r.ok) {
       var falhou = { ocupado: null, faltas: r.faltas || null, msg: mensagemAssinatura(r),
                      corrigir: (r.corrigir || []).map(function (x) {
@@ -282,9 +371,33 @@
                       msg: "Envelope cancelado na Clicksign — ninguém mais recebe pedido de assinatura dele." });
   }
 
+  /* Descartar rascunho: a mesma ação assinaturaCancelar; com envelope draft o servidor apaga e limpa as colunas.
+   * Se a Clicksign não respondeu, nada foi apagado: pede para tentar de novo. */
+  async function descartarRascunho(c, deps) {
+    if (!podeDescartar(c)) return c;
+    if (!deps.confirmar("Descartar o rascunho do " + (ehTermo(c) ? "termo de pré-reserva" : "contrato") + " na Clicksign? Nada foi enviado aos signatários; depois é só enviar de novo.")) return c;
+    if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "cancelar", msg: "" }));
+    var r;
+    try { r = await deps.chamar(comDoc(c, { action: "assinaturaCancelar", pageId: deps.pageId, descartar: true })); }
+    catch (err) { r = { ok: false, erro: "SEM_RESPOSTA" }; }
+    r = r || { ok: false, erro: "SEM_RESPOSTA" };
+    if (!r.ok) {
+      var semResposta = r.erro === "CLICKSIGN_FALHOU" && (!r.http || r.http >= 500);
+      return copia(c, { ocupado: null, msg: semResposta ? "A Clicksign não respondeu. Tente de novo em 1 minuto." : mensagemAssinatura(r) });
+    }
+    if (r.descartou)
+      return copia(c, { estado: { situacao: "", envelope: false, signatarios: [], temAssinado: false }, ocupado: null, faltas: null, corrigir: null,
+                        msg: "Rascunho descartado — agora é só enviar de novo." });
+    /* o servidor não descartou: o envelope já não era rascunho; ele só atualizou a situação e explica no aviso */
+    return copia(c, { estado: { situacao: r.situacao || "", envelope: !!r.envelope, signatarios: r.signatarios || [], temAssinado: !!r.temAssinado },
+                      ocupado: null, faltas: null, corrigir: null,
+                      msg: [r.avisoTexto, mensagemAssinatura(r)].filter(Boolean).join(" ") || "Situação atualizada." });
+  }
+
   var exportar = { montarBlocoAssinatura: montarBlocoAssinatura, mensagemAssinatura: mensagemAssinatura,
-                   executarAcaoAssinatura: executarAcaoAssinatura, prepararRubricas: prepararRubricas, podeEnviar: podeEnviar, podeReenviar: podeReenviar, podeCancelar: podeCancelar,
-                   podeVerAssinado: podeVerAssinado };
+                   executarAcaoAssinatura: executarAcaoAssinatura, prepararRubricas: prepararRubricas, podeEnviar: podeEnviar, podeReenviar: podeReenviar, podeCancelar: podeCancelar, podeDescartar: podeDescartar,
+                   podeVerAssinado: podeVerAssinado, nomeArquivoAssinado: nomeArquivoAssinado, precisaCarregarAssinados: precisaCarregarAssinados,
+                   carregarAssinados: carregarAssinados, baixarAssinado: baixarAssinado, assinado: assinado };
   if (typeof module !== "undefined" && module.exports) { module.exports = exportar; return; }
   window.VendaAssinatura = exportar; /* o coordenador liga no painel (venda-dossie.js / vendas.html) */
 })();

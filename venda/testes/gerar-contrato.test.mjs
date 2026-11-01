@@ -42,7 +42,8 @@ test("sucesso: PDF em CONTRATO GERADO substitui o anterior, sem marcadores, cóp
   /* cópia criada na pasta provisória, exportada e apagada de vez */
   assert.equal(c.d.estado.copias.length, 1);
   assert.equal(c.d.estado.copias[0].pasta, "pasta-prov");
-  assert.match(c.d.estado.copias[0].nome, /^contrato-provisorio-01234567-\d+$/);
+  /* 01/11 (plano 23 A): a cópia do Docs (e o título do PDF) leva o nome final, nunca "contrato-provisorio" */
+  assert.equal(c.d.estado.copias[0].nome, "CONTRATO - RESIDENCIAL TESTE QD 07 LT 12 CASA 3 - Fulano de Teste");
   assert.deepEqual(c.d.estado.removidas, [c.d.estado.copias[0].id]);
   assert.deepEqual(c.d.estado.lixeira, []);
   assert.deepEqual(c.d.docs["modelo-obra"].salvo, MODELO_OBRA);
@@ -104,6 +105,14 @@ test("faltas: FALTAM_DADOS com a lista e nenhuma cópia criada nem PDF gravado",
   assert.equal(c.d.estado.copias.length, 0);
   assert.equal(c.d.estado.abertos.length, 0);
   assert.equal(c.n.patches.length, 0);
+});
+
+test("01/11: nome do comprador com número vira falta no pré-contrato (antes só aparecia no envio), sem cópia", () => {
+  const c = cenario({ venda: { "CLIENTES ": rt("COMPRADOR 01") } });
+  const r = c.gerar();
+  assert.equal(r.erro, "FALTAM_DADOS");
+  assert.ok(r.faltas.includes("Comprador 1: nome sem números"), JSON.stringify(r.faltas));
+  assert.equal(c.d.estado.copias.length, 0);
 });
 
 test("vendedor não cadastrado vira falta legível, sem cópia", () => {

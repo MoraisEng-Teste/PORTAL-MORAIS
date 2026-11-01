@@ -67,8 +67,11 @@ var ClicksignVenda = (function () {
     var memPos = lerJson(props, "MEMORIAL_POSICAO", invalidas);
     var projPos = lerJson(props, "PROJETO_POSICOES", invalidas);
     var semRub = txt(props.ASSINATURA_SEM_RUBRICAS).toUpperCase();
+    /* 01/11 (plano 23, correção 1): assinatura em cima da linha (B) e selfie (C) só ligam com a Propriedade = "1" exato */
+    var linhasLig = txt(props.ASSINATURA_LINHAS) === "1", selfie = txt(props.CLICKSIGN_SELFIE) === "1";
     return { rubricasAjuste: ajusteRubricas(ajuste), memorialPosicao: memPos, projetoPosicoes: projPos,
-             semRubricas: semRub === "SIM" || semRub === "TRUE" || semRub === "1", testemunhasSPE: spe, testemunhasPF: pf, representante: rep, testemunhasOpcoes: opc,
+             semRubricas: semRub === "SIM" || semRub === "TRUE" || semRub === "1", linhas: linhasLig,
+             selfie: selfie, testemunhasSPE: spe, testemunhasPF: pf, representante: rep, testemunhasOpcoes: opc,
              testemunhasEscolhidas: Array.isArray(esc) ? esc.map(txt) : null,
              incluirCorretor: inc === "SIM" || inc === "TRUE" || inc === "1", invalidas: invalidas };
   }
@@ -99,11 +102,18 @@ var ClicksignVenda = (function () {
     var pr = ids.map(function (id) { return ops.filter(function (o) { return o.id === txt(id); })[0] || null; });
     return pr[0] && pr[1] ? pr : null;
   }
-  /* o que a tela recebe: só id e nome */
-  function testemunhasParaTela(config) {
-    var e = escolhidas(config);
-    return { opcoes: opcoesTestemunhas(config).map(function (o) { return { id: o.id, nome: o.nome }; }),
-             escolhidas: e ? [e[0].id, e[1].id] : [] };
+  /* o que a tela recebe: só id e nome. 01/11/2026 (H5): padrao = os ids do par padrão (o que vale sem escolha) — SPE,
+   * ou PF, conforme o tipo do vendedor em `dados` (a mesma regra do envio); [] quando o tipo é desconhecido (sem `dados`)
+   * ou o par não fecha com as opções — a tela então não chuta nomes. */
+  function testemunhasParaTela(config, dados) {
+    var e = escolhidas(config), ops = opcoesTestemunhas(config), padrao = [];
+    var pr = dados && dados.vendedor ? par(ehPJ(dados) ? config.testemunhasSPE : config.testemunhasPF) : null;
+    if (pr) {
+      var ids = pr.map(function (p) { return chave(p.nome); });
+      if (ids.every(function (id) { return ops.some(function (o) { return o.id === id; }); })) padrao = ids;
+    }
+    return { opcoes: ops.map(function (o) { return { id: o.id, nome: o.nome }; }),
+             escolhidas: e ? [e[0].id, e[1].id] : [], padrao: padrao };
   }
 
   /* Conferência das Propriedades (conferirAssinatura, no editor): só o nome da Propriedade e a posição
@@ -176,8 +186,10 @@ var ClicksignVenda = (function () {
   }
   function sigCompradores(dados) {
     var l = [sig("Comprador 1", PAPEIS.COMPRADOR, dados.comprador1, "comprador1", { rubrica: true })];
-    /* 31/10/2026 (dono): comprador casado → o cônjuge assina logo depois dele (contrato e termos; sem rubrica, sem
-       memorial). Se o cônjuge já é o comprador 2 (mesmo CPF ou nome), não assina duas vezes. */
+    /* 31/10/2026 (dono): comprador casado → o cônjuge assina logo depois dele (contrato e termos de confissão; sem rubrica,
+       sem memorial). 01/11/2026 (dono): no TERMO DE PRÉ-RESERVA o cônjuge só entra se o corretor ligou a opção na venda
+       (AssinaturaVenda.assEnviarTermo_ tira o conjugeComprador antes). Se o cônjuge já é o comprador 2 (mesmo CPF ou nome),
+       não assina duas vezes. */
     var cj = dados.condominio && dados.condominio.conjugeComprador, c2 = dados.comprador2;
     if (cj && !(c2 && ((soDigitos(cj.cpf) && soDigitos(cj.cpf) === soDigitos(c2.cpf)) || txt(cj.nome).toUpperCase() === txt(c2.nome).toUpperCase())))
       l.push(sig("Cônjuge do comprador 1", PAPEIS.COMPRADOR, cj, "conjugeComprador1"));
@@ -250,6 +262,31 @@ var ClicksignVenda = (function () {
     return faltas.concat(porPessoa);
   }
 
+  /* 01/11/2026 (teste e2e): o que o envio barraria por NOME ou E-MAIL de quem é do cliente (comprador, cônjuge, fiador)
+   * já aparece no Gerar pré-contrato. Só estes papéis entram (testemunhas, vendedor/representante e corretor são
+   * cadastro da casa); o e-mail repetido é apontado em quem é do cliente, mesmo quando a outra ponta é o vendedor.
+   * Os textos começam por "Comprador", "Fiador" ou "Cônjuge" — assim o link do cliente também os mostra. */
+  function doCliente(s) { return /^(Comprador|Fiador|C[ôo]njuge)/.test(s.papel); }
+  /* 01/11/2026 (revisão final, I1): e-mail que falta (ou inválido) de fiador e de cônjuge também aparece no Gerar, com o
+     mesmo texto do envio — a tela abre o bloco Fiadores/Cônjuge para corrigir. O comprador fica de fora (tem link próprio). */
+  var EMAIL_NO_GERAR = { conjugeComprador1: 1, fiador1: 1, fiador2: 1, conjugeFiador1: 1, conjugeFiador2: 1 };
+  function faltasDeNomeEEmail(dados, config) {
+    config = config || montarConfig({});   /* config.comFiadores: quem chama decide (ConfissaoVenda.fiadoresAssinam), como no envio */
+    var lista = signatarios(dados, config), vistos = {}, por = lista.map(function () { return []; });
+    lista.forEach(function (s, i) {
+      if (doCliente(s) && txt(s.nome) && !nomeValido(s.nome))
+        por[i].push(s.papel + (/\d/.test(s.nome) ? ": nome sem números" : ": nome e sobrenome"));
+      if (EMAIL_NO_GERAR[s.origem] && !s.email) por[i].push(s.papel + ": e-mail (" + ONDE_EMAIL[s.origem] + ")");
+      else if (EMAIL_NO_GERAR[s.origem] && !emailValido(s.email)) por[i].push(s.papel + ": e-mail inválido");
+      if (!s.email || !emailValido(s.email)) return;
+      if (vistos[s.email] === undefined) { vistos[s.email] = i; return; }
+      var ate = vistos[s.email], antes = lista[ate];
+      if (doCliente(s)) por[i].push(s.papel + ": e-mail igual ao do " + antes.papel + " (cada pessoa precisa de um e-mail)");
+      else if (doCliente(antes)) por[ate].push(antes.papel + ": e-mail igual ao do " + s.papel + " (cada pessoa precisa de um e-mail)");
+    });
+    return [].concat.apply([], por);
+  }
+
   /* 27/10 (dono): falta de e-mail vem com o atalho para corrigir numa aba nova, na tela do PORTAL onde o
    * e-mail mora (não no Notion). Devolve [{ quem, rotulo }] — quem: comprador | vendedor | corretor; a
    * tela monta o endereço. E-mail repetido aponta as duas pontas. */
@@ -272,6 +309,12 @@ var ClicksignVenda = (function () {
       obra = (obra ? obra + " " : "") + "CASA " + n;
     var partes = [obra, limpo(comprador)].filter(function (x) { return x; });
     return partes.length ? partes.join(" - ").slice(0, 200) : "Contrato de compra e venda";
+  }
+  /* 01/11/2026 (plano 23 A, dono: "pq veio com nome de provisorio"): nome da cópia do Google Docs — o PDF exportado herda
+   * esse nome como título, e a Clicksign o mantém. prefixo ("CONTRATO - ", "TERMO DE PRÉ-RESERVA - ", ...) + nome padrão. */
+  function tituloDocumento(prefixo, endereco, casa, comprador) {
+    var n = nomePadrao(endereco, casa, comprador);
+    return (txt(prefixo).replace(/\s+$/, "") + " " + (n === "Contrato de compra e venda" ? "" : n)).replace(/\s{2,}/g, " ").trim();
   }
   /* compatível com a chamada antiga (só o endereço) */
   function nomeEnvelope(endereco, casa, comprador) { return nomePadrao(endereco, casa, comprador); }
@@ -300,8 +343,21 @@ var ClicksignVenda = (function () {
   function corpoQualificacao(docId, signerId, role) {
     return { data: { type: "requirements", attributes: { action: "agree", role: role }, relationships: relacoes(docId, signerId) } };
   }
-  function corpoAutenticacao(docId, signerId) {
-    return { data: { type: "requirements", attributes: { action: "provide_evidence", auth: "email" }, relationships: relacoes(docId, signerId) } };
+  /* auth: "email" (padrão) ou um dos AUTH_SELFIE — um requisito provide_evidence por autenticação (doc "Criar requisito
+   * de autenticação": cada requisito leva um valor de auth; para pedir vários, vários requisitos). */
+  function corpoAutenticacao(docId, signerId, auth) {
+    return { data: { type: "requirements", attributes: { action: "provide_evidence", auth: auth || "email" }, relationships: relacoes(docId, signerId) } };
+  }
+  /* 01/11/2026 (plano 23 C, dono: selfie "sim" para comprador, cônjuge e fiadores). Valores da lista "auth" da API v3
+   * (developers.clicksign.com/reference/criar-requisito-de-autenticacao, lida em 01/11/2026): "selfie" = foto do
+   * signatário pela câmera; "official_document" = foto (frente e verso) do documento oficial. A doc não traz um valor
+   * único "selfie com documento" nem diz com todas as letras que somam com o token por e-mail (só proíbe combiná-los com
+   * biometric/facial_biometrics/identity_biometrics) — conferir no 1º envelope do sandbox. Vendedora, corretor e
+   * testemunhas continuam só com o token. Só com a Propriedade CLICKSIGN_SELFIE=1. */
+  var AUTH_SELFIE = ["selfie", "official_document"];
+  var COM_SELFIE = /^(comprador[12]|conjugeComprador1|fiador[12]|conjugeFiador[12])$/;
+  function autenticacoes(s, config) {
+    return config && config.selfie && COM_SELFIE.test(txt(s && s.origem)) ? ["email"].concat(AUTH_SELFIE) : ["email"];
   }
   /* 30/10: rubrica posicionada — kind "initials" (visto) ou "manuscript" (assinatura); positions [{ page: "n", position: [x, y] }]
    * em proporção da página (0–1, x da esquerda, y do topo). positions, pages e rubric_field são exclusivos. */
@@ -440,6 +496,16 @@ var ClicksignVenda = (function () {
     if (n.indexOf(PREFIXO_DOC.projeto) === 0) return DOC.PROJETO;
     return DOC.CONTRATO;
   }
+  /* 01/11/2026 (plano 23 A): documentos de um envelope assinado para a tela — [{ id, nome, tipo }], o contrato primeiro,
+   * sem link (o PDF vem pela sessão do portal, ação verDocumentoAssinado). ehTermo(filename) vem do ConfissaoVenda. */
+  function listaAssinados(docs, ehTermo) {
+    var ordem = {}; ordem[DOC.CONTRATO] = 0; ordem[DOC.TERMO] = 1; ordem[DOC.MEMORIAL] = 2; ordem[DOC.PROJETO] = 3;
+    return (docs || []).map(function (d, i) {
+      var n = txt(d && d.attributes && d.attributes.filename);
+      return { id: txt(d && d.id), nome: n, tipo: tipoDoDocumento(n, typeof ehTermo === "function" && !!ehTermo(n)), i: i };
+    }).filter(function (x) { return x.id; }).sort(function (a, b) { return (ordem[a.tipo] - ordem[b.tipo]) || (a.i - b.i); })
+      .map(function (x) { return { id: x.id, nome: x.nome, tipo: x.tipo }; });
+  }
   /* docs: [{ id, tipo }] → ids que este signatário assina. Fiador: só os termos; comprador (rubrica): todos;
    * os demais: o contrato e os termos (memorial e projeto são só do comprador). */
   function documentosDoSignatario(s, docs) {
@@ -454,12 +520,12 @@ var ClicksignVenda = (function () {
    * é o canto de cima à esquerda ou o centro da caixa: o padrão supõe o canto e sobe a assinatura para ficar
    * em cima da linha "ASSINATURA: ____". Conferir no sandbox e, se precisar, corrigir pela Propriedade
    * RUBRICAS_AJUSTE, ex.: {"campo":{"dx":0,"dy":-0.015},"valores":{"dx":0,"dy":0}}. */
-  var AJUSTE_PADRAO = { campo: { dx: 0, dy: -0.01 }, valores: { dx: 0, dy: -0.004 } };
+  var AJUSTE_PADRAO = { campo: { dx: 0, dy: -0.01 }, valores: { dx: 0, dy: -0.004 }, linha: { dx: 0, dy: -0.03 } };
   function numOu(v, padrao) { return typeof v === "number" && isFinite(v) && Math.abs(v) <= 0.5 ? v : padrao; }
   function ajusteRubricas(j) {
     j = j && typeof j === "object" ? j : {};
     var r = {};
-    ["campo", "valores"].forEach(function (k) {
+    ["campo", "valores", "linha"].forEach(function (k) {
       var a = j[k] && typeof j[k] === "object" ? j[k] : {};
       r[k] = { dx: numOu(a.dx, AJUSTE_PADRAO[k].dx), dy: numOu(a.dy, AJUSTE_PADRAO[k].dy) };
     });
@@ -478,7 +544,8 @@ var ClicksignVenda = (function () {
   }
   /* O que a tela mandou junto com "Enviar": { nome (do PDF lido), campos: [pos], valores: pos | null }.
    * nomeGerado = nome do PDF que o servidor vai mandar; diferente = a tela leu outro PDF. */
-  function validarRubricas(r, nomeGerado) {
+  /* opc.linhas === false (ASSINATURA_LINHAS desligada): linhas e termos da tela são ignorados sem conferir */
+  function validarRubricas(r, nomeGerado, opc) {
     if (!r || typeof r !== "object") return { ok: false, erro: "RUBRICAS_FALTANDO" };
     if (txt(r.nome) !== txt(nomeGerado)) return { ok: false, erro: "RUBRICAS_DE_OUTRO_PDF" };
     var campos = Array.isArray(r.campos) ? r.campos : [];
@@ -487,7 +554,63 @@ var ClicksignVenda = (function () {
     if (ok.some(function (p) { return !p; })) return { ok: false, erro: "RUBRICAS_INVALIDAS" };
     var val = null;
     if (r.valores) { val = posicaoValida(r.valores); if (!val) return { ok: false, erro: "RUBRICAS_INVALIDAS" }; }
-    return { ok: true, campos: ok, valores: val };
+    /* 01/11 (plano 23 B): linhas de assinatura do contrato e de cada termo de confissão (nome do PDF na Clicksign) */
+    var linhas = [], termos = {};
+    if (opc && opc.linhas === false) return { ok: true, campos: ok, valores: val, linhas: linhas, termos: termos };
+    if (r.linhas !== undefined) { linhas = linhasValidas(r.linhas); if (!linhas) return { ok: false, erro: "RUBRICAS_INVALIDAS" }; }
+    if (r.termos !== undefined) {
+      if (!Array.isArray(r.termos) || r.termos.length > 4) return { ok: false, erro: "RUBRICAS_INVALIDAS" };
+      for (var i = 0; i < r.termos.length; i++) {
+        var t = r.termos[i], lt = t && txt(t.nome) ? linhasValidas(t.linhas) : null;
+        if (!lt) return { ok: false, erro: "RUBRICAS_INVALIDAS" };
+        termos[txt(t.nome)] = lt;
+      }
+    }
+    return { ok: true, campos: ok, valores: val, linhas: linhas, termos: termos };
+  }
+  var MAX_LINHAS = 60;
+  function linhasValidas(a) {
+    if (!Array.isArray(a) || a.length > MAX_LINHAS) return null;
+    var out = [];
+    for (var i = 0; i < a.length; i++) {
+      var p = posicaoValida(a[i]);
+      if (!p || typeof a[i].texto !== "string") return null;
+      out.push({ page: p.page, position: p.position, texto: a[i].texto.trim().slice(0, 300) });
+    }
+    return out;
+  }
+
+  /* 01/11/2026 (plano 23 B): de quem é cada linha de assinatura lida no PDF. linhas: [{ page, position, texto }];
+   * tipo: DOC.CONTRATO ou DOC.TERMO. Devolve, para cada signatário da lista (mesma ordem), as posições dele.
+   * 1º pelo nome: o texto da linha traz o nome de UMA pessoa que assina esse documento → é dela; duas ou mais (a linha
+   * única "Nome: A / B" do modelo de hoje) → ninguém (a pessoa assina só na página da Clicksign, como antes).
+   * Sem nome: pelo papel escrito — TESTEMUNHA n, FIADOR n, CORRETOR/INTERMEDIADOR, VENDEDORA/CREDORA, e COMPRADOR/DEVEDOR
+   * só quando uma única pessoa assina como parte compradora. */
+  function assinaOTipo(s, tipo) { return tipo === DOC.TERMO ? true : tipo === DOC.CONTRATO ? !s.soTermos : false; }
+  function atribuirLinhas(lista, linhas, tipo) {
+    lista = lista || [];
+    var r = lista.map(function () { return []; });
+    var cands = [], test = [];
+    lista.forEach(function (s, i) { if (assinaOTipo(s, tipo)) cands.push(i); if (s.origem === "testemunha") test.push(i); });
+    function daOrigem(re) { var l = cands.filter(function (i) { return re.test(lista[i].origem || ""); }); return l.length === 1 ? l[0] : -1; }
+    (linhas || []).forEach(function (l) {
+      var t = chave(l && l.texto), alvo = -1, m;
+      var porNome = cands.filter(function (i) { var n = chave(lista[i].nome); return n.length >= 5 && t.indexOf(n) >= 0; });
+      if (porNome.length === 1) alvo = porNome[0];
+      /* correção 1 (I-3): linha de CÔNJUGE ("CÔNJUGE DO FIADOR 1", "CÔNJUGE") só pelo nome — o papel apontaria o fiador/comprador */
+      else if (!porNome.length && !/CONJUGE/.test(t)) {
+        if ((m = /TESTEMUNHA\s*([12])/.exec(t))) { var it = test[Number(m[1]) - 1]; alvo = it !== undefined && cands.indexOf(it) >= 0 ? it : -1; }
+        else if ((m = /FIADOR\s*([12])/.exec(t))) alvo = daOrigem(new RegExp("^fiador" + m[1] + "$"));
+        else if (/CORRETOR|INTERMEDIADOR/.test(t)) alvo = daOrigem(/^corretor$/);
+        else if (/VENDEDOR|CREDOR/.test(t)) alvo = daOrigem(/^(vendedor|representante)$/);
+        else if (/COMPRADOR|DEVEDOR/.test(t)) {
+          var b = cands.filter(function (i) { return lista[i].role === PAPEIS.COMPRADOR; });
+          alvo = b.length === 1 ? b[0] : -1;
+        }
+      }
+      if (alvo >= 0) r[alvo].push({ page: l.page, position: l.position.slice() });
+    });
+    return r;
   }
 
   /* Projeto aprovado (12 páginas, 1–2 em A1 deitado, 3–11 em A2 deitado, 12 A4 sem carimbo): o visto fica no
@@ -521,18 +644,27 @@ var ClicksignVenda = (function () {
     return m ? m.length : 0;
   }
 
-  /* Requisitos de rubrica de um signatário: [{ docId, kind, positions }]. Só quem tem rubrica (comprador).
-   * docs: [{ id, tipo }]; rub: { campos, valores } (já validado), memorial: pos | null, projeto: [pos]. */
-  function requisitosRubrica(s, docs, rub) {
-    if (!s.rubrica || !rub) return [];
-    var l = [];
+  /* Requisitos de rubrica de um signatário: [{ docId, kind, positions }].
+   * docs: [{ id, tipo, nome? }]; rub: { campos, valores } (já validado), memorial: pos | null, projeto: [pos],
+   * 01/11 (plano 23 B) linhas: [{ page, position, texto }] do contrato e termos: { nomeDoPdf: linhas }.
+   * Comprador (s.rubrica): campos de ciência + a linha dele numa só "manuscript" do contrato (a Clicksign não aceita
+   * duas do mesmo tipo para a mesma pessoa), visto nos valores, memorial e projeto. Os outros: só a assinatura na
+   * própria linha (contrato e termos). i e lista (o signatário na lista do envelope) ligam as linhas; sem eles, como antes. */
+  function requisitosRubrica(s, docs, rub, i, lista) {
+    if (!rub) return [];
+    var comLinhas = Array.isArray(lista) && typeof i === "number", l = [];
     (docs || []).forEach(function (d) {
       if (d.tipo === DOC.CONTRATO) {
-        if (rub.campos && rub.campos.length) l.push({ docId: d.id, kind: "manuscript", positions: rub.campos });
-        if (rub.valores) l.push({ docId: d.id, kind: "initials", positions: [rub.valores] });
-      } else if (d.tipo === DOC.MEMORIAL && rub.memorial) {
+        var lin = comLinhas && rub.linhas && rub.linhas.length ? atribuirLinhas(lista, rub.linhas, DOC.CONTRATO)[i] : [];
+        var man = (s.rubrica && rub.campos ? rub.campos : []).concat(lin);
+        if (man.length) l.push({ docId: d.id, kind: "manuscript", positions: man });
+        if (s.rubrica && rub.valores) l.push({ docId: d.id, kind: "initials", positions: [rub.valores] });
+      } else if (d.tipo === DOC.TERMO) {
+        var lt = comLinhas && rub.termos && d.nome && rub.termos[d.nome] ? atribuirLinhas(lista, rub.termos[d.nome], DOC.TERMO)[i] : [];
+        if (lt.length) l.push({ docId: d.id, kind: "manuscript", positions: lt });
+      } else if (d.tipo === DOC.MEMORIAL && s.rubrica && rub.memorial) {
         l.push({ docId: d.id, kind: "manuscript", positions: [rub.memorial] });
-      } else if (d.tipo === DOC.PROJETO && rub.projeto && rub.projeto.length) {
+      } else if (d.tipo === DOC.PROJETO && s.rubrica && rub.projeto && rub.projeto.length) {
         l.push({ docId: d.id, kind: "initials", positions: rub.projeto });
       }
     });
@@ -541,16 +673,16 @@ var ClicksignVenda = (function () {
 
   var api = {
     PAPEIS: PAPEIS, SITUACOES: SITUACOES, montarConfig: montarConfig, conferirConfig: conferirConfig, signatarios: signatarios,
-    faltasAssinatura: faltasAssinatura, linksCorrigirEmail: linksCorrigirEmail, nomeEnvelope: nomeEnvelope, nomeArquivo: nomeArquivo, nomePadrao: nomePadrao,
+    faltasAssinatura: faltasAssinatura, faltasDeNomeEEmail: faltasDeNomeEEmail, linksCorrigirEmail: linksCorrigirEmail, nomeEnvelope: nomeEnvelope, nomeArquivo: nomeArquivo, nomePadrao: nomePadrao, tituloDocumento: tituloDocumento, listaAssinados: listaAssinados,
     corpoEnvelope: corpoEnvelope, corpoDocumento: corpoDocumento, corpoSignatario: corpoSignatario,
-    corpoQualificacao: corpoQualificacao, corpoAutenticacao: corpoAutenticacao, corpoAtivar: corpoAtivar, corpoCancelarDocumento: corpoCancelarDocumento, statusEfetivo: statusEfetivo,
+    corpoQualificacao: corpoQualificacao, corpoAutenticacao: corpoAutenticacao, autenticacoes: autenticacoes, AUTH_SELFIE: AUTH_SELFIE, corpoAtivar: corpoAtivar, corpoCancelarDocumento: corpoCancelarDocumento, statusEfetivo: statusEfetivo,
     corpoNotificacao: corpoNotificacao, interpretar: interpretar, situacao: situacao, assinaram: assinaram,
     podeEnviar: podeEnviar, linkAssinado: linkAssinado, mascararEmails: mascararEmails, FINAIS: FINAIS,
     situacaoDosSignatarios: situacaoDosSignatarios, nomeMascarado: nomeMascarado,
     minutosParaReenviar: minutosParaReenviar, REENVIO_MIN: REENVIO_MIN,
     opcoesTestemunhas: opcoesTestemunhas, escolhidas: escolhidas, testemunhasParaTela: testemunhasParaTela,
     sigCompradores: sigCompradores, sigFiadores: sigFiadores, corpoRubrica: corpoRubrica, DOC: DOC, tipoDoDocumento: tipoDoDocumento,
-    nomeDocumentoAdicional: nomeDocumentoAdicional, documentosDoSignatario: documentosDoSignatario, requisitosRubrica: requisitosRubrica,
+    nomeDocumentoAdicional: nomeDocumentoAdicional, documentosDoSignatario: documentosDoSignatario, requisitosRubrica: requisitosRubrica, atribuirLinhas: atribuirLinhas,
     validarRubricas: validarRubricas, ajusteRubricas: ajusteRubricas, AJUSTE_PADRAO: AJUSTE_PADRAO, POSICOES_PROJETO: POSICOES_PROJETO,
     posicoesProjeto: posicoesProjeto, posicaoMemorial: posicaoMemorial, contarPaginasPdf: contarPaginasPdf
   };

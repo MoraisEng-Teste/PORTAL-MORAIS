@@ -61,7 +61,12 @@ function ctrTitulo_(props) {
 /* Página da casa na VENDAS ou, desde a entrega 7, a própria linha da BANCO DE DADOS VENDAS
  * CONDOMÍNIO (DB_VENDAS_COND) — essa vira a "página de venda virtual" do CondominioVenda:
  * mesmas colunas que a VENDAS teria, e o retorno gravado nas colunas da própria linha. */
+/* 01/11 (plano 23 A): a trava do envelope assinado (assTravaAssinado_) lê a página antes da ação; a ação reaproveita essa
+   leitura UMA vez (nada grava entre as duas). O PortalVenda zera a sobra ao fim de cada pedido. */
+var ctrPaginaEmprestada_ = null;
 function ctrLerPaginaVenda_(pageId, info) {
+  var em = ctrPaginaEmprestada_;
+  if (em && em.id === pageId) { ctrPaginaEmprestada_ = null; if (info) info.base = em.base; return em.pg; }
   var pg = notion_("GET", "/pages/" + pageId, null);
   var dbAtual = vendaBaseDaPagina_(pg);
   if (info) info.base = dbAtual;
@@ -275,7 +280,7 @@ function ctrDadosCondominio_(c) {
       },
       fiadores: [fiador(1), fiador(2)],
       /* 31/10/2026 (dono): cônjuge do comprador assina (colunas da proposta) — ContratoVenda.conjugeDoComprador */
-      conjugeComprador: { estadoCivil: t("ESTADO CIVIL"), nome: t("CONJUGE"), cpf: RegrasVenda.cpfDoNotion(t("CPF CONJUGE")), email: t("EMAIL CONJUGE") },
+      conjugeComprador: { estadoCivil: t("ESTADO CIVIL"), nome: t("CONJUGE"), cpf: RegrasVenda.cpfDoNotion(t("CPF CONJUGE")), email: t("EMAIL CONJUGE"), regime: t("REGIME") || t("REGIME DE BENS") },
       /* 29/10: "Alterar fluxo" (FluxoVenda.gs) — a lista livre; vazia = fluxo do simulador */
       fluxoPersonalizado: t("FLUXO PERSONALIZADO"),
       /* quadro-resumo (21/10): a comissão gravada pelo simulador; vazia, o contrato calcula pela regra */
@@ -444,7 +449,7 @@ function ctrFontes_(col, pageId) {
               hojeISO: hoje_("yyyy-MM-dd"), cidadeAssinatura: prop_("CIDADE_ASSINATURA") || "Goiânia",
               /* condomínio, item 4.2.1 g): vazio = "boleto bancário ou PIX" */
               meioPagamento: prop_("MEIO_PAGAMENTO_CONDOMINIO") || "" },
-    endereco: venda.ENDERECO, casa: ctrTxt_(cv("CASA")), colGerado: nomeReal(CV.CONTRATO_GERADO),
+    pg: pg, endereco: venda.ENDERECO, casa: ctrTxt_(cv("CASA")), colGerado: nomeReal(CV.CONTRATO_GERADO),
     contaErro: contaErro, usouEscolha: usouEscolha,
     /* entrega 12: onde o formulário grava (linhas achadas) e com que nome/chave cria a que falta */
     alvos: { vendedor: lv || null, corretor: lc || null, loteamento: ll || null,
@@ -664,10 +669,7 @@ function contratoEstado_(col, p) {
   var etapa = pre && !pre.conferidoEm ? "PRE" : a ? "FINAL" : "NENHUM";
   var r = { ok: true, gerado: !!a, etapa: etapa, pre: null };
   /* entrega 10: lista de testemunhas (só id e nome) e a escolha desta venda */
-  if (typeof assConfig_ === "function") {
-    try { var t = ClicksignVenda.testemunhasParaTela(assConfig_(p.pageId)); if (t.opcoes.length >= 2) r.testemunhas = t; }
-    catch (e) { ctrErro_("contratoEstado testemunhas", e); }
-  }
+  var dTest = null;   /* dados do contrato, quando já lidos: o tipo do vendedor decide o par padrão das testemunhas */
   if (a) { r.nome = a.nome; r.url = a.url; }
   /* entrega 12: lista de contas (só id e título), a escolha desta venda e a da obra */
   if (info.base === "CONDOMINIO") {
@@ -681,11 +683,32 @@ function contratoEstado_(col, p) {
     if (etapa !== "FINAL") {
       try {
         var xf = ctrDadosAtuais_(col, p, String(p.pageId).slice(0, 8), "contratoEstado faltas");
-        r.faltasCliente = ((xf.resp && xf.resp.faltas) || []).filter(function (t) { return /^(Comprador|Fiador|C[ôo]njuge)/i.test(String(t)); });
+        var todasFaltas = (xf.resp && xf.resp.faltas) || [];
+        r.faltasCliente = todasFaltas.filter(function (t) { return /^(Comprador|Fiador|C[ôo]njuge)/i.test(String(t)); });
+        /* 01/11/2026 (H5): com os dados fechando, o par padrão das testemunhas segue o tipo do vendedor (SPE ou PF) */
+        if (xf.d) dTest = xf.d;
+        /* 01/11/2026 (teste e2e): bloco Fiadores / cônjuge do comprador para corrigir na hora (Conferencia.gs fiaEstado_) */
+        try { var fb = fiaEstado_(pgE, todasFaltas); if (fb) r.fiadores = fb; } catch (e2) { ctrErro_("contratoEstado fiadores", e2); }
       } catch (e) { ctrErro_("contratoEstado faltas", e); }
-    } else r.faltasCliente = [];
+    } else {
+      r.faltasCliente = [];
+      /* 01/11/2026 (revisão final, I1): e-mail de fiador/cônjuge que o envio barraria — o bloco abre também no FINAL */
+      try { var fbF = fiaEstadoFinal_(col, p, pgE); if (fbF) r.fiadores = fbF; } catch (e3) { ctrErro_("contratoEstado fiadores final", e3); }
+    }
   }
   else try { r.conta = contaRecebEstado_(p.pageId); } catch (e) { ctrErro_("contratoEstado conta", e); }
+  /* entrega 10 + rodada 1 (H5): lista de testemunhas (só id e nome), a escolha desta venda e o par padrão pelo tipo do vendedor
+     (casa de rua e contrato final também: lê os cadastros só aqui, e só quando há lista para mostrar) */
+  if (typeof assConfig_ === "function") {
+    try {
+      var cfgT = assConfig_(p.pageId), tel = ClicksignVenda.testemunhasParaTela(cfgT);
+      if (tel.opcoes.length >= 2) {
+        if (!dTest) dTest = ctrDadosDoVendedor_(col, p);
+        if (dTest) tel = ClicksignVenda.testemunhasParaTela(cfgT, dTest);
+        r.testemunhas = tel;
+      }
+    } catch (e) { ctrErro_("contratoEstado testemunhas", e); }
+  }
   /* 30/10: histórico do contrato (quem fez o quê) — LogContrato.gs */
   try { var hist = logContratoLer_(pgE); if (hist) r.historico = hist.slice(0, 300); } catch (e) { ctrErro_("contratoEstado historico", e); }
   if (pre) {
@@ -693,6 +716,15 @@ function contratoEstado_(col, p) {
     if (etapa === "PRE") r.pre.desatualizado = ctrPreDesatualizado_(col, p, pre);
   }
   return r;
+}
+/* Os dados do contrato só para saber o tipo do vendedor (testemunhas da tela); null se os cadastros não fecham. */
+function ctrDadosDoVendedor_(col, p) {
+  try {
+    if (!prop_("DB_VENDEDORES") || !prop_("DB_LOTEAMENTOS") || !prop_("DB_CORRETORES") || !prop_("DB_DOCUMENTOS")) return null;
+    var f = ctrFontes_(col, p.pageId);
+    if (f.obraAmbigua || f.duplicados || f.condominioErro || f.obraNaoEncontrada) return null;
+    return ContratoVenda.montarDadosContrato(f.fontes);
+  } catch (e) { return null; }
 }
 /* true quando os dados de agora não dão o mesmo carimbo do pré-contrato (ou nem fecham mais). */
 function ctrPreDesatualizado_(col, p, pre) {
@@ -730,11 +762,15 @@ function ctrDadosAtuais_(col, p, pid, rot) {
   if (f.contaErro) faltas.push(f.contaErro);
   /* 28/10: termos de confissão ligados = os fiadores (nome e CPF) entram nas faltas do contrato do condomínio */
   if (d.condominio && cfdLigado_()) faltas = faltas.concat(ConfissaoVenda.faltas(d));
+  /* 01/11: nome com número e e-mail repetido (comprador, cônjuge, fiador) aparecem já aqui, não só no envio da assinatura */
+  var cfgNomes = assConfig_(p.pageId);
+  cfgNomes.comFiadores = ConfissaoVenda.fiadoresAssinam(d, cfdLigado_());   /* a mesma regra do envio */
+  faltas = faltas.concat(ClicksignVenda.faltasDeNomeEEmail(d, cfgNomes));
   if (faltas.length) {
     ctrLog_(rot + " " + pid + " faltas " + faltas.length);
     /* entrega 12: o formulário da tela (só nomes de campo) */
     var campos = ContratoVenda.camposAbertos(faltas, { modelo: d.modelo, chaveLoteamento: f.alvos ? f.alvos.chaveLoteamento : "" });
-    return { resp: { ok: false, erro: "FALTAM_DADOS", faltas: faltas, campos: campos } };
+    return { resp: { ok: false, erro: "FALTAM_DADOS", faltas: faltas, campos: campos }, d: d };   /* d: o tipo do vendedor serve às testemunhas da tela */
   }
   return { f: f, d: d };
 }
@@ -758,15 +794,18 @@ function ctrPreparar_(col, p, pid, rot) {
   var hash = ctrCarimbo_(d);
   var endereco = String(f.endereco).replace(/[\\\/:*?"<>|]/g, "-");
   var resto = endereco + (f.casa ? " - CASA " + f.casa : "") + " - " + hoje_("dd-MM-yyyy") + " [#" + hash + "].pdf";
-  return { f: f, d: d, modelo: modelo, pasta: pasta, marcadores: marcadores, blocos: blocos, hash: hash, resto: resto };
+  /* 01/11 (plano 23 A): a cópia do Docs leva o nome final — o título do PDF vem dela */
+  var titulo = ClicksignVenda.tituloDocumento("CONTRATO - ", f.endereco, f.casa, d.comprador1 && d.comprador1.nome);
+  return { f: f, d: d, modelo: modelo, pasta: pasta, marcadores: marcadores, blocos: blocos, hash: hash, resto: resto, titulo: titulo };
 }
 
 /* Copia o modelo, preenche (grifar = pré-contrato), confere e exporta o PDF: { pdf } ou { resp }.
-   A cópia com dado pessoal é apagada sempre (finally). */
+   A cópia com dado pessoal é apagada sempre (finally). 01/11/2026 (plano 23 A, dono: "pq veio com nome de provisorio"):
+   a cópia se chama prep.titulo (ClicksignVenda.tituloDocumento) — o PDF exportado herda esse nome como título. */
 function ctrGerarPdf_(prep, pid, rot, grifar) {
   var copia = null;
   try {
-    copia = prep.modelo.makeCopy("contrato-provisorio-" + pid + "-" + Date.now(), prep.pasta);
+    copia = prep.modelo.makeCopy(ctrTxt_(prep.titulo).trim() || ("documento " + pid), prep.pasta);
     var doc = DocumentApp.openById(copia.getId());
     /* 30/10: venda direta (desconto "isentar a comissão" no Alterar fluxo) só sai com o modelo que já tem o bloco
        {{#SEM_COMISSAO}} — sem ele o contrato sairia com o item 5 do corretor e a comissão na conta */
@@ -804,6 +843,7 @@ function gerarPreContrato_(col, sess, p) {
   var t0 = Date.now(), pid = String(p.pageId).slice(0, 8), rot = "gerarPreContrato";
   var prep = ctrPreparar_(col, p, pid, rot);
   if (prep.resp) return prep.resp;
+  prep.titulo = ClicksignVenda.tituloDocumento("PRÉ-CONTRATO - ", prep.f.endereco, prep.f.casa, prep.d.comprador1 && prep.d.comprador1.nome);
   var g = ctrGerarPdf_(prep, pid, rot, true);
   if (g.resp) return g.resp;
   var nome = "PRÉ-CONTRATO - " + prep.resto, arq;
@@ -827,10 +867,27 @@ function gerarPreContrato_(col, sess, p) {
    GERADO) se há pré-contrato e os dados de agora dão o MESMO carimbo dele. A ação antiga
    "gerarContrato" cai aqui também: não existe mais gerar o final direto. */
 function aprovarPreContrato_(col, sess, p) {
-  var t0 = Date.now(), pid = String(p.pageId).slice(0, 8), rot = "aprovarPreContrato";
+  var pid = String(p.pageId).slice(0, 8);
+  try { return aprovarPreContratoMiolo_(col, sess, p, pid); }
+  catch (e) {
+    /* 01/11: nenhuma exceção vira ERRO_INTERNO aqui. Console: só o id abreviado da página e a mensagem (sem dado pessoal) */
+    var m = String((e && e.message) || e);
+    console.error("PORTAL-VENDA aprovarPreContrato falhou: " + pid + " " + m.slice(0, 120));
+    if (/^NOTION_OCUPADO/.test(m)) return { ok: false, erro: "NOTION_OCUPADO" };
+    if (ERROS_CONHECIDOS.test(m)) throw e;
+    return { ok: false, erro: "PRECONTRATO_REFAZER" };
+  }
+}
+function aprovarPreContratoMiolo_(col, sess, p, pid) {
+  var t0 = Date.now(), rot = "aprovarPreContrato";
   /* primeiro os dados (coluna, base, faltas valem como no pré-contrato), depois o pré-contrato */
   var prep = ctrPreparar_(col, p, pid, rot);
   if (prep.resp) return prep.resp;
+  /* 01/11: envelope já com os signatários (ou prestes a ir): trocar o contrato e os termos agora desencontraria o que se assina */
+  if (cfdEnvelopeComSignatarios_(prep.f.pg, p.pageId)) {
+    ctrLog_(rot + " " + pid + " envelope com signatarios");
+    return { ok: false, erro: "CONTRATO_EM_ASSINATURA" };
+  }
   var pre = ctrLerPre_(p.pageId);
   if (!pre) { ctrLog_(rot + " " + pid + " sem pre-contrato"); return { ok: false, erro: "PRECONTRATO_FALTANDO" }; }
   if (prep.hash !== pre.hash) {

@@ -357,3 +357,107 @@ test("30/10: cancelar é por documento; envelope running com tudo cancelado cont
   assert.equal(CS.statusEfetivo("running", []), "running");
   assert.equal(CS.statusEfetivo("closed", [d("closed")]), "closed");
 });
+
+/* 01/11/2026 (teste e2e): nome com número e e-mail repetido aparecem já no pré-contrato (Gerar), não só no envio. */
+test("faltasDeNomeEEmail: comprador com número no nome pede nome sem números", () => {
+  const cfg = CS.montarConfig(PROPS);
+  const f = CS.faltasDeNomeEEmail(dadosPJ({ comprador1: { nome: "COMPRADOR 01", cpf: "111.444.777-35", email: "fulano@teste.example" } }), cfg);
+  assert.deepEqual(f, ["Comprador 1: nome sem números"]);
+  assert.deepEqual(CS.faltasDeNomeEEmail(dadosPJ(), cfg), []);
+});
+
+test("faltasDeNomeEEmail: fiador com o e-mail do comprador (e cônjuge com o do fiador) é apontado; testemunhas e representante ficam de fora", () => {
+  const cfg = Object.assign(CS.montarConfig(PROPS), { comFiadores: true });
+  const fiadores = [
+    { nome: "Fiador Um Teste", cpf: "000.000.011-63", email: "FULANO@teste.example",
+      conjuge: { nome: "Conjuge Um 2", cpf: "000.000.012-44", email: "f2@teste.example" } },
+    { nome: "Fiador Dois Teste", cpf: "000.000.013-25", email: "f2@teste.example", conjuge: null }];
+  const f = CS.faltasDeNomeEEmail(dadosPJ({ condominio: { fiadores } }), cfg);
+  assert.deepEqual(CS.faltasDeNomeEEmail(dadosPJ({ condominio: { fiadores } }), CS.montarConfig(PROPS)), [], "sem comFiadores o fiador não entra (como no envio)");
+  assert.deepEqual(f, [
+    "Fiador 1: e-mail igual ao do Comprador 1 (cada pessoa precisa de um e-mail)",
+    "Cônjuge do fiador 1: nome sem números",
+    "Fiador 2: e-mail igual ao do Cônjuge do fiador 1 (cada pessoa precisa de um e-mail)"]);
+  /* testemunha com número no nome, representante com o mesmo e-mail de um comprador: não entram */
+  const d = dadosPJ({ comprador1: { nome: "Fulano de Teste", cpf: "111.444.777-35", email: "beltrano@teste.example" } });
+  const c2 = CS.montarConfig({ ASSINATURA_TESTEMUNHAS_SPE: JSON.stringify([{ nome: "Teste 01", email: "t@teste.example" }, TEST_SPE[1]]), ASSINATURA_TESTEMUNHAS_PF: PROPS.ASSINATURA_TESTEMUNHAS_PF });
+  assert.ok(!CS.faltasDeNomeEEmail(d, c2).some((x) => /^(Testemunha|Vendedor)/.test(x)));
+  assert.deepEqual(CS.faltasDeNomeEEmail(d, c2), ["Comprador 1: e-mail igual ao do Vendedor (representante) (cada pessoa precisa de um e-mail)"]);
+});
+
+/* 01/11/2026 (revisão final, I1): e-mail que falta de fiador (quando assina) e do cônjuge do comprador aparece já no
+   Gerar pré-contrato — com o mesmo texto do envio, que abre o bloco Fiadores/Cônjuge da tela. */
+test("I1: faltasDeNomeEEmail pede o e-mail que falta do fiador que assina e do cônjuge do comprador", () => {
+  const fiadores = [{ nome: "Fiador Um Teste", cpf: "000.000.011-63", email: "", conjuge: { nome: "Conjuge Um Teste", cpf: "000.000.012-44", email: "" } },
+                    { nome: "Fiador Dois Teste", cpf: "000.000.013-25", email: "f2@teste.example", conjuge: null }];
+  const conjugeComprador = { nome: "Conjuge Do Comprador Teste", cpf: "222.333.444-05", email: "" };
+  const d = dadosPJ({ condominio: { fiadores, conjugeComprador } });
+  const com = Object.assign(CS.montarConfig(PROPS), { comFiadores: true });
+  assert.deepEqual(CS.faltasDeNomeEEmail(d, com), [
+    "Cônjuge do comprador 1: e-mail (coluna EMAIL CONJUGE)",
+    "Fiador 1: e-mail (coluna EMAIL FIADOR 1)",
+    "Cônjuge do fiador 1: e-mail (coluna EMAIL CONJUGE FIADOR 1)"]);
+  /* fiador que não assina (sem os termos) não é cobrado; o cônjuge do comprador sempre assina o contrato */
+  assert.deepEqual(CS.faltasDeNomeEEmail(d, CS.montarConfig(PROPS)), ["Cônjuge do comprador 1: e-mail (coluna EMAIL CONJUGE)"]);
+  /* o mesmo texto do envio (faltasAssinatura) */
+  const envio = CS.faltasAssinatura(d, com);
+  for (const f of CS.faltasDeNomeEEmail(d, com)) assert.ok(envio.includes(f), f);
+  /* comprador sem e-mail continua só no envio (o comprador tem link próprio) */
+  assert.deepEqual(CS.faltasDeNomeEEmail(dadosPJ({ comprador1: { nome: "Fulano de Teste", cpf: "111.444.777-35", email: "" } }), com), []);
+});
+
+test("01/11 (H5): testemunhasParaTela diz o par padrão (ids) — SPE para vendedor PJ, PF para vendedor PF, vazio se o tipo é desconhecido; a escolha não muda o padrão", () => {
+  const nomes = (cfg, dados) => {
+    const t = CS.testemunhasParaTela(cfg, dados);
+    return t.padrao.map((id) => t.opcoes.filter((o) => o.id === id)[0].nome);
+  };
+  assert.deepEqual(CS.testemunhasParaTela(cfgOp()).padrao, [], "tipo do vendedor desconhecido: sem par");
+  assert.deepEqual(CS.testemunhasParaTela(cfgOp(), { vendedor: null }).padrao, []);
+  assert.deepEqual(nomes(cfgOp(), dadosPJ()), ["Testemunha Um Spe", "Testemunha Dois Spe"]);
+  assert.deepEqual(nomes(cfgOp(), dadosPJ({ vendedor: vendedorPF })), ["Testemunha Um Pf", "Testemunha Dois Pf"]);
+  const ids = CS.opcoesTestemunhas(cfgOp()).map((o) => o.id);
+  assert.deepEqual(nomes(cfgOp([ids[1], ids[0]]), dadosPJ()), ["Testemunha Um Spe", "Testemunha Dois Spe"]);
+  /* sem par padrão configurado: lista vazia (a tela fica só com "— padrão —") */
+  assert.deepEqual(CS.testemunhasParaTela(CS.montarConfig({ ASSINATURA_TESTEMUNHAS_OPCOES: JSON.stringify(OPCOES) })).padrao, []);
+  assert.doesNotMatch(JSON.stringify(CS.testemunhasParaTela(cfgOp())), /@|000\.000/);
+});
+
+/* ---- 01/11/2026 (plano 23, tarefa A): nome final dos documentos e lista dos assinados ---- */
+test("plano 23 A: tituloDocumento = prefixo + nome padrão (OBRA CASA n - COMPRADOR), sem 'provisório'", () => {
+  assert.equal(CS.tituloDocumento("CONTRATO - ", "CONDOMINIO TESTE", "17", "Fulano de Teste"), "CONTRATO - CONDOMINIO TESTE CASA 17 - Fulano de Teste");
+  assert.equal(CS.tituloDocumento("TERMO DE PRÉ-RESERVA - ", "CONDOMINIO TESTE", "", "Fulano de Teste"), "TERMO DE PRÉ-RESERVA - CONDOMINIO TESTE - Fulano de Teste");
+  assert.equal(CS.tituloDocumento("CONFISSÃO PRÉ-CHAVES - ", "RUA/TESTE", "3", ""), "CONFISSÃO PRÉ-CHAVES - RUA-TESTE CASA 3");
+  assert.doesNotMatch(CS.tituloDocumento("CONTRATO - ", "", "", ""), /provis/i);
+});
+
+test("plano 23 A: listaAssinados — contrato primeiro, cada documento com id, nome e tipo; sem link", () => {
+  const docs = [
+    { id: "d2", attributes: { filename: "CONFISSÃO PRÉ-CHAVES - X.pdf" }, links: { files: { signed: "https://s3/a" } } },
+    { id: "d3", attributes: { filename: "MEMORIAL DESCRITIVO - X.pdf" } },
+    { id: "d1", attributes: { filename: "X CASA 1 - Fulano.pdf" } },
+    { id: "d4", attributes: { filename: "PROJETO APROVADO - X.pdf" } }];
+  const l = CS.listaAssinados(docs, (n) => /^CONFISS/.test(n));
+  assert.deepEqual(l, [{ id: "d1", nome: "X CASA 1 - Fulano.pdf", tipo: "contrato" }, { id: "d2", nome: "CONFISSÃO PRÉ-CHAVES - X.pdf", tipo: "termo" },
+                       { id: "d3", nome: "MEMORIAL DESCRITIVO - X.pdf", tipo: "memorial" }, { id: "d4", nome: "PROJETO APROVADO - X.pdf", tipo: "projeto" }]);
+  assert.doesNotMatch(JSON.stringify(l), /https/);
+});
+
+
+/* ---- 01/11/2026 (plano 23 C): selfie com documento para comprador, cônjuge e fiadores, só com CLICKSIGN_SELFIE=1 ---- */
+test("plano 23 C: autenticações — token por e-mail sempre; selfie + documento oficial só para quem é do cliente e só ligado", () => {
+  assert.equal(CS.montarConfig({}).selfie, false);
+  assert.equal(CS.montarConfig({ CLICKSIGN_SELFIE: "1" }).selfie, true);
+  assert.equal(CS.montarConfig({ CLICKSIGN_SELFIE: "0" }).selfie, false);
+  /* correção 1 (M-4): só o "1" liga */
+  for (const v of ["SIM", "true", "TRUE", " 1x"]) assert.equal(CS.montarConfig({ CLICKSIGN_SELFIE: v }).selfie, false, v);
+  assert.deepEqual(CS.AUTH_SELFIE, ["selfie", "official_document"]);
+  const liga = CS.montarConfig({ CLICKSIGN_SELFIE: "1" }), desl = CS.montarConfig({});
+  for (const origem of ["comprador1", "comprador2", "conjugeComprador1", "fiador1", "fiador2", "conjugeFiador1", "conjugeFiador2"]) {
+    assert.deepEqual(CS.autenticacoes({ origem }, liga), ["email", "selfie", "official_document"], origem);
+    assert.deepEqual(CS.autenticacoes({ origem }, desl), ["email"], origem);
+  }
+  for (const origem of ["vendedor", "representante", "testemunha", "corretor"])
+    assert.deepEqual(CS.autenticacoes({ origem }, liga), ["email"], origem);
+  assert.deepEqual(CS.corpoAutenticacao("d", "s").data.attributes, { action: "provide_evidence", auth: "email" });
+  assert.deepEqual(CS.corpoAutenticacao("d", "s", "selfie").data.attributes, { action: "provide_evidence", auth: "selfie" });
+});

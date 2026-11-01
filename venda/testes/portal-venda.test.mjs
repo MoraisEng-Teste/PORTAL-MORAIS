@@ -24,7 +24,7 @@ const CNH = { tipo_documento: "CNH", nome: "ANA TESTE", cpf: "52998224725", nume
 
 test("ping responde sem token", () => {
   const { g } = montar();
-  assert.deepEqual(g.chamar({ action: "ping" }), { ok: true, versao: "venda-v15", papel: "VENDA" });
+  assert.deepEqual(g.chamar({ action: "ping" }), { ok: true, versao: "venda-v16", papel: "VENDA" });
 });
 
 test("token inválido, sem VENDAS, e TESTES tentando gravar", () => {
@@ -317,4 +317,11 @@ test("log de leitura openai traz o nome do provedor e nunca a chave", () => {
   const tudo = g.logs.join("\n");
   assert.match(tudo, /PORTAL-VENDA leitura openai C1_IDENTIDADE tokens 1500\/80/);
   assert.doesNotMatch(tudo, /sk-openai-falsa/);
+});
+
+test("Notion 429 (qualquer ação) vira NOTION_OCUPADO, não ERRO_INTERNO (01/11)", () => {
+  const n = notionFalso();
+  const g = criarGas({ props: PROPS, rotas: (url, opt) => url.startsWith("https://api.notion.com/") ? { status: 429, json: { message: "rate_limited" } } : n.rota(url, opt) });
+  assert.equal(g.chamar({ action: "estado", token: tokenDe(), pageId: PAGE }).erro, "NOTION_OCUPADO");
+  assert.doesNotMatch(g.logs.join("\n"), /ntn-falso/);
 });

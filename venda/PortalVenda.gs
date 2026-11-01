@@ -3,15 +3,16 @@
  * Code.gs do portal não apaga este, e vice-versa.
  * Arquivos do projeto: RegrasVenda.gs, ClaudeLeitor.gs, OpenAILeitor.gs, ContratoVenda.gs,
  * PortalVenda.gs, GerarContrato.gs, CondominioVenda.gs, GerarVendaCondominio.gs, RecebimentoVenda.gs (entrega 14),
- * UnidadesCondominio.gs, PreReservaVenda.gs e PreReserva.gs (27/10/2026: contrato final e termo de pré-reserva).
+ * UnidadesCondominio.gs, PreReservaVenda.gs e PreReserva.gs (27/10/2026: contrato final e termo de pré-reserva),
+ * FiadoresVenda.gs (01/11/2026: bloco Fiadores da aba Contrato).
  * Propriedades do script: NOTION_TOKEN, SESSION_SECRET (os MESMOS do portal
  * daquele ambiente), DB_VENDAS, DB_VENDAS_COND (base das vendas do condomínio), PROVEDOR_IA (openai padrão | anthropic),
  * OPENAI_API_KEY (provedor openai), MODELO_IA (opcional, só openai),
  * ANTHROPIC_API_KEY (provedor anthropic, plano B).
  * Nenhum log com nome, CPF, endereço ou conteúdo de documento. */
-var VERSAO_VENDA = "venda-v15";   // v15: antecipacaoTexto, a antecipação copia a mensagem em vez de gerar PDF (31/10/2026); v14: FGTS e Financiamento separados na aba Financeiro (31/10/2026); v13: faltasCliente no contratoEstado (31/10/2026); v12: aba Financeiro, financeiroEstado (31/10/2026); v11: vigia de assinaturas (AssinaturaVigia.gs, 31/10/2026); v10: Corrigir aqui na conferência (31/10/2026); v9: contrato final do condomínio, termo de pré-reserva e etapas da venda (27/10/2026); v8: leitura em lote, certidão mãe e data do habite-se (entrega 13); v7: campos abertos e conta de recebimento no contrato (entrega 12); v6: documentos do imóvel lidos pela IA (entrega 11); v5: pré-contrato grifado (entrega 9)
+var VERSAO_VENDA = "venda-v16";   // v16: plano 23 — contrato/termo assinado só para ver (documentosAssinados, verDocumentoAssinado, trava CONTRATO_ASSINADO/TERMO_ASSINADO), assinatura na linha (ASSINATURA_LINHAS=1) e selfie (CLICKSIGN_SELFIE=1) (01/11/2026); v15: antecipacaoTexto, a antecipação copia a mensagem em vez de gerar PDF (31/10/2026); v14: FGTS e Financiamento separados na aba Financeiro (31/10/2026); v13: faltasCliente no contratoEstado (31/10/2026); v12: aba Financeiro, financeiroEstado (31/10/2026); v11: vigia de assinaturas (AssinaturaVigia.gs, 31/10/2026); v10: Corrigir aqui na conferência (31/10/2026); v9: contrato final do condomínio, termo de pré-reserva e etapas da venda (27/10/2026); v8: leitura em lote, certidão mãe e data do habite-se (entrega 13); v7: campos abertos e conta de recebimento no contrato (entrega 12); v6: documentos do imóvel lidos pela IA (entrega 11); v5: pré-contrato grifado (entrega 9)
 var NOTION_VERSION = "2022-06-28";
-var ERROS_CONHECIDOS = /^(COLUNA_FALTANDO|TIPO_DE_COLUNA_ERRADO|BACKEND_SEM_CONFIG|PAGINA_DE_OUTRA_BASE)/;
+var ERROS_CONHECIDOS = /^(COLUNA_FALTANDO|TIPO_DE_COLUNA_ERRADO|BACKEND_SEM_CONFIG|PAGINA_DE_OUTRA_BASE|PRECONTRATO_REFAZER|NOTION_OCUPADO|CONTRATO_EM_ASSINATURA)/;
 var REGEX_PAGE_ID = /^[0-9a-f]{32}$|^[0-9a-f-]{36}$/i;
 
 function prop_(n) { return PropertiesService.getScriptProperties().getProperty(n) || ""; }
@@ -37,19 +38,22 @@ function tratar_(p) {
     if (!temAcessoVendas_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
     var grava = ["tipoCasa", "lerDocumento", "anexarDocumento", "soltarDocumento", "lerDocumentos", "copiarComprovante", "conferir", "devolver", "gerarContrato", "gerarPreContrato", "aprovarPreContrato", "escolherTestemunhas",
                  "salvarCamposContrato", "escolherContaRecebimento", "mcLancar", "assinaturaEnviar", "assinaturaEstado",
-                 "gerarVendaCondominio", "assinaturaReenviar", "assinaturaCancelar" /* 29/10 */, "salvarCondicoesEspeciais" /* 29/10 */, "redigirCondicoesEspeciais", "salvarFluxo" /* 29/10 */, "salvarContaPreReserva", "salvarPagamentoPreReserva" /* 31/10 */, "gerarTermoPreReserva",
-                 "conferirDocumentos", "confirmarConferencia" /* 28/10 */, "corrigirConferencia" /* 31/10 */,
+                 "gerarVendaCondominio", "assinaturaReenviar", "assinaturaCancelar" /* 29/10 */, "salvarCondicoesEspeciais" /* 29/10 */, "redigirCondicoesEspeciais", "salvarFluxo" /* 29/10 */, "salvarContaPreReserva", "salvarPagamentoPreReserva" /* 31/10 */, "salvarConjugePreReserva" /* 01/11 */, "gerarTermoPreReserva",
+                 "conferirDocumentos", "confirmarConferencia" /* 28/10 */, "corrigirConferencia" /* 31/10 */, "salvarFiadores", "conjugeEhFiador2" /* 01/11: bloco Fiadores */,
                  "recebimentoConfirmar" /* entrega 14 */, "antecipacaoLer", "antecipacaoPdf" /* 31/10: AntecipacaoVenda.gs */].indexOf(p.action) >= 0;
     if (grava && String(sess.t || "").toUpperCase() === "TESTES") return { ok: false, erro: "SEM_PERMISSAO_TESTES" };
     if (p.action !== "ping" && !REGEX_PAGE_ID.test(String(p.pageId || ""))) return { ok: false, erro: "PAGINA_INVALIDA" };
     var col = colunas_();
-    var r = executar_(col, sess, p);
+    var trava = assTravaAssinado_(p);   /* 01/11 (plano 23 A): envelope ASSINADO = nada do que se assinou muda */
+    if (trava) { ctrPaginaEmprestada_ = null; return trava; }
+    var r;
+    try { r = executar_(col, sess, p); } finally { ctrPaginaEmprestada_ = null; }
     if (grava && r && r.ok === true) logContrato_(sess, p, r);   /* 30/10: histórico do contrato (LogContrato.gs) */
     return r;
   } catch (err) {
     var m = String((err && err.message) || err);
     console.error("PORTAL-VENDA " + String(p.action || "") + " falhou: " + m.slice(0, 160));
-    return { ok: false, erro: ERROS_CONHECIDOS.test(m) ? m : "ERRO_INTERNO" };
+    return { ok: false, erro: /^NOTION_OCUPADO/.test(m) ? "NOTION_OCUPADO" : ERROS_CONHECIDOS.test(m) ? m : "ERRO_INTERNO" };
   }
 }
 
@@ -88,10 +92,13 @@ function executar_(col, sess, p) {
       case "gerarVendaCondominio": return gerarVendaCondominio_(col, sess, p);
       /* entrega 14: contrato assinado pelo portal e recebimentos (RecebimentoVenda.gs) */
       case "verContratoAssinado": return verContratoAssinado_(col, p);
+      case "documentosAssinados": return documentosAssinados_(col, p);       /* 01/11 (plano 23 A): só leitura */
+      case "verDocumentoAssinado": return verDocumentoAssinado_(col, p);
       /* 27/10/2026: Termo de Pré-Reserva (PreReserva.gs); a assinatura usa as ações acima com doc = "PRE_RESERVA" */
       case "preReservaEstado": return preReservaEstado_(col, p);
       case "salvarContaPreReserva": return salvarContaPreReserva_(col, sess, p);
       case "salvarPagamentoPreReserva": return salvarPagamentoPreReserva_(col, sess, p);
+      case "salvarConjugePreReserva": return salvarConjugePreReserva_(col, sess, p);   /* 01/11: opção de incluir o cônjuge no termo */
       case "gerarTermoPreReserva": return gerarTermoPreReserva_(col, sess, p);
       case "verTermoPreReserva": return verTermoPreReserva_(col, p);
       /* 28/10: termos de confissão de dívida (Confissao.gs) */
@@ -103,6 +110,9 @@ function executar_(col, sess, p) {
       case "verDocumentoConferencia": return verDocumentoConferencia_(col, p);
       case "corrigirConferenciaCampos": return corrigirConferenciaCampos_(col, p);   /* 31/10: Corrigir aqui */
       case "corrigirConferencia": return corrigirConferencia_(col, sess, p);
+      /* 01/11: bloco Fiadores (e cônjuge do comprador) na aba Contrato — Conferencia.gs + FiadoresVenda.js */
+      case "salvarFiadores": return salvarFiadores_(col, sess, p);
+      case "conjugeEhFiador2": return conjugeEhFiador2_(col, sess, p);
       case "financeiroEstado": return financeiroEstado_(col, p);   /* 31/10: aba Financeiro (FinanceiroVenda.gs), só leitura */
       /* 31/10: antecipação de parcelas (AntecipacaoVenda.gs): estado, pedir o retrato ao robô e PDF para o cliente */
       case "antecipacaoEstado": return antecipacaoEstado_(col, p);
@@ -144,6 +154,7 @@ function notion_(method, path, body) {
   var r = UrlFetchApp.fetch("https://api.notion.com/v1" + path, opt);
   var code = r.getResponseCode(), data = {};
   try { data = JSON.parse(r.getContentText()); } catch (_) {}
+  if (code === 429) throw new Error("NOTION_OCUPADO: tente de novo em 1 minuto");   /* 01/11: fila do Notion cheia — a tela diz para esperar */
   if (code >= 300) throw new Error("NOTION_" + code + ": " + String((data && data.message) || "").slice(0, 120));
   return data;
 }
@@ -335,6 +346,11 @@ function anexarArquivo_(pageId, colReal, arq, trocar) {
   }
   lista.push({ type: "file_upload", name: arq.nome, file_upload: { id: fu.id } });
   var props = {}; props[colReal] = { files: lista };
+  notion_("PATCH", "/pages/" + pageId, { properties: props });
+}
+/* 01/11: esvazia uma coluna de arquivos (anexarArquivo_ só acrescenta ou troca) */
+function limparArquivos_(pageId, colReal) {
+  var props = {}; props[colReal] = { files: [] };
   notion_("PATCH", "/pages/" + pageId, { properties: props });
 }
 function baixarArquivo_(f) {
