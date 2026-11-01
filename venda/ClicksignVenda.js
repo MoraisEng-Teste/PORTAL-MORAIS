@@ -252,7 +252,7 @@ var ClicksignVenda = (function () {
   function pessoasDoBloco(dados, config, tipo, opc) {
     config = config || montarConfig({});
     opc = opc || {};
-    var termo = tipo === "TERMO", pre = tipo === "PRE_RESERVA", cond = !!dados.condominio, out = [];
+    var termo = tipo === "TERMO", pre = tipo === "PRE_RESERVA", memorial = tipo === "MEMORIAL", cond = !!dados.condominio, out = [];
     function add(rotulo, nome, doc, extra) { out.push({ rotulo: rotulo, nome: txt(nome), doc: txt(doc), extra: txt(extra) }); }
     /* correção 1 (I5): o nome como no {{VENDEDOR_NOME}} — cadastro ou, sem ele, o proprietário da obra */
     var v = dados.vendedor, nomeV = txt(v && v.nome) || txt(dados.nomeProprietario);
@@ -266,6 +266,8 @@ var ClicksignVenda = (function () {
     }
     var rotC = termo ? "DEVEDOR/COMPRADOR" : pre ? "PRÉ-RESERVANTE" : "COMPRADOR", rotCj = pre ? "CÔNJUGE DO PRÉ-RESERVANTE" : "CÔNJUGE DO COMPRADOR";
     sigCompradores(dc).forEach(function (s) { add(s.origem === "conjugeComprador1" ? rotCj : rotC, s.nome, s.cpf); });
+    /* dono 01/11/2026: memorial com uma linha por pessoa — a vendedora e quem compra (cônjuge incluído); mais ninguém */
+    if (memorial) return out;
     if (termo) sigFiadores(dados, { comFiadores: true }).forEach(function (s) {
       if (!s.nome) return;
       var n = /([12])$/.exec(s.origem)[1];
@@ -595,7 +597,7 @@ var ClicksignVenda = (function () {
    * em cima da linha "ASSINATURA: ____". Conferir no sandbox e, se precisar, corrigir pela Propriedade
    * RUBRICAS_AJUSTE, ex.: {"campo":{"dx":0,"dy":-0.015},"valores":{"dx":0,"dy":0}}. */
   /* calibração 01/11: campos e linhas já saem com o topo 46 pt acima da linha de base (RubricasVenda) — ajuste padrão 0 */
-  var AJUSTE_PADRAO = { campo: { dx: 0, dy: 0 }, valores: { dx: 0, dy: -0.004 }, linha: { dx: 0, dy: 0 } };
+  var AJUSTE_PADRAO = { campo: { dx: 0, dy: 0 }, valores: { dx: 0, dy: 0 }, linha: { dx: 0, dy: 0 } };
   function numOu(v, padrao) { return typeof v === "number" && isFinite(v) && Math.abs(v) <= 0.5 ? v : padrao; }
   function ajusteRubricas(j) {
     j = j && typeof j === "object" ? j : {};
@@ -631,7 +633,10 @@ var ClicksignVenda = (function () {
     if (r.valores) { val = posicaoValida(r.valores); if (!val) return { ok: false, erro: "RUBRICAS_INVALIDAS" }; }
     /* 01/11 (plano 23 B): linhas de assinatura do contrato e de cada termo de confissão (nome do PDF na Clicksign) */
     var linhas = [], termos = {};
-    if (opc && opc.linhas === false) return { ok: true, campos: ok, valores: val, linhas: linhas, termos: termos };
+    if (opc && opc.linhas === false) return { ok: true, campos: ok, valores: val, linhas: linhas, termos: termos, memorial: [] };
+    /* dono 01/11: linhas do memorial (uma por pessoa) lidas na tela no PDF do memorial */
+    var memorial = [];
+    if (r.memorial !== undefined) { memorial = linhasValidas(r.memorial && r.memorial.linhas); if (!memorial) return { ok: false, erro: "RUBRICAS_INVALIDAS" }; }
     if (r.linhas !== undefined) { linhas = linhasValidas(r.linhas); if (!linhas) return { ok: false, erro: "RUBRICAS_INVALIDAS" }; }
     if (r.termos !== undefined) {
       if (!Array.isArray(r.termos) || r.termos.length > 4) return { ok: false, erro: "RUBRICAS_INVALIDAS" };
@@ -641,7 +646,7 @@ var ClicksignVenda = (function () {
         termos[txt(t.nome)] = lt;
       }
     }
-    return { ok: true, campos: ok, valores: val, linhas: linhas, termos: termos };
+    return { ok: true, campos: ok, valores: val, linhas: linhas, termos: termos, memorial: memorial };
   }
   var MAX_LINHAS = 60;
   function linhasValidas(a) {
@@ -662,7 +667,12 @@ var ClicksignVenda = (function () {
    * Sem nome: pelo papel escrito — TESTEMUNHA n, FIADOR n, CORRETOR/INTERMEDIADOR, VENDEDORA/CREDORA, e COMPRADOR/DEVEDOR
    * só quando uma única pessoa assina como parte compradora. */
   /* 01/11 (dono): o corretor assina SÓ o contrato — nunca os termos de confissão (nem a pré-reserva) */
-  function assinaOTipo(s, tipo) { return tipo === DOC.TERMO ? s.origem !== "corretor" : tipo === DOC.CONTRATO ? !s.soTermos : false; }
+  function assinaOTipo(s, tipo) {
+    if (tipo === DOC.TERMO) return s.origem !== "corretor";
+    if (tipo === DOC.CONTRATO) return !s.soTermos;
+    if (tipo === DOC.MEMORIAL) return !!s.rubrica || s.origem === "vendedor" || s.origem === "representante";   /* dono 01/11 */
+    return false;
+  }
   /* correção 3 (5): papéis escritos no texto de uma linha, já normalizados (um por pessoa). Dois papéis diferentes = a
      leitura pegou o bloco do lado: a linha não vai para ninguém (melhor sem assinatura posicionada do que na errada). */
   var RE_PAPEIS = /\b(CONJUGE DO (?:COMPRADOR|PRE-RESERVANTE|FIADOR [12])|CREDORA\/VENDEDORA|DEVEDOR\/COMPRADOR|INTERMEDIADOR\/CORRETOR|VENDEDORA?|COMPRADOR|FIADOR [12]|TESTEMUNHA [12]|PRE-RESERVANTE|CORRETOR|INTERMEDIADOR)\b/g;
@@ -759,7 +769,8 @@ var ClicksignVenda = (function () {
    * (o modelo é 612×792), projeto págs. 1–2 A1 deitado e as demais A2 deitado. */
   var PADRAO_PAGINA = { contrato: { W: 595, H: 842 }, memorial: { W: 612, H: 792 } };
   function paginaPadrao(tipo, p) {
-    if (tipo === "projeto") return Number(p.page) <= 2 ? { W: 2384, H: 1684 } : { W: 1684, H: 1191 };
+    /* projeto assinado da unidade 22: págs. 1–2 A0 deitado (3370×2384), as demais A1 deitado (2384×1684) */
+    if (tipo === "projeto") return Number(p.page) <= 2 ? { W: 3370, H: 2384 } : { W: 2384, H: 1684 };
     return PADRAO_PAGINA[tipo] || PADRAO_PAGINA.contrato;
   }
   function tamanhoDa(rub, tipo, p) {
@@ -822,6 +833,34 @@ var ClicksignVenda = (function () {
   }
   /* 01/11 (revisão): o memorial tem a linha da VENDEDORA à esquerda (modelo: margem 540 + recuo 878 twips em página Carta
      = 0,116) e a dos compradores à direita (0,53, medida). O vendedor assina na dele; propriedade MEMORIAL_POSICAO.vendedor muda. */
+  /* ---- vistos (initials) — regras do dono (01/11/2026) e calibração da unidade 22 ----
+     Tinta do visto: de +9 a +27 pt abaixo do ponto, até 27 pt de largura a partir do x. Fila compacta: passo 32 pt (tinta +
+     folga), fila de baixo a +22 pt; nunca para cima. Campo de ciência: a partir do começo dos traços, até a margem direita;
+     4.2.1: na coluna cinza (até 110 pt do começo). Projeto: dentro do quadro DEFERIMENTO — mesmo tamanho em A0 e A1:
+     de (L−496, A−241) a (L−28, A−29) pt —, do ponto medido para a ESQUERDA, depois a fila de baixo; ponto fora do quadro
+     é trazido para dentro. Quem não cabe fica sem posição (assina pela Clicksign) e vai aviso. */
+  var VISTO_PASSO = 32, VISTO_L = 27, VISTO_FILA = 22, VISTO_TOPO = 9, VISTO_PE = 27, COLUNA_VALORES = 110;
+  function vistoEmFila(p, k, n, pg, tipo) {
+    if (!p) return null;
+    var x0 = p.position[0] * pg.W, y0 = p.position[1] * pg.H;
+    var limite = tipo === "valores" ? x0 + COLUNA_VALORES : pg.W - MARGEM;
+    var porFila = Math.max(1, 1 + Math.floor((limite - x0 - VISTO_L) / VISTO_PASSO)), kk = k > 0 ? k : 0;
+    var x = x0 + VISTO_PASSO * (kk % porFila), y = y0 + VISTO_FILA * Math.floor(kk / porFila);
+    if (y + VISTO_PE > pg.H - MARGEM) return null;
+    return { page: p.page, position: [arred(x / pg.W), arred(y / pg.H)] };
+  }
+  function vistoNaCaixa(p, k, n, pg) {
+    if (!p) return null;
+    var bx0 = pg.W - 496 + 4, bx1 = pg.W - 28 - 4, by0 = pg.H - 241 + 2, by1 = pg.H - 29 - 2;
+    var xs = Math.max(bx0, Math.min(bx1 - VISTO_L, p.position[0] * pg.W));
+    /* sem espaço para todos à esquerda (ponto perto da borda do quadro): o começo anda para a direita, dentro do quadro */
+    if (n > 1 && xs - VISTO_PASSO * (n - 1) < bx0) xs = Math.min(bx1 - VISTO_L, bx0 + VISTO_PASSO * (n - 1));
+    var ys = Math.max(by0 - VISTO_TOPO, Math.min(by1 - VISTO_PE, p.position[1] * pg.H));
+    var porFila = Math.max(1, 1 + Math.floor((xs - bx0) / VISTO_PASSO)), kk = k > 0 ? k : 0;
+    var x = xs - VISTO_PASSO * (kk % porFila), y = ys + VISTO_FILA * Math.floor(kk / porFila);
+    if (y + VISTO_PE > by1) return null;
+    return { page: p.page, position: [arred(x / pg.W), arred(y / pg.H)] };
+  }
   var MEMORIAL_VENDEDOR_X = 0.116;
   /* posição do vendedor no memorial: a da Propriedade (MEMORIAL_POSICAO.vendedor = [x, y]) ou x 0,116 na altura dos compradores */
   function posicaoMemorialVendedor(mem, cfg) {
@@ -848,14 +887,23 @@ var ClicksignVenda = (function () {
     }
     (docs || []).forEach(function (d) {
       if (d.tipo === DOC.CONTRATO) {
+        /* dono 01/11/2026: assinatura (manuscrita) só na linha da própria pessoa; no meio do texto — campos de ciência e
+           o 4.2.1 — só VISTOS dos compradores, numa fila compacta; um requisito de visto por pessoa com todas as posições */
         var lin = comLinhas && rub.linhas && rub.linhas.length ? atribuirLinhas(lista, rub.linhas, DOC.CONTRATO)[i] : [];
-        var man = (s.rubrica && rub.campos ? posicoes(rub.campos, kC, nC, "contrato") : []).concat(lin);
-        if (man.length) l.push({ docId: d.id, kind: "manuscript", positions: man });
-        var vis = s.rubrica && rub.valores ? posicoes([rub.valores], kC, nC, "contrato") : [];
+        if (lin.length) l.push({ docId: d.id, kind: "manuscript", positions: lin });
+        var vis = [];
+        if (s.rubrica) {
+          (rub.campos || []).forEach(function (p) { var q = vistoEmFila(p, kC, nC, tamanhoDa(rub, "contrato", p), "campo"); if (q) vis.push(q); else avisar("contrato", p); });
+          if (rub.valores) { var q = vistoEmFila(rub.valores, kC, nC, tamanhoDa(rub, "contrato", rub.valores), "valores"); if (q) vis.push(q); else avisar("contrato", rub.valores); }
+        }
         if (vis.length) l.push({ docId: d.id, kind: "initials", positions: vis });
       } else if (d.tipo === DOC.TERMO) {
         var lt = comLinhas && rub.termos && d.nome && rub.termos[d.nome] ? atribuirLinhas(lista, rub.termos[d.nome], DOC.TERMO)[i] : [];
         if (lt.length) l.push({ docId: d.id, kind: "manuscript", positions: lt });
+      } else if (d.tipo === DOC.MEMORIAL && Array.isArray(rub.memorialLinhas) && (s.rubrica || ehVendedorSig(s))) {
+        /* dono 01/11/2026: memorial migrado — cada pessoa na PRÓPRIA linha, lida no PDF (sem linhas lidas: sem posição) */
+        var lmem = comLinhas && rub.memorialLinhas.length ? atribuirLinhas(lista, rub.memorialLinhas, DOC.MEMORIAL)[i] : [];
+        if (lmem.length) l.push({ docId: d.id, kind: "manuscript", positions: lmem });
       } else if (d.tipo === DOC.MEMORIAL && rub.memorial && (s.rubrica || ehVendedorSig(s))) {
         var pm = ehVendedorSig(s)
           ? [rub.memorialVendedor ? { page: rub.memorialVendedor.page, position: rub.memorialVendedor.position.slice() }
@@ -863,7 +911,8 @@ var ClicksignVenda = (function () {
           : posicoes([rub.memorial], kC, nC, "memorial");
         if (pm.length) l.push({ docId: d.id, kind: "manuscript", positions: pm });
       } else if (d.tipo === DOC.PROJETO && (s.rubrica || ehVendedorSig(s)) && rub.projeto && rub.projeto.length) {
-        var pp = posicoes(rub.projeto, kD, nD, "projeto", "esquerda");
+        var pp = [];
+        rub.projeto.forEach(function (p) { var q = vistoNaCaixa(p, kD, nD, tamanhoDa(rub, "projeto", p)); if (q) pp.push(q); else avisar("projeto", p); });
         if (pp.length) l.push({ docId: d.id, kind: "initials", positions: pp });
       }
     });

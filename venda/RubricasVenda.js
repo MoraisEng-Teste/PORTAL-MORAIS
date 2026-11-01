@@ -19,8 +19,14 @@ var RubricasVenda = (function () {
      46 pt acima da linha de base do traço, o pé da imagem fica ~4 pt abaixo da linha — a assinatura cruza a linha e não
      cobre o "Nome:" de baixo. Vale para as linhas de assinatura e para os campos "ASSINATURA: ____". Se o texto de cima
      estiver a menos de 46 pt, a imagem encosta nele: preferimos a linha (não se mexe aqui; RUBRICAS_AJUSTE ainda soma). */
-  var ACIMA_DA_BASE = 46;
-  function topoAcima(l, H) { return (l.y + l.h - ACIMA_DA_BASE) / H; }
+  /* calibração pelos PDFs assinados da unidade 22 (01/11, pymupdf: tinta × ponto enviado). A caixa é bem maior que a tinta:
+     - assinatura (manuscrita, imagem 100×50): tinta de +18 a +29 pt abaixo do ponto → ponto 27 pt acima da linha de base,
+       a tinta fica em cima da linha (antes, com 46, flutuava ~20 pt acima);
+     - visto (initials, texto 22 pt): tinta de +9 a +27 pt abaixo do ponto, 22–27 pt de largura → no campo "ASSINATURA:
+       ____" ponto 25 pt acima da base (o pé do visto na linha); no 4.2.1, 22 pt acima da base (no meio da linha, na
+       coluna cinza). (l.y + l.h = linha de base no pdf.js.) */
+  var MANUSCRITO_ACIMA = 27, VISTO_CAMPO_ACIMA = 25, VISTO_VALORES_ACIMA = 22;
+  function topoAcima(l, H, acima) { return (l.y + l.h - (acima === undefined ? MANUSCRITO_ACIMA : acima)) / H; }
   var ITEM_421 = /^\s*4\.2\.1\.?(\s|$)/;
 
   function limitar(v) { return Math.max(0, Math.min(1, Math.round(v * 10000) / 10000)); }
@@ -38,6 +44,19 @@ var RubricasVenda = (function () {
     return { numero: numero, largura: W, altura: H, itens: itens };
   }
 
+  /* largura típica de cada letra (em "em", fonte serifada do contrato): maiúscula larga, espaço e pontuação estreitos */
+  function pesoLetra(c) {
+    if (c === "_") return 0.5;
+    if (c === " " || c === " ") return 0.25;
+    if (/[.,:;'!|]/.test(c)) return 0.25;
+    if (/[—–]/.test(c)) return 1.0;
+    if (/[-()\[\]\/]/.test(c)) return 0.33;
+    if (/[A-ZÀ-ÖØ-Þ]/.test(c)) return 0.72;
+    if (/[0-9]/.test(c)) return 0.5;
+    if (/[mw]/.test(c)) return 0.8;
+    if (/[ijlft]/.test(c)) return 0.3;
+    return 0.5;
+  }
   /* Junta os itens em linhas (mesma base, tolerância de meia altura) e guarda o x de cada caractere. */
   function linhas(pagina) {
     var its = pagina.itens.filter(function (i) { return i.str.length; }).slice()
@@ -53,8 +72,12 @@ var RubricasVenda = (function () {
       l.partes.sort(function (a, b) { return a.x - b.x; });
       var txt = "", xs = [];
       l.partes.forEach(function (i) {
-        var n = i.str.length, passo = n ? (i.w || 0) / n : 0;
-        for (var k = 0; k < n; k++) { txt += i.str[k]; xs.push(i.x + passo * k); }
+        /* unidade 22 (01/11): o pdf.js dá a largura do item inteiro; repartir igual por letra punha o começo dos traços de
+           "ASSINATURA: ____" ~14 pt antes (em cima do "ASSINATURA:"). Agora cada letra pesa pela largura típica dela. */
+        var n = i.str.length, pesos = [], soma = 0;
+        for (var k = 0; k < n; k++) { var pk = pesoLetra(i.str[k]); pesos.push(pk); soma += pk; }
+        var acc = 0;
+        for (k = 0; k < n; k++) { txt += i.str[k]; xs.push(i.x + (soma ? (i.w || 0) * acc / soma : 0)); acc += pesos[k]; }
       });
       l.texto = txt; l.xs = xs; l.x = xs.length ? xs[0] : 0;
       delete l.partes;
@@ -80,11 +103,11 @@ var RubricasVenda = (function () {
         var m;
         while ((m = CAMPO.exec(l.texto))) {
           var iTraco = l.texto.indexOf("_", m.index);
-          campos.push({ page: String(pg.numero), position: [limitar(l.xs[iTraco] / W + aC.dx), limitar(topoAcima(l, H) + aC.dy)] });
+          campos.push({ page: String(pg.numero), position: [limitar(l.xs[iTraco] / W + aC.dx), limitar(topoAcima(l, H, VISTO_CAMPO_ACIMA) + aC.dy)] });
         }
         /* o primeiro "4.2.1." que está numa tabela (texto bem à direita da margem): é o quadro-resumo */
         if (!valores && ITEM_421.test(l.texto) && l.x - margem > W * 0.08) {
-          valores = { page: String(pg.numero), position: [limitar((margem + 4) / W + aV.dx), limitar(l.y / H + aV.dy)] };
+          valores = { page: String(pg.numero), position: [limitar((margem + 4) / W + aV.dx), limitar(topoAcima(l, H, VISTO_VALORES_ACIMA) + aV.dy)] };
         }
       });
     });
@@ -241,7 +264,53 @@ var RubricasVenda = (function () {
     return out;
   }
 
-  var api = { acharNoContrato: acharNoContrato, acharLinhas: acharLinhas, paginaDoPdfjs: paginaDoPdfjs, linhas: linhas, paginasDoPdf: paginasDoPdf,
+  /* 01/11/2026 (dono): prévia das assinaturas — desenha nas páginas, numa janela (w aberta no clique, por causa do bloqueio de
+     janelas), a caixa onde a tinta de cada marca vai cair (assinatura em azul, visto em laranja), com o papel. prev:
+     { pdfs: [{ doc, base64 }], caixas: [{ doc, page, papel, kind, position, tinta }], avisos }. Só navegador. */
+  /* rótulo curto do visto na prévia (as caixas ficam lado a lado): C1, Cj, C2, V, T1, F1, CjF1… */
+  function sigla(papel) {
+    var p = String(papel || ""), m;
+    if ((m = /^Comprador (\d)/.exec(p))) return "C" + m[1];
+    if (/^Cônjuge do comprador/.test(p)) return "Cj";
+    if ((m = /^Cônjuge do fiador (\d)/.exec(p))) return "CjF" + m[1];
+    if ((m = /^Fiador (\d)/.exec(p))) return "F" + m[1];
+    if ((m = /^Testemunha (\d)/.exec(p))) return "T" + m[1];
+    if (/^Vendedor/.test(p)) return "V";
+    if (/^Corretor/.test(p)) return "Cor";
+    return p.slice(0, 3);
+  }
+  async function mostrarPrevia(prev, w) {
+    w = w || window.open("about:blank", "_blank");
+    if (!w) return;
+    var d = w.document, pdfjs = await carregarPdfjs(), cores = { manuscript: "#1d4ed8", initials: "#c2410c" }, ESC = 1.4;
+    d.title = "Prévia das assinaturas";
+    d.body.style.cssText = "font:14px sans-serif;background:#f3f4f6;margin:16px";
+    var t = d.createElement("h2"); t.textContent = "Prévia das assinaturas — azul: assinatura, laranja: visto (onde a tinta vai cair)"; d.body.appendChild(t);
+    (prev.avisos || []).forEach(function (a) { var p = d.createElement("p"); p.textContent = "Atenção: " + a; p.style.color = "#b91c1c"; d.body.appendChild(p); });
+    for (var i = 0; i < (prev.pdfs || []).length; i++) {
+      var pd = prev.pdfs[i], cx = (prev.caixas || []).filter(function (x) { return x.doc === pd.doc; });
+      if (!cx.length) continue;
+      var pdf = await pdfjs.getDocument({ data: base64ParaBytes(pd.base64) }).promise;
+      var nums = cx.map(function (x) { return Number(x.page); }).filter(function (n, k, a) { return a.indexOf(n) === k && n >= 1 && n <= pdf.numPages; }).sort(function (a, b) { return a - b; });
+      for (var j = 0; j < nums.length; j++) {
+        var pg = await pdf.getPage(nums[j]), vp = pg.getViewport({ scale: ESC }), W = pg.view[2] - pg.view[0], H = pg.view[3] - pg.view[1];
+        var cv = d.createElement("canvas"); cv.width = vp.width; cv.height = vp.height; cv.style.cssText = "display:block;background:#fff;margin:4px 0 16px;max-width:100%";
+        await pg.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+        var g = cv.getContext("2d");
+        cx.filter(function (x) { return Number(x.page) === nums[j]; }).forEach(function (x) {
+          var px = x.position[0] * W, py = x.position[1] * H, q = x.tinta;
+          g.strokeStyle = g.fillStyle = cores[x.kind] || "#111"; g.lineWidth = 2; g.font = "12px sans-serif";
+          g.strokeRect((px + q[0]) * ESC, (py + q[1]) * ESC, (q[2] - q[0]) * ESC, (q[3] - q[1]) * ESC);
+          g.fillText(x.kind === "initials" ? sigla(x.papel) : x.papel, (px + q[0]) * ESC, (py + q[1]) * ESC - 3);
+        });
+        var h = d.createElement("h3"); h.textContent = (pd.doc === "contrato" ? "Contrato" : pd.doc) + " — página " + nums[j];
+        d.body.appendChild(h); d.body.appendChild(cv);
+      }
+      try { pdf.destroy(); } catch (e) { /* nada */ }
+    }
+  }
+
+  var api = { mostrarPrevia: mostrarPrevia, acharNoContrato: acharNoContrato, acharLinhas: acharLinhas, paginaDoPdfjs: paginaDoPdfjs, linhas: linhas, paginasDoPdf: paginasDoPdf,
               PDFJS_URL: PDFJS_URL };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else if (typeof window !== "undefined") window.RubricasVenda = api;
