@@ -22,6 +22,10 @@ ASS_TIPOS[ASS_COL.SITUACAO] = "rich_text";
 ASS_TIPOS[ASS_COL.ASSINADO] = "files";
 var CS_JSONAPI = "application/vnd.api+json";
 var ASS_PENDENTE = "ASSINATURA_PENDENTE_";
+/* 01/11 (correção 3): contrato ASSINADO esperando a Clicksign gerar o arquivo — hora (ms) em que começou a esperar.
+   A vigia relê só estes (até 24 h) e a própria leitura que guarda o PDF apaga a Propriedade. */
+var ASS_AGUARDANDO = "ASS_AGUARDANDO_";
+var VIGIA_ANDAMENTO = "ASSINOU E ARMAZENOU CONTRATO";   /* coluna do Andamento marcada por assPosAssinatura_ */
 var ASS_PAPEIS = "ASSINATURA_PAPEIS_";
 var ASS_VIGIA_STATUS = "VIGIA_STATUS_";   /* + id do envelope = último status visto pela vigia (AssinaturaVigia.gs); apagado quando o envelope termina ou é descartado */
 var ASS_REENVIO = "ASSINATURA_REENVIO_";   /* + id do envelope = hora (ms) do último reenvio do aviso */
@@ -257,7 +261,7 @@ function assEnviarTravado_(col, p, pid) {
   }
   /* o PDF tem de ser destes dados: carimbo no nome (GerarContrato) igual ao recalculado agora */
   var carimbo = ctrCarimboDoNome_(gerado.nome);
-  if (!carimbo || carimbo !== ctrCarimbo_(d)) {
+  if (!ctrCarimboConfere_(carimbo, d, p.pageId)) {   /* 01/11 (plano 23 B): modelo migrado leva as testemunhas no carimbo */
     assLog_("enviar " + pid + (carimbo ? " carimbo diferente" : " pdf sem carimbo"));
     return { ok: false, erro: "CONTRATO_DESATUALIZADO" };
   }
@@ -406,7 +410,7 @@ function assEnviarTermo_(col, p, pid, cols, doc, gerado) {
     return { ok: false, erro: "FALTAM_DADOS", faltas: faltas, corrigir: assCorrigir_(faltas) };
   }
   var carimbo = ctrCarimboDoNome_(gerado.nome);
-  if (!carimbo || carimbo !== prCarimbo_(x.t)) { assLog_("enviar termo " + pid + " carimbo diferente"); return { ok: false, erro: "TERMO_DESATUALIZADO" }; }
+  if (!carimbo || (carimbo !== prCarimbo_(x.t) && carimbo !== prCarimbo_(x.t, prAssinCarimbo_(x.d, p.pageId)))) { assLog_("enviar termo " + pid + " carimbo diferente"); return { ok: false, erro: "TERMO_DESATUALIZADO" }; }
   var nomeCs = "PRÉ-RESERVA - " + ClicksignVenda.nomePadrao(x.f.endereco, x.f.casa, dAss.comprador1 && dAss.comprador1.nome);
   return assCriarEnvelope_(p, pid, cols, doc, gerado, ClicksignVenda.signatarios(dAss, cfg), nomeCs);
 }
@@ -600,12 +604,18 @@ function assinaturaEstado_(col, p) {
   if (sit !== S.ENVIADO) assApagarProp_(ASS_VIGIA_STATUS + envId);   /* terminou (assinado/cancelado/...): a vigia não precisa mais do status */
 
   var semArquivo = !(ctrValor_(pg.properties[cols.ASSINADO]) || []).length;
+  /* 01/11/2026 (teste no sandbox): a Clicksign fecha o envelope ~1 minuto antes de gerar o arquivo "signed". Sem o link
+     ainda, não é erro: a situação é ASSINADO com aguardandoArquivo; o PDF entra no próximo Atualizar (ou na vigia). */
+  var aguardando = false;
+  function semLink(e) { return String((e && e.message) || "").indexOf("CLICKSIGN_SEM_LINK_ASSINADO") === 0; }
   var termosAssinar = docs.slice(1).map(function (dc) { return { doc: dc, col: cfdCol_(pg, cfdDoNome_(dc)) }; })
     .filter(function (y) { return y.col && !(ctrValor_(pg.properties[y.col]) || []).length; });
   if (sit === S.ASSINADO && termosAssinar.length) {
     for (var k = 0; k < termosAssinar.length; k++) {
       var tl, tr;
-      try { tl = ClicksignVenda.linkAssinado(termosAssinar[k].doc); tr = UrlFetchApp.fetch(tl, { muteHttpExceptions: true }); }
+      try { tl = ClicksignVenda.linkAssinado(termosAssinar[k].doc); }
+      catch (e) { if (!semLink(e)) throw e; aguardando = true; continue; }
+      try { tr = UrlFetchApp.fetch(tl, { muteHttpExceptions: true }); }
       catch (e) { assLog_("estado " + pid + " termo assinado sem link/resposta"); return { ok: false, erro: "DOWNLOAD_ASSINADO_FALHOU" }; }
       if (tr.getResponseCode() >= 300) { assLog_("estado " + pid + " termo assinado http " + tr.getResponseCode()); return { ok: false, erro: "DOWNLOAD_ASSINADO_FALHOU" }; }
       try {
@@ -615,10 +625,16 @@ function assinaturaEstado_(col, p) {
     }
     assLog_("estado " + pid + " envelope " + envId + " termos assinados anexados " + termosAssinar.length);
   }
+  var link = null;
   if (sit === S.ASSINADO && (sitAtual !== sit || semArquivo)) {
-    var link;
     try { link = ClicksignVenda.linkAssinado(docs[0]); }
-    catch (e) { assLog_("estado " + pid + " envelope " + envId + " sem link do assinado"); return { ok: false, erro: String(e.message) }; }
+    catch (e) {
+      if (!semLink(e)) { assLog_("estado " + pid + " envelope " + envId + " sem link do assinado"); return { ok: false, erro: String(e.message) }; }
+      assLog_("estado " + pid + " envelope " + envId + " assinado, arquivo ainda sendo preparado");
+      aguardando = true;
+    }
+  }
+  if (link) {
     var r;
     try { r = UrlFetchApp.fetch(link, { muteHttpExceptions: true }); } /* link pré-assinado: sem o token */
     catch (e) { assLog_("estado " + pid + " download do assinado sem resposta"); return { ok: false, erro: "DOWNLOAD_ASSINADO_FALHOU" }; }
@@ -630,13 +646,21 @@ function assinaturaEstado_(col, p) {
     } catch (e) { ctrErro_("assinatura estado " + pid + " anexo falhou", e); return { ok: false, erro: "UPLOAD_FALHOU" }; }
     assLog_("estado " + pid + " envelope " + envId + " assinado anexado");
     semArquivo = false;
+    var anexouContrato = true;
   }
   if (!gravar(sit)) return { ok: false, erro: "GRAVACAO_FALHOU" };
+  if (sit === S.ASSINADO && !doc.pre) {
+    if (aguardando) { if (!prop_(ASS_AGUARDANDO + p.pageId)) assProps_().setProperty(ASS_AGUARDANDO + p.pageId, String(Date.now())); }
+    else if (prop_(ASS_AGUARDANDO + p.pageId)) assApagarProp_(ASS_AGUARDANDO + p.pageId);
+  }
+  /* correção 3 (4): o PDF do contrato acabou de entrar (pelo botão ou pela vigia) — Andamento e Mais Controle, uma vez */
+  if (anexouContrato && !doc.pre) assPosAssinatura_(col, p.pageId);
 
   var feitos = ClicksignVenda.assinaram(signers, eventos);
   var lista = assListaSignatarios_(envId, signers, eventos);
   if (ClicksignVenda.FINAIS.indexOf(sit) >= 0) { assApagarProp_(ASS_PAPEIS + envId); assApagarProp_(ASS_REENVIO + envId); }
   var resp = { ok: true, situacao: sit, envelope: true, signatarios: lista, temAssinado: !semArquivo };
+  if (aguardando) resp.aguardandoArquivo = true;
   /* closed sem o "sign" de alguém: não inventa assinatura; o PDF é o que a Clicksign entregou */
   if (env.status === "closed" && signers.some(function (s) { return !feitos[s.id]; })) {
     assLog_("estado " + pid + " envelope " + envId + " assinaturas incompletas");
@@ -644,6 +668,41 @@ function assinaturaEstado_(col, p) {
   }
   return resp;
 }
+
+/* 01/11 (correção 3, item 4): o que acontece quando o PDF assinado do contrato do condomínio entra na casa — pelo
+ * "Atualizar situação" ou pela vigia (os dois passam por assinaturaEstado_, que chama isto só na hora em que anexa):
+ *  - marca "ASSINOU E ARMAZENOU CONTRATO" = SIM no Andamento (se a coluna existir e ainda não estiver SIM);
+ *  - só com a Propriedade MC_LANCAR_AO_ASSINAR = SIM e a prévia do Mais Controle OK, pede o lançamento (mcLancar_, com
+ *    a trava e o vendaId que impedem lançar duas vezes). Erro aqui nunca derruba a situação já gravada. */
+function assPosAssinatura_(col, pageId) {
+  var id8 = String(pageId).slice(0, 8), pg;
+  try { pg = notion_("GET", "/pages/" + pageId, null); } catch (e) { ctrErro_("pos-assinatura " + id8 + " leitura", e); return; }
+  if (!pg || vendaBaseDaPagina_(pg) !== "CONDOMINIO") return;
+  try { vigiaMarcarAndamento_(pg); } catch (e) { ctrErro_("pos-assinatura " + id8 + " andamento", e); }
+  if (String(prop_("MC_LANCAR_AO_ASSINAR") || "").trim().toUpperCase() === "SIM") {
+    try { vigiaLancarMC_(col, pageId); } catch (e) { ctrErro_("pos-assinatura " + id8 + " mais controle", e); }
+  }
+}
+function vigiaMarcarAndamento_(pg) {
+  var props = pg.properties || {}, nome = null;
+  Object.keys(props).forEach(function (n) { if (RegrasVenda.chave(n) === RegrasVenda.chave(VIGIA_ANDAMENTO)) nome = n; });
+  if (!nome) return;
+  var pr = props[nome], novo = {};
+  if (pr.type === "checkbox") { if (pr.checkbox) return; novo[nome] = { checkbox: true }; }
+  else if (pr.type === "select") { if (pr.select && RegrasVenda.chave(pr.select.name) === "SIM") return; novo[nome] = { select: { name: "SIM" } }; }
+  else return;
+  notion_("PATCH", "/pages/" + pg.id, { properties: novo });
+  ctrLog_("vigia " + String(pg.id).slice(0, 8) + " Andamento: " + VIGIA_ANDAMENTO + " = SIM");
+}
+
+function vigiaLancarMC_(col, pageId) {
+  var c = mcLerColunas_(pageId);
+  if (c.vendaId) return;
+  if (!/^PR[ÉE]VIA OK/i.test(c.situacao || "")) { ctrLog_("vigia " + String(pageId).slice(0, 8) + " MC: sem prévia OK, espera o botão"); return; }
+  var r = mcLancar_(col, { u: "vigia de assinaturas", t: "ADM" }, { pageId: pageId, aplicar: true });
+  ctrLog_("vigia " + String(pageId).slice(0, 8) + " MC: " + (r && r.ok ? "lançamento pedido" : "não lançou (" + (r && r.erro) + ")"));
+}
+
 
 /* ---- reenviar o aviso de assinatura aos pendentes ----
  * Só com envelope ativo (running, sem recusa) e com alguém pendente. Um por vez (LockService) e no máximo
@@ -824,7 +883,13 @@ function verDocumentoAssinado_(col, p) {
   var dc = x.docs.filter(function (d) { return d && String(d.id) === String(p.docId || ""); })[0];
   if (!dc) return { ok: false, erro: "DOCUMENTO_NAO_ENCONTRADO" };
   var link, r;
-  try { link = ClicksignVenda.linkAssinado(dc); } catch (e) { assLog_("ver doc assinado " + pid + " sem link"); return { ok: false, erro: String(e.message) }; }
+  try { link = ClicksignVenda.linkAssinado(dc); }
+  catch (e) {
+    assLog_("ver doc assinado " + pid + " sem link");
+    /* 01/11 (sandbox): logo depois da última assinatura o "signed" ainda não existe — pedir para esperar, não é defeito */
+    if (String(e.message).indexOf("CLICKSIGN_SEM_LINK_ASSINADO") === 0) return { ok: false, erro: "ASSINADO_AGUARDANDO_ARQUIVO" };
+    return { ok: false, erro: String(e.message) };
+  }
   try { r = UrlFetchApp.fetch(link, { muteHttpExceptions: true }); }   /* link pré-assinado: sem o token */
   catch (e) { return { ok: false, erro: "DOWNLOAD_ASSINADO_FALHOU" }; }
   if (r.getResponseCode() >= 300) { assLog_("ver doc assinado " + pid + " http " + r.getResponseCode()); return { ok: false, erro: "DOWNLOAD_ASSINADO_FALHOU" }; }

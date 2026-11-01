@@ -4,6 +4,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import vm from "node:vm";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { criarGas, driveFalso, notionFalso, clicksignFalso, assinar, texto, COLUNAS_REAIS, DB_ID_PADRAO } from "./fakes.mjs";
 
 const req = createRequire(import.meta.url);
@@ -1361,4 +1365,149 @@ test("plano 23 C: condomínio com CLICKSIGN_SELFIE=1 — fiadores com selfie e d
   assert.deepEqual(auths("f1@teste.example"), ["doc-2:email", "doc-2:selfie", "doc-2:official_document", "doc-3:email", "doc-3:selfie", "doc-3:official_document"]);
   assert.ok(auths("compradora@teste.example").includes("doc-1:selfie"));
   assert.deepEqual(auths("beltrano@teste.example"), ["doc-1:email", "doc-2:email", "doc-3:email"]);
+});
+
+/* ---- 01/11/2026 (plano 23 B, dono: "essas alterações estéticas pode fazer"): blocos de assinatura gerados ----
+   Modelo migrado = o bloco fixo virou um parágrafo só com {{ASSINATURAS_QUADRO}} / {{ASSINATURAS_FINAL}} / {{ASSINATURAS_TERMO}};
+   cada pessoa sai com traço, Nome, CPF e o papel em negrito. Modelo antigo (sem os marcadores) sai como sempre. */
+const MODELO_COND_NOVO = [...MODELO_COND, "VENDEDORA: Construtora Teste Ltda, inscrita no CNPJ sob o nº 00.000.000/0001-00", "{{CIDADE_DATA}}", "{{ASSINATURAS_QUADRO}}", "CLÁUSULAS GERAIS", "ASSINATURAS", "{{ASSINATURAS_FINAL}}", "fim"];
+const papeisDo = (pars, ini, fim) => pars.slice(ini, fim).filter((l, i, a) => a[i + 1] === "" || i === a.length - 1);
+const salvoUltimo = (c, filtro = () => true) => c.d.estado.salvos[c.d.estado.copias.filter(filtro).at(-1).id];
+
+test("plano 23 B: contrato com o modelo migrado — os dois blocos com uma linha por pessoa, testemunhas com nome e CPF, papel em negrito", () => {
+  const c = cenarioCfd({ modeloCond: MODELO_COND_NOVO, linha: CASADO_PR });
+  const r = c.gerarFinal();
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const s = salvoUltimo(c, (x) => x.nome.startsWith("CONTRATO - ")), pars = s.pars;
+  assert.ok(!pars.join("\n").includes("{{"), "sem marcador sobrando");
+  const q = pars.indexOf("CLÁUSULAS GERAIS"), f = pars.indexOf("ASSINATURAS");
+  const esperado = ["VENDEDORA", "COMPRADOR", "CÔNJUGE DO COMPRADOR", "INTERMEDIADOR/CORRETOR", "TESTEMUNHA 1", "TESTEMUNHA 2"];
+  const ini = pars.indexOf("________________________________");
+  assert.deepEqual(papeisDo(pars, ini, q), esperado, "quadro");
+  assert.deepEqual(papeisDo(pars, f + 1, pars.indexOf("fim")), esperado, "final (fiador não assina o contrato)");
+  assert.ok(pars.includes("Nome: Testemunha Um Spe") && pars.includes("Nome: Conjuge Teste da Silva"), pars.join(" | "));
+  assert.ok(pars.includes("Representante: Beltrano Representante – CPF: 111.444.777-35"));
+  const neg = s.negritos.filter((x) => x.texto === "TESTEMUNHA 2");
+  assert.equal(neg.length, 2);
+  assert.deepEqual(neg[0].negrito, [[0, 11, true]]);
+});
+
+test("plano 23 B: termo de confissão migrado leva fiadores e testemunhas; modelo antigo (sem o marcador) sai igual a antes", () => {
+  /* o cenarioCfd fixa os modelos dos termos; aqui o mesmo cenário com o PRÉ migrado */
+  const c = cenario({ linha: COLS_CFD, modelosExtra: { ...MODELOS_CFD, "modelo-cfd-pre": [...MODELOS_CFD["modelo-cfd-pre"], "ASSINATURAS", "{{ASSINATURAS_TERMO}}"] },
+                      props: { MODELO_CONFISSAO_PRE_ID: "modelo-cfd-pre", MODELO_CONFISSAO_POS_ID: "modelo-cfd-pos" } });
+  const r = c.gerarFinal();
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const pre = salvoUltimo(c, (x) => x.nome.startsWith("CONFISSÃO PRÉ-CHAVES")).pars;
+  assert.deepEqual(papeisDo(pre, pre.indexOf("ASSINATURAS") + 1, pre.length),
+    ["CREDORA/VENDEDORA", "DEVEDOR/COMPRADOR", "FIADOR 1", "FIADOR 2", "TESTEMUNHA 1", "TESTEMUNHA 2"]);
+  assert.ok(pre.includes("Nome: Fiador Dois Teste") && pre.includes("CPF: 246.813.579-28"), pre.join(" | "));
+  const pos = salvoUltimo(c, (x) => x.nome.startsWith("CONFISSÃO PÓS-CHAVES")).pars;
+  assert.equal(pos.length, MODELOS_CFD["modelo-cfd-pos"].length, "modelo sem o marcador: nenhum parágrafo a mais");
+  const ct = salvoUltimo(c, (x) => x.nome.startsWith("CONTRATO - ")).pars;
+  assert.ok(!ct.some((l) => /^_{10,}$/.test(l)), "contrato com o modelo antigo não ganha bloco");
+});
+
+test("plano 23 B: termo de pré-reserva migrado — sem o cônjuge por padrão, com ele quando a opção está ligada", () => {
+  const modelo = { "modelo-pr": [...MODELO_PR, "{{ASSINATURAS_TERMO}}"] };
+  const c = cenarioPR({ modelosExtra: modelo, linha: { ...CONTA_PR, ...CASADO_PR } });
+  assert.equal(c.acao("gerarTermoPreReserva").ok, true);
+  const p1 = salvoUltimo(c).pars;
+  assert.deepEqual(papeisDo(p1, MODELO_PR.length, p1.length), ["VENDEDORA", "PRÉ-RESERVANTE", "TESTEMUNHA 1", "TESTEMUNHA 2"]);
+  c.acao("salvarConjugePreReserva", { incluir: true });
+  assert.equal(c.acao("gerarTermoPreReserva").ok, true);
+  const p2 = salvoUltimo(c).pars;
+  assert.deepEqual(papeisDo(p2, MODELO_PR.length, p2.length), ["VENDEDORA", "PRÉ-RESERVANTE", "CÔNJUGE DO PRÉ-RESERVANTE", "TESTEMUNHA 1", "TESTEMUNHA 2"]);
+  assert.ok(p2.includes("Nome: Conjuge Teste da Silva"));
+});
+
+/* ---- correção 1 do plano 23 B ---- */
+const outrasTestemunhas = (c) => assert.equal(c.acao("escolherTestemunhas", { ids: ["TESTEMUNHA UM PF", "TESTEMUNHA DOIS PF"] }).ok, true);
+
+test("correção 1 (I4): modelo migrado — trocar as testemunhas depois de gerar deixa o contrato desatualizado; modelo antigo segue como hoje", () => {
+  const novo = cenario({ modeloCond: MODELO_COND_NOVO });
+  assert.equal(novo.acao("gerarPreContrato").ok, true);
+  assert.equal(novo.acao("contratoEstado").pre.desatualizado, false, "o pré-contrato do modelo migrado não aparece desatualizado à toa");
+  assert.equal(novo.gerarFinal().ok, true);
+  outrasTestemunhas(novo);
+  assert.equal(novo.acao("assinaturaEnviar", rub(novo)).erro, "CONTRATO_DESATUALIZADO");
+  const igual = cenario({ modeloCond: MODELO_COND_NOVO });
+  assert.equal(igual.gerarFinal().ok, true);
+  const e = igual.acao("assinaturaEnviar", rub(igual));
+  assert.equal(e.ok, true, JSON.stringify(e.faltas || e));
+  const antigo = cenario();
+  assert.equal(antigo.gerarFinal().ok, true);
+  outrasTestemunhas(antigo);
+  const r = antigo.acao("assinaturaEnviar", rub(antigo));
+  assert.equal(r.ok, true, JSON.stringify(r.faltas || r));
+});
+
+test("correção 1 (I4): pré-reserva migrada — ligar o cônjuge depois de gerar deixa o termo desatualizado", () => {
+  const novo = cenarioPR({ modelosExtra: { "modelo-pr": [...MODELO_PR, "{{ASSINATURAS_TERMO}}"] }, linha: { ...CONTA_PR, ...CASADO_PR } });
+  assert.equal(novo.acao("gerarTermoPreReserva").ok, true);
+  novo.acao("salvarConjugePreReserva", { incluir: true });
+  assert.equal(novo.acao("assinaturaEnviar", { doc: "PRE_RESERVA" }).erro, "TERMO_DESATUALIZADO");
+  assert.equal(novo.acao("gerarTermoPreReserva").ok, true);
+  assert.equal(novo.acao("assinaturaEnviar", { doc: "PRE_RESERVA" }).ok, true, "gerado de novo, envia");
+});
+
+test("correção 1 (I6b): contrato do condomínio migrado sem o CNPJ do vendedor no texto do modelo não sai (qualificação diferente)", () => {
+  const sem = cenario({ modeloCond: MODELO_COND_NOVO.filter((l) => !l.includes("CNPJ")) });
+  const r = sem.acao("gerarPreContrato");
+  assert.equal(r.erro, "MODELO_CNPJ_VENDEDOR_DIFERENTE", JSON.stringify(r));
+  assert.equal(sem.d.estado.copias.length, 0, "nem copia o modelo");
+  /* modelo antigo (sem os marcadores novos) não é conferido */
+  assert.equal(cenario().acao("gerarPreContrato").ok, true);
+});
+
+test("correção 1 (M5): erro ao montar o bloco não derruba o modelo antigo; no migrado o marcador sobra e o documento não sai", () => {
+  const quebrar = (c) => { c.g.ctx.ClicksignVenda.blocoAssinaturas = () => { throw new Error("teste"); }; };
+  const antigo = cenarioPR({ linha: CONTA_PR });
+  quebrar(antigo);
+  assert.equal(antigo.acao("gerarTermoPreReserva").ok, true);
+  const novo = cenarioPR({ modelosExtra: { "modelo-pr": [...MODELO_PR, "{{ASSINATURAS_TERMO}}"] }, linha: CONTA_PR });
+  quebrar(novo);
+  assert.equal(novo.acao("gerarTermoPreReserva").erro, "MODELO_COM_MARCADOR_SOBRANDO");
+  const cfd = cenarioCfd();
+  quebrar(cfd);
+  assert.equal(cfd.gerarFinal().ok, true, "contrato e termos com os modelos antigos");
+});
+
+/* ---- correção 3 (4): o que acontece quando o PDF assinado entra (Andamento e Mais Controle) — uma função só ---- */
+const ARQ_OK = { original: "https://s3.clicksign.falso/original.pdf", signed: "https://s3.clicksign.falso/assinado.pdf" };
+const VIGIA_SRC = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "AssinaturaVigia.gs"), "utf8");
+function contarPos(c) { c.g.ctx.__pos = []; vm.runInContext("assPosAssinatura_ = function (col, pageId) { __pos.push(pageId); };", c.g.ctx); }
+
+test("correção 3 (4): Atualizar situação que guarda o PDF assinado faz o pós-assinatura uma vez; de novo, não repete", () => {
+  const c = cenario({ cs: { arquivos: ARQ_OK }, linha: { "ASSINOU E ARMAZENOU CONTRATO": { checkbox: false } } });
+  assert.equal(c.gerarFinal().ok, true);
+  assert.equal(c.acao("assinaturaEnviar", rub(c)).ok, true);
+  c.c.estado.status = "closed";
+  assert.equal(c.acao("assinaturaEstado").situacao, "ASSINADO");
+  assert.equal(c.n.pagina.properties["ASSINOU E ARMAZENOU CONTRATO"].checkbox, true, "Andamento marcado pelo botão " + c.g.logs.filter((l) => /pos-assinatura|anexado|ASSINOU/.test(l)).join(" | "));
+  contarPos(c);
+  assert.equal(c.acao("assinaturaEstado").situacao, "ASSINADO");
+  assert.deepEqual([...c.g.ctx.__pos], [], "PDF já guardado: não repete");
+});
+
+test("correção 3 (4): pela vigia também uma vez só (a mesma função, chamada de dentro do assinaturaEstado_)", () => {
+  const c = cenario({ cs: { arquivos: ARQ_OK } });
+  vm.runInContext(VIGIA_SRC, c.g.ctx, { filename: "AssinaturaVigia.gs" });
+  assert.equal(c.gerarFinal().ok, true);
+  assert.equal(c.acao("assinaturaEnviar", rub(c)).ok, true);
+  c.c.estado.status = "closed";
+  contarPos(c);
+  assert.equal(c.g.ctx.vigiaUma_(c.g.ctx.colunas_(), c.g.ctx.ctrLerPaginaVenda_(COND)), true);
+  assert.deepEqual([...c.g.ctx.__pos], [COND]);
+});
+
+test("correção 3 (1): no envelope com termos, o corretor (ASSINATURA_INCLUIR_CORRETOR=SIM) assina só o contrato", () => {
+  const c = cenarioCfd({ cs: { arquivos: ARQ_OK }, props: { ASSINATURA_INCLUIR_CORRETOR: "SIM" } });
+  assert.equal(c.gerarFinal().ok, true);
+  const r = c.acao("assinaturaEnviar", rub(c));
+  assert.equal(r.ok, true, JSON.stringify(r.faltas || r));
+  const corr = c.c.estado.signers.find((s) => s.attributes.email === "corretor@teste.example");
+  const reqs = c.c.chamadas.filter((x) => x.metodo === "POST" && x.caminho === "/envelopes/env-1/requirements");
+  const docs = [...new Set(reqs.filter((q) => q.corpo.data.relationships.signer.data.id === corr.id).map((q) => q.corpo.data.relationships.document.data.id))];
+  assert.deepEqual(docs, ["doc-1"]);
 });

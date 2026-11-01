@@ -229,6 +229,61 @@ var ClicksignVenda = (function () {
                      sigCorretor(dados, config), sigFiadores(dados, config));
   }
 
+  /* 01/11/2026 (plano 23 B, dono: "essas alterações estéticas pode fazer"): bloco de assinaturas com UMA linha por pessoa,
+   * no lugar dos blocos fixos do modelo ({{ASSINATURAS_QUADRO}}, {{ASSINATURAS_FINAL}} e {{ASSINATURAS_TERMO}}).
+   * tipo: "CONTRATO" | "TERMO" (confissão PRÉ/PÓS) | "PRE_RESERVA". Só entra quem assina aquele documento, pelas mesmas
+   * regras do envio: no contrato, sem fiadores (assinam só os termos) e com o corretor quando há comissão (como o antigo
+   * {{#COM_COMISSAO}}); nos termos de confissão, com os fiadores e os cônjuges deles e sem corretor (não é parte do termo);
+   * na pré-reserva, só o comprador 1 e o cônjuge apenas com opc.incluirConjuge (PR_CONJUGE_<pageId>).
+   * Ordem: vendedora, comprador 1, cônjuge do comprador 1, comprador 2, fiador 1, cônjuge do fiador 1, fiador 2, cônjuge do
+   * fiador 2, corretor, testemunha 1, testemunha 2. Cada pessoa: traço, "Nome: …", "CPF: …" (CNPJ de empresa) e o papel —
+   * o nome logo abaixo do traço é o que RubricasVenda.acharLinhas lê e atribuirLinhas casa com o signatário. */
+  var TRACO_ASSINATURA = "________________________________";
+  function docAssinatura(doc) {
+    var d = soDigitos(doc);
+    if (!txt(doc)) return "CPF:";
+    if (d.length === 14) return "CNPJ: " + d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5, 8) + "/" + d.slice(8, 12) + "-" + d.slice(12);
+    return (d.length > 11 ? "CNPJ: " : "CPF: ") + (d.length === 11 && cpfValido(d) ? cpfFormatado(d) : txt(doc));
+  }
+  function pessoasDoBloco(dados, config, tipo, opc) {
+    config = config || montarConfig({});
+    opc = opc || {};
+    var termo = tipo === "TERMO", pre = tipo === "PRE_RESERVA", cond = !!dados.condominio, out = [];
+    function add(rotulo, nome, doc, extra) { out.push({ rotulo: rotulo, nome: txt(nome), doc: txt(doc), extra: txt(extra) }); }
+    /* correção 1 (I5): o nome como no {{VENDEDOR_NOME}} — cadastro ou, sem ele, o proprietário da obra */
+    var v = dados.vendedor, nomeV = txt(v && v.nome) || txt(dados.nomeProprietario);
+    if (nomeV) {
+      var rotV = termo ? "CREDORA/VENDEDORA" : (cond ? "VENDEDORA" : "VENDEDOR"), rep = v && ehPJ(dados) ? representante(v, config) : null;
+      add(rotV, nomeV, v && v.cpfCnpj, rep && rep.nome ? "Representante: " + rep.nome + (rep.cpf ? " – CPF: " + rep.cpf : "") : "");
+    }
+    var dc = dados;
+    if (pre) {   /* pré-reserva: o comprador 1 (e o cônjuge só com a opção ligada) */
+      dc = { comprador1: dados.comprador1, comprador2: null, condominio: opc.incluirConjuge ? dados.condominio : null };
+    }
+    var rotC = termo ? "DEVEDOR/COMPRADOR" : pre ? "PRÉ-RESERVANTE" : "COMPRADOR", rotCj = pre ? "CÔNJUGE DO PRÉ-RESERVANTE" : "CÔNJUGE DO COMPRADOR";
+    sigCompradores(dc).forEach(function (s) { add(s.origem === "conjugeComprador1" ? rotCj : rotC, s.nome, s.cpf); });
+    if (termo) sigFiadores(dados, { comFiadores: true }).forEach(function (s) {
+      if (!s.nome) return;
+      var n = /([12])$/.exec(s.origem)[1];
+      add(/^conjuge/.test(s.origem) ? "CÔNJUGE DO FIADOR " + n : "FIADOR " + n, s.nome, s.cpf);
+    });
+    if (tipo === "CONTRATO" && dados.corretor && txt(dados.corretor.nome) && !vendaDireta(dados))
+      add("INTERMEDIADOR/CORRETOR", dados.corretor.nome, dados.corretor.cpfCnpj);
+    var t = testemunhas(dados, config) || [null, null];
+    [0, 1].forEach(function (i) { add("TESTEMUNHA " + (i + 1), t[i] && t[i].nome, t[i] && t[i].cpf); });
+    return out;
+  }
+  function blocoAssinaturas(dados, config, tipo, opc) {
+    var l = [];
+    pessoasDoBloco(dados, config, tipo, opc).forEach(function (p, i) {
+      if (i) l.push("");
+      l.push(TRACO_ASSINATURA, p.nome ? "Nome: " + p.nome : "Nome:", docAssinatura(p.doc));
+      if (p.extra) l.push(p.extra);
+      l.push(p.rotulo);
+    });
+    return l.join("\n");
+  }
+
   var ONDE_EMAIL = {
     comprador1: "coluna Email",
     comprador2: "coluna COMPRADOR 2 - E-MAIL",
@@ -511,6 +566,7 @@ var ClicksignVenda = (function () {
   function documentosDoSignatario(s, docs) {
     return (docs || []).filter(function (d) {
       if (s.soTermos) return d.tipo === DOC.TERMO;
+      if (s.origem === "corretor") return d.tipo === DOC.CONTRATO;   /* 01/11 (dono): o corretor só assina o contrato */
       if (s.rubrica) return true;
       return d.tipo === DOC.CONTRATO || d.tipo === DOC.TERMO;
     }).map(function (d) { return d.id; });
@@ -586,7 +642,22 @@ var ClicksignVenda = (function () {
    * única "Nome: A / B" do modelo de hoje) → ninguém (a pessoa assina só na página da Clicksign, como antes).
    * Sem nome: pelo papel escrito — TESTEMUNHA n, FIADOR n, CORRETOR/INTERMEDIADOR, VENDEDORA/CREDORA, e COMPRADOR/DEVEDOR
    * só quando uma única pessoa assina como parte compradora. */
-  function assinaOTipo(s, tipo) { return tipo === DOC.TERMO ? true : tipo === DOC.CONTRATO ? !s.soTermos : false; }
+  /* 01/11 (dono): o corretor assina SÓ o contrato — nunca os termos de confissão (nem a pré-reserva) */
+  function assinaOTipo(s, tipo) { return tipo === DOC.TERMO ? s.origem !== "corretor" : tipo === DOC.CONTRATO ? !s.soTermos : false; }
+  /* correção 3 (5): papéis escritos no texto de uma linha, já normalizados (um por pessoa). Dois papéis diferentes = a
+     leitura pegou o bloco do lado: a linha não vai para ninguém (melhor sem assinatura posicionada do que na errada). */
+  var RE_PAPEIS = /\b(CONJUGE DO (?:COMPRADOR|PRE-RESERVANTE|FIADOR [12])|CREDORA\/VENDEDORA|DEVEDOR\/COMPRADOR|INTERMEDIADOR\/CORRETOR|VENDEDORA?|COMPRADOR|FIADOR [12]|TESTEMUNHA [12]|PRE-RESERVANTE|CORRETOR|INTERMEDIADOR)\b/g;
+  var PAPEL_NORMAL = { "CREDORA/VENDEDORA": "VENDEDOR", "VENDEDORA": "VENDEDOR", "DEVEDOR/COMPRADOR": "COMPRADOR",
+                       "INTERMEDIADOR/CORRETOR": "CORRETOR", "INTERMEDIADOR": "CORRETOR" };
+  function papeisNoTexto(t) {
+    var vistos = [], m;
+    RE_PAPEIS.lastIndex = 0;
+    while ((m = RE_PAPEIS.exec(t))) {
+      var p = PAPEL_NORMAL[m[1]] || m[1];
+      if (vistos.indexOf(p) < 0) vistos.push(p);
+    }
+    return vistos;
+  }
   function atribuirLinhas(lista, linhas, tipo) {
     lista = lista || [];
     var r = lista.map(function () { return []; });
@@ -594,9 +665,11 @@ var ClicksignVenda = (function () {
     lista.forEach(function (s, i) { if (assinaOTipo(s, tipo)) cands.push(i); if (s.origem === "testemunha") test.push(i); });
     function daOrigem(re) { var l = cands.filter(function (i) { return re.test(lista[i].origem || ""); }); return l.length === 1 ? l[0] : -1; }
     (linhas || []).forEach(function (l) {
-      var t = chave(l && l.texto), alvo = -1, m;
+      var t = chave(l && l.texto), alvo = -1, m, papeis = papeisNoTexto(t);
+      if (papeis.length > 1) return;
       var porNome = cands.filter(function (i) { var n = chave(lista[i].nome); return n.length >= 5 && t.indexOf(n) >= 0; });
-      if (porNome.length === 1) alvo = porNome[0];
+      /* linha da VENDEDORA com o nome de um comprador (coluna do lado): ninguém */
+      if (porNome.length === 1) alvo = papeis[0] === "VENDEDOR" && lista[porNome[0]].role !== PAPEIS.VENDEDOR ? -1 : porNome[0];
       /* correção 1 (I-3): linha de CÔNJUGE ("CÔNJUGE DO FIADOR 1", "CÔNJUGE") só pelo nome — o papel apontaria o fiador/comprador */
       else if (!porNome.length && !/CONJUGE/.test(t)) {
         if ((m = /TESTEMUNHA\s*([12])/.exec(t))) { var it = test[Number(m[1]) - 1]; alvo = it !== undefined && cands.indexOf(it) >= 0 ? it : -1; }
@@ -681,7 +754,7 @@ var ClicksignVenda = (function () {
     situacaoDosSignatarios: situacaoDosSignatarios, nomeMascarado: nomeMascarado,
     minutosParaReenviar: minutosParaReenviar, REENVIO_MIN: REENVIO_MIN,
     opcoesTestemunhas: opcoesTestemunhas, escolhidas: escolhidas, testemunhasParaTela: testemunhasParaTela,
-    sigCompradores: sigCompradores, sigFiadores: sigFiadores, corpoRubrica: corpoRubrica, DOC: DOC, tipoDoDocumento: tipoDoDocumento,
+    sigCompradores: sigCompradores, sigFiadores: sigFiadores, pessoasDoBloco: pessoasDoBloco, blocoAssinaturas: blocoAssinaturas, testemunhasDaVenda: testemunhas, corpoRubrica: corpoRubrica, DOC: DOC, tipoDoDocumento: tipoDoDocumento,
     nomeDocumentoAdicional: nomeDocumentoAdicional, documentosDoSignatario: documentosDoSignatario, requisitosRubrica: requisitosRubrica, atribuirLinhas: atribuirLinhas,
     validarRubricas: validarRubricas, ajusteRubricas: ajusteRubricas, AJUSTE_PADRAO: AJUSTE_PADRAO, POSICOES_PROJETO: POSICOES_PROJETO,
     posicoesProjeto: posicoesProjeto, posicaoMemorial: posicaoMemorial, contarPaginasPdf: contarPaginasPdf

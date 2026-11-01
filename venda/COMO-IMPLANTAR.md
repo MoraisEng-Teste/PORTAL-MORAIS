@@ -1091,6 +1091,76 @@ só na página da Clicksign até o modelo ter uma linha por pessoa.
 - Sandbox: conferir no envelope se a caixa cai em cima de cada linha (vendedora, corretor, testemunhas; fiadores nos
   termos). Fora do lugar: `RUBRICAS_AJUSTE.linha`.
 
+## Uma linha de assinatura por pessoa nos modelos (01/11/2026, plano 23 B — troca dos blocos)
+
+O dono autorizou mexer nos BLOCOS de assinatura dos modelos (não no texto jurídico): "essas alterações estéticas pode
+fazer". Os dois blocos do contrato (quadro-resumo e ASSINATURAS no fim) e o dos termos continuam; cada um passa a ser
+um parágrafo só com um marcador, e o código escreve uma linha por pessoa: traço, `Nome:`, `CPF:` (CNPJ de empresa) e o
+papel em negrito, na ordem vendedora, comprador 1, cônjuge do comprador 1, comprador 2, fiador 1, cônjuge do fiador 1,
+fiador 2, cônjuge do fiador 2, corretor e testemunhas 1 e 2 (com nome e CPF).
+
+- Só aparece quem assina aquele documento: no contrato, sem fiadores (eles assinam só os termos) e com o corretor só
+  quando há comissão; nos termos de confissão, com fiadores e cônjuges deles e sem corretor; na pré-reserva, vendedora,
+  pré-reservante e testemunhas, e o cônjuge só com a caixa "Incluir o cônjuge na pré-reserva" ligada.
+- Marcadores: `{{ASSINATURAS_QUADRO}}` e `{{ASSINATURAS_FINAL}}` (contrato do condomínio, casa pronta e em construção) e
+  `{{ASSINATURAS_TERMO}}` (confissão PRÉ e PÓS e termo de pré-reserva).
+- **Modelo não migrado continua saindo como hoje.** Nada muda até rodar a migração abaixo.
+- As testemunhas saem com o nome escolhido na hora de gerar. Se trocar as testemunhas (ou a caixa do cônjuge da
+  pré-reserva) depois de gerar, gere o contrato/termo de novo antes de enviar.
+- Com `ASSINATURA_LINHAS` = `1`, cada pessoa ganha a assinatura em cima da própria linha (cônjuge e comprador 2
+  também). O bloco do quadro-resumo que vira a página continua sendo lido na página seguinte.
+
+**Atenção: o PORTAL-VENDA-TESTE e a produção usam os MESMOS modelos** (as mesmas Propriedades `MODELO_..._ID`). Por
+isso a migração NUNCA mexe no modelo original: ela faz uma CÓPIA de cada modelo, já com os blocos novos, e cada projeto
+passa a usar a cópia quando o dono troca a Propriedade dele. O código antigo da produção recusaria o modelo migrado
+(`MODELO_COM_MARCADOR_SOBRANDO`); por isso a produção só troca a Propriedade depois de ter o código novo.
+
+- Com o modelo migrado, as testemunhas escolhidas (e, na pré-reserva, a caixa do cônjuge) entram no carimbo do PDF:
+  trocar depois de gerar deixa o contrato/termo desatualizado e o envio pede para gerar de novo. Com o modelo antigo
+  o carimbo é o de hoje.
+- Contrato do condomínio com o modelo migrado: se o CNPJ do vendedor no cadastro não estiver escrito no texto do
+  modelo, o contrato não sai (`MODELO_CNPJ_VENDEDOR_DIFERENTE`) — o bloco novo escreve o vendedor pelo cadastro e a
+  qualificação do modelo tem de ser a mesma empresa.
+
+**Passo a passo do dono (uma vez):**
+1. Colar o código novo nos DOIS projetos, `PORTAL-VENDA-TESTE` e `PORTAL-VENDA`: `ClicksignVenda`, `ContratoVenda`,
+   `GerarContrato`, `AssinaturaVenda`, `AssinaturaVigia`, `Confissao`, `PreReserva` e o novo `MigrarModelos`; e
+   subir o site (`venda/RubricasVenda.js` v4, `venda/assinatura-ui.js` v20, `venda-dossie.js` v51, `vendas.html`,
+   `simulacoes.html`, `sw.js` v253). Com os modelos de hoje nada muda.
+2. Num dos projetos (no TESTE), escolher a função `migrarModelosAssinaturasPrevia` e clicar em Executar. Ela só lê:
+   o Registro de execução diz, para cada modelo (`MODELO_CONDOMINIO_ID`, `MODELO_PRONTO_ID`, `MODELO_CONSTRUCAO_ID`,
+   `MODELO_CONFISSAO_PRE_ID`, `MODELO_CONFISSAO_POS_ID`, `MODELO_PRE_RESERVA_ID`), quantos blocos trocaria, o vendedor
+   escrito no bloco antigo e CADA linha que sairia. Esperado: 2 blocos nos contratos e 1 nos termos. "NÃO MEXI — …" =
+   aquele modelo fica como está (o motivo vem escrito).
+3. Conferida a prévia, executar `migrarModelosAssinaturasAplicar`. Para cada modelo ele cria, na mesma pasta, a cópia
+   "<nome> - assinaturas 01-11", confere que ela saiu igual ao original e troca os blocos SÓ NA CÓPIA. O registro diz
+   "Propriedade X: trocar <id antigo> por <id novo>". Os originais não mudam. "ERRO NA CÓPIA <id> — apague a cópia":
+   apagar aquela cópia no Drive e avisar. Rodar de novo não cria outra cópia (repete qual Propriedade trocar).
+4. Abrir as cópias no Google Docs: no lugar de cada bloco, uma linha `{{ASSINATURAS_...}}` centralizada.
+5. No `PORTAL-VENDA-TESTE` (Configurações do projeto → Propriedades do script), trocar cada `MODELO_..._ID` pelo id
+   novo do registro.
+6. Testar no TESTE: pré-contrato e contrato do condomínio (com cônjuge e fiadores) e de uma casa de rua, os termos de
+   confissão e um termo de pré-reserva. Conferir as linhas, nomes, CPFs e o papel em negrito.
+7. Tudo certo: trocar as mesmas Propriedades no `PORTAL-VENDA` de produção (que já tem o código novo do passo 1).
+
+**Voltar atrás:** pôr de novo na Propriedade o id antigo (o original não foi mexido). As cópias podem ficar ou ser
+apagadas.
+
+**Ajustes do teste no sandbox (01/11):** valem também com os modelos de hoje.
+- As duas testemunhas lado a lado viram duas linhas (antes a TESTEMUNHA 2 ficava sem a assinatura posicionada).
+- Quadro-resumo que vira a página (vendedora no pé de uma página, comprador e o resto na seguinte): as duas páginas são
+  lidas; o papel escrito à direita, na altura do nome, conta.
+- Logo depois da última assinatura a Clicksign leva ~1 minuto para gerar o arquivo assinado. Nesse tempo o Atualizar
+  situação mostra "Assinado por todos — o arquivo assinado fica pronto em instantes, clique em Atualizar situação" (antes
+  era erro). A vigia relê só esses contratos (Propriedade `ASS_AGUARDANDO_<pageId>`, apagada quando o PDF entra) por
+  até 24 h; depois desiste e registra. Contratos ASSINADO antigos nunca são relidos.
+- Quando o PDF assinado do contrato do condomínio entra — pelo Atualizar situação ou pela vigia — acontece uma vez só o
+  que antes só a vigia fazia: Andamento "ASSINOU E ARMAZENOU CONTRATO" = SIM e, com `MC_LANCAR_AO_ASSINAR` = SIM e a
+  prévia OK, o lançamento no Mais Controle.
+- Decisão do dono (01/11): o corretor assina SÓ o contrato — não entra nos termos de confissão (nem na pré-reserva).
+- Linha de assinatura cujo texto mostra dois papéis (blocos lado a lado lidos juntos), ou papel VENDEDORA com o nome
+  de um comprador, não vai para ninguém: melhor a pessoa assinar só na página da Clicksign do que na linha errada.
+
 ## Selfie com documento para comprador, cônjuge e fiadores (01/11/2026, plano 23 C)
 
 Desligada até o dono conferir. Com a Propriedade `CLICKSIGN_SELFIE` = `1`, o comprador 1 e 2, o cônjuge do comprador,
