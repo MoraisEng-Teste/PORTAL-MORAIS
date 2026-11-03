@@ -900,7 +900,7 @@ const SIM_TTL = 10*60*1000;
    detalhe da proposta vão direto ao servidor, sem fila, e o botão mostra que está trabalhando. */
 /* 05/10 (item 11) — ABA SERVIDORES. Lê direto do Apps Script do simulador (ação pública e só de
    leitura "workers": nomes dos PCs, papel, último sinal — nenhum segredo). */
-const SRV_URL = "https://script.google.com/macros/s/AKfycbzwUIApU5nKXi1vG3cEs_V2DWCdkLDwY_vo0zBxO59ZBLbEihIxuOqbHdNLm-8pVVwVJQ/exec";
+const SRV_URL = "https://script.google.com/macros/s/AKfycbxciC7C575zSGZgyoTeBFs48MR_apksHIxT03AV6elzJ6_c4ZtNTuTJVo9Ysjb4ik6w1g/exec";
 function srvTempo(seg){ seg=Math.max(0,Number(seg)||0); if(seg<60) return seg+" s"; if(seg<3600) return Math.round(seg/60)+" min"; if(seg<86400) return (seg/3600).toFixed(1).replace(".",",")+" h"; return Math.round(seg/86400)+" dia(s)"; }
 function srvHora(iso){ if(!iso) return "—"; const d=new Date(iso); return isNaN(d)?esc(iso):d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
 async function srvCarregar(bt){
@@ -1164,7 +1164,7 @@ function fluxoTrocar(alvo, modo){
 /* r48 (item 9) — MAPA AO VIVO abaixo da tabela de unidades. É o mesmo SVG do
    mapa de vendas; as cores saem da lista que está na tela, então a mudança
    aparece assim que a unidade é salva. */
-const MAPA_SVG_URL = "https://devmoraiseng.github.io/SIMULADOR-RESERVA-DO-IP-S/assets/CONDOMINIO_VENDAS.svg";
+const MAPA_SVG_URL = "https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/assets/CONDOMINIO_VENDAS.svg";
 let MAPA_SVG_TXT = "";
 async function simRenderMapa(){ return pintarMapa("sim-mapa","sim-mapaLegenda", false); }
 
@@ -1937,7 +1937,7 @@ function simParaProposta(id){
     nomeCliente:String(s.cliente||""), cpfCliente:String(s.cpf||""), emailCorretor:String(s.email||"") };
   try{ localStorage.setItem("simParaProposta", JSON.stringify(d)); }
   catch(e){ alert("Não consegui guardar os dados da simulação neste navegador."); return; }
-  window.open("https://devmoraiseng.github.io/SIMULADOR-RESERVA-DO-IP-S/proposta.html?tipo="+encodeURIComponent(d.tipo)+
+  window.open("https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/proposta.html?tipo="+encodeURIComponent(d.tipo)+
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
 function simFecharDet(){ document.getElementById("sim-modal").classList.add("hide"); }
