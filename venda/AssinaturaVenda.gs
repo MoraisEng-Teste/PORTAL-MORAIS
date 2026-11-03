@@ -655,9 +655,8 @@ function assCriarEnvelope_(p, pid, cols, doc, gerado, lista, nomeCs, extras, adi
     return rg;
   }
   var r = { ok: true, situacao: S.ENVIADO,
-            signatarios: lista.map(function (s, i) {
-              /* 03/11: com o id, o Trocar e-mail aparece já na resposta do envio (sem precisar de Atualizar situação) */
-              return { id: String(ids[i] || ""), papel: s.papel, nome: ClicksignVenda.nomeMascarado(s.nome), email: String(s.email || ""), assinou: false, situacao: "pendente", data: "" };
+            signatarios: lista.map(function (s) {
+              return { papel: s.papel, nome: ClicksignVenda.nomeMascarado(s.nome), email: String(s.email || ""), assinou: false, situacao: "pendente", data: "" };
             }) };
   if (!n.ok) r.aviso = "NOTIFICACAO_FALHOU";
   if (avisos.length) r.avisos = avisos;
@@ -933,8 +932,7 @@ function assReenviarTravado_(p, pid) {
 /* ---- 03/11/2026 (dono): trocar o e-mail de quem ainda não assinou, sem cancelar o envelope ----
  * "há vezes em que o email de alguém fica errado, e para alterar precisa cancelar". A API v3 não edita signatário: cria um
  * signatário novo (mesmo nome, CPF, telefone e avisos; e-mail certo), recria os requisitos que o envio guardou daquele
- * signatário (qualificação, autenticação, rubricas — em lote, que é o que a Clicksign aceita com o envelope ativo), exclui o
- * antigo (os requisitos dele vão junto) e avisa só o novo. A ordem
+ * signatário (qualificação, autenticação, rubricas), tira os requisitos do antigo e o antigo, e avisa só o novo. A ordem
  * (novo antes de tirar o antigo) faz o envelope nunca ficar sem a pessoa — sem ela, o auto_close fecharia o contrato.
  * Falha no meio desfaz o novo; se nem isso der, a tela manda cancelar o envelope. Só envelope ENVIADO e signatário
  * pendente. Não muda o cadastro: o e-mail certo também precisa ser corrigido na venda (a tela avisa). */
@@ -990,19 +988,22 @@ function assTrocarEmailTravado_(p, pid, antigo) {
   var novo = "", criados = [], papeis = assPapeis_(envId);
   function desfazer() {
     /* tira o que foi criado; se não der, sobram os dois signatários e só cancelar resolve */
-    /* excluir o signatário leva os requisitos dele junto (sandbox 03/11); tirar só os requisitos dá 422 */
-    return novo ? cs_("delete", base + "/signers/" + encodeURIComponent(novo)).ok : true;
+    var ok = true;
+    if (criados.length) ok = cs_("post", base + "/bulk_requirements", ClicksignVenda.corpoRemoverRequisitos(criados.map(function (g) { return g[0]; }))).ok;
+    if (novo) ok = cs_("delete", base + "/signers/" + encodeURIComponent(novo)).ok && ok;
+    return ok;
   }
   try {
     novo = csPasso_("novo signatario", "post", base + "/signers",
                     ClicksignVenda.corpoSignatarioTrocado(velho && velho.attributes, p.email), true).id;
-    /* envelope ativo: requisitos novos só em lote (POST /requirements dá 403 com running — sandbox 03/11) */
-    var lote = ClicksignVenda.corpoAdicionarRequisitos(guardados, novo), ops = lote["atomic:operations"];
-    var rl = csPasso_("requisitos do novo", "post", base + "/bulk_requirements", lote);
-    var idsNovos = ClicksignVenda.idsDoLote(rl.resultados, ops.length);
-    ops.forEach(function (op, i) { criados.push(ClicksignVenda.requisitoGuardado(idsNovos[i], { data: op.data })); });
-    /* sandbox 03/11: tirar os requisitos do antigo antes responde 422 ("há signatário(s) sem os requisitos necessários");
-       o DELETE do signatário já leva os requisitos dele */
+    ClicksignVenda.requisitosParaRecriar(guardados).forEach(function (g) {
+      var corpo = ClicksignVenda.corpoRequisitoTrocado(g, novo);
+      var rr = csPasso_("requisitos do novo", "post", base + "/requirements", corpo);
+      criados.push(ClicksignVenda.requisitoGuardado(rr.id, corpo));
+      Utilities.sleep(CS_PAUSA_REQ_MS);
+    });
+    var velhos = guardados.map(function (g) { return g[0]; }).filter(function (id) { return id; });
+    if (velhos.length) csPasso_("tirar requisitos do antigo", "post", base + "/bulk_requirements", ClicksignVenda.corpoRemoverRequisitos(velhos));
     csPasso_("tirar signatario antigo", "delete", base + "/signers/" + encodeURIComponent(antigo));
   } catch (e) {
     if (e.message !== "CLICKSIGN_FALHOU") throw e;
