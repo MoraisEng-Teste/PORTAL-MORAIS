@@ -883,6 +883,9 @@
         ? "alterado no portal" + (f.por ? " por " + esc(f.por) : "") + (f.em ? " em " + esc(dataHoraBR(f.em)) : "") + "."
         : "o da proposta (simulador).") + (lancada ? " Já lançado no Mais Controle com este fluxo; não muda mais por aqui." : "") + "</span>" +
         '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-ver">Ver fluxo</button>' +
+        /* 04/11 (dono): PDF do fluxo salvo para mandar ao cliente, antes do pré-contrato (o mesmo do quadro do cartão) */
+        (typeof window !== "undefined" && typeof window.condPdfFluxo === "function"
+          ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-pdf">📄 PDF do fluxo para o cliente</button>' : "") +
         (lancada ? "" : ' <button type="button" class="bt bt-mini" data-acao="c-fluxo-abrir"' + (dis || (f.trava ? " disabled" : "")) + ">Alterar fluxo</button>") + "</div>";
       if (f.trava && TRAVA_FLUXO[f.trava] && !lancada) h += '<div class="dz-msg">' + esc(MSG_CONTRATO[f.trava]) + "</div>";
       if (fluxoDepoisDoContrato(f, ec)) h += '<div class="dz-aviso">Fluxo alterado depois do contrato: gere o contrato de novo.</div>';
@@ -2105,7 +2108,9 @@
     } else {
       var dq = new Date(e.em || ""), quando = isNaN(dq) ? "" : dq.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });   /* hora local, não UTC */
       h += '<div class="dz-linha"><span class="dz-rot">Conferido em ' + esc(quando) + (e.por ? " por " + esc(e.por) : "") + "</span></div>";
-      if (!e.atual) h += '<div class="dz-aviso">Os dados mudaram depois desta conferência — confira de novo.</div>';
+      /* 03/11/2026: documentos que chegaram (ou saíram) depois dela também a deixam velha */
+      if (e.anexosMudaram) h += '<div class="dz-aviso">Os documentos anexados mudaram depois desta conferência — confira de novo.</div>';
+      else if (!e.atual) h += '<div class="dz-aviso">Os dados mudaram depois desta conferência — confira de novo.</div>';
       h += '<div style="overflow-x:auto"><table class="dz-tab" style="width:100%;border-collapse:collapse;font-size:13px">' +
         "<tr><th>Pessoa · documento</th><th>Campo</th><th>No contrato</th><th>No documento</th><th>Situação</th></tr>" +
         (e.linhas || []).map(function (l, i) {
@@ -2937,6 +2942,10 @@
       var acao = b.getAttribute("data-acao"), r, seq;
       if (/^mc-/.test(acao)) return aoClicarMC(acao);
       if (/^pr-/.test(acao)) return aoClicarPR(acao);
+      if (acao === "c-fluxo-pdf") {   /* 04/11: o PDF do quadro do cartão, com o fluxo que está salvo */
+        if (typeof window.condPdfFluxo === "function") window.condPdfFluxo(pageId);
+        return;
+      }
       if (acao === "c-fluxo-ver") {
         /* 31/10/2026: abre o Quadro do pro soluto do cartão (aba Contrato) */
         var box = raiz && raiz.closest ? raiz.closest(".cd-cardbox") : null, dd = box && box.querySelector("details.cd-dobra");
