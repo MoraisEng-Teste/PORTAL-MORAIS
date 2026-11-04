@@ -259,7 +259,7 @@ ORÇADO/REALIZADO (a mesma do secret `SUPABASE_SERVICE_KEY` do GitHub). O Claude
 ## 2. (servidor) Atualizar o clone e testar
 ```powershell
 cd "C:\AUTOMAÇÕES MAIS CONTROLE\_portal"
-git pull https://github.com/DEVMoraisEng/PORTAL-MORAIS.git main
+git pull https://github.com/MoraisEng-Teste/PORTAL-MORAIS.git main
 python -m pytest -q tests/test_robo_mc_anexos.py tests/test_robo_fila.py
 ```
 
