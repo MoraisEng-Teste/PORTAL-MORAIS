@@ -883,6 +883,9 @@
         ? "alterado no portal" + (f.por ? " por " + esc(f.por) : "") + (f.em ? " em " + esc(dataHoraBR(f.em)) : "") + "."
         : "o da proposta (simulador).") + (lancada ? " Já lançado no Mais Controle com este fluxo; não muda mais por aqui." : "") + "</span>" +
         '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-ver">Ver fluxo</button>' +
+        /* 04/11 (dono): PDF do fluxo salvo para mandar ao cliente, antes do pré-contrato (o mesmo do quadro do cartão) */
+        (typeof window !== "undefined" && typeof window.condPdfFluxo === "function"
+          ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-pdf">📄 PDF do fluxo para o cliente</button>' : "") +
         (lancada ? "" : ' <button type="button" class="bt bt-mini" data-acao="c-fluxo-abrir"' + (dis || (f.trava ? " disabled" : "")) + ">Alterar fluxo</button>") + "</div>";
       if (f.trava && TRAVA_FLUXO[f.trava] && !lancada) h += '<div class="dz-msg">' + esc(MSG_CONTRATO[f.trava]) + "</div>";
       if (fluxoDepoisDoContrato(f, ec)) h += '<div class="dz-aviso">Fluxo alterado depois do contrato: gere o contrato de novo.</div>';
@@ -914,14 +917,18 @@
           '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
         return;
       }
-      h += '<tr data-fx-linha="' + k + '"><td><select data-fx="t" data-k="' + k + '"' + dis + ">" +
+      var guiada = ajustavelFx(l), trav = guiada && !!(ed.travadas || {})[k];
+      h += '<tr data-fx-linha="' + k + '"' + (guiada && (ed.ajustadas || {})[k] ? ' data-fx-ajustada="1" style="background:rgba(255,200,0,.14)"' : "") +
+        '><td><select data-fx="t" data-k="' + k + '"' + dis + ">" +
         ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === l.t ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") +
         '</select><div class="dz-nota">' + (tp.reajuste ? "reajuste " + esc(tp.reajuste) : "sem correção") + "</div></td>" +
         /* 30/10 (arquivo 17, item 2): o Redistribuir virou ícone, entre o tipo e o valor */
         '<td><button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-red" data-k="' + k + '"' + dis +
         ' title="Redistribuir: joga a diferença inteira nesta linha" aria-label="Redistribuir a diferença nesta linha">↻</button></td>' +
         '<td><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right">' +
-        (l.u && l.n > 1 ? '<div class="dz-nota">última: ' + esc(numBR(l.u)) + "</div>" : "") + "</td>" +
+        '<div class="dz-nota vb-fx-ult" data-k="' + k + '"' + (l.u && l.n > 1 ? ">última: " + esc(numBR(l.u)) : ' style="display:none">') + "</div>" +
+        /* 04/11 (dono): "ajustado pelo simulador" ou a sugestão do que esta linha precisaria para fechar */
+        (guiada ? '<div class="vb-fx-guia" data-k="' + k + '">' + htmlGuiaLinha(ed, k) + "</div>" : "") + "</td>" +
         '<td><input type="number" min="1" data-fx="n" data-k="' + k + '" value="' + esc(l.n) + '"' + dis + ' style="width:4.5em"></td>' +
         '<td><input type="date" data-fx="d" data-k="' + k + '" value="' + esc(l.d) + '"' + dis + "></td>" +
         '<td><input type="number" min="1" max="24" data-fx="i" data-k="' + k + '" value="' + esc(l.i || 1) + '"' + dis + ' style="width:4em"></td>' +
@@ -932,9 +939,11 @@
         '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td>" +
         '<td style="white-space:nowrap">' +
         (l.t === "permuta" ? '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-bem" data-k="' + k + '"' + dis + ">Dados do bem</button> " : "") +
+        (guiada ? htmlTrava(k, trav, dis) + " " : "") +
         '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-del" data-k="' + k + '"' + dis + ' aria-label="Apagar linha">✕</button></td></tr>';
     });
     h += "</tbody></table></div>";
+    h += '<div class="dz-nota">Mexeu no valor ou na quantidade de uma pré-chaves, balão ou pós-chaves: a linha trava (🔒) e o simulador ajusta as outras soltas (🔓) para a conta fechar.</div>';
     h += htmlFluxoBem(ed, dis);
     h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-add"' + dis + ">+ linha</button> " +
       '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-padrao"' + dis + ">Recomeçar do fluxo da proposta</button></div>";
@@ -954,6 +963,57 @@
         }).join("") + "</ul></details>";
     }
     return h;
+  }
+  /* ---- 04/11/2026 (dono): "os fluxos que fazemos à mão devem seguir o princípio do simulador — tirei das primeiras
+     parcelas pré-chaves, sobe automaticamente o valor do primeiro balão, ou pelo menos um campo de sugestão". Decisão:
+     ajuste automático com cadeado. Estado só da tela (não é gravado): ed.travadas { k: true } = linhas que a pessoa
+     mexeu ou travou; ed.ajustadas { k: true } = o que o simulador mudou na última conta; ed.sugestao { k: valor de cada }
+     = o que cada linha precisaria quando as travas não deixam fechar. A conta mora em FluxoLivre.guiar. ---- */
+  function ajustavelFx(l) { return !!l && (l.t === "pre" || l.t === "balao" || l.t === "pos"); }
+  function htmlTrava(k, trav, dis) {
+    return '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-trava" data-k="' + k + '" aria-pressed="' + trav + '"' + dis +
+      ' title="' + (trav ? "Travada: o simulador não mexe nesta linha (clique para soltar)" : "Solta: o simulador ajusta esta linha (clique para travar)") +
+      '" aria-label="' + (trav ? "Destravar a linha " : "Travar a linha ") + (k + 1) + '">' + (trav ? "🔒" : "🔓") + "</button>";
+  }
+  function htmlGuiaLinha(ed, k) {
+    var s = ed.sugestao;
+    if (s && Object.prototype.hasOwnProperty.call(s, k)) return '<div class="dz-nota" style="opacity:.75">sugestão: ' + esc(FL().moeda(s[k])) + "</div>";
+    if ((ed.ajustadas || {})[k]) return '<div class="dz-nota" style="color:#1d6b43">ajustado pelo simulador</div>';
+    return "";
+  }
+  /* a linha k foi mexida (valor ou quantidade): trava ela e refaz as soltas. Devolve os índices que mudaram. */
+  function guiarEditor(ed, k) {
+    ed.travadas = ed.travadas || {};
+    if (k !== null && k !== undefined && ajustavelFx(ed.linhas[k])) ed.travadas[k] = true;
+    var r = FL().guiar({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, ed.travadas, ed.padrao);
+    ed.ajustadas = {};
+    ed.sugestao = r.sugestao || null;
+    ed.guiaErro = r.erro || "";
+    var mudou = r.mudou || [];
+    mudou.forEach(function (j) { ed.linhas[j] = r.linhas[j]; ed.ajustadas[j] = true; });
+    return mudou;
+  }
+  /* cadeado clicado: trava/solta e refaz (soltar devolve a linha à conta) */
+  function travarLinha(ed, k) {
+    if (!ajustavelFx(ed.linhas[k])) return [];
+    ed.travadas = ed.travadas || {};
+    if (ed.travadas[k]) delete ed.travadas[k]; else ed.travadas[k] = true;
+    return guiarEditor(ed, null);
+  }
+  /* "Aplicar sugestão": a conta do simulador sem as travas; os cadeados abrem */
+  function aplicarSugestao(ed) {
+    var r = FL().guiar({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, [], ed.padrao);
+    if (r.erro || !r.linhas) { ed.guiaErro = r.erro || ""; return []; }
+    limparGuia(ed);
+    r.mudou.forEach(function (j) { ed.linhas[j] = r.linhas[j]; ed.ajustadas[j] = true; });
+    return r.mudou;
+  }
+  function limparGuia(ed) { ed.travadas = {}; ed.ajustadas = {}; ed.sugestao = null; ed.guiaErro = ""; }
+  /* linha k apagada: os cadeados de baixo sobem uma posição */
+  function travasAoApagar(ed, k) {
+    var t = {};
+    Object.keys(ed.travadas || {}).forEach(function (j) { j = Number(j); if (j < k) t[j] = true; else if (j > k) t[j - 1] = true; });
+    ed.travadas = t; ed.ajustadas = {}; ed.sugestao = null; ed.guiaErro = "";
   }
   /* ---- 03/11/2026 (dono): "quando tiver permuta, hora que salvar, pede para quem tiver preenchendo colocar as
      informações da permuta". O formulário abre no próprio cartão (ed.bemK = índice da linha), em grade que vira uma
@@ -1127,6 +1187,12 @@
           ? "<span>Comissão pela regra: <b>" + esc(F.moeda(Math.round(ed.valor * ed.desconto.comissao.pct * 100) / 100)) + "</b></span>" : "") +
       htmlPrazoPlacar(ed) + "</div>";
     /* 31/10: sugestão para fechar a conta sem fazer na mão */
+    /* 04/11: as travas não deixam fechar — a sugestão aparece em cada linha; um clique aplica (abre os cadeados) */
+    if (!bate && ed.sugestao && Object.keys(ed.sugestao).length)
+      h += '<div class="dz-linha" style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center"><span class="dz-nota">' +
+        esc(ed.guiaErro || "As linhas travadas não deixam fechar a conta") + ".</span>" +
+        '<button type="button" class="bt bt-mini" data-acao="c-fluxo-sug"' + dis + ' title="Põe em cada linha o valor da sugestão (conta do simulador) e solta os cadeados">Aplicar sugestão</button></div>';
+    else if (!bate && ed.guiaErro) h += '<div class="dz-nota">' + esc(ed.guiaErro) + ".</div>";
     if (!bate) h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-dist"' + dis +
       ' title="Espalha a diferença nas pré-chaves e balões, proporcional ao total de cada">Distribuir ' + esc(F.moeda(Math.abs(dif))) +
       " nas pré-chaves e balões</button></div>";
@@ -1187,6 +1253,16 @@
     return { titulo: s, itens: [] };
   }
   /* e = {situacao, vendaId}; u = {ocupado, msg, testes} */
+  /* "<rótulo>: pedido ao robô em dd/mm hh:mm" com mais de 10 minutos (o robô já devia ter respondido) */
+  function pedidoParado(situacao, rotulo, agora) {
+    var r = String(rotulo).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");   /* rótulo literal, ex.: "Contratos (ZIP)" */
+    var m = new RegExp("(^|\\n)" + r + ": pedido ao rob[ôo] em (\\d{2})/(\\d{2}) (\\d{2}):(\\d{2})", "i").exec(String(situacao || ""));
+    if (!m) return false;
+    var hoje = agora ? new Date(agora) : new Date();
+    var quando = new Date(hoje.getFullYear(), Number(m[3]) - 1, Number(m[2]), Number(m[4]), Number(m[5]));
+    if (quando > hoje) quando.setFullYear(quando.getFullYear() - 1);   /* virada de ano */
+    return hoje - quando > 10 * 60 * 1000;
+  }
   function htmlMC(e, u) {
     /* PROCESSANDO com mais de 15 min (carimbo [t=ms]) = o robô não respondeu: libera pedir de novo */
     var tProc = e && /\[t=(\d+)\]/.exec(e.situacao || "");
@@ -1219,9 +1295,11 @@
     /* 03/11: o contrato não entrou no recebimento (venda criada antes do PDF assinado) ou o ZIP não foi para o Orçamento:
        o botão pede de novo ao robô do servidor (ele não repete o que já está lá) */
     var linhasSit = String(e.situacao || "");
-    if (e.vendaId && /(^|\n)Contrato: n[ãa]o (anexado|pedido)/i.test(linhasSit))
+    /* 03/11 (casa 31): pedido recusado pelo robô (código antigo) não muda a situação — "pedido ao robô em dd/mm hh:mm"
+       há mais de 10 minutos também libera o botão de novo */
+    if (e.vendaId && (/(^|\n)Contrato: n[ãa]o (anexado|pedido)/i.test(linhasSit) || pedidoParado(linhasSit, "Contrato")))
       h += '<button type="button" class="bt bt-mini" data-acao="mc-anexar"' + d(ocupado) + ">Anexar contrato no Mais Controle</button> ";
-    else if (/(^|\n)Contratos \(ZIP\): (n[ãa]o (enviado|gerado|guardado)|.*N[ÃA]O pedido)/i.test(linhasSit))
+    else if (/(^|\n)Contratos \(ZIP\): (n[ãa]o (enviado|gerado|guardado)|.*N[ÃA]O pedido)/i.test(linhasSit) || pedidoParado(linhasSit, "Contratos (ZIP)"))
       h += '<button type="button" class="bt bt-mini" data-acao="mc-anexar-zip"' + d(ocupado) + ">Enviar ZIP ao Mais Controle</button> ";
     h += '<button type="button" class="bt ghost bt-mini" data-acao="mc-atualizar"' + (u.ocupado ? " disabled" : "") + ">Atualizar</button></div>";
     if (u.msg) h += '<div class="dz-msg">' + esc(u.msg) + "</div>";
@@ -1297,9 +1375,9 @@
                    htmlSoltar: htmlSoltar, pessoasDoEnvio: pessoasDoEnvio, conferirEscolhas: conferirEscolhas,
                    destinosDoEnvio: destinosDoEnvio, resultadoPorEspaco: resultadoPorEspaco,
                    resumo: resumo, escala: escala, tipoAceito: tipoAceito, painelCarregando: painelCarregando,
-                   htmlContrato: htmlContrato, htmlContratoLeitura: htmlContratoLeitura, MSG_SO_LEITURA: MSG_SO_LEITURA, etapaContrato: etapaContrato, estadoContrato: estadoContrato, mensagemContrato: mensagemContrato, htmlMC: htmlMC, mensagemMC: mensagemMC,
+                   htmlContrato: htmlContrato, htmlContratoLeitura: htmlContratoLeitura, MSG_SO_LEITURA: MSG_SO_LEITURA, etapaContrato: etapaContrato, estadoContrato: estadoContrato, mensagemContrato: mensagemContrato, htmlMC: htmlMC, pedidoParado: pedidoParado, mensagemMC: mensagemMC,
                    topicosMC: topicosMC, MC_URL_VENDA: MC_URL_VENDA, htmlTestemunhas: htmlTestemunhas, htmlConjugePR: htmlConjugePR,
-                   htmlCampos: htmlCampos, htmlConta: htmlConta, htmlFluxo: htmlFluxo, htmlFluxoVivo: htmlFluxoVivo, htmlFluxoDesconto: htmlFluxoDesconto, htmlFluxoBem: htmlFluxoBem, aplicarCrlv: aplicarCrlv, permutaSemBem: permutaSemBem, faltasDoBem: faltasDoBem, campoBem: campoBem, lerNumBR: lerNumBR, contaDoEstado: contaDoEstado, pedidoCampos: pedidoCampos,
+                   htmlCampos: htmlCampos, htmlConta: htmlConta, htmlFluxo: htmlFluxo, htmlFluxoVivo: htmlFluxoVivo, htmlFluxoDesconto: htmlFluxoDesconto, htmlFluxoBem: htmlFluxoBem, aplicarCrlv: aplicarCrlv, permutaSemBem: permutaSemBem, guiarEditor: guiarEditor, travarLinha: travarLinha, aplicarSugestao: aplicarSugestao, limparGuia: limparGuia, travasAoApagar: travasAoApagar, faltasDoBem: faltasDoBem, campoBem: campoBem, lerNumBR: lerNumBR, contaDoEstado: contaDoEstado, pedidoCampos: pedidoCampos,
                    contaDasEntradas: contaDasEntradas, faltasDaResposta: faltasDaResposta, detalheFluxoGravado: detalheFluxoGravado,
                    htmlFiadores: htmlFiadores, fiadoresDoEstado: fiadoresDoEstado, valoresFiadores: valoresFiadores,
                    rascunhoFia: rascunhoFia, perguntaConjugeFiador2: perguntaConjugeFiador2 };
@@ -2227,6 +2305,12 @@
     if (s !== "ENVIADO" && s !== "ASSINADO") return;
     try { window.dispatchEvent(new CustomEvent("venda:contrato-enviado", { detail: { pageId: pageId, situacao: s } })); } catch (e) {}
   }
+  /* 03/11/2026 (dono): contrato FINAL gerado já é venda — proposta VENDIDA, mapa VENDIDA = SIM e o e-mail de venda ao
+   * corretor. Usa o mesmo aviso do enviado (vendas.html só age na linha do condomínio). */
+  function avisarContratoGerado(pageId, estado) {
+    if (!estado || !(estado.gerado || estado.etapa === "FINAL")) return;
+    try { window.dispatchEvent(new CustomEvent("venda:contrato-enviado", { detail: { pageId: pageId, situacao: "GERADO" } })); } catch (e) {}
+  }
 
   /* opts.recebimentos: o bloco Recebimentos (só a casa da VENDAS; o cartão do condomínio não tem) */
   function criarBlocosVenda(pageId, ativo, opts) {
@@ -2265,12 +2349,20 @@
       if (assinadoA()) return htmlHistorico(estadoC && estadoC.historico);
       return enviadoA() ? htmlContratoLeitura(estadoC, uiC) : htmlContrato(estadoC, uiC);
     }
+    /* 03/11 (dono): contrato gerado direto, termo nunca enviado = pré-reserva dispensada (o servidor também recusa).
+       "Gerado" aqui é o PDF em CONTRATO GERADO, como no servidor — não só o contrato final conferido. */
+    function dispensadaP() {
+      var VA = window.VendaAssinatura;
+      return !!(VA && VA.preReservaDispensada &&
+                VA.preReservaDispensada({ contratoGerado: !!(estadoC && estadoC.gerado), estado: ctxA && ctxA.estado }, ctxP));
+    }
     function htmlPR() {
       if (assinadoP()) return "";
       if (assinadoA()) return '<div class="grp">Pré-reserva</div><div class="vazio">O contrato já foi assinado por todos — a pré-reserva não muda mais.</div>';
+      if (dispensadaP()) return '<div class="grp">Pré-reserva</div><div class="vazio">Dispensada — o contrato desta unidade foi gerado direto, sem a pré-reserva.</div>';
       return htmlPreReserva(estadoP, uiP);
     }
-    function htmlAssPRVisivel() { return assinadoA() && !assinadoP() ? "" : htmlAssPR(); }
+    function htmlAssPRVisivel() { return (assinadoA() && !assinadoP()) || dispensadaP() ? "" : htmlAssPR(); }
     function garantirAssinados() {
       var VA = window.VendaAssinatura;
       if (!VA || !vivo()) return;
@@ -2761,11 +2853,13 @@
         if (!rg.ok && rg.erro === "SEM_RESPOSTA") carregarPR();
       }
     }
-    async function aoClicarAssPR(acao) {
+    async function aoClicarAssPR(acao, b) {
       if (!window.VendaAssinatura || ctxP.ocupado) return;
       ctxP.contratoGerado = !!(estadoP && estadoP.gerado);
       var novo = await window.VendaAssinatura.executarAcaoAssinatura(acao, ctxP, {
         pageId: pageId,
+        alvo: b ? b.getAttribute("data-sig") : "",   /* 03/11: Trocar e-mail */
+        perguntar: function (t, v) { return window.prompt(t, v); },
         confirmar: function (t) { return window.confirm(t); },
         chamar: function (p) { return chamarVenda(p, ESPERA_ASSINATURA); },
         pintar: function (c) { ctxP = c; pintarP(); },
@@ -2826,7 +2920,7 @@
       pintarA();
       if (r.ok) avisarContratoEnviado(pageId, ctxA.estado);
     }
-    async function aoClicarAss(acao) {
+    async function aoClicarAss(acao, b) {
       if (!window.VendaAssinatura || ctxA.ocupado) return;
       ctxA.contratoGerado = contratoFinal(estadoC);
       ctxA.desatualizado = !!(contratoFinal(estadoC) && estadoC.envioDesatualizado);   /* 03/11: trava o Enviar */
@@ -2834,6 +2928,8 @@
       var janelaPrevia = acao === "a-previa" ? window.open("about:blank", "_blank") : null;
       var novo = await window.VendaAssinatura.executarAcaoAssinatura(acao, ctxA, {
         pageId: pageId,
+        alvo: b ? b.getAttribute("data-sig") : "",   /* 03/11: Trocar e-mail */
+        perguntar: function (t, v) { return window.prompt(t, v); },
         mostrarPrevia: function (prev) { return window.RubricasVenda ? window.RubricasVenda.mostrarPrevia(prev, janelaPrevia) : null; },
         confirmar: function (t) { return window.confirm(t); },
         chamar: function (p) { return chamarVenda(p, ESPERA_ASSINATURA); },
@@ -2898,6 +2994,7 @@
       if (r.ok) { estadoC = estadoContrato(r); uiC.msg = ""; }
       else uiC.msg = mensagemContrato(r);
       pintar();
+      if (r.ok) avisarContratoGerado(pageId, estadoC);
       /* 31/10/2026: o cartão do condomínio mostra o quadro do link só quando falta algo (vendas.html escuta) */
       if (r.ok) try { window.dispatchEvent(new CustomEvent("venda:faltas-cliente", { detail: { pageId: pageId, faltas: estadoC.faltasCliente || null } })); } catch (e) {}
     }
@@ -2906,6 +3003,10 @@
       var acao = b.getAttribute("data-acao"), r, seq;
       if (/^mc-/.test(acao)) return aoClicarMC(acao);
       if (/^pr-/.test(acao)) return aoClicarPR(acao);
+      if (acao === "c-fluxo-pdf") {   /* 04/11: o PDF do quadro do cartão, com o fluxo que está salvo */
+        if (typeof window.condPdfFluxo === "function") window.condPdfFluxo(pageId);
+        return;
+      }
       if (acao === "c-fluxo-ver") {
         /* 31/10/2026: abre o Quadro do pro soluto do cartão (aba Contrato) */
         var box = raiz && raiz.closest ? raiz.closest(".cd-cardbox") : null, dd = box && box.querySelector("details.cd-dobra");
@@ -2917,9 +3018,9 @@
       if (/^d-/.test(acao)) return aoClicarConf(acao);
       if (/^[ap]-doc-(ver|baixar)$/.test(acao)) return abrirDocAssinado(b, acao);   /* 01/11 (plano 23 A) */
       if (acao === "p-ver-assinado") return verAssinadoPR();
-      if (/^p-/.test(acao)) return aoClicarAssPR(acao);
+      if (/^p-/.test(acao)) return aoClicarAssPR(acao, b);
       if (acao === "a-ver-assinado") return verAssinado();
-      if (/^a-/.test(acao)) return aoClicarAss(acao);
+      if (/^a-/.test(acao)) return aoClicarAss(acao, b);
       if (acao === "r-confirmar") return confirmarRec(b);
       if (uiC.ocupadoContrato) return;
       if (acao === "c-ver") {
@@ -3130,6 +3231,8 @@
     }
     async function aoClicarFluxo(acao, b) {
       var ed = uiC.fluxoEd, k = Number(b.getAttribute("data-k"));
+      /* 04/11: conta do simulador pendente (digitou e clicou logo): faz agora, antes do botão */
+      if (esperaG) { clearTimeout(esperaG); esperaG = null; if (ed) guiarEditor(ed, null); }
       if (acao === "c-fluxo-abrir") {
         uiC.ocupadoContrato = "fluxo"; uiC.msg = ""; pintar();
         var r = await chamarVenda({ action: "fluxoEditar", pageId: pageId });
@@ -3149,7 +3252,7 @@
       if (!ed) return;
       if (acao === "c-fluxo-fechar") { uiC.fluxoEd = null; pintar(); return; }
       if (acao === "c-fluxo-add") { ed.linhas.push({ t: "balao", v: 0, n: 1, d: "", i: 1, x: "" }); pintar(); return; }
-      if (acao === "c-fluxo-del") { if (!(FL().TIPOS[(ed.linhas[k] || {}).t] || {}).fixo) { ed.linhas.splice(k, 1); ed.bemK = null; ed.salvarDepois = false; } pintar(); return; }
+      if (acao === "c-fluxo-del") { if (!(FL().TIPOS[(ed.linhas[k] || {}).t] || {}).fixo) { ed.linhas.splice(k, 1); ed.bemK = null; ed.salvarDepois = false; travasAoApagar(ed, k); } pintar(); return; }
       /* 03/11 (dono): CRLV da permuta — escolhe a foto/PDF, a IA lê no servidor (lerCrlv) e a tela preenche só o vazio */
       if (acao === "c-fluxo-crlv") {
         var lv = ed.linhas[k];
@@ -3198,13 +3301,21 @@
         if (depois) return aoClicarFluxo("c-fluxo-salvar", b);
         return;
       }
-      if (acao === "c-fluxo-padrao") { ed.linhas = copiaLinhas(ed.padrao.linhas); ed.valor = ed.padrao.valor; ed.semComissao = false; ed.descontos = []; pintar(); return; }
-      if (acao === "c-fluxo-desconto") { aplicarDescontoTela(ed); pintar(); return; }
+      if (acao === "c-fluxo-padrao") { ed.linhas = copiaLinhas(ed.padrao.linhas); ed.valor = ed.padrao.valor; ed.semComissao = false; ed.descontos = []; limparGuia(ed); pintar(); return; }
+      if (acao === "c-fluxo-desconto") { aplicarDescontoTela(ed); ed.ajustadas = {}; ed.sugestao = null; ed.guiaErro = ""; pintar(); return; }
+      /* 04/11: cadeado da linha e "Aplicar sugestão" (fluxo guiado pelo simulador) */
+      if (acao === "c-fluxo-trava") { travarLinha(ed, k); pintar(); return; }
+      if (acao === "c-fluxo-sug") {
+        var ms = aplicarSugestao(ed);
+        uiC.msg = ms.length ? "Sugestão aplicada: cadeados abertos — confira as linhas e salve." : (ed.guiaErro || "");
+        pintar();
+        return;
+      }
       if (acao === "c-fluxo-prazo") {
         var pz = Number(b.getAttribute("data-p")), mp = FL().mudarPrazo({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, pz, ed.padrao);   /* a data dos pós-chaves vem da proposta */
         if (mp.erro) uiC.msg = mp.erro;
         else {
-          ed.linhas = mp.linhas;
+          ed.linhas = mp.linhas; limparGuia(ed);
           if (!String(ed.motivo || "").trim()) ed.motivo = "Cliente mudou o prazo da entrada para " + pz + "x";
           uiC.msg = "Fluxo refeito para " + pz + "x — confira as datas e salve.";
         }
@@ -3213,14 +3324,14 @@
       }
       if (acao === "c-fluxo-dist") {
         var ds = FL().distribuir({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas });
-        if (ds.erro) uiC.msg = ds.erro; else { ed.linhas = ds.linhas; uiC.msg = ""; }
+        if (ds.erro) uiC.msg = ds.erro; else { ed.linhas = ds.linhas; ed.ajustadas = {}; ed.sugestao = null; ed.guiaErro = ""; uiC.msg = ""; }
         pintar();
         return;
       }
       if (acao === "c-fluxo-red") {
         if ((FL().TIPOS[(ed.linhas[k] || {}).t] || {}).fixo) return;
         var rd = FL().redistribuir({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, k);
-        if (rd.erro) uiC.msg = rd.erro; else { ed.linhas = rd.linhas; uiC.msg = ""; }
+        if (rd.erro) uiC.msg = rd.erro; else { ed.linhas = rd.linhas; ed.ajustadas = {}; ed.sugestao = null; ed.guiaErro = ""; uiC.msg = ""; }
         pintar();
         return;
       }
@@ -3282,10 +3393,58 @@
         else if (campo === "t") l.t = alvo.value;
         var tot = raiz.querySelector('.vb-fx-tot[data-k="' + alvo.getAttribute("data-k") + '"]');
         if (tot) tot.textContent = FL().moeda(FL().totalLinha(l));
+        /* 04/11: valor ou quantidade de pré-chaves/balão/pós-chaves — a linha trava na hora; o simulador refaz as soltas
+           depois de uma pausa na digitação */
+        if ((campo === "v" || campo === "n") && ajustavelFx(l)) {
+          var kk = Number(alvo.getAttribute("data-k"));
+          ed.travadas = ed.travadas || {}; ed.travadas[kk] = true;
+          var bt = raiz.querySelector('button[data-acao="c-fluxo-trava"][data-k="' + kk + '"]');
+          if (bt) bt.outerHTML = htmlTrava(kk, true, "");
+          guiarDepois(ed);
+        }
       }
+      if (campo === "valor") guiarDepois(ed);
       var viva = dentro(".vb-fx-viva"), mp = dentro(".vb-fx-mp");
       if (viva) viva.innerHTML = htmlFluxoVivo(ed, "");
       if (mp) mp.style.display = Math.round(ed.valor * 100) === Math.round(ed.valorOriginal * 100) ? "none" : "block";
+    }
+    /* 04/11: o simulador refaz as linhas soltas ~400 ms depois da última tecla, sem redesenhar a tabela (o campo que a
+       pessoa digita não é tocado): troca só os valores, totais, notas e cadeados das linhas de pré-chaves/balão/pós-chaves */
+    var esperaG = null;
+    function guiarDepois(ed) {
+      if (esperaG) clearTimeout(esperaG);
+      esperaG = setTimeout(function () {
+        esperaG = null;
+        if (!raiz || !vivo() || uiC.fluxoEd !== ed) return;
+        guiarEditor(ed, null);
+        pintarGuia(ed);
+      }, 400);
+    }
+    function pintarGuia(ed) {
+      var F = FL(), foco = typeof document !== "undefined" ? document.activeElement : null;
+      ed.linhas.forEach(function (l, k) {
+        if (!ajustavelFx(l)) return;
+        var q = function (s) { return raiz.querySelector(s + '[data-k="' + k + '"]'); };
+        var inp = q('input[data-fx="v"]');
+        if (inp && inp !== foco) inp.value = numBR(l.v);
+        var ult = q(".vb-fx-ult");
+        if (ult) { ult.textContent = l.u && l.n > 1 ? "última: " + numBR(l.u) : ""; ult.style.display = l.u && l.n > 1 ? "" : "none"; }
+        var tot = q(".vb-fx-tot");
+        if (tot) tot.textContent = F.moeda(F.totalLinha(l));
+        var g = q(".vb-fx-guia");
+        if (g) g.innerHTML = htmlGuiaLinha(ed, k);
+        var bt = q('button[data-acao="c-fluxo-trava"]');
+        if (bt) bt.outerHTML = htmlTrava(k, !!(ed.travadas || {})[k], "");
+        var tr = raiz.querySelector('tr[data-fx-linha="' + k + '"]');
+        if (tr) {
+          /* destaque breve nas linhas que o simulador mudou */
+          tr.style.transition = "background .8s";
+          tr.style.background = (ed.ajustadas || {})[k] ? "rgba(255,200,0,.28)" : "";
+          if ((ed.ajustadas || {})[k]) setTimeout(function () { if (tr.isConnected !== false) tr.style.background = "rgba(255,200,0,.10)"; }, 1200);
+        }
+      });
+      var viva = dentro(".vb-fx-viva");
+      if (viva) viva.innerHTML = htmlFluxoVivo(ed, "");
     }
     /* resposta de gerarPreContrato / aprovarPreContrato / salvarCamposContrato */
     function tratarGeracao(r, aprovar) {
@@ -3302,6 +3461,7 @@
         if (antes.condicoes) estadoC.condicoes = antes.condicoes;  /* especiais não somem depois de gerar */
         uiC.faltas = null; uiC.campos = null;
         var feito = aprovar ? "Contrato gerado." : "Pré-contrato gerado — abra, confira o que está grifado e clique em Conferi.";
+        if (aprovar) avisarContratoGerado(pageId, estadoC);
         /* condomínio: campos que saíram em branco ("____") não travam, mas avisam */
         uiC.msg = r.avisos && r.avisos.length ? feito + " Atenção: " + r.avisos.join("; ") + "." : feito;
       } else if (r.erro === "PRECONTRATO_DESATUALIZADO" || r.erro === "PRECONTRATO_FALTANDO" || r.erro === "PRECONTRATO_REFAZER") {
@@ -3437,8 +3597,8 @@
       if (comPR && !ctxP.estado) carregarAssPR();
     };
     eu.raiz = function () { return raiz; };
-    eu.pintarAssinatura = function () { pintarA(); if (comPR) { var a = dentro(".vb-pr-ass"); if (a) a.innerHTML = htmlAssPR(); } };
-    eu.parar = function () { if (esperaM) clearTimeout(esperaM); esperaM = null; if (esperaA) clearTimeout(esperaA); esperaA = null; uiA.acompanhando = false; };
+    eu.pintarAssinatura = function () { pintarA(); if (comPR) { var a = dentro(".vb-pr-ass"); if (a) a.innerHTML = htmlAssPRVisivel(); } };
+    eu.parar = function () { if (esperaG) clearTimeout(esperaG); esperaG = null; if (esperaM) clearTimeout(esperaM); esperaM = null; if (esperaA) clearTimeout(esperaA); esperaA = null; uiA.acompanhando = false; };
     /* 31/10: o Financeiro lê as parcelas só ao abrir; o Antecipar confere a data e, se a simulação já estava aberta, o estado */
     eu.abrirAba = function (aba) {
       if (aba !== "financeiro" || !comPR || soPR) return;
@@ -3543,7 +3703,7 @@
        Carrega mesmo sem o painel da casa: o cartão do condomínio também usa. */
     /* 30/10: leitor das rubricas do comprador (pdf.js só carrega na hora de enviar) */
     var sr = document.createElement("script"); sr.src = "venda/RubricasVenda.js?v=8"; document.head.appendChild(sr);
-    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=25";
+    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=27";
     sa.onload = function () { [blocosCasa, blocosCond, blocosPR].forEach(function (b) { if (b) b.pintarAssinatura(); }); };
     document.head.appendChild(sa);
     var body = document.getElementById("pn-body"); if (!body) return;

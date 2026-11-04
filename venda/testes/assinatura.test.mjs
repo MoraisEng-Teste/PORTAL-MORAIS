@@ -130,7 +130,8 @@ test("envio feliz: ordem das chamadas, cabeçalhos e corpos; grava envelope e EN
   assert.equal(r.situacao, "ENVIADO");
   const pend = { assinou: false, situacao: "pendente", data: "" };
   assert.ok(r.signatarios.every((s) => /@/.test(s.email)), "27/10: cada um com o e-mail para onde foi");
-  assert.deepEqual(r.signatarios.map(({ email, ...s }) => s), [
+  assert.deepEqual(r.signatarios.map((s) => s.id), ["sig-1", "sig-2", "sig-3", "sig-4"], "03/11: id para o Trocar e-mail");
+  assert.deepEqual(r.signatarios.map(({ email, id, ...s }) => s), [
     Object.assign({ papel: "Comprador 1", nome: "Fulano T." }, pend), Object.assign({ papel: "Vendedor (representante)", nome: "Beltrano R." }, pend),
     Object.assign({ papel: "Testemunha 1", nome: "Testemunha S." }, pend), Object.assign({ papel: "Testemunha 2", nome: "Testemunha S." }, pend)]);
   assert.ok(!JSON.stringify({ ...r, signatarios: r.signatarios.map(({ email, ...s }) => s) }).includes("@"), "e-mail fora do campo email");
@@ -495,7 +496,9 @@ test("estado em andamento: quem já assinou (evento sign) com a data, nome masca
   const r = c.estado();
   const pend = { assinou: false, situacao: "pendente", data: "" };
   assert.ok(r.signatarios.every((s) => /@/.test(s.email)));
-  assert.deepEqual({ ...r, signatarios: r.signatarios.map(({ email, ...s }) => s) }, { ok: true, situacao: "ENVIADO", envelope: true, temAssinado: false, signatarios: [
+  /* 03/11: cada um traz o id do signatário na Clicksign (o botão Trocar e-mail usa) */
+  assert.deepEqual(r.signatarios.map((s) => s.id), ["sig-1", "sig-2", "sig-3", "sig-4"]);
+  assert.deepEqual({ ...r, signatarios: r.signatarios.map(({ email, id, ...s }) => s) }, { ok: true, situacao: "ENVIADO", envelope: true, temAssinado: false, signatarios: [
     { papel: "Comprador 1", nome: "Fulano T.", assinou: true, situacao: "assinou", data: "2026-10-07T10:20:30.000-03:00" },
     Object.assign({ papel: "Vendedor (representante)", nome: "Beltrano R." }, pend),
     Object.assign({ papel: "Testemunha 1", nome: "Testemunha S." }, pend), Object.assign({ papel: "Testemunha 2", nome: "Testemunha S." }, pend)] });
@@ -1038,15 +1041,15 @@ test("vigia dentro do horário (7h, 12h, 20h) roda", () => {
     assert.equal(c.g.ctx.__chamouAbertos, 1, "hora " + h + " " + c.g.logs.join(" | ") + " H=" + c.g.ctx.Utilities.formatDate(new c.g.ctx.Date(), "America/Sao_Paulo", "H"));
   }
 });
-test("vigia: gatilho de 30 em 30 minutos", () => {
+test("vigia: gatilho de 15 em 15 minutos (03/11, dono)", () => {
   const c = vigiaCenario(12);
   const regs = [];
   c.g.ctx.ScriptApp = { getProjectTriggers: () => [], deleteTrigger() {},
     newTrigger: (fn) => ({ timeBased: () => ({ everyMinutes: (n) => ({ create: () => regs.push([fn, n]) }) }) }) };
   c.g.ctx.instalarVigiaAssinaturas();
-  assert.deepEqual(regs, [["vigiaAssinaturas", 30]]);
+  assert.deepEqual(regs, [["vigiaAssinaturas", 15]]);
 });
-test("vigia: envelope sem mudança = 1 chamada (só o GET); mudou = caminho completo; falha do GET = caminho completo", () => {
+test("vigia: envelope sem mudança = GET do envelope + eventos de cada documento; mudou = caminho completo", () => {
   const c = vigiaCenario(12);
   const e0 = c.enviar(TOK_LONGO);
   assert.equal(e0.ok, true, JSON.stringify(e0));
@@ -1055,10 +1058,10 @@ test("vigia: envelope sem mudança = 1 chamada (só o GET); mudou = caminho comp
   c.c.chamadas.length = 0;
   c.g.ctx.vigiaUma_(c.g.ctx.colunas_(), pg());
   assert.ok(csCalls(c).includes("GET /envelopes/env-1/documents"), csCalls(c).join(" | "));
-  /* nada mudou: só o GET do envelope */
+  /* nada mudou: o GET do envelope e os eventos do documento (03/11: recusa e assinatura nova não mudam o status) */
   c.c.chamadas.length = 0;
   assert.equal(c.g.ctx.vigiaUma_(c.g.ctx.colunas_(), pg()), false);
-  assert.deepEqual(csCalls(c), ["GET /envelopes/env-1"]);
+  assert.deepEqual(csCalls(c), ["GET /envelopes/env-1", "GET /envelopes/env-1/documents/doc-1/events"]);
   /* mudou: caminho completo de hoje */
   c.c.estado.status = "canceled";
   c.c.chamadas.length = 0;
@@ -1246,12 +1249,14 @@ test("03/11: RASCUNHO, situação vazia com envelope e envio pendente também tr
     assert.notEqual(c.acao("escolherTestemunhas").erro, "ENVELOPE_ABERTO", sit);
   }
 });
-test("03/11: envelope do contrato aberto não trava as ações do termo de pré-reserva nem o pagamento", () => {
+test("03/11: envelope do contrato aberto não responde ENVELOPE_ABERTO nas ações do termo (com o termo nunca enviado elas dizem PRE_RESERVA_DISPENSADA); o pagamento segue", () => {
   const PR = { "PRÉ-RESERVA - ENVELOPE ID": "rich_text", "PRÉ-RESERVA - SITUAÇÃO": "rich_text", "PRÉ-RESERVA - TERMO ASSINADO": "files" };
   const c = cenario({ colunas: Object.assign(colunasVenda(), PR),
                       venda: { "ASSINATURA - ENVELOPE ID": rt("env-1"), "ASSINATURA - SITUAÇÃO": rt("ENVIADO") } });
-  for (const a of ["gerarTermoPreReserva", "salvarContaPreReserva", "salvarConjugePreReserva", "salvarPagamentoPreReserva"])
-    assert.notEqual(c.acao(a).erro, "ENVELOPE_ABERTO", a);
+  for (const a of ["gerarTermoPreReserva", "salvarContaPreReserva", "salvarConjugePreReserva"])
+    assert.equal(c.acao(a).erro, "PRE_RESERVA_DISPENSADA", a);
+  assert.notEqual(c.acao("salvarPagamentoPreReserva").erro, "ENVELOPE_ABERTO");
+  assert.notEqual(c.acao("salvarPagamentoPreReserva").erro, "PRE_RESERVA_DISPENSADA");
 });
 test("03/11: envelope do TERMO aberto — as ações do termo respondem ENVELOPE_ABERTO com a mensagem do termo; o contrato não trava", () => {
   const PR = { "PRÉ-RESERVA - ENVELOPE ID": "rich_text", "PRÉ-RESERVA - SITUAÇÃO": "rich_text", "PRÉ-RESERVA - TERMO ASSINADO": "files" };
@@ -1349,4 +1354,292 @@ test("correção 3 (3): Atualizar situação grava ASS_AGUARDANDO_<pageId> enqua
   arq.signed = "https://s3.clicksign.falso/assinado.pdf";
   assert.equal(c.estado().temAssinado, true);
   assert.equal(props().getProperty("ASS_AGUARDANDO_" + PAGE), null);
+});
+
+/* ---- 03/11/2026 (dono): vigia a cada 15 min com os eventos — progresso, recusa/cancelamento por e-mail, termo de
+   pré-reserva; e pré-reserva DISPENSADA quando o contrato é gerado direto ---- */
+const COL_PROG = { "ASSINATURA - PROGRESSO": "rich_text" };
+const COL_PR = { "PRÉ-RESERVA - ENVELOPE ID": "rich_text", "PRÉ-RESERVA - SITUAÇÃO": "rich_text", "PRÉ-RESERVA - TERMO ASSINADO": "files",
+                 "PRÉ-RESERVA - PROGRESSO": "rich_text" };
+const REFUSAL = (email) => ({ type: "events", attributes: { name: "refusal", data: { signer: { email } } } });
+function vigiaCom({ eventos = [], colunas, props = {}, venda, status } = {}) {
+  const c = cenario({ extras: { Date: relogioSP(12) }, props: Object.assign({ DB_VENDAS_COND: "db-cond" }, props),
+                      cs: { eventos, status }, colunas, venda });
+  vm.runInContext(VIGIA_SRC, c.g.ctx, { filename: "AssinaturaVigia.gs" });
+  c.emails = [];
+  c.g.ctx.MailApp = { sendEmail: (o) => { c.emails.push(o); }, getRemainingDailyQuota: () => 100 };
+  c.pg = () => c.g.ctx.ctrLerPaginaVenda_(PAGE);
+  c.volta = (doc) => c.g.ctx.vigiaUma_(c.g.ctx.colunas_(), c.pg(), doc);
+  return c;
+}
+
+test("vigia 03/11: assinatura nova com o envelope ainda aberto — caminho completo e o progresso vai de '0 de 4' a '1 de 4'", () => {
+  const ev = [];
+  const c = vigiaCom({ eventos: ev, colunas: Object.assign(colunasVenda(), COL_PROG) });
+  assert.equal(c.enviar(TOK_LONGO).ok, true);
+  c.volta();
+  assert.equal(c.txt("ASSINATURA - PROGRESSO"), "0 de 4");
+  ev.push(SIGN("fulano@teste.example"));
+  c.c.chamadas.length = 0;
+  c.volta();
+  assert.ok(csCalls(c).includes("GET /envelopes/env-1/signers"), csCalls(c).join(" | "));
+  assert.equal(c.txt("ASSINATURA - PROGRESSO"), "1 de 4");
+  assert.equal(c.txt("ASSINATURA - SITUAÇÃO"), "ENVIADO");
+  /* nada mudou de novo: volta curta, sem regravar */
+  c.c.chamadas.length = 0;
+  c.volta();
+  assert.deepEqual(csCalls(c), ["GET /envelopes/env-1", "GET /envelopes/env-1/documents/doc-1/events"]);
+});
+
+test("vigia 03/11: base sem a coluna de progresso — nada quebra, a situação segue sendo gravada", () => {
+  const ev = [];
+  const c = vigiaCom({ eventos: ev });
+  assert.equal(c.enviar(TOK_LONGO).ok, true);
+  c.volta();
+  ev.push(SIGN("fulano@teste.example"));
+  c.volta();
+  assert.equal(c.txt("ASSINATURA - SITUAÇÃO"), "ENVIADO");
+  assert.equal("ASSINATURA - PROGRESSO" in c.n.pagina.properties, false);
+});
+
+test("vigia 03/11: recusa com o envelope ainda running — grava RECUSADO e manda UM e-mail aos endereços da Propriedade", () => {
+  const ev = [];
+  const c = vigiaCom({ eventos: ev, props: { ASSINATURA_AVISO_EMAILS: "vendas@teste.example; outro@teste.example" } });
+  assert.equal(c.enviar(TOK_LONGO).ok, true);
+  c.volta();
+  assert.equal(c.emails.length, 0, "enviado não avisa");
+  ev.push(REFUSAL("beltrano@teste.example"));
+  c.volta();
+  assert.equal(c.txt("ASSINATURA - SITUAÇÃO"), "RECUSADO");
+  assert.equal(c.emails.length, 1);
+  assert.equal(c.emails[0].to, "vendas@teste.example,outro@teste.example");
+  assert.match(c.emails[0].subject, /contrato/i);
+  assert.match(c.emails[0].subject, /recusado/i);
+  assert.match(c.emails[0].subject, /RESIDENCIAL TESTE QD 07 LT 12/);
+  /* a linha já está RECUSADO: outra volta não avisa de novo */
+  c.volta();
+  assert.equal(c.emails.length, 1);
+});
+
+test("vigia 03/11: envelope cancelado ou expirado na Clicksign também avisa; sem a Propriedade nenhum e-mail e nada quebra", () => {
+  for (const [status, ev, sit] of [["canceled", [], "CANCELADO"], ["canceled", [{ type: "events", attributes: { name: "deadline", data: {} } }], "EXPIRADO"]]) {
+    const c = vigiaCom({ eventos: ev, props: { ASSINATURA_AVISO_EMAILS: "vendas@teste.example" } });
+    assert.equal(c.enviar(TOK_LONGO).ok, true);
+    c.volta();
+    c.c.estado.status = status;
+    c.volta();
+    assert.equal(c.txt("ASSINATURA - SITUAÇÃO"), sit);
+    assert.equal(c.emails.length, 1, sit);
+    assert.match(c.emails[0].subject, new RegExp(sit === "CANCELADO" ? "cancelado" : "expirado", "i"));
+  }
+  const s = vigiaCom({});
+  assert.equal(s.enviar(TOK_LONGO).ok, true);
+  s.volta();
+  s.c.estado.status = "canceled";
+  s.volta();
+  assert.equal(s.txt("ASSINATURA - SITUAÇÃO"), "CANCELADO");
+  assert.equal(s.emails.length, 0);
+});
+
+test("vigia 03/11: sem a Propriedade, os endereços vêm de ASSINATURA_AVISO_EMAILS_PADRAO (arquivo só do Apps Script, fora do repositório); a Propriedade vence", () => {
+  for (const [props, esperado] of [[{}, "cfg1@teste.example,cfg2@teste.example"], [{ ASSINATURA_AVISO_EMAILS: "prop@teste.example" }, "prop@teste.example"]]) {
+    const ev = [];
+    const c = vigiaCom({ eventos: ev, props });
+    c.g.ctx.ASSINATURA_AVISO_EMAILS_PADRAO = "cfg1@teste.example; cfg2@teste.example";
+    assert.equal(c.enviar(TOK_LONGO).ok, true);
+    c.volta();
+    ev.push(REFUSAL("beltrano@teste.example"));
+    c.volta();
+    assert.equal(c.emails.length, 1, JSON.stringify(props));
+    assert.equal(c.emails[0].to, esperado);
+  }
+});
+
+test("vigia 03/11: Atualizar situação pelo botão grava a recusa mas não manda e-mail (quem clicou já viu)", () => {
+  const ev = [];
+  const c = vigiaCom({ eventos: ev, props: { ASSINATURA_AVISO_EMAILS: "vendas@teste.example" } });
+  assert.equal(c.enviar(TOK_LONGO).ok, true);
+  ev.push(REFUSAL("beltrano@teste.example"));
+  assert.equal(c.estado(TOK_LONGO).situacao, "RECUSADO");
+  assert.equal(c.emails.length, 0);
+});
+
+test("vigia 03/11: termo de pré-reserva ENVIADO — a vigia consulta a coluna do termo e relê o termo (recusa grava e avisa)", () => {
+  const corpos = [];
+  const q = vigiaCom({});
+  q.g.ctx.notion_ = (m, cam, corpo) => {
+    if (m === "GET") return { properties: { "ASSINATURA - SITUAÇÃO": { type: "rich_text" }, "PRÉ-RESERVA - SITUAÇÃO": { type: "rich_text" } } };
+    corpos.push(corpo); return { results: [] };
+  };
+  q.g.ctx.vigiaAbertosTermo_("db-cond");
+  assert.deepEqual(JSON.parse(JSON.stringify(corpos[0].filter)), { property: "PRÉ-RESERVA - SITUAÇÃO", rich_text: { equals: "ENVIADO" } });
+  /* vigiaAssinaturas manda o termo com doc PRE_RESERVA */
+  const r = vigiaCom({});
+  vm.runInContext("vigiaAbertos_ = function () { return []; }; vigiaAbertosTermo_ = function () { return [{ id: 'pg-termo' }]; };" +
+                  "__docs = []; vigiaUma_ = function (col, pg, doc) { __docs.push(pg.id + ':' + (doc && doc.doc)); return false; };", r.g.ctx);
+  r.g.ctx.vigiaAssinaturas();
+  assert.deepEqual([...r.g.ctx.__docs], ["pg-termo:PRE_RESERVA"]);
+  /* o termo em si */
+  const ev = [];
+  const c = vigiaCom({ eventos: ev, status: "running", colunas: Object.assign(colunasVenda(), COL_PR), props: { ASSINATURA_AVISO_EMAILS: "vendas@teste.example" },
+                       venda: { "PRÉ-RESERVA - ENVELOPE ID": rt("env-1"), "PRÉ-RESERVA - SITUAÇÃO": rt("ENVIADO") } });
+  c.volta({ doc: "PRE_RESERVA" });
+  ev.push(REFUSAL("fulano@teste.example"));
+  c.volta({ doc: "PRE_RESERVA" });
+  assert.equal(c.txt("PRÉ-RESERVA - SITUAÇÃO"), "RECUSADO");
+  assert.equal(c.txt("ASSINATURA - SITUAÇÃO"), "", "o contrato não é tocado");
+  assert.equal(c.emails.length, 1);
+  assert.match(c.emails[0].subject, /pré-reserva/i);
+});
+
+const MSG_DISPENSADA = "O contrato desta unidade foi gerado sem a pré-reserva: a pré-reserva foi dispensada.";
+test("03/11: contrato gerado e termo nunca enviado — pré-reserva DISPENSADA: gerar termo, conta, cônjuge e Enviar do termo recusam", () => {
+  const c = cenario({ colunas: Object.assign(colunasVenda(), COL_PR) });   /* VENDA já tem CONTRATO GERADO */
+  for (const a of ["gerarTermoPreReserva", "salvarContaPreReserva", "salvarConjugePreReserva"])
+    assert.deepEqual(c.acao(a), { ok: false, erro: "PRE_RESERVA_DISPENSADA", mensagem: MSG_DISPENSADA }, a);
+  assert.deepEqual(chamarCom(c, "assinaturaEnviar", { doc: "PRE_RESERVA" }), { ok: false, erro: "PRE_RESERVA_DISPENSADA", mensagem: MSG_DISPENSADA });
+  assert.equal(c.c.chamadas.length, 0, "nada na Clicksign");
+  assert.notEqual(c.acao("salvarPagamentoPreReserva").erro, "PRE_RESERVA_DISPENSADA", "o pagamento segue aberto");
+  assert.notEqual(c.acao("escolherTestemunhas").erro, "PRE_RESERVA_DISPENSADA", "o contrato não é afetado");
+  /* termo que falhou antes (rascunho, cancelado, recusado) também fica dispensado */
+  for (const sit of ["RASCUNHO", "CANCELADO", "RECUSADO", "EXPIRADO"]) {
+    const x = cenario({ colunas: Object.assign(colunasVenda(), COL_PR), venda: { "PRÉ-RESERVA - ENVELOPE ID": rt("env-pr"), "PRÉ-RESERVA - SITUAÇÃO": rt(sit) } });
+    assert.equal(x.acao("gerarTermoPreReserva").erro, "PRE_RESERVA_DISPENSADA", sit);
+  }
+});
+
+test("03/11: termo já ENVIADO ou ASSINADO continua valendo com o contrato gerado; sem contrato nada é dispensado", () => {
+  const env = cenario({ colunas: Object.assign(colunasVenda(), COL_PR), venda: { "PRÉ-RESERVA - ENVELOPE ID": rt("env-pr"), "PRÉ-RESERVA - SITUAÇÃO": rt("ENVIADO") } });
+  assert.equal(env.acao("gerarTermoPreReserva").erro, "ENVELOPE_ABERTO");
+  const ass = cenario({ colunas: Object.assign(colunasVenda(), COL_PR), venda: { "PRÉ-RESERVA - ENVELOPE ID": rt("env-pr"), "PRÉ-RESERVA - SITUAÇÃO": rt("ASSINADO") } });
+  assert.equal(ass.acao("gerarTermoPreReserva").erro, "TERMO_ASSINADO");
+  /* envio do termo pendente (envelope criado, situação ainda não gravada) não é "nunca enviado" */
+  const pend = cenario({ colunas: Object.assign(colunasVenda(), COL_PR), props: { ["ASSINATURA_PENDENTE_PR_" + PAGE]: "env-pr" } });
+  assert.notEqual(pend.acao("gerarTermoPreReserva").erro, "PRE_RESERVA_DISPENSADA");
+  const sem = cenario({ colunas: Object.assign(colunasVenda(), COL_PR), venda: { "CONTRATO GERADO": { files: [] } } });
+  assert.notEqual(sem.acao("gerarTermoPreReserva").erro, "PRE_RESERVA_DISPENSADA");
+  /* sem arquivo gerado mas com envelope do contrato (situação preenchida) também conta como contrato feito */
+  const sit = cenario({ colunas: Object.assign(colunasVenda(), COL_PR),
+                        venda: { "CONTRATO GERADO": { files: [] }, "ASSINATURA - ENVELOPE ID": rt("env-1"), "ASSINATURA - SITUAÇÃO": rt("CANCELADO") } });
+  assert.equal(sit.acao("gerarTermoPreReserva").erro, "PRE_RESERVA_DISPENSADA");
+});
+
+/* ---- 03/11/2026 (dono): trocar o e-mail de quem ainda não assinou, sem cancelar o envelope ---- */
+const trocar = (c, signerId, email, tok = tokenDe()) => c.g.chamar({ action: "assinaturaTrocarEmail", token: tok, pageId: PAGE, signerId, email });
+const sigDe = (c, email) => c.c.estado.signers.find((s) => s.attributes.email === email);
+
+test("envio: o envelope leva a mensagem padrão com a unidade (default_message) e guarda os requisitos de cada signatário", () => {
+  const c = cenario();
+  assert.equal(c.enviar().ok, true);
+  const env = c.c.chamadas.find((x) => x.metodo === "POST" && x.caminho === "/envelopes").corpo.data.attributes;
+  assert.match(env.default_message, /^Segue o contrato de compra e venda da unidade RESIDENCIAL TESTE QD 07 LT 12 CASA 3 para a sua assinatura eletrônica\./);
+  assert.match(env.default_message, /Morais Engenharia$/);
+  const comp = sigDe(c, "fulano@teste.example");
+  const g = JSON.parse(c.p["ASSINATURA_REQS_env-1_" + comp.id]);
+  assert.deepEqual(g.map((x) => x[2].action), ["agree", "provide_evidence"]);
+  assert.ok(g.every((x) => /^req-\d+$/.test(x[0]) && x[1] === "doc-1"));
+  assert.equal(g[0][2].role, "buyer");
+});
+
+test("mensagem: a Propriedade CLICKSIGN_MENSAGEM_CONTRATO troca o texto ({UNIDADE} vira a obra + casa)", () => {
+  const c = cenario({ props: { CLICKSIGN_MENSAGEM_CONTRATO: "Contrato da {UNIDADE} — assine, por favor." } });
+  assert.equal(c.enviar().ok, true);
+  const env = c.c.chamadas.find((x) => x.metodo === "POST" && x.caminho === "/envelopes").corpo.data.attributes;
+  assert.equal(env.default_message, "Contrato da RESIDENCIAL TESTE QD 07 LT 12 CASA 3 — assine, por favor.");
+});
+
+test("trocar e-mail: cria o novo com os mesmos requisitos ANTES de tirar o antigo, avisa só o novo, mantém o papel", () => {
+  const c = cenario();
+  assert.equal(c.enviar().ok, true);
+  const velho = sigDe(c, "fulano@teste.example");
+  const reqsVelhos = JSON.parse(c.p["ASSINATURA_REQS_env-1_" + velho.id]).map((x) => x[0]);
+  c.c.chamadas.length = 0;
+  const r = trocar(c, velho.id, " Fulano.Certo@Teste.example ");
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const seq = csCalls(c).filter((x) => !/^GET/.test(x));
+  /* signatário novo → requisitos dele em lote (add) → antigo excluído (os requisitos vão junto); nenhum POST /requirements avulso
+     nem remove em lote (sandbox 03/11: 403 e 422) */
+  assert.deepEqual(seq.slice(0, 3), ["POST /envelopes/env-1/signers", "POST /envelopes/env-1/bulk_requirements",
+                                     "DELETE /envelopes/env-1/signers/" + velho.id], seq.join("\n"));
+  const lotes = c.c.chamadas.filter((x) => x.caminho === "/envelopes/env-1/bulk_requirements").map((x) => x.corpo["atomic:operations"].map((o) => o.op));
+  assert.deepEqual(lotes, [["add", "add"]]);
+  const novo = sigDe(c, "fulano.certo@teste.example");
+  assert.ok(novo && novo.id !== velho.id);
+  assert.equal(novo.attributes.name, velho.attributes.name);
+  assert.equal(novo.attributes.documentation, velho.attributes.documentation);
+  assert.equal(novo.attributes.refusable, true);
+  assert.ok(!sigDe(c, "fulano@teste.example"), "o antigo continua no envelope");
+  const novosReqs = c.c.estado.adicionados;
+  assert.deepEqual(novosReqs.map((d) => [d.attributes.action, d.relationships.signer.data.id, d.relationships.document.data.id]),
+                   [["agree", novo.id, "doc-1"], ["provide_evidence", novo.id, "doc-1"]]);
+  assert.equal(novosReqs[0].attributes.role, "buyer");
+  assert.equal(reqsVelhos.length, 2);
+  assert.deepEqual(c.c.estado.removidos || [], []);
+  assert.deepEqual(seq.filter((x) => /notifications/.test(x)), ["POST /envelopes/env-1/signers/" + novo.id + "/notifications"]);
+  assert.equal(JSON.parse(c.p["ASSINATURA_PAPEIS_env-1"])[novo.id], "Comprador 1");
+  assert.equal(JSON.parse(c.p["ASSINATURA_PAPEIS_env-1"])[velho.id], undefined);
+  assert.ok(c.p["ASSINATURA_REQS_env-1_" + novo.id] && !c.p["ASSINATURA_REQS_env-1_" + velho.id]);
+  const linha = r.signatarios.find((s) => s.papel === "Comprador 1");
+  assert.deepEqual([linha.id, linha.email, linha.situacao], [novo.id, "fulano.certo@teste.example", "pendente"]);
+  const logs = c.g.logs.join("\n");
+  for (const s of PESSOAIS.concat(["fulano.certo"])) assert.ok(!logs.includes(s), "log vazou: " + s);
+  assert.match(logs, /trocar email 01234567 por ana\.teste: ok/);
+  /* a troca de novo funciona (os requisitos guardados passaram para o novo) */
+  assert.equal(trocar(c, novo.id, "fulano.terceiro@teste.example").ok, true);
+});
+
+test("trocar e-mail: quem já assinou, e-mail inválido/igual/de outro signatário e signatário de fora não mexem em nada", () => {
+  const c = cenario({ cs: { eventos: [SIGN("fulano@teste.example")] } });
+  assert.equal(c.enviar().ok, true);
+  const comp = sigDe(c, "fulano@teste.example"), vend = sigDe(c, "beltrano@teste.example");
+  c.c.chamadas.length = 0;
+  assert.equal(trocar(c, comp.id, "outro@teste.example").erro, "SIGNATARIO_JA_ASSINOU");
+  assert.equal(trocar(c, vend.id, "sem-arroba").erro, "EMAIL_INVALIDO");
+  assert.equal(trocar(c, vend.id, "BELTRANO@teste.example").erro, "EMAIL_IGUAL");
+  assert.equal(trocar(c, vend.id, "t1.spe@teste.example").erro, "EMAIL_REPETIDO");
+  assert.equal(trocar(c, "sig-999", "x@teste.example").erro, "SIGNATARIO_NAO_ACHADO");
+  assert.equal(trocar(c, "../../x", "x@teste.example").erro, "SIGNATARIO_NAO_ACHADO");
+  assert.ok(csCalls(c).every((x) => /^GET/.test(x)), csCalls(c).join("\n"));
+});
+
+test("trocar e-mail: envelope enviado antes desta versão (sem requisitos guardados) → TROCA_SEM_REQUISITOS, nada criado", () => {
+  const c = cenario();
+  assert.equal(c.enviar().ok, true);
+  const vend = sigDe(c, "beltrano@teste.example");
+  delete c.p["ASSINATURA_REQS_env-1_" + vend.id];
+  c.c.chamadas.length = 0;
+  assert.equal(trocar(c, vend.id, "beltrano.certo@teste.example").erro, "TROCA_SEM_REQUISITOS");
+  assert.ok(csCalls(c).every((x) => /^GET/.test(x)));
+});
+
+test("trocar e-mail: falha ao tirar o antigo desfaz o novo (excluído); sem conseguir excluir vira TROCA_INCOMPLETA", () => {
+  for (const desfazOk of [true, false]) {
+    const c = cenario({ cs: { falhar: (m, cam) => {
+      if (m === "DELETE" && cam === "/envelopes/env-1/signers/sig-2") return { status: 403, json: { errors: [{ title: "Já assinou" }] } };
+      if (m === "DELETE" && /^\/envelopes\/env-1\/signers\/sig-(1[0-9]|[5-9])$/.test(cam) && !desfazOk) return { status: 500, json: {} };
+      return null;
+    } } });
+    assert.equal(c.enviar().ok, true);
+    const vend = sigDe(c, "beltrano@teste.example");
+    assert.equal(vend.id, "sig-2");
+    const r = trocar(c, vend.id, "beltrano.certo@teste.example");
+    assert.equal(r.erro, desfazOk ? "CLICKSIGN_FALHOU" : "TROCA_INCOMPLETA", JSON.stringify(r));
+    assert.equal(r.passo, "tirar signatario antigo");
+    const novo = c.c.chamadas.filter((x) => x.metodo === "POST" && x.caminho === "/envelopes/env-1/signers").pop();
+    assert.equal(novo.corpo.data.attributes.email, "beltrano.certo@teste.example");
+    if (desfazOk) assert.ok(!sigDe(c, "beltrano.certo@teste.example"), "o novo ficou no envelope");
+    assert.equal(JSON.parse(c.p["ASSINATURA_PAPEIS_env-1"])["sig-2"], "Vendedor (representante)");
+    assert.ok(!c.c.chamadas.some((x) => /\/signers\/[^/]+\/notifications$/.test(x.caminho)), "avisou numa troca que falhou");
+  }
+});
+
+test("trocar e-mail: perfil TESTES não pode; envelope não ativo não troca; estado final apaga os requisitos guardados", () => {
+  const c = cenario();
+  assert.equal(c.enviar().ok, true);
+  const vend = sigDe(c, "beltrano@teste.example");
+  assert.equal(trocar(c, vend.id, "b@teste.example", tokenDe("TESTES")).erro, "SEM_PERMISSAO_TESTES");
+  c.c.estado.status = "canceled";
+  assert.equal(trocar(c, vend.id, "b@teste.example").erro, "ENVELOPE_NAO_ATIVO");
+  assert.equal(c.estado().situacao, "CANCELADO");
+  assert.ok(!Object.keys(c.p).some((k) => /^ASSINATURA_(REQS|PAPEIS)_env-1/.test(k)), Object.keys(c.p).join(","));
 });

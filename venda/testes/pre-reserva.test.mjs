@@ -24,7 +24,7 @@ test("termo completo: sem faltas e todos os marcadores preenchidos", () => {
   const t = P.montar(dados(), X);
   assert.deepEqual(P.faltas(t), []);
   const m = P.marcadores(t);
-  assert.equal(m.PRE_RESERVANTE_QUADRO, "COMPRADORA TESTE, brasileira, solteira, professora, RG nº 1234567 SSP/GO, CPF nº 529.982.247-25, " +
+  assert.equal(m.PRE_RESERVANTE_QUADRO, "COMPRADORA TESTE, BRASILEIRA, solteira, professora, RG nº 1234567 SSP/GO, CPF nº 529.982.247-25, " +
     "residente e domiciliado(a) à RUA TESTE, 10, e-mail compradora@teste.invalid, telefone (62) 90000-0000");
   assert.equal(m.CASA_NUMERO, "13");
   assert.equal(m.CASA_TIPO, "02");
@@ -146,4 +146,11 @@ test("31/10: validarPagamento e histórico (só muda o que mudou; corta as linha
   assert.ok(j.length <= 1900);
   assert.ok(j.endsWith("\nnova"));
   assert.ok(!j.startsWith("linha 0 "));
+});
+
+test("03/11: dispensada = contrato feito e termo nunca enviado com sucesso (ENVIADO e ASSINADO continuam valendo)", () => {
+  assert.equal(P.dispensada("", true), true);
+  for (const s of ["RASCUNHO", "CANCELADO", "RECUSADO", "EXPIRADO", "rascunho"]) assert.equal(P.dispensada(s, true), true, s);
+  for (const s of ["ENVIADO", "ASSINADO", " enviado "]) assert.equal(P.dispensada(s, true), false, s);
+  for (const s of ["", "ENVIADO", "CANCELADO"]) assert.equal(P.dispensada(s, false), false, "sem contrato: " + s);
 });

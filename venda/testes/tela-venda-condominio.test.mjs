@@ -380,9 +380,10 @@ test("salvarConjugePreReserva com o envelope do termo aberto: ENVELOPE_ABERTO co
   assert.equal(r.erro, "ENVELOPE_ABERTO");
   assert.equal(r.mensagem, "O termo já foi enviado para assinatura. Para mudar quem assina, cancele o envelope do termo primeiro.");
   assert.equal(c.acao("preReservaEstado").incluirConjuge, false, "nada gravado");
-  /* envelope do CONTRATO aberto não trava o termo (são envelopes separados) */
+  /* 03/11 (dono): envelope do CONTRATO aberto com o termo nunca enviado = contrato gerado direto, pré-reserva dispensada
+     (antes: "não trava, são envelopes separados") */
   const k = cenarioPR({ linha: { ...CONTA_PR, ...CASADO_PR, "ASSINATURA - ENVELOPE ID": rt("env-contrato"), "ASSINATURA - SITUAÇÃO": rt("ENVIADO") } });
-  assert.equal(k.acao("salvarConjugePreReserva", { incluir: true }).ok, true);
+  assert.equal(k.acao("salvarConjugePreReserva", { incluir: true }).erro, "PRE_RESERVA_DISPENSADA");
 });
 
 test("preReservaEstado traz incluirConjuge e temConjuge; salvarConjugePreReserva recusa TESTES e página de outra base", () => {
@@ -1371,7 +1372,7 @@ test("plano 23 B: termos de confissão — a tela recebe os PDFs dos termos; a l
 
 
 /* ---- 01/11/2026 (plano 23 C): selfie também no condomínio, para cônjuge e fiadores ---- */
-test("plano 23 C: condomínio com CLICKSIGN_SELFIE=1 — fiadores com selfie e documento nos termos; representante só e-mail", () => {
+test("plano 23 C + dono 03/11: condomínio com CLICKSIGN_SELFIE=1 — compradora com selfie; fiadores e representante só e-mail", () => {
   const c = cenarioCfd({ props: { CLICKSIGN_SELFIE: "1" } });
   assert.equal(c.gerarFinal().ok, true);
   assert.equal(c.acao("assinaturaEnviar", rub(c)).ok, true);
@@ -1381,7 +1382,7 @@ test("plano 23 C: condomínio com CLICKSIGN_SELFIE=1 — fiadores com selfie e d
     return reqs.filter((q) => q.attributes.action === "provide_evidence" && q.relationships.signer.data.id === s.id)
       .map((q) => q.relationships.document.data.id + ":" + q.attributes.auth);
   };
-  assert.deepEqual(auths("f1@teste.example"), ["doc-2:email", "doc-2:selfie", "doc-3:email", "doc-3:selfie"]);
+  assert.deepEqual(auths("f1@teste.example"), ["doc-2:email", "doc-3:email"]);
   assert.ok(auths("compradora@teste.example").includes("doc-1:selfie"));
   assert.deepEqual(auths("beltrano@teste.example"), ["doc-1:email", "doc-2:email", "doc-3:email"]);
 });

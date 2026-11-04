@@ -1409,3 +1409,55 @@ documentos assinados da venda em Obras > Orçamento > "CONDOMÍNIO RESERVA DOS I
    `MC_PASTA_CONTRATOS_VENDA` (outro nome de pasta).
 5. **Conferir:** unidade 31 → bloco Mais Controle → "Anexar contrato no Mais Controle" → em 1 a 3 minutos Atualizar:
    `Contrato: anexado no recebimento` e o PDF na aba Arquivos da venda no ERP.
+## Vigia de assinaturas a cada 15 min e pré-reserva dispensada (03/11/2026)
+
+Pedido do dono. O webhook da Clicksign foi descartado: o `/exec` do Apps Script responde **302** e a Clicksign não segue
+redirecionamento (conta como falha e pode desligar o webhook). Tudo passa pela vigia (`AssinaturaVigia.gs`).
+
+- **Vigia a cada 15 minutos** (antes 30), das 7h às 21h, nos contratos **e nos termos de pré-reserva** ainda `ENVIADO`.
+- **Volta curta com os eventos:** de cada envelope aberto, o GET do envelope e o dos eventos de cada documento (ids
+  guardados com a marca em `VIGIA_STATUS_<envelope>`). Recusa e assinatura nova não mudam o status do envelope
+  (continua `running`), por isso só o status não bastava. Nada mudou = para aí; mudou = o caminho completo de sempre.
+- **Progresso:** `ASSINATURA - PROGRESSO` e `PRÉ-RESERVA - PROGRESSO` (Texto) recebem "3 de 5". Opcionais: sem a
+  coluna, nada quebra. A planilha mostra "Assinaturas · assinando · 3 de 5".
+- **Recusa, cancelamento, expiração:** a etapa da linha fica vermelha ("recusado", "cancelado", "expirado") e a vigia
+  manda **um** e-mail para `ASSINATURA_AVISO_EMAILS` (vírgula ou ponto e vírgula). O botão Atualizar situação não manda
+  e-mail (quem clicou já viu). Sem a Propriedade: só o log.
+- **Pré-reserva dispensada:** contrato gerado (PDF em `CONTRATO GERADO` ou envelope do contrato) e termo nunca enviado
+  (situação vazia, rascunho, cancelado, recusado ou expirado) = `gerarTermoPreReserva`, `salvarContaPreReserva`,
+  `salvarConjugePreReserva` e `assinaturaEnviar` do termo respondem `PRE_RESERVA_DISPENSADA` ("O contrato desta unidade
+  foi gerado sem a pré-reserva: a pré-reserva foi dispensada."). Termo `ENVIADO` ou `ASSINADO` continua valendo. O
+  pagamento da pré-reserva segue aberto. Nada é gravado: é calculado das colunas, então volta sozinho se o contrato sumir.
+  No card: "Dispensada — o contrato desta unidade foi gerado direto, sem a pré-reserva."; na planilha: "Pré-reserva ·
+  dispensada".
+- **Implantar (teste primeiro):** no PORTAL-VENDA colar `AssinaturaVigia.gs`, `AssinaturaVenda.gs`, `PreReservaVenda.gs`
+  (de `PreReservaVenda.js`) e `PortalVenda.gs` (`venda-v21`), publicar a MESMA implantação e rodar **uma vez**
+  `instalarVigiaAssinaturas` no editor (troca o gatilho para 15 min). Se o MailApp ainda não foi autorizado no projeto,
+  o editor pede a permissão nessa hora. O site vai com `venda-dossie.js?v=64`, `venda/assinatura-ui.js?v=26` e o cache
+  `portal-morais-v269`.
+- **Configurar:** os endereços vão no arquivo `AvisosConfig.gs`, que existe SÓ no Apps Script (fora deste repositório público):
+  `var ASSINATURA_AVISO_EMAILS_PADRAO = "a@empresa, b@empresa";`. A Propriedade `ASSINATURA_AVISO_EMAILS`, se existir, vence. No Notion (base do condomínio) as colunas de Texto
+  `ASSINATURA - PROGRESSO` e `PRÉ-RESERVA - PROGRESSO`.
+- **Conferir:** venda de teste com envelope ENVIADO na sandbox → assinar com um signatário → em até 15 min a planilha
+  mostra "1 de N"; recusar com outro → linha vermelha "recusado" e o e-mail chega; unidade com contrato gerado e sem
+  termo → aba Pré-reserva mostra "Dispensada" e o Gerar termo some.
+
+## Alterar fluxo guiado pelo simulador (04/11/2026)
+
+Pedido do dono: "os fluxos que nós fazemos à mão devem seguir o princípio do simulador — tirei das primeiras parcelas
+pré-chaves, sobe automaticamente o valor do primeiro balão, ou pelo menos um campo de sugestão". Decisão: ajuste
+automático com cadeado.
+
+- **Na tela:** mexer no valor ou na quantidade de uma pré-chaves, balão ou pós-chaves trava a linha (🔒). Uns 400 ms
+  depois da última tecla, as linhas soltas (🔓) dessas três espécies são refeitas para a Diferença ficar em R$ 0,00 — as
+  que mudaram piscam e ganham "ajustado pelo simulador". O cadeado de cada linha trava/solta à mão. Sinal, entrada à
+  vista, permuta, pré-reserva, financiamento, FGTS e subsídio nunca mudam. Quando as travas não deixam fechar, cada linha
+  mostra "sugestão: R$ X" e o placar oferece **Aplicar sugestão** (a conta sem as travas; os cadeados abrem).
+  Recomeçar do fluxo da proposta e o prazo 24x/36x/48x limpam os cadeados; Distribuir e ↻ continuam como eram.
+- **A conta** (`FluxoLivre.guiar`): a diferença vai proporcional à régua do simulador — 1ª pré-chaves (por data) 860 por
+  parcela, as outras 330; 1º balão 10.000, os outros 7.000; pós-chaves 788,33 por parcela, nunca acima do teto (o da
+  proposta, se maior). Nenhuma linha abaixo de R$ 1,00 por parcela (o que não cabe vai para as outras). Quantidade e
+  datas ficam; os centavos fecham no último balão solto.
+- **Cadeados são só da tela** (não são gravados). Validações e servidor não mudaram.
+- **Implantar:** sobe com o site (FluxoLivre v12, venda-dossie v69, cache v287). No Apps Script nada é obrigatório: o
+  servidor não usa `guiar`; colar `FluxoLivre.gs` de novo só para manter a cópia igual.

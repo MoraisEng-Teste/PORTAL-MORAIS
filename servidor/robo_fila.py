@@ -33,6 +33,7 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent          # o clone do port
 CENTRAL = pathlib.Path(os.environ.get("MC_CENTRAL") or r"C:\AUTOMAÇÕES MAIS CONTROLE\_central")
 CONFIG = CENTRAL / "robos-portal.json"
 TRAVA = CENTRAL / "robos-portal.trava"
+TRAVA_INDICES = CENTRAL / "robo-indices.trava"   # 04/11: os índices não esperam a trava da fila
 SAUDE = CENTRAL / "robos-portal-saude.json"
 APLICAR = CENTRAL / "VENDA_APLICAR.txt"
 LOGS = CENTRAL / "logs"
@@ -136,6 +137,34 @@ def apos_gravar(argv: list) -> list | None:
     return None
 
 
+# ---------------------------------------------------------------- 03/11: "Rodar de novo" do Escritório de Robôs
+RE_TAREFA = re.compile(r"^MoraisEng - [0-9A-Za-zÀ-ÿ ()._-]{2,80}$")
+SEM_JANELA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
+def tarefa_para_rodar(p: dict, nome_fila: str) -> tuple[str | None, str]:
+    """Pedido robo-rodar -> (nome da tarefa agendada, "") ou (None, motivo). Só tarefas "MoraisEng - …" que já
+    existem; nunca o porteiro (derrubaria a sessão de todo mundo) nem a própria fila; nunca pela fila de teste."""
+    nome = str(p.get("tarefa") or "").strip()
+    if nome_fila == "teste":
+        return None, "a fila de teste não dispara robô"
+    if not RE_TAREFA.match(nome):
+        return None, "tarefa inválida"
+    baixo = nome.lower()
+    if "porteiro" in baixo or "(fila)" in baixo:
+        return None, "essa tarefa não se roda pelo portal"
+    return nome, ""
+
+
+def rodar_tarefa(nome: str) -> tuple[bool, str]:
+    """schtasks /Run: roda a MESMA tarefa agendada (rodar_e_relatar.py, e-mail e escritório inclusos). Se ela já
+    está rodando, o Agendador não abre outra (as tarefas são criadas com "não rodar duas ao mesmo tempo")."""
+    r = subprocess.run(["schtasks", "/Run", "/TN", nome], capture_output=True, text=True, errors="replace",
+                       timeout=60, creationflags=SEM_JANELA)
+    msg = " ".join(((r.stdout or "") + " " + (r.stderr or "")).split())[:300]
+    return r.returncode == 0, msg
+
+
 class Fila:
     def __init__(self, cfg: dict):
         self.nome = cfg["nome"]
@@ -199,6 +228,8 @@ class Fila:
         except ValueError:
             payload = {}
         alvo = str(payload.get("pageId") or "")[:8]
+        if tipo == "robo-rodar":
+            return self.rodar_de_novo(linha, payload)
         montado = argumentos(tipo, payload, self.pode_gravar)
         if not montado:
             self.marcar(linha["id"], "ERRO", "pedido inválido (%s)" % tipo)
@@ -236,20 +267,90 @@ class Fila:
         return "FEITO" if codigo == 0 else "ERRO"
 
 
+    def rodar_de_novo(self, linha: dict, payload: dict) -> str:
+        """03/11: botão "Rodar de novo" do Escritório de Robôs. Dispara a tarefa e marca FEITO na hora (o resultado
+        da rodada vem no e-mail e na própria aba); a próxima publicação do escritório sai logo, com a mesa rodando."""
+        nome, motivo = tarefa_para_rodar(payload, self.nome)
+        quem = str(payload.get("quem") or "")[:40]
+        if not nome:
+            self.marcar(linha["id"], "ERRO", motivo)
+            log("[%s] robo-rodar: recusado (%s)" % (self.nome, motivo))
+            return "ERRO"
+        if nome == "MoraisEng - Reorganizar":          # 04/11: o Coordenador da fila (servidor/reorganizar.py)
+            return self.reorganizar(linha, quem)
+        try:
+            ok, msg = rodar_tarefa(nome)
+        except Exception as e:
+            ok, msg = False, "%s: %s" % (type(e).__name__, str(e)[:200])
+        self.marcar(linha["id"], "FEITO" if ok else "ERRO", ("disparada: " if ok else "não disparou: ") + nome + (" — " + msg if not ok else ""))
+        log("[%s] robo-rodar %s%s: %s" % (self.nome, nome, (" (pedido de %s)" % quem) if quem else "", "disparada" if ok else "FALHOU " + msg))
+        if ok:
+            try:
+                time.sleep(3)                       # deixa o Agendador marcar "Running" antes de publicar
+                sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+                import escritorio_robos
+                escritorio_robos.publicar(lambda m: log("[escritorio] " + m))
+            except Exception:
+                pass
+        return "FEITO" if ok else "ERRO"
+
+
+    def reorganizar(self, linha: dict, quem: str) -> str:
+        try:
+            sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+            import escritorio_robos as ER
+            import reorganizar as RZ
+            plano, motivo = RZ.criar_plano(ER.ler_tarefas(), ER.rodadas(), quem)
+        except Exception as e:
+            plano, motivo = None, "%s: %s" % (type(e).__name__, str(e)[:200])
+        if not plano:
+            self.marcar(linha["id"], "ERRO", "reorganizar: " + motivo)
+            log("[coordenador] não reorganizei: %s" % motivo)
+            return "ERRO"
+        ordem = " → ".join(i["chave"] for i in plano["fila"])
+        self.marcar(linha["id"], "FEITO", "fila montada: " + ordem)
+        log("[coordenador] fila montada%s: %s" % ((" (pedido de %s)" % quem) if quem else "", ordem))
+        passo_coordenador()
+        return "FEITO"
+
+
+def passo_coordenador() -> None:
+    """04/11: um passo do Coordenador da fila por minuto (um robô de cada vez, ver servidor/reorganizar.py)."""
+    try:
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import reorganizar as RZ
+        if not RZ.ativo(RZ.ler()):
+            return
+        import escritorio_robos as ER
+        msg = RZ.passo(ER.ler_tarefas(), ER.conferir_porteiro)
+        if msg:
+            log("[coordenador] " + msg)
+            ER.publicar(lambda m: log("[escritorio] " + m))
+    except Exception as e:
+        log("[coordenador] FALHOU %s: %s" % (type(e).__name__, str(e)[:150]))
+
+
 def carregar() -> list:
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
     return [Fila(f) for f in cfg.get("filas") or []]
 
 
-def com_trava(funcao):
-    """Uma execução por vez (o Agendador chama a cada minuto; um lançamento pode durar mais)."""
+def com_trava(funcao, trava=None):
+    """Uma execução por vez (o Agendador chama a cada minuto; um lançamento pode durar mais).
+
+    04/11/2026: os índices têm a trava DELES (TRAVA_INDICES). Com a mesma da fila, o "Rodar de novo" e o
+    Coordenador (que soltam a tarefa de dentro da rodada da fila, com a trava pega) faziam os índices saírem na
+    hora com "outra execução ainda está rodando" — código 0, nenhuma linha no log e o relatório "FALHOU"."""
+    trava = trava or TRAVA
     CENTRAL.mkdir(parents=True, exist_ok=True)
     import msvcrt
-    f = open(TRAVA, "a+")
+    f = open(trava, "a+")
     try:
         msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
     except OSError:
         print("outra execução ainda está rodando — saindo")
+        if trava != TRAVA:
+            log("[%s] outra execução ainda está rodando — não abri outra" % pathlib.Path(trava).stem.replace("robo-", ""))
         return 0
     try:
         return funcao()
@@ -279,6 +380,7 @@ def rodada() -> int:
             erro = 1
         saude["filas"][fila.nome] = st
     SAUDE.write_text(json.dumps(saude, ensure_ascii=False, indent=1), encoding="utf-8")
+    passo_coordenador()
     return erro
 
 
@@ -305,6 +407,9 @@ ROBOS = {
     "medicoes": ["robo_mc_medicoes.py"],                                          # robos-mc-medicoes.yml (2/2 h)
     # 31/10: retrato diário das vendas do condomínio (aba Financeiro + antecipação); só lê o ERP
     "retratos": ["robo_mc_retratos.py"],
+    # 03/11: anexos dos pagamentos (boleto/NF/recibo/comprovante) para a Auditoria Financeira; só lê o ERP.
+    # Precisa de "vars": {"SUPABASE_URL": ...} e "supabase_key_arquivo" (service key, o dono cola no arquivo).
+    "anexos": ["robo_mc_anexos.py"],
 }
 REPO_GH = "MoraisEng-Teste/PORTAL-MORAIS"
 ARQ_MEDICOES = "dist/mc_medicoes/contratos.json"
@@ -315,6 +420,9 @@ def env_robos(cfg: dict) -> dict:
     e = dict(os.environ)
     e.update({k: str(v) for k, v in (cfg.get("vars") or {}).items()})
     tok = pathlib.Path(cfg["notion_token_arquivo"]).read_text(encoding="utf-8").strip()
+    chave_sb = cfg.get("supabase_key_arquivo")
+    if chave_sb and pathlib.Path(chave_sb).exists():
+        e["SUPABASE_SERVICE_KEY"] = pathlib.Path(chave_sb).read_text(encoding="utf-8").strip()
     e.update({"NOTION_TOKEN": tok, "MC_VIA": "porteiro", "PYTHONIOENCODING": "utf-8",
               "APLICAR": "1" if (CENTRAL / "ROBOS_APLICAR.txt").exists() else ""})
     for n in ("MC_USUARIO", "MC_SENHA", "MC_ROBO_USUARIO", "MC_ROBO_SENHA", "MC_ROBO_EMAIL", "MC_ROBO_APARELHO",
@@ -368,6 +476,8 @@ def robo_antigo(nome: str) -> int:
         except subprocess.TimeoutExpired:
             codigo, fim = 124, "passou de %d min" % (PRAZO_ROBO_ANTIGO_S // 60)
         log("[%s] %s código %s %s" % (nome, script, codigo, str(fim)[:200]))
+        if env.get("DESCOBRIR") and "r" in locals():          # 03/11: na descoberta, mostra a saída inteira
+            print((r.stdout or "") + (r.stderr or ""))
         pior = pior or codigo
     if nome == "medicoes" and not pior:
         try:
@@ -409,10 +519,23 @@ def main(argv=None) -> int:
     if a.verificar:
         return verificar()
     if a.indices:
-        return com_trava(indices)
+        return com_trava(indices, TRAVA_INDICES)
     if a.robo:
         return robo_antigo(a.robo)      # sem a trava da fila: os robôs antigos não usam a fila
-    return com_trava(rodada)
+    codigo = com_trava(rodada)
+    publicar_escritorio()
+    return codigo
+
+
+def publicar_escritorio() -> None:
+    """03/11/2026 — aba ESCRITÓRIO DE ROBÔS do portal: a cada 5 min (04/11: era 15; o dono quer saber logo se o porteiro caiu) (a fila roda de minuto em minuto) sobe o
+    retrato das tarefas agendadas, rodadas e saúde da fila (servidor/escritorio_robos.py). Nunca atrapalha a fila."""
+    try:
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import escritorio_robos
+        escritorio_robos.publicar_se_passou(5, lambda m: log("[escritorio] " + m))
+    except Exception as e:
+        log("[escritorio] FALHOU %s: %s" % (type(e).__name__, str(e)[:150]))
 
 
 if __name__ == "__main__":
