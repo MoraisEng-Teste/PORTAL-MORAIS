@@ -83,6 +83,31 @@ var RegrasVenda = (function () {
   TIPOS_IMOVEL_OPC[COL_IMOVEL_OPC.ARQ_CERTIDAO_MAE] = "files";
   TIPOS_IMOVEL_OPC[COL_IMOVEL_OPC.HABITESE_DATA] = "date";
   TIPOS_IMOVEL_OPC[COL_IMOVEL_OPC.LOTEAMENTO_DENOMINACAO] = "rich_text";
+  /* 05/11/2026 (dono: "o cadastro do vendedor SEMPRE tem que vir preenchido automático"): a qualificação do
+     proprietário ATUAL lida da matrícula da casa. Colunas OPCIONAIS da VENDAS, uma a uma (sem elas a leitura da
+     matrícula segue igual); o contrato (GerarContrato.ctrFontes_) completa o vendedor com elas. */
+  var COL_VENDEDOR_MAT = {
+    NOME: "VENDEDOR - NOME", CPF_CNPJ: "VENDEDOR - CPF/CNPJ", NACIONALIDADE: "VENDEDOR - NACIONALIDADE",
+    ESTADO_CIVIL: "VENDEDOR - ESTADO CIVIL", PROFISSAO: "VENDEDOR - PROFISSÃO", RG: "VENDEDOR - RG",
+    ENDERECO: "VENDEDOR - ENDEREÇO"
+  };
+  var TIPOS_VENDEDOR_MAT = {};
+  Object.keys(COL_VENDEDOR_MAT).forEach(function (k) { TIPOS_VENDEDOR_MAT[COL_VENDEDOR_MAT[k]] = "rich_text"; });
+  /* o proprietário da obra no Mais Controle (cliente da obra), copiado pelo robô diário dos documentos do Orçamento
+     (robo_mc_documentos.py). Também opcionais; o contrato usa só para completar o que faltar. */
+  var COL_VENDEDOR_MC = {
+    NOME: "VENDEDOR MC - NOME", CPF_CNPJ: "VENDEDOR MC - CPF/CNPJ", ENDERECO: "VENDEDOR MC - ENDEREÇO",
+    EMAIL: "VENDEDOR MC - E-MAIL"
+  };
+  /* robô diário dos documentos do Orçamento do MC: o que ele anexou e ninguém leu ainda (ids de espaço separados por
+     vírgula; o portal passa para os "novos para ler" e limpa) e os arquivos do MC já vistos (JSON, para não repetir) */
+  var COL_MC_DOCS = { NOVOS: "DOSSIÊ IMÓVEL - NOVOS DO MAIS CONTROLE", VISTOS: "MC - DOCUMENTOS DO ORÇAMENTO" };
+  /* "IMOVEL_MATRICULA, IMOVEL_ALVARA" -> os ids de espaço do imóvel que valem, sem repetir, na ordem de leitura */
+  function espacosDoTexto(s) {
+    return ordenarEspacos(texto(s).split(/[,;\s]+/).filter(function (id) {
+      return Object.prototype.hasOwnProperty.call(ESPACOS_IMOVEL, id);
+    }));
+  }
   var TIPOS_IMOVEL = {};
   Object.keys(COL_IMOVEL).forEach(function (k) { TIPOS_IMOVEL[COL_IMOVEL[k]] = "rich_text"; });
   [COL_IMOVEL.ARQ_MATRICULA, COL_IMOVEL.ARQ_ALVARA, COL_IMOVEL.ARQ_HABITESE]
@@ -99,12 +124,20 @@ var RegrasVenda = (function () {
     IMOVEL_CERTIDAO_MAE: { coluna: COL_IMOVEL_OPC.ARQ_CERTIDAO_MAE, tipo: "certidao_mae", grupo: "imovel", rotulo: "Certidão mãe",
                            esperado: "a certidão da matrícula-mãe do condomínio ou loteamento" }
   };
+  /* 05/11/2026: contrato de financiamento, anexado na aba Recebimentos da casa de rua (RecebimentoVenda.gs). Fora do
+     dossiê (não entra em ESTADOS, ORDEM_LEITURA nem na leitura em lote): a leitura grava VALOR FINANCIADO, VALOR DO FGTS e
+     VALOR DO SUBSÍDIO e o robô dos recebimentos acerta as parcelas no Mais Controle. */
+  var COL_RECEB = { CONTRATO_FIN: "CONTRATO DE FINANCIAMENTO" };
+  var ESPACOS_RECEB = {
+    FIN_CONTRATO: { coluna: COL_RECEB.CONTRATO_FIN, tipo: "contrato_financiamento", grupo: "recebimento",
+                    rotulo: "Contrato de financiamento", esperado: "o contrato de financiamento do banco" }
+  };
   /* ordem em que as leituras de um lote são aplicadas: a identidade do comprador 1 antes da do 2
      (o CLIENTES junta os dois nomes) e a certidão mãe depois da matrícula (ver confrontações) */
   var ORDEM_LEITURA = ["C1_IDENTIDADE", "C2_IDENTIDADE", "C1_COMPROVANTE", "C2_COMPROVANTE", "APROVACAO",
                        "IMOVEL_MATRICULA", "IMOVEL_CERTIDAO_MAE", "IMOVEL_ALVARA", "IMOVEL_HABITESE"];
   function ordenarEspacos(ids) {
-    return (ids || []).filter(function (id, i, l) { return !!espaco(id) && l.indexOf(id) === i; })
+    return (ids || []).filter(function (id, i, l) { return !!espaco(id) && ORDEM_LEITURA.indexOf(id) >= 0 && l.indexOf(id) === i; })
       .sort(function (x, y) { return ORDEM_LEITURA.indexOf(x) - ORDEM_LEITURA.indexOf(y); });
   }
   /* espaços com arquivo anexado e ainda não lido: { espaço: "trocar" | "atualizar" }.
@@ -178,6 +211,7 @@ var RegrasVenda = (function () {
     var k = String(id || "");
     if (Object.prototype.hasOwnProperty.call(ESPACOS, k)) return ESPACOS[k];
     if (Object.prototype.hasOwnProperty.call(ESPACOS_IMOVEL, k)) return ESPACOS_IMOVEL[k];
+    if (Object.prototype.hasOwnProperty.call(ESPACOS_RECEB, k)) return ESPACOS_RECEB[k];
     return null;
   }
 
@@ -217,6 +251,21 @@ var RegrasVenda = (function () {
     if (d && d.length < 11 && /^[0-9]+$/.test(s)) d = ("00000000000" + d).slice(-11);
     else return s;
     return d;
+  }
+  function cnpjValido(cnpj) {
+    var d = soDigitos(cnpj);
+    if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+    function dv(n) {
+      var pesos = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], s = 0;
+      for (var i = 0; i < n; i++) s += Number(d[i]) * pesos[i];
+      var r = s % 11;
+      return r < 2 ? 0 : 11 - r;
+    }
+    return dv(12) === Number(d[12]) && dv(13) === Number(d[13]);
+  }
+  function formatarCnpj(cnpj) {
+    var d = soDigitos(cnpj);
+    return d.length === 14 ? d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5, 8) + "/" + d.slice(8, 12) + "-" + d.slice(12) : d;
   }
   function mascararCpf(cpf) { var d = soDigitos(cpf); return d ? "***-" + d.slice(-2) : "sem CPF"; }
   function formatarCpf(cpf) {
@@ -328,7 +377,15 @@ var RegrasVenda = (function () {
     var d = new Date(iso + "T00:00:00Z");
     return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso ? iso : "";
   }
-  function isoParaBR(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto(iso)); return m ? m[3] + "/" + m[2] + "/" + m[1] : ""; }
+  /* "R$ 1.234,56" (só para as observações; vazio/não número: "—") */
+  function moeda(n) {
+    n = Number(n);
+    if (!isFinite(n)) return "—";
+    var c = Math.round(Math.abs(n) * 100), r = String(Math.floor(c / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    var cent = String(c % 100); if (cent.length < 2) cent = "0" + cent;
+    return (n < 0 ? "-" : "") + "R$ " + r + "," + cent;
+  }
+  function isoParaBR(iso) { var m =/^(\d{4})-(\d{2})-(\d{2})$/.exec(texto(iso)); return m ? m[3] + "/" + m[2] + "/" + m[1] : ""; }
   /* área em m² como impressa ("360,00 m²", "1.250,50", "360") → número > 0, ou null */
   function areaM2(s) {
     if (typeof s === "number") return isFinite(s) && s > 0 ? s : null;
@@ -340,7 +397,8 @@ var RegrasVenda = (function () {
   function limpar(s) { return texto(s).replace(/\s+/g, " ").trim(); }
 
   var TIPOS_DOC = { identidade: ["CNH", "RG"], comprovante: ["COMPROVANTE"], aprovacao: ["APROVACAO"],
-                    matricula: ["MATRICULA"], alvara: ["ALVARA"], habitese: ["HABITESE"], certidao_mae: ["CERTIDAO_MAE"] };
+                    matricula: ["MATRICULA"], alvara: ["ALVARA"], habitese: ["HABITESE"], certidao_mae: ["CERTIDAO_MAE"],
+                    contrato_financiamento: ["CONTRATO_FINANCIAMENTO"] };
 
   function planejarGravacao(espacoId, leitura, atuais, hojeISO, modo) {
     var esp = espaco(espacoId);
@@ -456,6 +514,21 @@ var RegrasVenda = (function () {
       propor(CI.LOTEAMENTO_MATRICULA, lot.matricula, "texto");
       propor(CI.LOTEAMENTO_CARTORIO, lot.cartorio, "texto");
       if (lot.denominacao || lot.matricula || lot.cartorio) plano.loteamento = lot;
+      /* 05/11/2026 (dono): qualificação do proprietário ATUAL (último registro de transmissão) — vira o vendedor do
+         contrato quando o cadastro não tem. CPF/CNPJ que não fecha o dígito não é gravado. */
+      var CVM = COL_VENDEDOR_MAT, docDono = soDigitos(leitura.proprietario_cpf_cnpj), docFmt = "";
+      if (docDono) {
+        if (docDono.length === 11 && cpfValido(docDono)) docFmt = formatarCpf(docDono);
+        else if (docDono.length === 14 && cnpjValido(docDono)) docFmt = formatarCnpj(docDono);
+        else obs("o CPF/CNPJ do proprietário lido (" + mascararCpf(docDono) + ") não fecha o dígito verificador — não foi gravado, conferir");
+      }
+      propor(CVM.NOME, limpar(leitura.proprietario_nome), "texto");
+      propor(CVM.CPF_CNPJ, docFmt, "cpf");
+      propor(CVM.NACIONALIDADE, limpar(leitura.nacionalidade), "texto");
+      propor(CVM.ESTADO_CIVIL, limpar(leitura.estado_civil), "texto");
+      propor(CVM.PROFISSAO, limpar(leitura.profissao), "texto");
+      propor(CVM.RG, limpar(leitura.rg), "texto");
+      propor(CVM.ENDERECO, limpar(leitura.endereco), "texto");
     } else if (esp.tipo === "alvara" || esp.tipo === "habitese") {
       var ehAlvara = esp.tipo === "alvara";
       propor(ehAlvara ? COL_IMOVEL.ALVARA_NUMERO : COL_IMOVEL.HABITESE_NUMERO, limpar(leitura.numero), "texto");
@@ -489,6 +562,29 @@ var RegrasVenda = (function () {
           " — confrontações não gravadas, conferir");
       }
       /* 05/11/2026 (dono): a área do lote vem SÓ da matrícula do imóvel — a certidão mãe não grava nem comenta área */
+    } else if (esp.tipo === "contrato_financiamento") {
+      /* 05/11/2026 (dono): o contrato do banco é o valor que vale — TROCA o financiado; FGTS e subsídio só quando o
+         contrato mostra (campo vazio na leitura não apaga o que existe: pode ser leitura que falhou) */
+      var fin = valorBR(leitura.valor_financiado);
+      if (fin === null || fin <= 0) obs("não consegui ler o valor do financiamento — VALOR FINANCIADO não mudou, conferir");
+      else if (!iguais(atuais[COL.FINANCIADO], fin, "number")) {
+        gravar(COL.FINANCIADO, fin);
+        obs("VALOR FINANCIADO trocado pelo do contrato (" + moeda(fin) + (vazio(atuais[COL.FINANCIADO]) ? "" : "; antes " + moeda(atuais[COL.FINANCIADO])) + ")");
+      }
+      [[COL.FGTS, leitura.valor_fgts, "FGTS"], [COL.SUBSIDIO, leitura.valor_subsidio, "subsídio"]].forEach(function (x) {
+        var v = valorBR(x[1]);
+        if (vazio(x[1]) || v === null) {
+          if (!vazio(atuais[x[0]])) obs("o contrato não mostra " + x[2] + " — " + x[0] + " mantido (" + moeda(atuais[x[0]]) + "); se não houver, zere na aba Recebimentos");
+          return;
+        }
+        if (v < 0) { obs("o valor de " + x[2] + " lido não é válido — não foi gravado, conferir"); return; }
+        if (!iguais(atuais[x[0]], v, "number")) {
+          gravar(x[0], v);
+          obs(x[0] + " trocado pelo do contrato (" + moeda(v) + (vazio(atuais[x[0]]) ? "" : "; antes " + moeda(atuais[x[0]])) + ")");
+        }
+      });
+      plano.contratoFin = { data_assinatura: dataValida(leitura.data_assinatura) || "", banco: limpar(leitura.banco),
+                            agencia: limpar(leitura.agencia), numero_contrato: limpar(leitura.numero_contrato) };
     } else {
       propor(COL.FINANCIADO, valorBR(leitura.valor_financiado), "number");
       propor(COL.FGTS, valorBR(leitura.valor_fgts), "number");
@@ -522,7 +618,10 @@ var RegrasVenda = (function () {
     COL: COL, TIPOS: TIPOS, ESPACOS: ESPACOS, ESTADOS: ESTADOS, TIPOS_CASA: TIPOS_CASA,
     TIPOS_CASA_TELA: TIPOS_CASA_TELA, tipoCasaPrecisaDaObra: tipoCasaPrecisaDaObra, tipoPelaObra: tipoPelaObra,
     COL_IMOVEL: COL_IMOVEL, TIPOS_IMOVEL: TIPOS_IMOVEL, ESPACOS_IMOVEL: ESPACOS_IMOVEL, espaco: espaco,
+    COL_RECEB: COL_RECEB, ESPACOS_RECEB: ESPACOS_RECEB,
     COL_IMOVEL_OPC: COL_IMOVEL_OPC, TIPOS_IMOVEL_OPC: TIPOS_IMOVEL_OPC, ORDEM_LEITURA: ORDEM_LEITURA,
+    COL_VENDEDOR_MAT: COL_VENDEDOR_MAT, TIPOS_VENDEDOR_MAT: TIPOS_VENDEDOR_MAT, COL_VENDEDOR_MC: COL_VENDEDOR_MC,
+    COL_MC_DOCS: COL_MC_DOCS, espacosDoTexto: espacosDoTexto, cnpjValido: cnpjValido, formatarCnpj: formatarCnpj,
     ordenarEspacos: ordenarEspacos, marcarPendente: marcarPendente, pendentesValidos: pendentesValidos,
     contextoUnidade: contextoUnidade, mesmaPessoa: mesmaPessoa, tokensNome: tokensNome, decidirEspaco: decidirEspaco, espacoDaPessoa: espacoDaPessoa,
     estadoImovelAposLeitura: estadoImovelAposLeitura, dataValida: dataValida, areaM2: areaM2, isoParaBR: isoParaBR,
