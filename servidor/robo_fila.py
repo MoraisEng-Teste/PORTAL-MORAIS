@@ -687,7 +687,7 @@ def publicar_escritorio() -> None:
 #: rodando (quem já está rodando termina com o código com que começou).
 ATUALIZAR_MIN = 15
 MARCA_PULL = CENTRAL / "ultimo-git-pull.txt"
-URL_REPO = "https://github.com/DEVMoraisEng/PORTAL-MORAIS.git"
+URL_REPO = "https://github.com/MoraisEng-Teste/PORTAL-MORAIS.git"
 
 
 def atualizar_codigo(agora=time.time, rodar=subprocess.run) -> str | None:

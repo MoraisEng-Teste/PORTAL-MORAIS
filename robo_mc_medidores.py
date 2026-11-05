@@ -508,7 +508,7 @@ STATUS_FORA = ("CANCELED", "CANCELLED", "REJECTED", "REFUSED")
 #: 04/11 (pedido do dono): só as obras da aba "Verificar se a obra está apta para a solicitação" (ligacoes.html).
 #: A base é a mesma que a tela lê, o dist/ligacoes.json publicado no site.
 URL_LIGACOES = os.environ.get("MEDIDORES_LIGACOES_URL") or \
-    "https://devmoraiseng.github.io/PORTAL-MORAIS/dist/ligacoes.json"
+    "https://moraiseng-teste.github.io/PORTAL-MORAIS/dist/ligacoes.json"
 #: 1º passo: a lista LEVE (sem itens), só para achar as solicitações das obras da aba.
 Q_LISTA = (
     "query ($first: Int, $after: String, $specification: PurchaseRequestSpecificationInput, "
