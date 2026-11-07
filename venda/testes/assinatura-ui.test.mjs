@@ -148,7 +148,7 @@ test("mensagens amigáveis por código", () => {
   assert.match(m({ erro: "GRAVACAO_FALHOU", rascunhoApagado: true }), /Nada foi enviado.*tente de novo/);
   assert.match(m({ erro: "ASSINATURA_OCUPADA" }), /outro envio.*em andamento/);
   assert.match(m({ erro: "CONTRATO_DESATUALIZADO" }), /Os dados mudaram depois de gerar o contrato — gere de novo/);
-  assert.equal(m({ erro: "TERMO_DESATUALIZADO" }), "Os dados mudaram depois de gerar o termo de pré-reserva — gere o termo de novo e depois envie.");
+  assert.equal(m({ erro: "TERMO_DESATUALIZADO" }), "Os dados mudaram depois de gerar o termo de reserva — gere o termo de novo e depois envie.");
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "documento", http: 422, rascunhoApagado: true }), /Nada foi enviado aos signatários/);
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "documento", http: 422, envelopeId: "env-1", rascunhoApagado: false }),
                /Clique em Descartar rascunho e envie de novo/);
@@ -176,8 +176,8 @@ test("Enviar confirmado: chama assinaturaEnviar uma vez e mostra a situação no
     pageId: "p1", confirmar: (t) => { perguntas.push(t); return true; },
     chamar: async (x) => { chamadas.push(x); return { ok: true, situacao: "ENVIADO", signatarios: [{ papel: "Comprador 1", assinou: false }] }; } });
   /* 30/10: antes, a tela pede o PDF do contrato para achar as rubricas (aqui a resposta não traz PDF: envia sem) */
-  assert.deepEqual(chamadas, [{ action: "assinaturaPdf", pageId: "p1" }, { action: "assinaturaEnviar", pageId: "p1" }]);
-  assert.match(perguntas[0], /Enviar o contrato para assinatura\?/);
+  assert.deepEqual(chamadas, [{ action: "assinaturaPdf", pageId: "p1" }, { action: "assinaturaEnviar", pageId: "p1", prazo: A.limitesPrazo(new Date()).padrao }]);
+  assert.match(perguntas[0], /Enviar o contrato para assinatura até \d{2}\/\d{2}\/\d{4}\?/);
   assert.deepEqual(novo.estado, { situacao: "ENVIADO", envelope: true, signatarios: [{ papel: "Comprador 1", assinou: false }], temAssinado: false });
   assert.equal(novo.ocupado, null);
   assert.match(novo.msg, /Enviado/);
@@ -241,9 +241,9 @@ test("botão desabilitado não age (ex.: Enviar com envelope aberto)", async () 
   assert.equal(novo.estado, ENVIADO);
 });
 
-test("termo de pré-reserva (27/10): botões com prefixo p-, textos do termo e doc PRE_RESERVA nas chamadas", async () => {
+test("termo de reserva (27/10): botões com prefixo p-, textos do termo e doc PRE_RESERVA nas chamadas", async () => {
   const h = A.montarBlocoAssinatura(ctx({ doc: "PRE_RESERVA", contratoGerado: false }));
-  assert.match(h, /Enviar termo de pré-reserva via Clicksign/);
+  assert.match(h, /Enviar termo de reserva via Clicksign/);
   assert.match(h, /Gere o termo antes/);
   assert.equal(botao(h, "a-enviar").length, 0);
   assert.match(botao(h, "p-enviar")[0], /disabled/);
@@ -251,9 +251,9 @@ test("termo de pré-reserva (27/10): botões com prefixo p-, textos do termo e d
   assert.equal(botao(h2, "p-atualizar").length, 1);
   assert.equal(botao(h2, "p-reenviar").length, 1);
   const chamadas = [];
-  const novo = await A.executarAcaoAssinatura("p-enviar", ctx({ doc: "PRE_RESERVA" }), { pageId: "p", confirmar: (t) => /termo de pré-reserva/.test(t),
+  const novo = await A.executarAcaoAssinatura("p-enviar", ctx({ doc: "PRE_RESERVA" }), { pageId: "p", confirmar: (t) => /termo de reserva/.test(t),
     chamar: async (x) => { chamadas.push(x); return { ok: true, situacao: "ENVIADO", signatarios: [] }; } });
-  assert.deepEqual(chamadas, [{ action: "assinaturaEnviar", pageId: "p", doc: "PRE_RESERVA" }]);
+  assert.deepEqual(chamadas, [{ action: "assinaturaEnviar", pageId: "p", doc: "PRE_RESERVA", prazo: A.limitesPrazo(new Date()).padrao }]);
   assert.equal(novo.estado.situacao, "ENVIADO");
   const ch2 = [];
   await A.executarAcaoAssinatura("a-atualizar", ctx({ estado: ENVIADO }), { pageId: "p", confirmar: () => true,
@@ -514,7 +514,7 @@ test("03/11: com o envelope aberto o bloco da Clicksign segue com Atualizar, Ree
   assert.doesNotMatch(botao(h, "a-cancelar")[0], /disabled/);
 });
 
-test("03/11 (dono): pré-reserva dispensada = contrato gerado (ou envelope do contrato) e termo nunca enviado; termo ENVIADO/ASSINADO vale", () => {
+test("03/11 (dono): reserva dispensada = contrato gerado (ou envelope do contrato) e termo nunca enviado; termo ENVIADO/ASSINADO vale", () => {
   const termo = (situacao, envelope = !!situacao) => ({ estado: { situacao, envelope, signatarios: [] } });
   assert.equal(A.preReservaDispensada(ctx(), termo("")), true, "contrato gerado, termo sem envelope");
   for (const s of ["RASCUNHO", "CANCELADO", "RECUSADO", "EXPIRADO"]) assert.equal(A.preReservaDispensada(ctx(), termo(s)), true, s);
@@ -573,4 +573,34 @@ test("Trocar e-mail: erros do servidor viram mensagem que diz o que fazer", asyn
     assert.match(r.msg, re, erro);
     assert.equal(r.ocupado, null);
   }
+});
+
+/* 03/11/2026 (dono): data limite para assinar, no contrato e no termo de pré-reserva */
+const AGORA = new Date(2026, 10, 3, 15, 0);   /* 03/11/2026 15:00, hora local */
+test("prazo: campo de data ao lado do Enviar com padrão 30 dias, de amanhã a 89 dias; some com envelope aberto", () => {
+  assert.deepEqual(A.limitesPrazo(AGORA), { min: "2026-11-04", padrao: "2026-12-03", max: "2027-01-31" });
+  const h = A.montarBlocoAssinatura(ctx({ agora: AGORA }));
+  assert.match(h, /Assinar até <input type="date" data-prazo="a-" value="2026-12-03" min="2026-11-04" max="2027-01-31">/);
+  const hp = A.montarBlocoAssinatura(ctx({ doc: "PRE_RESERVA", agora: AGORA, prazo: "2026-11-10" }));
+  assert.match(hp, /data-prazo="p-" value="2026-11-10"/);
+  assert.doesNotMatch(A.montarBlocoAssinatura(ctx({ estado: ENVIADO })), /data-prazo/);
+  assert.match(A.montarBlocoAssinatura(ctx({ estado: { situacao: "CANCELADO", envelope: true, signatarios: [] } })), /data-prazo="a-"/);
+  assert.match(A.montarBlocoAssinatura(ctx({ contratoGerado: false })), /data-prazo="a-"[^>]*disabled/);
+});
+
+test("prazo: a data escolhida vai no pedido e na pergunta; fora da faixa não chama o servidor", async () => {
+  const chamadas = [], perguntas = [];
+  const deps = (prazo) => ({ pageId: "p", lerPrazo: () => prazo, confirmar: (t) => { perguntas.push(t); return true; },
+    chamar: async (x) => { chamadas.push(x); return { ok: true, situacao: "ENVIADO", signatarios: [] }; } });
+  const novo = await A.executarAcaoAssinatura("p-enviar", ctx({ doc: "PRE_RESERVA", agora: AGORA }), deps("2026-11-20"));
+  assert.deepEqual(chamadas, [{ action: "assinaturaEnviar", pageId: "p", doc: "PRE_RESERVA", prazo: "2026-11-20" }]);
+  assert.match(perguntas[0], /termo de reserva para assinatura até 20\/11\/2026\?/);   /* #121: "pré-reserva" vira "reserva" */
+  assert.equal(novo.prazo, "2026-11-20");
+  for (const ruim of ["2026-11-03", "2027-02-01", "20/11/2026"]) {
+    const r = await A.executarAcaoAssinatura("a-enviar", ctx({ agora: AGORA }), deps(ruim));
+    assert.match(r.msg, /entre 04\/11\/2026 e 31\/01\/2027/, ruim);
+    assert.equal(r.ocupado, null);
+  }
+  assert.equal(chamadas.length, 1, "nenhuma chamada a mais");
+  assert.match(A.mensagemAssinatura({ ok: false, erro: "PRAZO_INVALIDO" }), /entre amanhã e 89 dias/);
 });

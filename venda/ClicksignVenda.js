@@ -191,7 +191,7 @@ var ClicksignVenda = (function () {
     /* 31/10/2026 (dono): comprador casado → o cônjuge assina logo depois dele. 01/11/2026 (dono): "cônjuge (geralmente vai
        como comprador 2) tem que assinar tudo que o comprador 1 assina" — os mesmos documentos (contrato, termos, memorial,
        projeto) e os mesmos campos de ciência e vistos dos valores, ao lado dos outros compradores (rubrica: true).
-       01/11/2026 (dono): no TERMO DE PRÉ-RESERVA o cônjuge só entra se o corretor ligou a opção na venda
+       01/11/2026 (dono): no TERMO DE RESERVA o cônjuge só entra se o corretor ligou a opção na venda
        (AssinaturaVenda.assEnviarTermo_ tira o conjugeComprador antes). Se o cônjuge já é o comprador 2 (mesmo CPF ou nome),
        não assina duas vezes. */
     var cj = dados.condominio && dados.condominio.conjugeComprador, c2 = dados.comprador2;
@@ -207,7 +207,7 @@ var ClicksignVenda = (function () {
     return [sig("Vendedor", PAPEIS.VENDEDOR, { nome: v.nome, email: v.email, cpf: v.cpfCnpj }, "vendedor")];
   }
   function sigTestemunhas(dados, config) {
-    if (config && config.semTestemunhas) return [];   /* 06/11/2026 (dono): o termo de pré-reserva não leva testemunhas */
+    if (config && config.semTestemunhas) return [];   /* 06/11/2026 (dono): o termo de reserva não leva testemunhas */
     var t = testemunhas(dados, config);
     return t ? [sig("Testemunha 1", PAPEIS.TESTEMUNHA, t[0], "testemunha"), sig("Testemunha 2", PAPEIS.TESTEMUNHA, t[1], "testemunha")] : [];
   }
@@ -263,10 +263,10 @@ var ClicksignVenda = (function () {
       add(rotV, nomeV, v && v.cpfCnpj, rep && rep.nome ? "Representante: " + rep.nome + (rep.cpf ? " – CPF: " + rep.cpf : "") : "");
     }
     var dc = dados;
-    if (pre) {   /* pré-reserva: o comprador 1 (e o cônjuge só com a opção ligada) */
+    if (pre) {   /* reserva: o comprador 1 (e o cônjuge só com a opção ligada) */
       dc = { comprador1: dados.comprador1, comprador2: null, condominio: opc.incluirConjuge ? dados.condominio : null };
     }
-    var rotC = termo ? "DEVEDOR/COMPRADOR" : pre ? "PRÉ-RESERVANTE" : "COMPRADOR", rotCj = pre ? "CÔNJUGE DO PRÉ-RESERVANTE" : "CÔNJUGE DO COMPRADOR";
+    var rotC = termo ? "DEVEDOR/COMPRADOR" : pre ? "RESERVANTE" : "COMPRADOR", rotCj = pre ? "CÔNJUGE DO RESERVANTE" : "CÔNJUGE DO COMPRADOR";
     sigCompradores(dc).forEach(function (s) { add(s.origem === "conjugeComprador1" ? rotCj : rotC, s.nome, s.cpf); });
     /* dono 01/11/2026: memorial com uma linha por pessoa — a vendedora e quem compra (cônjuge incluído); mais ninguém */
     if (memorial) return out;
@@ -277,7 +277,7 @@ var ClicksignVenda = (function () {
     });
     if (tipo === "CONTRATO" && dados.corretor && txt(dados.corretor.nome) && !vendaDireta(dados))
       add("INTERMEDIADOR/CORRETOR", dados.corretor.nome, dados.corretor.cpfCnpj);
-    if (pre) return out;   /* 06/11/2026 (dono): "não precisa de tanta coisa na pré-reserva" — sem testemunhas */
+    if (pre) return out;   /* 06/11/2026 (dono): "não precisa de tanta coisa na reserva" — sem testemunhas */
     var t = testemunhas(dados, config) || [null, null];
     [0, 1].forEach(function (i) { add("TESTEMUNHA " + (i + 1), t[i] && t[i].nome, t[i] && t[i].cpf); });
     return out;
@@ -356,7 +356,7 @@ var ClicksignVenda = (function () {
    * tela monta o endereço. E-mail repetido aponta as duas pontas. */
   function linksCorrigirEmail(faltas) {
     var t = (faltas || []).filter(function (f) { return /e-mail/i.test(f); }).join(" | "), l = [];
-    if (/(Comprador [12]|Pré-reservante)[^|]*e-mail|igual ao de (Comprador|Pré-reservante)/.test(t)) l.push({ quem: "comprador", rotulo: "Corrigir e-mail do comprador" });
+    if (/(Comprador [12]|Reservante)[^|]*e-mail|igual ao de (Comprador|Reservante)/.test(t)) l.push({ quem: "comprador", rotulo: "Corrigir e-mail do comprador" });
     if (/Vendedor[^|]*e-mail|igual ao de Vendedor/.test(t)) l.push({ quem: "vendedor", rotulo: "Corrigir e-mail do vendedor/representante" });
     if (/Corretor[^|]*e-mail|igual ao de Corretor/.test(t)) l.push({ quem: "corretor", rotulo: "Corrigir e-mail do corretor" });
     return l;
@@ -393,7 +393,7 @@ var ClicksignVenda = (function () {
     contrato: "Segue o contrato de compra e venda da unidade {UNIDADE} para a sua assinatura eletrônica. " +
               "Leia com calma antes de assinar e, se tiver qualquer dúvida, fale com a nossa equipe. " +
               "Obrigado pela confiança! Morais Engenharia",
-    termo: "Segue o termo de pré-reserva da unidade {UNIDADE} para a sua assinatura eletrônica. " +
+    termo: "Segue o termo de reserva da unidade {UNIDADE} para a sua assinatura eletrônica. " +
            "É ele que garante a sua unidade enquanto preparamos o contrato. Qualquer dúvida, fale com a nossa equipe. " +
            "Obrigado pela confiança! Morais Engenharia"
   };
@@ -405,11 +405,31 @@ var ClicksignVenda = (function () {
     /* sem unidade conhecida: "da unidade  para" vira "para" */
     return m.replace(/ da unidade (?=para |\.)/, " ").replace(/\s+([.,])/g, "$1").trim().slice(0, 1000);
   }
-  function corpoEnvelope(nome, mensagem) {
+  /* 03/11/2026 (dono): data limite para assinar, escolhida no envio (contrato e pré-reserva). "AAAA-MM-DD" vira o fim
+   * do dia em Brasília; vazio = sem prazo (a Clicksign põe 30 dias). Vale de amanhã até 89 dias (a Clicksign aceita no
+   * máximo 90 a partir da criação, e o fim do dia 90 passaria disso). */
+  var PRAZO_MAX_DIAS = 89;
+  function diaBrasilia(agora) {
+    var d = new Date((agora instanceof Date ? agora.getTime() : Number(agora)) - 3 * 3600000);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  function prazoAssinatura(valor, agora) {
+    var v = txt(valor);
+    if (!v) return { ok: true, deadline: "" };
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    if (!m) return { ok: false };
+    var dia = Date.UTC(+m[1], +m[2] - 1, +m[3]), d = new Date(dia);
+    if (d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) return { ok: false };
+    var dias = Math.round((dia - diaBrasilia(agora)) / 86400000);
+    if (dias < 1 || dias > PRAZO_MAX_DIAS) return { ok: false };
+    return { ok: true, deadline: v + "T23:59:59.000-03:00" };
+  }
+  function corpoEnvelope(nome, mensagem, deadline) {
     var a = { name: nome, locale: "pt-BR", auto_close: true, block_after_refusal: true,
       /* prazo vencido com assinatura faltando cancela (o padrão "closed" finalizaria um contrato incompleto) */
       deadline_partial_signature_action: "canceled" };
     if (txt(mensagem)) a.default_message = txt(mensagem);
+    if (txt(deadline)) a.deadline_at = txt(deadline);
     return { data: { type: "envelopes", attributes: a } };
   }
   function corpoDocumento(filename, base64) {
@@ -773,7 +793,7 @@ var ClicksignVenda = (function () {
   }
   /* correção 3 (5): papéis escritos no texto de uma linha, já normalizados (um por pessoa). Dois papéis diferentes = a
      leitura pegou o bloco do lado: a linha não vai para ninguém (melhor sem assinatura posicionada do que na errada). */
-  var RE_PAPEIS = /\b(CONJUGE DO (?:COMPRADOR|PRE-RESERVANTE|FIADOR [12])|CREDORA\/VENDEDORA|DEVEDOR\/COMPRADOR|INTERMEDIADOR\/CORRETOR|VENDEDORA?|COMPRADOR|FIADOR [12]|TESTEMUNHA [12]|PRE-RESERVANTE|CORRETOR|INTERMEDIADOR)\b/g;
+  var RE_PAPEIS = /\b(CONJUGE DO (?:COMPRADOR|(?:PRE-)?RESERVANTE|FIADOR [12])|CREDORA\/VENDEDORA|DEVEDOR\/COMPRADOR|INTERMEDIADOR\/CORRETOR|VENDEDORA?|COMPRADOR|FIADOR [12]|TESTEMUNHA [12]|(?:PRE-)?RESERVANTE|CORRETOR|INTERMEDIADOR)\b/g;
   var PAPEL_NORMAL = { "CREDORA/VENDEDORA": "VENDEDOR", "VENDEDORA": "VENDEDOR", "DEVEDOR/COMPRADOR": "COMPRADOR",
                        "INTERMEDIADOR/CORRETOR": "CORRETOR", "INTERMEDIADOR": "CORRETOR" };
   function papeisNoTexto(t) {
@@ -1023,7 +1043,7 @@ var ClicksignVenda = (function () {
     corpoEnvelope: corpoEnvelope, corpoDocumento: corpoDocumento, corpoSignatario: corpoSignatario,
     corpoQualificacao: corpoQualificacao, corpoAutenticacao: corpoAutenticacao, autenticacoes: autenticacoes, AUTH_SELFIE: AUTH_SELFIE, corpoAtivar: corpoAtivar, corpoCancelarDocumento: corpoCancelarDocumento, statusEfetivo: statusEfetivo,
     corpoNotificacao: corpoNotificacao, interpretar: interpretar, situacao: situacao, assinaram: assinaram,
-    MENSAGEM: MENSAGEM, mensagemEnvelope: mensagemEnvelope, corpoSignatarioTrocado: corpoSignatarioTrocado, requisitoGuardado: requisitoGuardado,
+    MENSAGEM: MENSAGEM, mensagemEnvelope: mensagemEnvelope, prazoAssinatura: prazoAssinatura, PRAZO_MAX_DIAS: PRAZO_MAX_DIAS, corpoSignatarioTrocado: corpoSignatarioTrocado, requisitoGuardado: requisitoGuardado,
     requisitosParaRecriar: requisitosParaRecriar, corpoRequisitoTrocado: corpoRequisitoTrocado, corpoRemoverRequisitos: corpoRemoverRequisitos,
     corpoAdicionarRequisitos: corpoAdicionarRequisitos, idsDoLote: idsDoLote,
     conferirEmailNovo: conferirEmailNovo,

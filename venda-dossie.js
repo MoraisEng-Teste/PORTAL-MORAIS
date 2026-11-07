@@ -1073,7 +1073,7 @@
     ed.linhas.forEach(function (l, k) {
       var tp = F.TIPOS[l.t] || { reajuste: "" };
       /* 05/11/2026 (dono): "alguns preferem reduzir o valor a financiar (nunca maior que a carta de aprovação)" — o
-         financiamento ganha o campo de valor (só o valor; até o da proposta); FGTS, subsídio e pré-reserva seguem fixos */
+         financiamento ganha o campo de valor (só o valor; até o da proposta); FGTS, subsídio e reserva seguem fixos */
       var carta = l.t === "fin" ? F.tetoFinanciamento(ed.padrao) : 0;
       if (tp.fixo && carta > 0) {
         h += '<tr data-fx-linha="' + k + '"><td><b>' + esc(tp.nome) + '</b><div class="dz-nota">até ' + esc(F.moeda(carta)) + " (carta de aprovação)</div></td><td></td>" +
@@ -1101,7 +1101,12 @@
         '<div class="dz-nota vb-fx-ult" data-k="' + k + '"' + (l.u && l.n > 1 ? ">última: " + esc(numBR(l.u)) : ' style="display:none">') + "</div>" +
         /* 04/11 (dono): "ajustado pelo simulador" ou a sugestão do que esta linha precisaria para fechar */
         (guiada ? '<div class="vb-fx-guia" data-k="' + k + '">' + htmlGuiaLinha(ed, k) + "</div>" : "") + "</td>" +
-        '<td><input type="number" min="1" data-fx="n" data-k="' + k + '" value="' + esc(l.n) + '"' + dis + ' style="width:4.5em"></td>' +
+        /* 07/11 (dono): pré-chaves mês a mês — o campo não passa do que cabe até out/2028 sem cair no mês da outra parte */
+        (function () {
+          var cab = l.t === "pre" ? F.cabemPre({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, k) : null;
+          return '<td><input type="number" min="1"' + (cab ? ' max="' + cab + '"' : "") + ' data-fx="n" data-k="' + k + '" value="' + esc(l.n) + '"' + dis + ' style="width:4.5em">' +
+            (cab !== null ? '<div class="dz-nota vb-fx-cab" data-k="' + k + '">cabem ' + cab + "</div>" : "") + "</td>";
+        })() +
         '<td><input type="date" data-fx="d" data-k="' + k + '" value="' + esc(l.d) + '"' + dis + "></td>" +
         '<td><input type="number" min="1" max="24" data-fx="i" data-k="' + k + '" value="' + esc(l.i || 1) + '"' + dis + ' style="width:4em"></td>' +
         /* 03/11: na permuta, a descrição é o resumo do bem (formulário "Dados do bem") */
@@ -1217,9 +1222,18 @@
              ["onus", "Ônus (hipoteca, penhora…)", { max: 300, ph: "nenhum" }]],
     outro: []
   };
+  /* 07/11/2026 (dono): "sempre que a data do vencimento for anterior à data atual, trava e calcula o fluxo certo" —
+     a conferência da tela recebe hoje (São Paulo); Corrigir datas leva as linhas para o 1º mês que pode */
+  function hojeFluxo() {
+    if (typeof HOJE_VENDA_TESTE_ === "string") return HOJE_VENDA_TESTE_;   /* testes: hoje fixo (fluxo-ui.test.mjs) */
+    try {
+      var p = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      return /^\d{4}-\d{2}-\d{2}$/.test(p) ? p : "";
+    } catch (e) { return ""; }
+  }
   /* primeira linha de permuta sem os dados do bem completos (o que o Salvar pede), ou -1 */
   function permutaSemBem(ed) {
-    var r = FL().validar({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, ed.padrao, ed.anterior || null);
+    var r = FL().validar({ valor: ed.valor, entrega: ed.entrega, hoje: hojeFluxo(), linhas: ed.linhas }, ed.padrao, ed.anterior || null);
     var ks = Object.keys(r.porBem || {}).map(Number).sort(function (a, b) { return a - b; });
     return ks.length ? ks[0] : -1;
   }
@@ -1357,7 +1371,7 @@
   }
   /* placar + o que falta + Salvar: redesenhado a cada tecla sem mexer na tabela (não perde o foco) */
   function htmlFluxoVivo(ed, dis) {
-    var F = FL(), r = F.validar({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, ed.padrao, ed.anterior || null), soma = F.soma(ed.linhas), dif = r.diferenca;
+    var F = FL(), r = F.validar({ valor: ed.valor, entrega: ed.entrega, hoje: hojeFluxo(), linhas: ed.linhas }, ed.padrao, ed.anterior || null), soma = F.soma(ed.linhas), dif = r.diferenca;
     /* 03/11: o que falta no bem da permuta não trava o botão — o Salvar abre o formulário do bem */
     var errosBem = r.errosBem || [];
     var mudouPreco = Math.round(ed.valor * 100) !== Math.round(ed.valorOriginal * 100);
@@ -1382,6 +1396,14 @@
     if (!bate) h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-dist"' + dis +
       ' title="Espalha a diferença nas pré-chaves e balões, proporcional ao total de cada">Distribuir ' + esc(F.moeda(Math.abs(dif))) +
       " nas pré-chaves e balões</button></div>";
+    /* 07/11: vencimento no passado — um clique leva as linhas para o 1º mês que pode (mesmo dia; o total não muda) */
+    /* 07/11: duas parcelas pré-chaves no mesmo mês ou depois de out/2028 — um clique encaixa as partes (o total de cada uma não muda) */
+    if (r.erros.some(function (x) { return /uma por mês|as parcelas terminam em outubro\/2028/.test(x); }))
+      h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-fluxo-encaixar"' + dis +
+        ' title="Cada parte da pré-chaves termina antes da próxima e até outubro/2028; o total da linha não muda">Encaixar as pré-chaves</button></div>';
+    if (r.erros.some(function (x) { return /use Corrigir datas/.test(x); }))
+      h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-fluxo-datas"' + dis +
+        ' title="Leva cada parcela que venceria no passado para o 1º mês que pode, no mesmo dia; o total da linha não muda">Corrigir datas</button></div>';
     var faltas = r.erros.filter(function (x) { return !/^(Faltam|Sobram) /.test(x) && errosBem.indexOf(x) < 0; });
     if (!motivoOk) faltas.push("Falta o motivo" + (mudouPreco ? " (e o motivo da mudança no valor da casa)" : ""));
     if (faltas.length) h += '<ul class="dz-msg">' + faltas.slice(0, 6).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
@@ -2593,7 +2615,7 @@
   }
   /* 06/11: os três campos do termo (valor, data do pagamento e data limite) — no cartão e na pergunta do Reservar */
   function camposPagPR(pg, dis) {
-    return '<label><span>Valor da pré-reserva (R$)</span>' +
+    return '<label><span>Valor da reserva (R$)</span>' +
       '<input type="text" data-pr-p="valor" inputmode="decimal" maxlength="15" style="width:130px" placeholder="0,00" value="' + esc(pg.valor || "") + '"' + dis + "></label>" +
       '<label><span>Data do pagamento</span>' +
       '<input type="date" data-pr-p="data"' + maxHojePR() + ' value="' + esc(pg.data || "") + '"' + dis + "></label>" +
@@ -2604,7 +2626,7 @@
   function htmlPreReservaRapida(e, u) {
     var trava = u.testes || !!u.ocupado, dis = trava ? " disabled" : "";
     var pg = u.pagDigitado || { valor: brl(e.valor), data: e.dataPagamento || hojePR(), limite: e.dataLimiteDigitada || sugestaoLimitePR() };
-    var h = '<div class="grp">Termo de pré-reserva</div>' +
+    var h = '<div class="grp">Termo de reserva</div>' +
       '<div class="dz-linha dz-rot">Sem contrato gerado até a data limite, a reserva cai sozinha no fim desse dia.</div>' +
       '<div class="dz-linha dz-pr-pag">' + camposPagPR(pg, dis) + "</div>";
     if (u.ocupado === "rapido") h += '<div class="dz-linha"><b>salvando e gerando o termo… (até 1 minuto)</b></div>';
@@ -2619,18 +2641,18 @@
     if (!e || !e.temConjuge) return "";
     return '<div class="dz-linha"><label class="dz-pr-conj" style="display:flex;align-items:flex-start;gap:8px;margin:0;font-weight:600">' +
       '<input type="checkbox" data-pr-conj="1"' + (e.incluirConjuge ? " checked" : "") + (dis || "") + ' style="margin:3px 0 0;flex:0 0 auto">' +
-      '<span>Incluir o cônjuge na pré-reserva (opcional)<br><span class="dz-rot" style="font-weight:400">Por padrão só o comprador assina.</span></span></label></div>';
+      '<span>Incluir o cônjuge na reserva (opcional)<br><span class="dz-rot" style="font-weight:400">Por padrão só o comprador assina.</span></span></label></div>';
   }
   function htmlPreReserva(e, u) {
     u = u || {};
-    var h = '<div class="grp">Termo de pré-reserva</div>';
+    var h = '<div class="grp">Termo de reserva</div>';
     if (!e) return h + '<div class="vazio">' + esc(u.msg || "carregando…") + "</div>";
     var trava = u.testes || !!u.ocupado, dis = trava ? " disabled" : "";
     /* 31/10 (dono): valor e data do pagamento de cada venda; prazo para decidir = pagamento + 7 dias corridos */
     /* 06/11: a data limite gravada; sem ela e sem termo gerado, a sugestão (hoje + 5); termo antigo sem ela fica em branco */
     var pg = u.pagDigitado || { valor: brl(e.valor), data: e.dataPagamento || "", limite: e.dataLimiteDigitada || (e.gerado ? "" : sugestaoLimitePR()) };
     /* 31/10/2026 (dono): valor, data e botão numa linha só, campos na mesma altura e o botão pela base (.dz-pr-pag, CSS
-       abaixo — vale no cartão do condomínio e na janela da pré-reserva das Propostas); no celular empilha */
+       abaixo — vale no cartão do condomínio e na janela da reserva das Propostas); no celular empilha */
     h += '<div class="dz-linha dz-pr-pag">' + camposPagPR(pg, dis) +
       '<button type="button" class="bt ghost bt-mini" data-acao="pr-salvar-pag"' + dis + ">Salvar valor e datas</button></div>";
     h += '<div class="dz-linha"><span class="dz-rot">' + (e.dataLimiteDigitada
@@ -2648,7 +2670,7 @@
       return caixa(rot, '<input type="text" data-pr-c="' + k + '" value="' + esc(c[k] || "") + '" placeholder="' + ph + '"' + (extra || "") + dis + ">");
     };
     var banco = campo("Banco", "banco", "digite para buscar", ' list="pr-bancos" maxlength="120" style="min-width:260px"');
-    h += '<div class="dz-linha"><label class="dz-rot" style="display:block">Conta do pré-reservante para devolução (opcional — em branco, o termo sai sem a conta)</label>' +
+    h += '<div class="dz-linha"><label class="dz-rot" style="display:block">Conta do reservante para devolução (opcional — em branco, o termo sai sem a conta)</label>' +
       '<select data-pr-c="forma"' + dis + '><option value="">Escolha…</option><option value="PIX"' + sel("PIX") + ">PIX</option>" +
       '<option value="BANCO"' + sel("BANCO") + ">Dados bancários</option></select></div>";
     if (c.livre) h += '<div class="dz-aviso">Conta salva no formato antigo ("' + esc(c.livre) + '"): escolha PIX ou dados bancários e salve de novo.</div>';
@@ -2671,7 +2693,7 @@
     if (u.faltas && u.faltas.length)
       h += '<div class="dz-aviso">Para gerar o termo, falta:</div><ul>' + u.faltas.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul>";
     h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="pr-gerar"' + (trava ? " disabled" : "") + ">" +
-      (e.gerado ? "Gerar termo de novo" : "Gerar termo de pré-reserva") + "</button>";
+      (e.gerado ? "Gerar termo de novo" : "Gerar termo de reserva") + "</button>";
     if (e.gerado) h += ' <button type="button" class="bt ghost bt-mini" data-acao="pr-ver"' + (u.ocupado ? " disabled" : "") + ">Visualizar termo</button>";
     h += "</div>";
     if (u.msg) h += '<div class="dz-msg">' + esc(u.msg) + "</div>";
@@ -2683,10 +2705,10 @@
               AGENCIA_INVALIDA: "Agência: só números (e hífen, se tiver dígito).", CONTA_INVALIDA: "Conta: números com o dígito (ex.: 12345-6).",
               TIPO_CONTA_INVALIDO: "Escolha o tipo de conta.", CONTA_LONGA: "A chave ou o banco ficou longo demais.",
               MODELO_NAO_CONFIGURADO: "O modelo do termo (MODELO_PRE_RESERVA_ID) não está configurado — avise o desenvolvedor.",
-              SEM_TERMO_GERADO: "Ainda não há termo gerado.", SO_CONDOMINIO: "O termo de pré-reserva é só do condomínio.",
-              PR_VALOR_INVALIDO: "Valor da pré-reserva inválido.", PR_DATA_INVALIDA: "Informe a data do pagamento.",
+              SEM_TERMO_GERADO: "Ainda não há termo gerado.", SO_CONDOMINIO: "O termo de reserva é só do condomínio.",
+              PR_VALOR_INVALIDO: "Valor da reserva inválido.", PR_DATA_INVALIDA: "Informe a data do pagamento.",
               PR_DATA_FUTURA: "A data do pagamento não pode ser depois de hoje. Informe o dia em que o cliente pagou.",
-              PR_VALOR_MAIOR_QUE_SINAL: "O valor da pré-reserva não pode passar do sinal da venda. Confira o valor.",
+              PR_VALOR_MAIOR_QUE_SINAL: "O valor da reserva não pode passar do sinal da venda. Confira o valor.",
               PR_LIMITE_INVALIDA: "Informe a data limite do termo.", PR_LIMITE_PASSADA: "A data limite não pode ser antes de hoje.",
               PR_LIMITE_ANTES_DO_PAGAMENTO: "A data limite não pode ser antes da data do pagamento.",
               SEM_PERMISSAO_TESTES: "Perfil TESTES não gera nem grava.", SEM_RESPOSTA: "O servidor não respondeu — tente de novo." };
@@ -2772,8 +2794,8 @@
     function htmlPR() {
       if (assinadoP()) return "";
       if (uiP.rapido && estadoP && !estadoP.gerado && !assinadoA() && !dispensadaP()) return htmlPreReservaRapida(estadoP, uiP);   /* 06/11 */
-      if (assinadoA()) return '<div class="grp">Pré-reserva</div><div class="vazio">O contrato já foi assinado por todos — a pré-reserva não muda mais.</div>';
-      if (dispensadaP()) return '<div class="grp">Pré-reserva</div><div class="vazio">Dispensada — o contrato desta unidade foi gerado direto, sem a pré-reserva.</div>';
+      if (assinadoA()) return '<div class="grp">Reserva</div><div class="vazio">O contrato já foi assinado por todos — a reserva não muda mais.</div>';
+      if (dispensadaP()) return '<div class="grp">Reserva</div><div class="vazio">Dispensada — o contrato desta unidade foi gerado direto, sem a reserva.</div>';
       return htmlPreReserva(estadoP, uiP);
     }
     function htmlAssPRVisivel() { return (assinadoA() && !assinadoP()) || dispensadaP() ? "" : htmlAssPR(); }
@@ -3155,7 +3177,7 @@
     }
     /* termo de pré-reserva */
     function htmlAssPR() {
-      if (!window.VendaAssinatura) return '<div class="grp">Enviar termo de pré-reserva via Clicksign</div><div class="vazio">carregando…</div>';
+      if (!window.VendaAssinatura) return '<div class="grp">Enviar termo de reserva via Clicksign</div><div class="vazio">carregando…</div>';
       ctxP.contratoGerado = !!(estadoP && estadoP.gerado);
       return window.VendaAssinatura.montarBlocoAssinatura(ctxP);
     }
@@ -3359,7 +3381,7 @@
         if (!vivo()) return;
         uiP.ocupado = null; uiP.rapido = false;   /* daqui em diante, a tela inteira do termo (ver, conta, cônjuge, Clicksign) */
         if (rq.ok) { estadoP.gerado = true; estadoP.nome = rq.nome || ""; uiP.msg = "Termo gerado — confira em Visualizar termo e envie para assinatura."; }
-        else if (rq.erro === "FALTAM_DADOS") { uiP.faltas = rq.faltas || []; uiP.msg = "Valor e datas salvos. O termo sai quando o cadastro estiver completo — use Gerar termo de pré-reserva."; }
+        else if (rq.erro === "FALTAM_DADOS") { uiP.faltas = rq.faltas || []; uiP.msg = "Valor e datas salvos. O termo sai quando o cadastro estiver completo — use Gerar termo de reserva."; }
         else uiP.msg = "Valor e datas salvos, mas o termo não foi gerado: " + mensagemPR(rq);
         pintarP();
         if (!rq.ok && rq.erro === "SEM_RESPOSTA") carregarPR();
@@ -3394,6 +3416,11 @@
         if (!rg.ok && rg.erro === "SEM_RESPOSTA") carregarPR();
       }
     }
+    /* 03/11 (dono): a data limite escolhida ao lado do botão Enviar (mesma linha do botão clicado) */
+    function prazoDaTela(b) {
+      var i = b && b.parentNode && b.parentNode.querySelector ? b.parentNode.querySelector("input[data-prazo]") : null;
+      return i ? String(i.value || "") : "";
+    }
     async function aoClicarAssPR(acao, b) {
       if (!window.VendaAssinatura || ctxP.ocupado) return;
       ctxP.contratoGerado = !!(estadoP && estadoP.gerado);
@@ -3402,6 +3429,7 @@
         alvo: b ? b.getAttribute("data-sig") : "",   /* 03/11: Trocar e-mail */
         perguntar: function (t, v) { return window.prompt(t, v); },
         confirmar: function (t) { return window.confirm(t); },
+        lerPrazo: function () { return prazoDaTela(b); },
         chamar: function (p) { return chamarVenda(p, ESPERA_ASSINATURA); },
         pintar: function (c) { ctxP = c; pintarP(); },
         linkCorrigir: linkCorrigir
@@ -3473,6 +3501,7 @@
         perguntar: function (t, v) { return window.prompt(t, v); },
         mostrarPrevia: function (prev) { return window.RubricasVenda ? window.RubricasVenda.mostrarPrevia(prev, janelaPrevia) : null; },
         confirmar: function (t) { return window.confirm(t); },
+        lerPrazo: function () { return prazoDaTela(b); },
         chamar: function (p) { return chamarVenda(p, ESPERA_ASSINATURA); },
         pintar: function (c) { ctxA = c; pintarA(); },
         linkCorrigir: linkCorrigir
@@ -3891,6 +3920,20 @@
         pintar();
         return;
       }
+      if (acao === "c-fluxo-encaixar") {
+        var en = FL().encaixarPre({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, null);
+        ed.linhas = en.linhas;
+        uiC.msg = en.mudou.length ? "Pré-chaves encaixadas em " + en.mudou.length + " linha(s) — confira e salve." : "As pré-chaves já estão mês a mês.";
+        pintar();
+        return;
+      }
+      if (acao === "c-fluxo-datas") {
+        var cd = FL().corrigirDatas({ valor: ed.valor, entrega: ed.entrega, hoje: hojeFluxo(), linhas: ed.linhas }, ed.padrao);
+        if (cd.erro) uiC.msg = cd.erro;
+        else { ed.linhas = cd.linhas; uiC.msg = cd.mudou.length ? "Datas corrigidas em " + cd.mudou.length + " linha(s) — confira e salve." : "Nenhuma data para corrigir."; }
+        pintar();
+        return;
+      }
       if (acao === "c-fluxo-dist") {
         var ds = FL().distribuir({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas });
         if (ds.erro) uiC.msg = ds.erro; else { ed.linhas = ds.linhas; ed.ajustadas = {}; ed.sugestao = null; ed.guiaErro = ""; uiC.msg = ""; }
@@ -4141,11 +4184,29 @@
           if (raiz !== el || el.__vbLigado !== eu) return;
           if (ev.target.getAttribute("data-pr-c") === "forma") { guardarContaPR(); pintarP(); return; }
           if (ev.target.hasAttribute("data-pr-conj")) { aoMarcarConjugePR(ev.target.checked); return; }
+          /* 03/11 (dono): data limite para assinar sobrevive a um redesenho do bloco */
+          var dp = ev.target.getAttribute("data-prazo");
+          if (dp === "p-") { ctxP.prazo = ev.target.value; return; }
+          if (dp === "a-") { ctxA.prazo = ev.target.value; return; }
           var fxb = ev.target.getAttribute("data-fxb");
           if (fxb === "tipo" || fxb === "situacao") { aoDigitarBem(ev.target); if (uiC.fluxoEd) pintar(); return; }   /* 03/11: muda os campos do formulário */
           var fx = ev.target.getAttribute("data-fx");
           if (fx === "t" || fx === "dmodo") { aoDigitarFluxo(ev.target); if (uiC.fluxoEd) pintar(); return; }
-          if (fx === "n") { aoDigitarFluxo(ev.target); return; }   /* revisão 04/11: setas do número também travam e pedem a conta */   /* o tipo muda o reajuste mostrado; o modo do desconto, os campos */
+          if (fx === "n" || fx === "d") {
+            aoDigitarFluxo(ev.target);
+            /* 07/11 (dono): "se eu tenho 2 pré-chaves de 12, não pode deixar eu aumentar uma para 13" — a parte mexida fica,
+               as outras andam/encurtam mês a mês (o total de cada uma não muda) e o simulador refaz as soltas */
+            var edx = uiC.fluxoEd, kx = Number(ev.target.getAttribute("data-k"));
+            if (edx && edx.linhas[kx] && edx.linhas[kx].t === "pre") {
+              var enx = FL().encaixarPre({ valor: edx.valor, entrega: edx.entrega, linhas: edx.linhas }, kx);
+              if (enx.mudou.length) {
+                edx.linhas = enx.linhas;
+                uiC.msg = "As outras pré-chaves foram encaixadas mês a mês (" + enx.mudou.map(function (j) { return "linha " + (j + 1); }).join(", ") + ").";
+                pintar();
+              }
+            }
+            return;
+          }   /* revisão 04/11: setas do número também travam e pedem a conta */   /* o tipo muda o reajuste mostrado; o modo do desconto, os campos */
           if (fx === "dde") { aoDigitarFluxo(ev.target); return; }
           if (fx === "v" || fx === "valor") {
             /* sai formatado ao sair do campo — sem repintar: repintar no blur engoliria o clique num botão */
@@ -4221,7 +4282,7 @@
       blocosCond = criarBlocosVenda(pageId, function (b) {
         var r = b.raiz();
         return blocosCond === b && !!r && r.isConnected !== false;
-      }, { preReserva: true });   /* 27/10/2026: o termo de pré-reserva vem antes do contrato */
+      }, { preReserva: true });   /* 27/10/2026: o termo de reserva vem antes do contrato */
     }
     blocosCond.anexar(el);
   }
@@ -4285,7 +4346,7 @@
        Carrega mesmo sem o painel da casa: o cartão do condomínio também usa. */
     /* 30/10: leitor das rubricas do comprador (pdf.js só carrega na hora de enviar) */
     var sr = document.createElement("script"); sr.src = "venda/RubricasVenda.js?v=9"; document.head.appendChild(sr);
-    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=28";
+    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=30";
     sa.onload = function () { [blocosCasa, blocosCond, blocosPR].forEach(function (b) { if (b) b.pintarAssinatura(); }); };
     document.head.appendChild(sa);
     var body = document.getElementById("pn-body"); if (!body) return;

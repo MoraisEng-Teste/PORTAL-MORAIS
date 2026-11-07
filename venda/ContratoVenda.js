@@ -410,7 +410,7 @@ var ContratoVenda = (function () {
       if (depois) linhas.push(depois);
     }
     var sinal = G.sinais.map(function (s) {
-      if (s.pr) return valorExtenso(s.v) + ", já pago em " + dataBR(s.d) + " a título de pré-reserva (Termo de Pré-Reserva)";
+      if (s.pr) return valorExtenso(s.v) + ", já pago em " + dataBR(s.d) + " a título de reserva (Termo de Reserva)";
       return valorExtenso(s.v) + (s.ato ? ", no ato da assinatura deste instrumento, em " + dataBR(G.assinatura) : ", com vencimento em " + dataBR(s.d));
     });
     inciso("I — SINAL (arras confirmatórias, art. 417 do Código Civil), sem correção monetária", sinal, true);
@@ -538,7 +538,7 @@ var ContratoVenda = (function () {
   function vencimentosSinal(G) {
     var ps = G.sinais.map(function (s) { return [s.v, s.ato ? G.assinatura : s.d, s.pr]; });
     if (ps.length < 2) return ps.length ? dataBR(ps[0][1]) : dataBR(G.assinatura);
-    var t = ps.map(function (p) { return dataBR(p[1]) + " (R$ " + moedaBR(p[0]) + (p[2] ? ", já paga a título de pré-reserva — Termo de Pré-Reserva" : "") + ")"; });
+    var t = ps.map(function (p) { return dataBR(p[1]) + " (R$ " + moedaBR(p[0]) + (p[2] ? ", já paga a título de reserva — Termo de Reserva" : "") + ")"; });
     return t.slice(0, -1).join(", ") + " e " + t[t.length - 1];
   }
   /* 03/11 (dono): identificação do bem da permuta no inciso VI (redação a validar com o advogado) */
@@ -669,7 +669,7 @@ var ContratoVenda = (function () {
     if (ROTULO_ASSINATURA.test(t)) return t.length;
     return 0;
   }
-  var ROTULO_ASSINATURA = /^(?:(?:CREDORA\/)?VENDEDORA?|(?:DEVEDOR\/)?COMPRADOR|PRÉ-RESERVANTE|CÔNJUGE DO (?:COMPRADOR|PRÉ-RESERVANTE|FIADOR [12])|FIADOR [12]|INTERMEDIADOR\/CORRETOR|TESTEMUNHA [12])$/;
+  var ROTULO_ASSINATURA = /^(?:(?:CREDORA\/)?VENDEDORA?|(?:DEVEDOR\/)?COMPRADOR|(?:PRÉ-)?RESERVANTE|CÔNJUGE DO (?:COMPRADOR|(?:PRÉ-)?RESERVANTE|FIADOR [12])|FIADOR [12]|INTERMEDIADOR\/CORRETOR|TESTEMUNHA [12])$/;
 
   function fiadorNormal(x) {
     x = x || {};
@@ -790,7 +790,7 @@ var ContratoVenda = (function () {
     var livre = txt(c.fluxoPersonalizado) ? FLV().ler(txt(c.fluxoPersonalizado)) : null;
     if (livre) out.livre = livre;
     /* 31/10/2026 (dono): comprador casado ou em união estável → o cônjuge assina o contrato, mesmo sem compor renda.
-       01/11/2026 (dono): no termo de pré-reserva ele só assina se o corretor ligou a opção na venda (PR_CONJUGE_<pageId>).
+       01/11/2026 (dono): no termo de reserva ele só assina se o corretor ligou a opção na venda (PR_CONJUGE_<pageId>).
        Só quando existe (o carimbo das vendas de solteiros não muda). */
     var cj = conjugeDoComprador(c.conjugeComprador);
     if (cj) out.conjugeComprador = cj;
@@ -1017,10 +1017,10 @@ var ContratoVenda = (function () {
     }
     if (co.livre) {
       /* 29/10: fluxo alterado no portal — as regras da lista (a soma fecha com o valor da casa da própria lista) */
-      FLV().validar({ valor: co.livre.valor, entrega: fl.entrega, linhas: co.livre.linhas }).erros.forEach(function (e) { faltas.push(g + " (alterado): " + e); });
+      FLV().validar({ valor: co.livre.valor, entrega: fl.entrega, assinatura: fl.assinatura, hoje: d.hoje, linhas: co.livre.linhas })   /* 07/11: nada vence antes da assinatura nem de hoje */.erros.forEach(function (e) { faltas.push(g + " (alterado): " + e); });
     } else {
     if (co.preReserva && FLV().abaterSinal([fl.sinalAto, fl.sinal30, fl.sinal60, fl.sinal90], co.preReserva.valor).abatido < co.preReserva.valor)
-      faltas.push(g + ": a pré-reserva paga (R$ " + moedaBR(co.preReserva.valor) + ") passa do sinal — confira o valor da pré-reserva");
+      faltas.push(g + ": a reserva paga (R$ " + moedaBR(co.preReserva.valor) + ") passa do sinal — confira o valor da reserva");
     comData(fl.sinal30, fl.data30, "sinal 30 dias");
     comData(fl.sinal60, fl.data60, "sinal 60 dias");
     comData(fl.sinal90, fl.data90, "sinal 90 dias");
@@ -1035,6 +1035,19 @@ var ContratoVenda = (function () {
       var ult = FLV().maisMeses(l.d, (Math.max(1, l.n) - 1) * (l.i || 1));
       if (ult > FLV().LIMITE_PRE_CHAVES)
         faltas.push(g + ": " + FLV().TIPOS[l.t].nome.toLowerCase() + " vence em " + FLV().dataBR(ult) + " — pré-chaves e balões terminam até 30/11/2028 (refaça o fluxo na Planilha Casas)");
+    });
+    /* 07/11/2026 (dono): "sempre que a data do vencimento for anterior à data atual, trava" — sinais a partir de hoje;
+       pré-chaves, balões e pós-chaves depois da assinatura e de hoje. O fluxo certo sai do recálculo da venda
+       (SIMULADOR r97n) quando a DATA DE ASSINATURA é atualizada. d.hoje vem de quem gera (GerarContrato.gs). */
+    var refV = FLV().refVencimento({ assinatura: fl.assinatura, hoje: d.hoje });
+    if (d.hoje && !semAss && fl.assinatura < d.hoje)
+      faltas.push(g + ": a data de assinatura (" + FLV().dataBR(fl.assinatura) + ") já passou — atualize na Planilha Casas e o fluxo é refeito");
+    else if (refV.d) FLV().doPadrao(fl, 0).linhas.forEach(function (l) {
+      if (!l.d) return;
+      if ((l.t === "pre" || l.t === "balao" || l.t === "pos") && l.d <= refV.d)
+        faltas.push(g + ": " + FLV().TIPOS[l.t].nome.toLowerCase() + " vence em " + FLV().dataBR(l.d) + " — tem de vencer depois " + refV.de + " (" + FLV().dataBR(refV.d) + "); atualize a data de assinatura ou o dia de pagamento na Planilha Casas e o fluxo é refeito");
+      else if (d.hoje && l.t === "sinal" && l.d < d.hoje)
+        faltas.push(g + ": sinal vence em " + FLV().dataBR(l.d) + ", antes de hoje — atualize a data de assinatura");
     });
     }
     if (positivo(fl.valorVenda) && !co.livre) {

@@ -15,8 +15,8 @@ import { P, SCHEMA_VENDAS, linhaCondominio } from "./condominio-dados.mjs";
 /* casa de 220.000 aprovada em 160.000 na carta */
 const padrao = { valor: 220000, entrega: "2028-11-30", linhas: [
   { t: "sinal", v: 10000, n: 1, d: "2026-11-05", i: 1, x: "" },
-  { t: "pre", v: 860, n: 12, d: "2026-12-10", i: 1, x: "" },
-  { t: "pre", v: 330, n: 12, d: "2027-12-10", i: 1, x: "" },
+  { t: "pre", v: 860, n: 12, d: "2026-11-10", i: 1, x: "" },
+  { t: "pre", v: 330, n: 12, d: "2027-11-10", i: 1, x: "" },
   { t: "balao", v: 10000, n: 1, d: "2027-12-10", i: 1, x: "" },
   { t: "balao", v: 25720, n: 1, d: "2028-11-10", i: 1, x: "" },
   { t: "fin", v: 160000, n: 1, d: "", i: 1, x: "" }
@@ -47,14 +47,14 @@ test("financiamento acima da carta (170.000): recusado com o valor aprovado; zer
   assert.ok(F.validar(comFin(0, 160000), padrao).erros.some((e) => /financiamento|maior que zero/i.test(e)));
 });
 
-test("financiamento não sai do fluxo nem ganha outra linha; FGTS/subsídio/pré-reserva continuam fixos", () => {
+test("financiamento não sai do fluxo nem ganha outra linha; FGTS/subsídio/reserva continuam fixos", () => {
   const sem = copia(padrao); sem.linhas.splice(5, 1); sem.linhas[4].v += 160000;
   assert.ok(F.validar(sem, padrao).erros.length);
   const duas = comFin(80000); duas.linhas.push({ t: "fin", v: 80000, n: 1, d: "", i: 1, x: "" });
   assert.ok(F.validar(duas, padrao).erros.length, "duas linhas de financiamento");
   const p2 = copia(padrao); p2.linhas.push({ t: "fgts", v: 5000, n: 1, d: "", i: 1, x: "" }); p2.linhas[5].v = 155000;
   const fg = copia(p2); fg.linhas[6].v = 4000; fg.linhas[4].v += 1000;
-  assert.match(F.validar(fg, p2).erros.join(";"), /Pré-reserva paga, financiamento, FGTS e subsídio não mudam|FGTS/);
+  assert.match(F.validar(fg, p2).erros.join(";"), /Reserva paga, financiamento, FGTS e subsídio não mudam|FGTS/);
 });
 
 test("guiar trata o financiamento como fixo: reduzir 10.000 sobe pré-chaves e balões pela régua; o financiamento fica", () => {
