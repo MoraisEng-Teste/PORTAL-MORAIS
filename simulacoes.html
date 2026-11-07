@@ -681,6 +681,9 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           <div class="filtros">
             <div class="fcampo"><label>Buscar</label>
               <input type="search" id="prop-busca" placeholder="Cliente, CPF, unidade ou corretor…" oninput="propRender()"></div>
+            <!-- 06/11/26 — filtro do correspondente -->
+            <div class="fcampo"><label>Correspondente</label>
+              <select id="prop-corr-f" onchange="propRender()"><option value="">Todos</option></select></div>
             <button class="bt ghost" onclick="propCarregar(true,this)">↻ Atualizar agora</button>
             <div class="fcampo"><label>Ordem</label>
               <div class="seg" id="seg-ordem">
@@ -745,9 +748,9 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
     <div class="modal-cx" id="sim-modalCx"></div>
   </div>
 
-<script src="app.js?v=45"></script>
+<script src="app.js?v=46"></script>
 <script src="venda/FluxoLivre.js?v=14" defer></script><!-- 29/10: Alterar fluxo -->
-<script src="venda-dossie.js?v=71" defer></script><!-- 28/10: termo de pré-reserva pela proposta (VendaBlocos.montarPreReserva) -->
+<script src="venda-dossie.js?v=78" defer></script><!-- 28/10: termo de pré-reserva pela proposta (VendaBlocos.montarPreReserva) -->
 <script src="venda/contrato-vendida.js?v=4" defer></script>
 <script src="venda/vgv-condominio.js?v=1"></script><!-- 03/11: VGV da Análise de vendas (período, tipo, rua) --><!-- 31/10: contrato enviado → proposta e unidade VENDIDA -->
 <script>
@@ -2680,7 +2683,8 @@ function propReservaPrazoHtml(p){
   const v=propReservaVence(p); if(!v) return "";
   const h=(v.getTime()-Date.now())/36e5;
   const quando=v.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
-  return '<div style="margin-top:6px;font-weight:700;color:'+(h<24?'#C0392B':'var(--azul)')+'">⏳ Reserva vence em '+esc(quando)+
+  const termo=(((p.dados||{}).reserva)||{}).termo;   /* 06/11: o vigia grava quando o prazo é a data limite do termo */
+  return '<div style="margin-top:6px;font-weight:700;color:'+(h<24?'#C0392B':'var(--azul)')+'">⏳ Reserva vence em '+esc(quando)+(termo?' (data limite do termo de pré-reserva)':'')+
     (h<=0 ? ' — prazo esgotado: o robô derruba na próxima rodada se o contrato não tiver sido gerado.' : ' (faltam '+propHorasTxt(h)+').')+'</div>';
 }
 function propVencida(p){ const h=propReservaFaltaH(p); return h!==null && h<24; }
@@ -2795,8 +2799,30 @@ function propSeloInterno(unidade, p){
   }
   return ' <span title="status interno da unidade'+(p&&!dono?' — marque na proposta certa pelo Status interno':'')+'" style="font-size:10px;font-weight:800;color:'+est[1]+';background:'+est[2]+';border:1px solid '+est[3]+';border-radius:8px;padding:1px 6px">'+est[0]+' (interno)</span>';
 }
+/* 06/11/26 — CORRESPONDENTE da proposta, na ordem: quem está na coluna
+   CORRESPONDENTE do Notion (aprovou / definido) → a quem a proposta foi enviada
+   (ENVIO CORRESPONDENTE) → a preferência do corretor. */
+function propCorrNomeBonito(n){ return String(n||"").trim().replace(/\s+/g," ").toUpperCase(); }
+function propCorrDe(p){
+  const c=propCorrNomeBonito(p.correspondente);
+  if(c) return {nomes:[c], tipo:p.comCredito?"aprovou o crédito":"definido na proposta"};
+  const e=propCorrEnvio(Object.assign({},p,{comCredito:false}));
+  if(e && e.enviado && e.nomes.length) return {nomes:e.nomes.map(propCorrNomeBonito), tipo:"enviada"};
+  const pr=propCorrNomeBonito(p.correspondentePref||((p.dados||{}).correspondentePreferido)||"");
+  if(pr) return {nomes:[pr], tipo:"preferência do corretor"};
+  return {nomes:[], tipo:""};
+}
+function propCorrOpcoes(){
+  const el=document.getElementById("prop-corr-f"); if(!el) return;
+  const atual=el.value, set=new Set(); let sem=0;
+  (PROPS||[]).forEach(p=>{ const c=propCorrDe(p); if(c.nomes.length) c.nomes.forEach(n=>set.add(n)); else sem++; });
+  const lista=[...set].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  el.innerHTML='<option value="">Todos</option>'+lista.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")+(sem?'<option value="__SEM__">(sem correspondente)</option>':"");
+  if(atual && [...el.options].some(o=>o.value===atual)) el.value=atual;
+}
 function propRender(){
   try{ propCortes(); }catch(e){}   // 30/10 — cortes acima da tabela
+  try{ propCorrOpcoes(); }catch(e){}   // 06/11 — filtro do correspondente
   try{ propRankAba(); }catch(e){}  // 30/10 — rankings abaixo da tabela
   const termo=(document.getElementById("prop-busca").value||"").toLowerCase();
   const vis=PROPS.filter(p=>{
@@ -2804,6 +2830,8 @@ function propRender(){
     if(!alvo.includes(termo)) return false;
     if(propFiltroCredito==="SIM" && !p.comCredito) return false;
     if(propFiltroCredito==="NAO" && p.comCredito) return false;
+    const fc=(document.getElementById("prop-corr-f")||{}).value||"";
+    if(fc){ const c=propCorrDe(p).nomes; if(fc==="__SEM__" ? c.length : !c.includes(fc)) return false; }
     return !propFiltro || propNoCorte(p, propFiltro);
   });
   /* r47 (item 4) — ordem pela data de chegada; padrão: mais antiga no topo */
@@ -2811,16 +2839,17 @@ function propRender(){
   vis.sort((a,b)=> propOrdem==="desc" ? tempo(b)-tempo(a) : tempo(a)-tempo(b));
   /* estilo do editor injetado uma vez */
   propEstiloEditor();
-  /* 28/10 — ordem: proposta · unidade · crédito · sinal · cliente · corretor · valor · entrada · resto */
+  /* 28/10 — ordem: proposta · unidade · crédito · sinal · cliente · corretor · valor · entrada · resto
+     06/11 — correspondente, cliente e CPF do cliente juntos, depois o corretor */
   const cab='<thead><tr><th>Proposta</th><th>Unidade</th><th>Crédito Caixa</th><th>Sinal</th>'+
-            '<th>Cliente</th><th>Corretor</th>'+
+            '<th>Correspondente</th><th>Cliente</th><th>CPF</th><th>Corretor</th>'+
             '<th class="col-num">Valor</th><th class="col-num">Entrada</th>'+
-            '<th class="col-num">Renda</th><th>CPF</th><th>Imobiliária</th><th>Observações</th>'+
+            '<th class="col-num">Renda</th><th>Imobiliária</th><th>Observações</th>'+
             '<th style="cursor:pointer" title="Clique para inverter a ordem" onclick="propOrdenar(propOrdem===\'asc\'?\'desc\':\'asc\')">'+
             'Criada <span class="arr">'+(propOrdem==="desc"?"▼":"▲")+'</span></th><th>Status</th></tr></thead>';
   if(!vis.length){
     document.getElementById("prop-tab").innerHTML=cab+
-      '<tbody><tr><td colspan="14" style="text-align:center;color:var(--text3);padding:22px">Nenhuma proposta encontrada.</td></tr></tbody>';
+      '<tbody><tr><td colspan="15" style="text-align:center;color:var(--text3);padding:22px">Nenhuma proposta encontrada.</td></tr></tbody>';
     return;
   }
   const corpo=vis.map(p=>{
@@ -2835,11 +2864,12 @@ function propRender(){
             ? '<span class="pill bom">APROVADO</span>'
             : '<span class="pill ruim">SEM CARTA</span>'+propCorrCelula(p)}</td>
       <td>${propPillSinais(p)}</td>
-      <td>${esc(p.cliente||"—")}</td><td>${esc(p.vendedor||"—")}</td>
+      <td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>
+      <td>${esc(p.cliente||"—")}</td><td class="col-un">${esc(p.cpf||"—")}</td><td>${esc(p.vendedor||"—")}</td>
       <td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
       <td class="num">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
       <td class="num">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
-      <td class="col-un">${esc(p.cpf||"—")}</td><td>${esc(p.imobiliaria||"—")}</td>
+      <td>${esc(p.imobiliaria||"—")}</td>
       <td class="prop-obs-td" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>
       <td>${simData(p.criadoEm)}</td>
       <td>${propTag(p.status)}${venc?' <span style="color:#C0392B;font-weight:700">vence &lt;24h</span>':''}</td></tr>`;
@@ -3687,6 +3717,7 @@ function propVer(id){
         <button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
         <button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
       </div>
+      ${PROP_NORM(p.status)==='RESERVADA'?`<div style="margin-top:8px"><button class="bt" style="background:#7B4FA0;color:#fff" onclick="propPreReservaDaUnidade('${p.id}')">Termo de pré-reserva</button></div>`:""}
       <div id="prop-detAviso" class="sim-aviso" style="margin-top:8px"></div>
       <!-- 02/10 (item 10) -->
       <div style="margin-top:10px"><button class="bt" style="background:#B7791F;color:#fff" onclick="propAlerta('${p.id}')">📣 Enviar alerta de pendências ao corretor</button>
@@ -3694,7 +3725,7 @@ function propVer(id){
       <div style="font-size:12px;color:var(--text3);margin-top:6px">
         <b>Reservar</b> marca a unidade ${esc(String(p.unidade||""))} como RESERVADA no mapa, cria a venda no
         BANCO DE DADOS VENDAS CONDOMÍNIO e manda ao corretor o link para completar os dados e documentos.
-        A reserva vale <b>${PROP_RESERVA_DIAS} dias corridos</b>: sem contrato gerado nesse prazo ela cai sozinha
+        A reserva vale <b>${PROP_RESERVA_DIAS} dias corridos</b> — com termo de pré-reserva, até a <b>data limite do termo</b>: sem contrato gerado nesse prazo ela cai sozinha
         (a unidade volta a disponível e a venda vai para DISTRATOS CONDOMÍNIO). <b>Negar</b> faz o mesmo na hora.
         A proposta vira <b>VENDIDA</b> sozinha quando o contrato é gerado — e só então o corretor recebe o e-mail de venda.
         ${propReservaPrazoHtml(p)}
@@ -4685,10 +4716,20 @@ function propSimNao(msg){
 }
 /* 28/10 (dono): proposta que JÁ pagou a preferência também gera o termo — acha a linha da venda pela unidade
    no BANCO DE DADOS VENDAS CONDOMÍNIO (simsVendasCond, o mesmo da Planilha Casas Condomínio). */
-async function propPreReservaDaUnidade(id){
-  const p=PROPS.find(x=>x.id===id)||{}, av=document.getElementById("prop-siAviso");
+/* 06/11/2026 (dono): depois do Reservar, pergunta se gera o termo de pré-reserva; Sim abre a pergunta rápida
+   (valor, data do pagamento e data limite — a data limite vira o prazo da reserva). A linha da venda vem da resposta
+   do Reservar; sem ela (resposta perdida), procura pela unidade. */
+async function propOferecerTermo(id, r){
+  if(!(await propSimNao("Reserva feita. Gerar o termo de pré-reserva agora?"))) return;
+  const v=r && r.emailCorretor && r.emailCorretor.venda;
+  if(v && v.ok && v.linha) propAbrirPreReserva(String(v.linha), {rapido:true});
+  else propPreReservaDaUnidade(id, {rapido:true});
+}
+async function propPreReservaDaUnidade(id, o){
+  const p=PROPS.find(x=>x.id===id)||{}, av=document.getElementById("prop-detAviso")||document.getElementById("prop-siAviso");   /* 06/11: o botão mora na Decisão */
   const so=v=>String(v==null?"":v).replace(/\D/g,"").replace(/^0+/,"");
   const un=so(p.unidade);
+  const avAntes=av?[av.className, av.innerHTML]:null;   /* 06/11: a mensagem do Reservar volta depois da busca */
   if(av){ av.className="sim-aviso ok"; av.textContent="Procurando a venda da unidade "+(p.unidade||"")+"…"; }
   let r=null;
   try{ r=await chamar({action:"simsVendasCond"},70000); }catch(e){ r=null; }
@@ -4698,12 +4739,12 @@ async function propPreReservaDaUnidade(id){
   const achadas=(r.linhas||[]).filter(l=>un && so(val(l,"UNIDADE"))===un);
   if(!achadas.length){ if(av){ av.className="sim-aviso err"; av.textContent="A unidade "+(p.unidade||"")+" não tem linha no BANCO DE DADOS VENDAS CONDOMÍNIO. Marque PAGOU PREFERÊNCIA de novo para criar."; } return; }
   if(achadas.length>1){ if(av){ av.className="sim-aviso err"; av.textContent="A unidade "+(p.unidade||"")+" tem "+achadas.length+" linhas no banco de vendas — abra pela Planilha Casas Condomínio."; } return; }
-  if(av){ av.className="sim-aviso"; av.textContent=""; }
-  propAbrirPreReserva(String(achadas[0].id));
+  if(av){ av.className=avAntes[0]; av.innerHTML=avAntes[1]; }
+  propAbrirPreReserva(String(achadas[0].id), o);
 }
 /* 28/10/2026 — TERMO DE PRÉ-RESERVA pela proposta: abre por cima a mesma tela do cartão da unidade
    (conta para devolução, gerar, ver e enviar à Clicksign), desenhada pelo venda-dossie.js na linha da venda. */
-function propAbrirPreReserva(linha){
+function propAbrirPreReserva(linha, o){
   if(!window.VendaBlocos || !VendaBlocos.montarPreReserva){ alert("A tela do termo ainda está carregando — tente de novo em instantes."); return; }
   let fundo=document.getElementById("prop-pr-fundo");
   if(!fundo){
@@ -4716,7 +4757,7 @@ function propAbrirPreReserva(linha){
     document.body.appendChild(fundo);
   }
   fundo.style.display="flex";
-  VendaBlocos.montarPreReserva(document.getElementById("prop-pr-tela"), linha);
+  VendaBlocos.montarPreReserva(document.getElementById("prop-pr-tela"), linha, o);
 }
 function propFecharPreReserva(){
   const f=document.getElementById("prop-pr-fundo"); if(f) f.style.display="none";
@@ -4755,7 +4796,9 @@ async function propStatus(id, status){
     if(conferido===true){
       av.className="sim-aviso ok";
       av.textContent="Demorou, mas gravou: a proposta está como "+status+".";
-      propMarcarAtual(status); propSincronizarTudo(); return;
+      propMarcarAtual(status); propSincronizarTudo();
+      if(status==="RESERVADA") propOferecerTermo(id, null);
+      return;
     }
     av.className="sim-aviso err";
     av.textContent = conferido===false
@@ -4776,6 +4819,7 @@ async function propStatus(id, status){
       (r.reservaCaiu ? (r.reservaCaiu.ok ? " A venda da reserva foi para DISTRATOS CONDOMÍNIO." : " ⚠ A venda da reserva não saiu do banco de vendas: "+esc(r.reservaCaiu.mensagem||r.reservaCaiu.erro||"")) : "")+"</span>";
     propMarcarAtual(status);
     propSincronizarTudo();
+    if(status==="RESERVADA") propOferecerTermo(id, r);
   }else{
     av.className="sim-aviso err";
     av.innerHTML=(r&&r.erro==="MODO_TESTE") ? "Perfil TESTES não grava." : propErro(r&&r.erro);
