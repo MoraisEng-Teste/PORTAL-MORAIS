@@ -169,7 +169,7 @@ const CACHE = "portal-morais-v318-t68";  /* 07/11 (teste: #68 Assinar até junto
 const ARQUIVOS = ["./","./index.html","./login.html","./vendas.html","./ligacoes.html",
                   "./pos-obra.html","./casas-vendidas.html","./servicos.html",
                   "./analise.html","./analise-dados.html","./auditoria-financeira.html","./obras.html","./documentos.html","./demandas.html","./simulacoes.html",
-                  "./atividades.html","./processos.html","./arquivos.html","./entretenimento.html","./escritorio-robos.html","./escritorio-3d.js",
+                  "./atividades.html","./processos.html","./arquivos.html","./entretenimento.html","./escritorio-robos.html","./escritorio-3d.js","./boletos-financeiro.html","./boletos-financeiro.js",
                   "./app.js","./alertas-docs.js","./fogos.js","./editor-blocos.js","./atv-alertas.js","./rf-rotas.js","./tema-escuro.js","./conteudo-atv.js","./venda/vgv-condominio.js","./painel-abas.js","./manifest.json"];
 
 self.addEventListener("install", e=>{
