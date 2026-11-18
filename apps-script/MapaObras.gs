@@ -20,6 +20,22 @@
  *                  Documentos — quem é RESPONSÁVEL dela edita mesmo sem acesso
  *                  à aba de origem
  *   atvOutraGravar (mo3) grava o que foi mudado nessa atividade
+ *   ocLista        (mo13, 16/11) CONFERÊNCIA DE COMPRAS — OCs dos fornecedores que só
+ *                  são pagos depois do SIM do engenheiro (tabela oc_conferencia do
+ *                  Supabase, alimentada pelo robô ocs do servidor)
+ *   orcCatalogo    (mo14, 16/11) catálogo do Mais Controle (insumos + composições, bases Própria e
+ *                  Condomínio) lido pelo robô do servidor nas tabelas mc_* do Supabase — a aba
+ *                  "3D e Orçamento" da obra busca, troca e precifica as linhas com ele
+ *   orcPreviaLer   (mo14) a planilha prévia do orçamento salva da obra (tabela orc_previas)
+ *   orcPreviaSalvar (mo14) grava a planilha prévia (quem tem acesso OBRAS ou DOCUMENTOS, ou ADM)
+ *   orcEnviarMC    (mo16/mo17, 17/11) "Enviar ao Mais Controle" de UM item (orçamento ou um contrato): TRAVA esse item e deixa o pedido "NA FILA" em
+ *                  orc_previas.envio; o robô do servidor (orcamento-mc) faz o resto e escreve o andamento ali
+ *   orcEnvioDesbloquear (mo16/mo17) destrava o envio de um item — só com a SENHA DA PAULA (login dela no LOGINS; Propriedade
+ *                  ORC_DESBLOQUEIO_LOGIN se precisar fixar qual login), 5 erros = bloqueia por um tempo
+ *   ocResponder    (mo13) grava SERVIÇO FINALIZADO? = SIM / NÃO de uma OC; com SIM,
+ *                  pede ao servidor para rodar o robô na hora (FILA DO ROBÔ, se a
+ *                  Propriedade DB_FILA_ROBO existir neste projeto; senão ele roda no
+ *                  horário dele)
  *
  * ===================== mo3 — VISTORIAS DE ENTREGA =====================
  * CASA APTA P/ VISTORIA (atividade VISTORIA PRÉVIA)
@@ -67,7 +83,7 @@
  * fazer a conferência da conclusão, além do ADM).
  *************************************************************************/
 
-var MO_VERSAO = "2026-10-29 mo12";   // mo12: vistoria na nuvem (quem criou edita de qualquer aparelho) · mo11: estagiários lançam a medição
+var MO_VERSAO = "2026-11-17 mo17";   // mo17: um envio por item (orçamento e cada contrato) · mo16: Enviar ao Mais Controle (trava o envio; só a senha da Paula desbloqueia) · mo15: catálogo do orçamento lido em páginas (passava de 1.000 linhas) · mo14: orçamento da obra (catálogo do MC + prévia salva) · mo13: conferência de compras (OC) — ocLista / ocResponder ·   // mo12: vistoria na nuvem (quem criou edita de qualquer aparelho) · mo11: estagiários lançam a medição
 var MO_EVENTO = "obras_notion_update";            // TEM que bater com o types: do fetch_notion.yml
 var MO_JANELA_MS = 2 * 60 * 1000;                  // no máximo 1 build a cada 2 min
 var MO_CAMPOS = {
@@ -136,6 +152,13 @@ function moRotear_(action, sess, p) {
     case "vistNuvemLista":   return moVistNuvemLista_(sess, p || {});
     case "vistNuvemAbrir":   return moVistNuvemAbrir_(sess, p || {});
     case "vistNuvemApagar":  return moVistNuvemApagar_(sess, p || {});
+    case "ocLista":          return moOcLista_(sess, p || {});
+    case "ocResponder":      return moOcResponder_(sess, p || {});
+    case "orcCatalogo":      return moOrcCatalogo_(sess, p || {});
+    case "orcPreviaLer":     return moOrcPreviaLer_(sess, p || {});
+    case "orcPreviaSalvar":  return moOrcPreviaSalvar_(sess, p || {});
+    case "orcEnviarMC":      return moOrcEnviarMC_(sess, p || {});
+    case "orcEnvioDesbloquear": return moOrcDesbloquear_(sess, p || {});
     case "mapaVersao":       return { ok: true, versao: MO_VERSAO };
     default:                 return null;
   }
@@ -957,6 +980,79 @@ function moMedSalvar_(sess, p) {
   return { ok: true, semana: semana };
 }
 
+/* ================ mo13 — CONFERÊNCIA DE COMPRAS (OC) · 16/11/2026 ================
+ * O pagamento das OCs da Rocha Mármores e Granitos, da VIDRO ALVES e da
+ * Serralheria do Fabio só sai depois que o engenheiro confirma, no Mapa de
+ * Obras, que a entrega / o serviço foi finalizado. O robô "ocs" do servidor
+ * (robo_mc_ocs.py) põe cada OC nova na tabela oc_conferencia do Supabase; aqui
+ * o mapa lê a lista e grava a resposta. Com o SIM, o robô faz no Mais Controle:
+ *   APROVAR (Rocha, Vidro Alves): Aprovação → Aprovado, Status da Compra → Aguardando;
+ *   PARCELA (Serralheria do Fabio): 2ª parcela do lançamento → próximo dia útil.
+ * Quem responde: acesso OBRAS ou DOCUMENTOS (ou ADM) — estagiário não (libera
+ * pagamento). Depois que o robô FEZ, a resposta não muda mais por aqui.
+ * Tabela: supabase/oc_conferencia.sql (rodar uma vez no SQL Editor). */
+var MO_OC_TAREFA = "MoraisEng - Conferencia de OCs";
+var MO_OC_COLS = "oc_id,numero,fornecedor,acao,obra,descricao,criada_em,aprovacao_mc,status_compra_mc,resposta," +
+                 "respondido_por,respondido_em,robo_situacao,robo_msg,robo_em,robo_tentativas,anexos,anexos_nomes,anexos_em";
+function moPodeOc_(sess) {
+  return !!sess && !ehTestes_(sess) && (ehAdm_(sess) || temAcesso_(sess, "OBRAS") || temAcesso_(sess, "DOCUMENTOS"));
+}
+function moOcLista_(sess, p) {
+  var desde = new Date(Date.now() - 30 * 864e5).toISOString();
+  var l;
+  try {
+    l = moSupa_("get", "oc_conferencia?select=" + MO_OC_COLS + "&cancelada=is.false" +
+                "&or=(robo_situacao.is.null,robo_situacao.neq.FEITO,robo_em.gte." + encodeURIComponent(desde) + ")" +
+                "&order=criada_em.asc,numero.asc&limit=1000") || [];
+  } catch (e) {
+    var t = String(e);
+    if (t.indexOf("SUPABASE_404") === 0 || t.indexOf("oc_conferencia") >= 0)
+      return { ok: true, itens: [], podeResponder: moPodeOc_(sess), aviso: "A tabela oc_conferencia ainda não foi criada no Supabase." };
+    throw e;
+  }
+  return { ok: true, itens: l, podeResponder: moPodeOc_(sess), agora: new Date().toISOString() };
+}
+function moOcResponder_(sess, p) {
+  if (!moPodeOc_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
+  var id = String(p.oc_id || "").toLowerCase(), resp = String(p.resposta || "").toUpperCase();
+  if (!/^[0-9a-f-]{36}$/.test(id)) return { ok: false, erro: "OC_INVALIDA" };
+  if (resp !== "SIM" && resp !== "NAO") return { ok: false, erro: "RESPOSTA_INVALIDA" };
+  var atual = (moSupa_("get", "oc_conferencia?select=oc_id,numero,resposta,robo_situacao&oc_id=eq." + id) || [])[0];
+  if (!atual) return { ok: false, erro: "OC_NAO_ACHADA" };
+  if (atual.robo_situacao === "FEITO") return { ok: false, erro: "JA_FEITO_NO_MAIS_CONTROLE" };
+  var quem = String(sess.n || sess.u || "").slice(0, 80);
+  var feito = moSupa_("patch", "oc_conferencia?oc_id=eq." + id + "&or=(robo_situacao.is.null,robo_situacao.neq.FEITO)", {
+    resposta: resp, respondido_por: quem, respondido_em: new Date().toISOString(),
+    robo_situacao: null, robo_msg: null, robo_tentativas: 0
+  }, { Prefer: "return=representation" }) || [];
+  if (!feito.length) return { ok: false, erro: "JA_FEITO_NO_MAIS_CONTROLE" };
+  console.log("OC " + atual.numero + ": " + quem + " respondeu " + resp);
+  var pedido = resp === "SIM" ? moOcPedirRobo_(quem) : "";
+  return { ok: true, item: feito[0], robo: pedido };
+}
+/* SIM → pede ao servidor para rodar o robô já (mesmo pedido do "Rodar de novo" do Escritório de Robôs). Sem
+   DB_FILA_ROBO neste projeto, ou se a fila falhar, tudo bem: o robô roda no horário dele. */
+function moOcPedirRobo_(quem) {
+  var db = String(prop_("DB_FILA_ROBO") || "").trim();
+  if (!db) return "horario";
+  var cache = CacheService.getScriptCache();
+  if (cache.get("mo_oc_robo")) return "pedido";
+  try {
+    var props = {};
+    props["PEDIDO"] = { title: [{ type: "text", text: { content: "robo-rodar " + MO_OC_TAREFA.replace(/^MoraisEng - /, "") } }] };
+    props["TIPO"] = { select: { name: "robo-rodar" } };
+    props["PAYLOAD"] = { rich_text: [{ type: "text", text: { content: JSON.stringify({ tarefa: MO_OC_TAREFA, quem: quem }) } }] };
+    props["SITUAÇÃO"] = { select: { name: "PENDENTE" } };
+    props["PEDIDO EM"] = { date: { start: new Date().toISOString() } };
+    notion_("POST", "/pages", { parent: { database_id: db }, properties: props });
+    cache.put("mo_oc_robo", "1", 180);
+    return "pedido";
+  } catch (e) {
+    console.error("OC: não consegui pedir o robô na fila — " + String(e).slice(0, 200));
+    return "horario";
+  }
+}
+
 /* --------------------------- GitHub --------------------------- */
 function moAvisarGitHub_(motivo, forcar) {
   var tk = prop_("GITHUB_TOKEN");
@@ -1290,5 +1386,213 @@ function moVistNuvemApagar_(sess, p) {
     moVistGravar_(dir + "/_indice.json", idx);
     moVistGravar_(dir + "/" + id + ".json", { apagada: true, em: new Date().toISOString(), por: eu });
     return { ok: true };
+  } finally { lock.releaseLock(); }
+}
+
+/* ======================= mo14 — ORÇAMENTO DA OBRA (16/11/2026) =======================
+ * A aba "3D e Orçamento" da janela da obra (obras.html) monta a planilha prévia do orçamento com o modelo
+ * (orcamento/modelo-casa-rua.json), os quantitativos do Revit e os dados da obra. Aqui ficam:
+ *   - o CATÁLOGO do Mais Controle (tabelas mc_insumos / mc_composicoes do Supabase ORÇADO/REALIZADO, que o robô
+ *     do catálogo no servidor atualiza todo dia às 06:47). Vai inteiro (~2 mil linhas, só código, nome, unidade,
+ *     custo, base, tipo e se está ativo): a tela busca por código ou nome e precifica sem ida e volta;
+ *   - a PRÉVIA salva de cada obra (tabela orc_previas — ver supabase/orc_previas.sql).
+ * Os custos NÃO vão para o dist/ público: só saem daqui, com login. */
+function moPodeOrc_(sess) { return !!sess && (ehAdm_(sess) || temAcesso_(sess, "OBRAS") || temAcesso_(sess, "DOCUMENTOS")); }
+function moOrcCatalogo_(sess, p) {
+  if (!moPodeOrc_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
+  var cache = CacheService.getScriptCache(), k = "mo_orc_cat_v2";
+  var partes = cache.get(k + "_n");
+  if (partes && !p.forcar) {
+    var txt = "", ok = true;
+    for (var i = 0; i < Number(partes); i++) { var c = cache.get(k + "_" + i); if (c == null) { ok = false; break; } txt += c; }
+    if (ok) { try { return JSON.parse(txt); } catch (e) {} }
+  }
+  /* mo15 (17/11): o Supabase devolve no máximo 1.000 linhas por pedido — os insumos passam disso (1.520), então lê
+     em páginas. Era por isso que códigos como 928 (ART Senador Canedo) apareciam "fora do catálogo". */
+  var ins = moOrcPaginas_("mc_insumos"), comp = moOrcPaginas_("mc_composicoes");
+  var rod = (moSupa_("get", "mc_catalogo_rodadas?select=rodou_em,ok&order=rodou_em.desc&limit=1") || [])[0] || null;
+  /* lista compacta: [cat, código, nome, unidade, custo, base, tipo, ativo] */
+  var L = [];
+  ins.forEach(function (x) { L.push(["I", x.codigo, x.nome, x.unidade || "", Number(x.custo) || 0, x.base || "", x.tipo || "", x.ativo ? 1 : 0]); });
+  comp.forEach(function (x) { L.push(["C", x.codigo, x.nome, x.unidade || "", Number(x.custo) || 0, x.base || "", x.tipo || "", x.ativo ? 1 : 0]); });
+  var r = { ok: true, itens: L, lido_em: rod ? rod.rodou_em : null };
+  try {   /* CacheService guarda até 100 KB por chave: em pedaços, 30 min */
+    var s = JSON.stringify(r), n = Math.ceil(s.length / 90000), obj = {};
+    for (var j = 0; j < n; j++) obj[k + "_" + j] = s.slice(j * 90000, (j + 1) * 90000);
+    obj[k + "_n"] = String(n);
+    cache.putAll(obj, 1800);
+  } catch (e) {}
+  return r;
+}
+function moOrcPaginas_(tab) {
+  var out = [], pg = 1000;
+  for (var off = 0; off < 20000; off += pg) {
+    var l = moSupa_("get", tab + "?select=codigo,nome,unidade,custo,base,tipo,ativo&fora_do_mc=is.false&order=codigo.asc&limit=" + pg + "&offset=" + off) || [];
+    out = out.concat(l); if (l.length < pg) break;
+  }
+  return out;
+}
+function moOrcId_(v) { var s = String(v || "").replace(/-/g, "").toLowerCase(); return /^[0-9a-f]{32}$/.test(s) ? s : ""; }
+function moOrcPreviaLer_(sess, p) {
+  if (!moPodeOrc_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
+  var id = moOrcId_(p.obra_id); if (!id) return { ok: false, erro: "OBRA_INVALIDA" };
+  var l;
+  try {
+    try { l = moSupa_("get", "orc_previas?select=obra_id,obra,dados,salvo_por,salvo_em,versao,envio&obra_id=eq." + id) || []; }
+    catch (e0) {   /* mo16: antes de rodar o alter table da coluna envio, lê como antes (a aba não pode quebrar) */
+      if (String(e0).indexOf("envio") < 0) throw e0;
+      l = moSupa_("get", "orc_previas?select=obra_id,obra,dados,salvo_por,salvo_em,versao&obra_id=eq." + id) || [];
+    }
+  }
+  catch (e) {
+    var t = String(e);
+    if (t.indexOf("SUPABASE_404") === 0 || t.indexOf("orc_previas") >= 0) return { ok: true, previa: null, aviso: "A tabela orc_previas ainda não foi criada no Supabase." };
+    throw e;
+  }
+  return { ok: true, previa: l[0] || null, podeSalvar: moPodeOrc_(sess) && !ehTestes_(sess), desbloqueio: moOrcNomeDesbloqueio_() };
+}
+/* ======================= mo16 — ENVIAR AO MAIS CONTROLE (17/11/2026) =======================
+ * Pedido do dono: o botão "Enviar ao Mais Controle" na planilha prévia; ao clicar o envio TRAVA e só a senha da
+ * PAULA destrava. O estado fica em orc_previas.envio (jsonb, ver supabase/orc_previas.sql):
+ *   { travado, situacao, pedido_em, pedido_por, versao, total, linhas, fila, robo:{…}, historico:[…] }
+ * situacao: NA FILA → (robô do servidor) TRABALHANDO → PRÉVIA PRONTA / FEITO / ERRO.
+ * O robô do servidor (pedido mc-orcamento) acha o orçamento da obra no MC, guarda uma cópia do que está lá antes de
+ * mexer e escreve o andamento aqui mesmo (robo, situacao). Destravar NÃO apaga nada no MC: só libera um novo envio. */
+var MO_ORC_TRAVA_PAULA = "orc_desbloqueio_paula";
+/* mo17 (17/11): UM ENVIO POR ITEM — o orçamento da obra e cada contrato de empreita têm a sua trava, a sua situação e
+   o seu resultado:  envio = { itens: { "orcamento": {…}, "ct:411": {…}, … }, tem_fila, historico:[…] }
+   item = { travado, situacao, pedido_em, pedido_por, versao, nome, total, linhas, robo }. tem_fila = algum item
+   travado e "NA FILA" (é por ele que o robô do servidor procura). O formato antigo (um envio só) vira itens.orcamento. */
+function moOrcEnvioNorm_(e) {
+  e = e || {};
+  if (e.itens) return e;
+  var n = { itens: {}, tem_fila: false, historico: e.historico || [] };
+  if (e.pedido_em) {
+    var it = {}; for (var k in e) if (k !== "historico") it[k] = e[k];
+    n.itens.orcamento = it;
+  }
+  n.tem_fila = moOrcTemFila_(n);
+  return n;
+}
+function moOrcTemFila_(e) {
+  for (var k in (e.itens || {})) { var x = e.itens[k]; if (x && x.travado && x.situacao === "NA FILA") return true; }
+  return false;
+}
+function moOrcItem_(v) { var s = String(v || "orcamento"); return /^(orcamento|ct:[0-9A-Za-z_-]{1,12})$/.test(s) ? s : ""; }
+function moOrcEnviarMC_(sess, p) {
+  if (!moPodeOrc_(sess) || ehTestes_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
+  var id = moOrcId_(p.obra_id); if (!id) return { ok: false, erro: "OBRA_INVALIDA" };
+  var item = moOrcItem_(p.item); if (!item) return { ok: false, erro: "ITEM_INVALIDO" };
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var atual;
+    try { atual = (moSupa_("get", "orc_previas?select=obra,versao,envio,dados&obra_id=eq." + id) || [])[0]; }
+    catch (e) { if (String(e).indexOf("envio") >= 0) return { ok: false, erro: "FALTA_COLUNA_ENVIO" }; throw e; }
+    if (!atual) return { ok: false, erro: "NAO_SALVO" };
+    /* envia a versão SALVA — quem tem alteração na tela salva antes (a tela manda a versão que está vendo) */
+    if (p.versao == null || Number(p.versao) !== Number(atual.versao)) return { ok: false, erro: "SALVE_ANTES", versao: atual.versao };
+    var envio = moOrcEnvioNorm_(atual.envio);
+    var ant = envio.itens[item] || {};
+    if (ant.travado) return { ok: false, erro: "JA_ENVIADO", envio: envio };
+    var dados = atual.dados || {}, total = 0, nLinhas = 0, nome = "Orçamento da obra";
+    if (item === "orcamento") {
+      var linhas = dados.linhas || [];
+      linhas.forEach(function (l) { total += (Number(l.q) || 0) * (Number(l.custo) || 0); });
+      if (Number(dados.total) > 0) total = Number(dados.total);   /* a tela grava o total junto */
+      nLinhas = linhas.length;
+    } else {
+      var cid = item.slice(3), ct = null;
+      (dados.contratos || []).forEach(function (k) { if (String(k.id) === cid) ct = k; });
+      if (!ct) return { ok: false, erro: "CONTRATO_NAO_SALVO" };
+      (ct.linhas || []).forEach(function (l) { total += (Number(l.q) || 0) * (Number(l.preco) || 0); });
+      nLinhas = (ct.linhas || []).length; nome = "Contrato " + ct.id + " · " + String(ct.nome || "").split(" — ")[0];
+    }
+    var quem = String(sess.n || sess.u || "").slice(0, 80), agora = new Date().toISOString();
+    envio.itens[item] = { travado: true, situacao: "NA FILA", pedido_em: agora, pedido_por: quem, versao: atual.versao,
+                          nome: nome, total: Math.round(total * 100) / 100, linhas: nLinhas, robo: null };
+    envio.tem_fila = true;
+    envio.historico = (envio.historico || []).slice(-40);
+    envio.historico.push({ acao: "envio", item: item, por: quem, em: agora, versao: atual.versao });
+    /* o pedido é o próprio item "NA FILA" (envio.tem_fila): o robô do servidor (C:\AUTOMAÇÕES MAIS CONTROLE\orcamento-mc,
+       a cada 2 min) procura aqui no Supabase. Não vai para a FILA DO ROBÔ do Notion: o robo_fila.py marcaria ERRO
+       num tipo que ele não conhece. */
+    moSupa_("patch", "orc_previas?obra_id=eq." + id, { envio: envio });
+    console.log("ORÇAMENTO MC: " + quem + " enviou " + item + " de " + (atual.obra || id) + " v" + atual.versao);
+    return { ok: true, envio: envio };
+  } finally { lock.releaseLock(); }
+}
+/* Quem desbloqueia: Propriedade ORC_DESBLOQUEIO_LOGIN (o LOGIN ou o nome da PESSOA, exatos) ou, sem ela, o único login do LOGINS cujo
+   LOGIN ou PESSOA tem "Paula". Achou mais de um → pede a Propriedade (não chuta). */
+function moOrcLoginPaula_() {
+  var fixo = String(prop_("ORC_DESBLOQUEIO_LOGIN") || "").trim().toLowerCase();
+  var rows = queryAll_(CONFIG.DB.LOGINS, {}), achados = [];
+  for (var i = 0; i < rows.length; i++) {
+    var pr = rows[i].properties, lg = titulo_(pr["LOGIN"]);
+    var pa = ((pr["PESSOA"] && pr["PESSOA"].people) || [])[0], nome = pa ? (pa.name || "") : "";
+    if (fixo ? (lg.toLowerCase() === fixo || nome.toLowerCase() === fixo) : /paula/i.test(lg + " " + nome))
+      achados.push({ login: lg, nome: nome || lg, senha: String(texto_(pr["SENHA"])) });
+  }
+  if (!achados.length) return { erro: "SEM_LOGIN_PAULA" };
+  if (achados.length > 1) return { erro: "MAIS_DE_UMA_PAULA", nomes: achados.map(function (a) { return a.nome; }) };
+  return achados[0];
+}
+function moOrcNomeDesbloqueio_() {
+  try {
+    var c = CacheService.getScriptCache(), v = c.get("mo_orc_paula_nome");
+    if (v != null) return v;
+    var a = moOrcLoginPaula_(); v = a.erro ? "" : a.nome;
+    c.put("mo_orc_paula_nome", v, 3600); return v;
+  } catch (e) { return ""; }
+}
+function moOrcDesbloquear_(sess, p) {
+  if (!moPodeOrc_(sess) || ehTestes_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
+  var id = moOrcId_(p.obra_id); if (!id) return { ok: false, erro: "OBRA_INVALIDA" };
+  var item = moOrcItem_(p.item); if (!item) return { ok: false, erro: "ITEM_INVALIDO" };
+  var senha = String(p.senha || "");
+  if (!senha) return { ok: false, erro: "INFORME_A_SENHA" };
+  if (tentativas_(MO_ORC_TRAVA_PAULA) >= CONFIG.MAX_TENTATIVAS) return { ok: false, erro: "BLOQUEADO" };
+  var paula = moOrcLoginPaula_();
+  if (paula.erro) return { ok: false, erro: paula.erro, nomes: paula.nomes || [] };
+  if (!verificaSenha_(senha, paula.senha)) {
+    var n = registrarFalha_(MO_ORC_TRAVA_PAULA);
+    console.log("ORÇAMENTO MC: senha errada no desbloqueio (" + (sess.n || sess.u) + ")");
+    return { ok: false, erro: "SENHA_INCORRETA", restantes: Math.max(0, CONFIG.MAX_TENTATIVAS - n) };
+  }
+  limparFalhas_(MO_ORC_TRAVA_PAULA);
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var atual = (moSupa_("get", "orc_previas?select=obra,envio&obra_id=eq." + id) || [])[0];
+    var envio = moOrcEnvioNorm_(atual && atual.envio);
+    if (!atual || !envio.itens[item]) return { ok: false, erro: "NAO_ENVIADO" };
+    var quem = String(sess.n || sess.u || "").slice(0, 80);
+    envio.itens[item].travado = false;
+    envio.tem_fila = moOrcTemFila_(envio);
+    envio.historico = (envio.historico || []).slice(-40);
+    envio.historico.push({ acao: "desbloqueio", item: item, por: quem, autorizou: paula.nome, em: new Date().toISOString() });
+    moSupa_("patch", "orc_previas?obra_id=eq." + id, { envio: envio });
+    console.log("ORÇAMENTO MC: " + quem + " desbloqueou " + item + " de " + (atual.obra || id) + " com a senha de " + paula.nome);
+    return { ok: true, envio: envio };
+  } finally { lock.releaseLock(); }
+}
+/* Rode no editor (Executar) para ver qual login vai desbloquear — não mostra senha. */
+function moOrcVerQuemDesbloqueia() { var a = moOrcLoginPaula_(); console.log(a.erro ? (a.erro + " " + (a.nomes || []).join(", ")) : ("desbloqueia: " + a.nome + " (login " + a.login + ")")); }
+
+function moOrcPreviaSalvar_(sess, p) {
+  if (!moPodeOrc_(sess) || ehTestes_(sess)) return { ok: false, erro: "SEM_PERMISSAO" };
+  var id = moOrcId_(p.obra_id); if (!id) return { ok: false, erro: "OBRA_INVALIDA" };
+  var dados = p.dados; if (!dados || typeof dados !== "object" || !Array.isArray(dados.linhas)) return { ok: false, erro: "SEM_LINHAS" };
+  if (dados.linhas.length > 3000) return { ok: false, erro: "LINHAS_DEMAIS" };
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var atual = (moSupa_("get", "orc_previas?select=versao,salvo_por,salvo_em&obra_id=eq." + id) || [])[0];
+    /* quem abriu uma versão velha não apaga o que outro salvou depois (a tela manda a versão que leu) */
+    if (atual && p.versao != null && Number(p.versao) !== Number(atual.versao))
+      return { ok: false, erro: "OUTRA_VERSAO", salvo_por: atual.salvo_por, salvo_em: atual.salvo_em };
+    var quem = String(sess.n || sess.u || "").slice(0, 80), v = atual ? (Number(atual.versao) || 0) + 1 : 1;
+    var r = moSupa_("post", "orc_previas?on_conflict=obra_id", {
+      obra_id: id, obra: String(p.obra || "").slice(0, 120), dados: dados, salvo_por: quem,
+      salvo_em: new Date().toISOString(), versao: v
+    }, { Prefer: "resolution=merge-duplicates,return=representation" }) || [];
+    return { ok: true, versao: v, salvo_por: quem, salvo_em: (r[0] || {}).salvo_em || new Date().toISOString() };
   } finally { lock.releaseLock(); }
 }

@@ -211,6 +211,54 @@ def api(method, path, body=None, tentativas=4):
             raise SystemExit(f"Falha de rede em {path}: {e}")
 
 
+TIPOS_CASA_TITULO = "TIPOS DE CASA (MAPA DE VENDAS)"
+
+
+def ler_tipos_casa():
+    """Linhas da base TIPOS DE CASA: [{setor, tipo, layout, fotos, casaModeloId}].
+    Id pela variável TIPOS_CASA_DB_ID ou, sem ela, pela busca do Notion
+    (a base é criada pelo Apps Script com este título exato)."""
+    try:
+        db_id = os.environ.get("TIPOS_CASA_DB_ID", "").strip()
+        if not db_id:
+            r = api("POST", "/search", {"query": TIPOS_CASA_TITULO,
+                                        "filter": {"property": "object", "value": "database"}})
+            for d in r.get("results", []):
+                if d.get("archived") or d.get("in_trash"):
+                    continue
+                t = "".join(x.get("plain_text", "") for x in d.get("title", []))
+                if t.strip().upper() == TIPOS_CASA_TITULO:
+                    db_id = d["id"]
+                    break
+        if not db_id:
+            print("  TIPOS DE CASA: base ainda não existe (nada cadastrado).", flush=True)
+            return []
+        saida, vistos = [], set()
+        for pg in ler_banco(db_id, "TIPOS DE CASA"):
+            if pg.get("archived") or pg.get("in_trash"):
+                continue
+            p = pg.get("properties") or {}
+            setor = (valor(p["SETOR"]) if "SETOR" in p else "") or ""
+            tipo = (valor(p["TIPO"]) if "TIPO" in p else "") or ""
+            setor, tipo = str(setor).strip().upper(), str(tipo).strip()
+            if not setor or not tipo or (setor, tipo) in vistos:
+                continue   # duplicada: vale a primeira
+            vistos.add((setor, tipo))
+            rel = ((p.get("CASA MODELO") or {}).get("relation") or [])
+            saida.append({
+                "setor": setor,
+                "tipo": tipo,
+                "layout": ((p.get("LAYOUT") or {}).get("url")) or "",
+                "fotos": ((p.get("FOTOS") or {}).get("url")) or "",
+                "casaModeloId": rel[0]["id"] if rel else "",
+            })
+        print(f"  TIPOS DE CASA: {len(saida)} tipo(s) cadastrado(s).", flush=True)
+        return saida
+    except (SystemExit, Exception) as e:   # api() sai com SystemExit em erro do Notion
+        print(f"  ! TIPOS DE CASA não lida ({e}); mapa segue sem o cadastro.", flush=True)
+        return []
+
+
 def ler_banco(db_id, rotulo):
     """Pagina o banco inteiro (100 por vez)."""
     paginas, cursor, volta = [], None, 0
@@ -406,98 +454,26 @@ def achar(campos_norm, *fragmentos):
     return None
 
 
-# Regra do dono (08/10/2026): no MAPA DE VENDAS, venda nova fica RESERVADA até o sinal ser confirmado no
-# portal. Só vale para DATA DA VENDA a partir desta data (ou sem data): vendas antigas nunca tiveram o sinal
-# registrado no portal e continuam "vendidas".
-INICIO_RESERVA_ATE_SINAL = "2026-10-08"
-
-
-def aguardando_sinal(sinal_data, data_venda) -> bool:
-    """True quando a casa tem comprador mas o sinal ainda não foi confirmado (bloco Recebimentos)."""
-    def iso(x):
-        if isinstance(x, dict):
-            x = x.get("start")
-        return str(x or "").strip()[:10]
-    if iso(sinal_data):
-        return False
-    dv = iso(data_venda)
-    return not dv or dv >= INICIO_RESERVA_ATE_SINAL
-
-
-# Regra do dono (05/11/2026), só casa de rua: gerar o contrato FINAL no portal (Apps Script PORTAL-VENDA,
-# aprovarPreContratoMiolo_) grava "CONTRATO - GERADO EM" (data com hora). A partir daí:
-#   ASSINATURA - SITUAÇÃO = ASSINADO (todos assinaram) -> vendida;
-#   não assinado e menos de 48 h                         -> reservada (motivo CONTRATO, prazo em reservaAte);
-#   não assinado e 48 h ou mais                          -> disponível de novo (o envelope fica aberto na Clicksign).
-# Sem CONTRATO - GERADO EM nada muda (as vendas antigas seguem pela régua CLIENTES + SINAL).
-# Precedência sobre a regra do SINAL (08/10): o contrato decide quando a data existe — assinado vence o SINAL
-# (vendida mesmo sem o sinal no portal), e o prazo vencido libera mesmo sem o sinal.
-# A mesma régua: venda/RegrasVenda.js (reservaContrato) e vendas.html (reservaContratoDe).
-RESERVA_CONTRATO_HORAS = 48
-# o mapa dos corretores (SITE-DE-VENDAS) conta 24 h a partir de dataReserva; para ele mostrar o prazo de 48 h
-# sem mudar nada lá, a reserva do contrato publica dataReserva = reservaAte - 24 h (ver situacao_mapa).
-_HORAS_SITE = 24
-_FUSO_PADRAO = timezone(timedelta(hours=-3))   # America/Sao_Paulo (sem horário de verão desde 2019)
-
-
-def _data_hora(x):
-    """ISO do Notion ('2026-11-05T14:30:00.000-03:00', '...Z' ou só '2026-11-05') -> datetime com fuso, ou None."""
+# ============================================================================================================
+# REGRA TRAVADA PELO DONO (Morais, 11/11/2026) — MAPA DE VENDAS DAS CASAS DE RUA (SITE-DE-VENDAS)
+#   VENDIDA   = tem nome do cliente (CLIENTES) E DATA DA VENDA preenchida.
+#   RESERVADA = RESERVADA = SIM marcada no portal, vale 24 h corridas a partir de DATA DA RESERVA
+#               (o vigia verificarReservas do Apps Script devolve para NÃO; o mapa também conta as 24 h).
+#   Nada mais decide: saíram a régua do SINAL (08/10) e a do CONTRATO - GERADO EM / 48 h (05/11).
+#   Este mapa NÃO é o mapa do condomínio (Reserva dos Ipês, venda/contrato-vendida.js) — lá a régua é outra.
+#   NÃO ALTERAR sem pedido do próprio Morais. Ver REGRAS-TRAVADAS.md e tests/test_mapa_casa_de_rua.py.
+# ============================================================================================================
+def _tem_data(x) -> bool:
     if isinstance(x, dict):
         x = x.get("start")
-    s = str(x or "").strip()
-    if not s:
-        return None
-    if s.endswith("Z"):
-        s = s[:-1] + "+00:00"
-    try:
-        d = datetime.fromisoformat(s)
-    except ValueError:
-        return None
-    if d.tzinfo is None:
-        d = d.replace(tzinfo=_FUSO_PADRAO)
-    return d
+    return bool(str(x or "").strip())
 
 
-def _iso_utc(d):
-    return d.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-
-
-def reserva_contrato(gerado_em, situacao_assinatura, agora=None):
-    """None sem CONTRATO - GERADO EM; senão {"estado": VENDIDA|RESERVADA|LIBERADA, "geradoEm", "ate"} (ISO UTC)."""
-    g = _data_hora(gerado_em)
-    if g is None:
-        return None
-    ate = g + timedelta(hours=RESERVA_CONTRATO_HORAS)
-    agora = agora or datetime.now(timezone.utc)
-    if norm(situacao_assinatura or "") == "ASSINADO":
-        estado = "VENDIDA"
-    elif agora < ate:
-        estado = "RESERVADA"
-    else:
-        estado = "LIBERADA"
-    return {"estado": estado, "geradoEm": _iso_utc(g), "ate": _iso_utc(ate)}
-
-
-def situacao_mapa(tem_cliente, reservada, data_reserva, sinal_data, data_venda,
-                  gerado_em=None, situacao_assinatura=None, agora=None):
-    """Situação de uma casa no mapa_vendas.json: dict com vendida, reservada, dataReserva, motivoReserva, reservaAte."""
-    vendida, motivo, reserva_ate = bool(tem_cliente), "", None
-    rc = reserva_contrato(gerado_em, situacao_assinatura, agora)
-    # 08/10/2026: venda nova com comprador e sem o sinal confirmado no portal fica RESERVADA (sem prazo).
-    # Com o contrato gerado (rc), quem decide é o contrato (ver comentário de RESERVA_CONTRATO_HORAS).
-    if not rc and vendida and aguardando_sinal(sinal_data, data_venda):
-        vendida, reservada, data_reserva, motivo = False, "SIM", None, "SINAL"
-    if rc:
-        if rc["estado"] == "VENDIDA":
-            vendida = True
-        elif rc["estado"] == "RESERVADA":
-            ate = _data_hora(rc["ate"])
-            vendida, reservada, motivo, reserva_ate = False, "SIM", "CONTRATO", rc["ate"]
-            data_reserva = _iso_utc(ate - timedelta(hours=_HORAS_SITE))
-        else:
-            vendida, reservada, data_reserva, motivo = False, "NÃO", None, ""
+def situacao_mapa(tem_cliente, reservada, data_reserva, data_venda):
+    """Situação de uma casa de rua no mapa_vendas.json (REGRA TRAVADA, ver acima)."""
+    vendida = bool(tem_cliente) and _tem_data(data_venda)
     return {"vendida": vendida, "reservada": reservada, "dataReserva": data_reserva,
-            "motivoReserva": motivo, "reservaAte": reserva_ate}
+            "motivoReserva": "", "reservaAte": None}
 
 
 def gravar(nome, obj):
@@ -697,14 +673,8 @@ def main():
         vendida = any(norm(k).startswith("CLIENTE") and sens[k] for k in sens)
         reservada = simples(campo_mv(v, "RESERVADA")) or ""
         data_reserva = simples(campo_mv(v, "DATA DA RESERVA", "DATA RESERVA"))
-        # 08/10/2026 (pedido do dono): venda nova com comprador e SEM o sinal confirmado no portal
-        # (bloco Recebimentos -> RECEBIMENTO - SINAL DATA) aparece como RESERVADA, não vendida.
-        # Vendas com DATA DA VENDA antes da regra seguem como estavam (nunca tiveram o sinal no portal).
-        # 05/11/2026: com CONTRATO - GERADO EM, o contrato decide (48 h para assinar) — ver situacao_mapa
-        sm = situacao_mapa(vendida, reservada, data_reserva,
-                           campo_mv(v, "RECEBIMENTO - SINAL DATA"), campo_mv(v, "DATA DA VENDA"),
-                           simples(campo_mv(v, "CONTRATO - GERADO EM")),
-                           simples(campo_mv(v, "ASSINATURA - SITUAÇÃO")))
+        # REGRA TRAVADA (11/11/2026): vendida = cliente + DATA DA VENDA; reservada = SIM por 24 h. Ver situacao_mapa.
+        sm = situacao_mapa(vendida, reservada, data_reserva, simples(campo_mv(v, "DATA DA VENDA")))
         vendida, reservada, data_reserva = sm["vendida"], sm["reservada"], sm["dataReserva"]
         motivo_reserva, reserva_ate = sm["motivoReserva"], sm["reservaAte"]
         ref = simples(campo_mv(v, "REF")) or ""
@@ -733,14 +703,18 @@ def main():
             # (verificarReservas), não por gente — é dela que sai a contagem.
             "reservada": reservada,
             "dataReserva": data_reserva,
-            # "SINAL" = reservada até o sinal ser confirmado (sem prazo de 24 h; o mapa mostra "aguardando sinal")
+            # sempre vazio/None desde 11/11/2026 (regra travada); mantidos para o mapa antigo não quebrar
             "motivoReserva": motivo_reserva,
-            # "CONTRATO" = contrato gerado aguardando as assinaturas: reservada até reservaAte (ISO UTC, 48 h do
-            # CONTRATO - GERADO EM). dataReserva vai como reservaAte - 24 h para o mapa (24 h fixas) contar até lá.
             "reservaAte": reserva_ate,
         })
+    # TIPOS DE CASA (09/11/2026): tipo SEM casa modelo própria no setor tem
+    # layout, fotos e a casa modelo de visita cadastrados na base TIPOS DE CASA
+    # (o portal grava pelo Apps Script, ação tipoCasaSalvar). O mapa usa isto
+    # quando o tipo não tem MODELO? = SIM próprio. Falha aqui NUNCA derruba o
+    # build: sem a base, o mapa só segue a regra antiga.
+    tipos_casa = ler_tipos_casa()
     gravar("mapa_vendas.json", {
-        "ok": True, "total": len(mv), "rows": mv, "updated_at": agora,
+        "ok": True, "total": len(mv), "rows": mv, "tipos": tipos_casa, "updated_at": agora,
     })
     print("  mapa_vendas.json: " + str(len(mv)) + " linhas ("
           + str(sum(1 for x in mv if x["reservada"] and

@@ -46,6 +46,49 @@ var FluxoLivre = (function () {
     var a = Math.floor(t / 12), m = t % 12, ult = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
     return a + "-" + ("0" + (m + 1)).slice(-2) + "-" + ("0" + Math.min(p[2], ult)).slice(-2);
   }
+  function maisDias(iso, dias) {
+    var p = String(iso).split("-").map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + dias));
+    return d.getUTCFullYear() + "-" + ("0" + (d.getUTCMonth() + 1)).slice(-2) + "-" + ("0" + d.getUTCDate()).slice(-2);
+  }
+  /* 14/11/2026 (dono, unidade 40 — o sinal de 10 mil ficou em 90 dias, fev/2027, com o 30 e o 60 vazios): "sinal sempre é
+     0+30+60+90 (ou só até 60, ou só até 30); sempre que tiver somente duas parcelas é 0+30". As parcelas do sinal ocupam
+     os prazos EM ORDEM, sem pular: 1 = ato; 2 = ato + 30; 3 = ato + 30 + 60; 4 = ato + 30 + 60 + 90. Com reserva paga
+     (que entra no lugar do ato), o restante pode começar no prazo seguinte, mas também sem pular.
+     Prazos = os da proposta (padrao.prazosSinal: assinatura e as datas de 30/60/90 da venda) ou assinatura + 30/60/90 dias;
+     sem assinatura conhecida, conta a partir da 1ª parcela do sinal (com 3 dias de folga).
+     → { prazos, erradas: [{ k, j, d, certa }] (k = linha, j = parcela dentro da linha), demais: bool } */
+  function sinalNosPrazos(f, padrao) {
+    var linhas = f.linhas || [], P = [];
+    linhas.forEach(function (l, k) {
+      if (l.t !== "sinal" || !isoValida(l.d)) return;
+      for (var j = 0; j < Math.max(1, l.n | 0) && j < 12; j++) P.push({ k: k, j: j, d: maisMeses(l.d, j * (l.i || 1)) });
+    });
+    P.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : a.k - b.k || a.j - b.j; });
+    if (!P.length) return { prazos: [], erradas: [], demais: false };
+    var pz = (padrao && padrao.prazosSinal) || f.prazosSinal || null, exato = !!pz;
+    /* sem os prazos da venda (contrato conferindo sem a proposta), a conta é por dias e aceita 3 dias de folga:
+       30/60/90 dias × 1/2/3 meses diferem até 2 dias — pular um prazo (30 dias) nunca passa */
+    function longe(a, b) { return Math.abs(Date.parse(a + "T00:00:00Z") - Date.parse(b + "T00:00:00Z")) > 3 * 864e5; }
+    if (!pz) {
+      var ass = isoValida(f.assinatura) ? f.assinatura : (padrao && isoValida(padrao.assinatura) ? padrao.assinatura : P[0].d);
+      pz = [ass, maisDias(ass, 30), maisDias(ass, 60), maisDias(ass, 90)];
+    }
+    var temPR = linhas.some(function (l) { return l.t === "prereserva"; }), ini = 0;
+    if (temPR) {
+      /* a reserva entra no lugar do ato: o restante pode começar em 30 dias — ou onde começa o da proposta, se a reserva cobriu mais */
+      var maxIni = 1, sP = ((padrao && padrao.linhas) || []).filter(function (l) { return l.t === "sinal" && isoValida(l.d); })
+        .map(function (l) { return l.d; }).sort();
+      if (sP.length) maxIni = Math.max(1, pz.indexOf(sP[0]));
+      var q = pz.indexOf(P[0].d);
+      if (q > 0 && q <= maxIni && q + P.length <= 4) ini = q;
+    }
+    var erradas = [];
+    P.forEach(function (x, n) {
+      var certa = pz[ini + n] || "";
+      if (certa && (exato ? x.d !== certa : longe(x.d, certa))) erradas.push({ k: x.k, j: x.j, d: x.d, certa: certa });
+    });
+    return { prazos: pz, erradas: erradas, demais: ini + P.length > 4 };
+  }
   function dataBR(iso) { var p = String(iso || "").split("-"); return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : ""; }
   function moeda(v) {
     var s = (Math.abs(c(v)) / 100).toFixed(2).split("."), i = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -304,8 +347,11 @@ var FluxoLivre = (function () {
     });
     var out = { valor: Math.round((Number(o.valor) || 0) * 100) / 100, entrega: String(o.entrega || "").slice(0, 10), linhas: linhas };
     if (isoValida(o.assinatura)) out.assinatura = o.assinatura;   /* 31/10: início dos prazos do sinal (não é gravado) */
+    if (Array.isArray(o.prazosSinal) && o.prazosSinal.length === 4 && o.prazosSinal.every(isoValida)) out.prazosSinal = o.prazosSinal.slice();   /* 14/11: prazos do sinal (ato/30/60/90) da venda — não é gravado */
     if (isoValida(o.hoje)) out.hoje = o.hoje;   /* 07/11: data de hoje de quem chama (tela/servidor), para travar vencimento no passado */
     if (o.semComissao === true) out.semComissao = true;   /* 30/10: desconto "isentar a comissão" = venda direta */
+    /* 14/11/2026 (dono): sinal mínimo autorizado para ESTA venda (coluna SINAL MÍNIMO AUTORIZADO; só vem na proposta, não é gravado) */
+    if (Number(o.sinalMinimo) > 0) out.sinalMinimo = Math.round(Number(o.sinalMinimo) * 100) / 100;
     return out;
   }
 
@@ -326,6 +372,23 @@ var FluxoLivre = (function () {
     f = normalizar(f);
     var ref = refVencimento(f, padrao).d, mudou = [];
     if (!ref) return { erro: "Falta a data de assinatura" };
+    /* 14/11/2026 (dono): o sinal vai para os prazos em ordem (ato, 30, 60, 90). Linha de sinal com mais de uma parcela
+       vira uma linha por parcela, porque 30/60/90 dias não é "mesmo dia do mês seguinte". Os valores não mudam. */
+    var sp = sinalNosPrazos(f, padrao ? normalizar(padrao) : null), certaDe = {};
+    sp.erradas.forEach(function (e) { certaDe[e.k + ":" + e.j] = e.certa; });
+    var abertas = [], andou = [];
+    f.linhas.forEach(function (l, k) {
+      var n = Math.max(1, l.n | 0), tem = false;
+      for (var j = 0; j < n; j++) if (certaDe[k + ":" + j]) tem = true;
+      if (l.t !== "sinal" || !tem) { abertas.push(l); return; }
+      for (var j2 = 0; j2 < n; j2++) {
+        abertas.push({ t: "sinal", v: (j2 === n - 1 && n > 1 && positivo(l.u)) ? l.u : l.v, n: 1,
+                       d: certaDe[k + ":" + j2] || maisMeses(l.d, j2 * (l.i || 1)), i: 1, x: l.x });
+        andou.push(abertas.length - 1);
+      }
+    });
+    f = { valor: f.valor, entrega: f.entrega, assinatura: f.assinatura, hoje: f.hoje, linhas: abertas };
+    mudou = andou;
     var linhas = f.linhas.map(function (l, k) {
       if (!(l.t === "pre" || l.t === "balao" || l.t === "pos") || !isoValida(l.d) || l.d > ref) return l;
       var d = l.d, g = 0;
@@ -404,6 +467,26 @@ var FluxoLivre = (function () {
         if (mesNum(l.d) + l.n - 1 > teto) encurtar(k, teto - mesNum(l.d) + 1);
       });
     }
+    /* 08/11/2026 (dono, bug: 1ª parte 12/2026–10/2027 e 2ª a partir de 12/2027 deixavam 11/2027 sem parcela):
+       "a primeira parcela da segunda parte tem de ser o mês seguinte da última parcela da primeira" — mês vazio ENTRE
+       duas partes: a parte de DEPOIS volta para o mês seguinte ao fim da de antes e mantém o último mês dela (ganha
+       parcelas; o total não muda, cada parcela baixa). Se a de depois é a que a pessoa mexeu (fixo), a de antes estica. */
+    ord.forEach(function (k, a) {
+      if (a + 1 >= ord.length) return;
+      var l = linhas[k], kp = ord[a + 1], lp = linhas[kp];
+      var fimAnt = mesNum(l.d) + l.n - 1, iniProx = mesNum(lp.d);
+      if (iniProx <= fimAnt + 1) return;
+      if (kp !== Number(fixo)) {
+        var volta = iniProx - (fimAnt + 1), fimProx = Math.min(mesNum(lp.d) + lp.n - 1, fim);
+        var n2 = fimProx - (fimAnt + 1) + 1;
+        if (n2 >= 1 && totalLinhaC(lp) >= n2) {
+          linhas[kp] = comTotal({ t: lp.t, n: n2, d: maisMeses(lp.d, -volta), i: 1, x: lp.x }, totalLinhaC(lp)); marca(kp);
+        }
+      } else if (k !== Number(fixo)) {
+        var n = Math.min(iniProx - 1, fim) - mesNum(l.d) + 1;
+        if (n > l.n && totalLinhaC(l) >= n) { linhas[k] = comTotal({ t: l.t, n: n, d: l.d, i: 1, x: l.x }, totalLinhaC(l)); marca(k); }
+      }
+    });
     return { linhas: linhas, mudou: mudou.sort(function (x, y) { return x - y; }) };
   }
 
@@ -466,7 +549,14 @@ var FluxoLivre = (function () {
         avisos.push("Linha " + (k + 1) + ": " + tp.nome.toLowerCase() + " vence depois da entrega das chaves (" + dataBR(ultima) + ")");
       if (entrega && l.t === "pos" && l.d <= entrega) avisos.push("Linha " + (k + 1) + ": pós-chaves vence antes da entrega das chaves");
     });
-    /* 07/11/2026 (dono): uma parcela pré-chaves por mês e um balão por mês; mês sem parcela no meio é só aviso */
+    /* 14/11/2026 (dono): sinal sempre 0+30+60+90, sem pular prazo (duas parcelas = ato + 30) */
+    var sp = sinalNosPrazos(f, padrao ? normalizar(padrao) : null);
+    sp.erradas.forEach(function (e) {
+      erroLinha(e.k, "sinal vence em " + dataBR(e.d) + ": o sinal é ato + 30 + 60 + 90 dias, sem pular prazo — esta parcela vence em " + dataBR(e.certa) + " — use Corrigir datas");
+    });
+    if (sp.demais) erros.push("O sinal vai em no máximo 4 parcelas (ato, 30, 60 e 90 dias)");
+    /* 07/11/2026 (dono): uma parcela pré-chaves por mês e um balão por mês.
+       08/11/2026 (dono, duas partes de 11 deixavam um mês sem parcela): mês sem parcela no meio não salva mais */
     var ocup = {}, bal = {}, minM = null, maxM = null;
     f.linhas.slice(0, MAX_LINHAS).forEach(function (l, k) {
       if (!isoValida(l.d)) return;
@@ -491,7 +581,7 @@ var FluxoLivre = (function () {
     if (minM !== null) {
       var buracos = [];
       for (var mm = minM; mm <= maxM; mm++) if (ocup[mm] === undefined) buracos.push(mesBR(mm));
-      if (buracos.length) avisos.push("pré-chaves sem parcela em " + buracos.slice(0, 4).join(", ") + (buracos.length > 4 ? "…" : ""));
+      if (buracos.length) erros.push("pré-chaves sem parcela em " + buracos.slice(0, 4).join(", ") + (buracos.length > 4 ? "…" : "") + " — não pode ficar mês sem parcela: use Encaixar as pré-chaves");
     }
     /* regras que dependem da proposta (dono 29/10): financiamento/FGTS/subsídio iguais aos da proposta; pós-chaves com
        0, 12 ou 24 no total (o prazo pode mudar — 31/10), parcela até o teto e sem começar antes da proposta */
@@ -532,9 +622,13 @@ var FluxoLivre = (function () {
             erroLinha(k, "sinal só nos prazos do sinal: de " + dataBR(ass) + " a " + dataBR(limite) + " (ato, 30, 60 e 90 dias)");
         });
         if (nSinal > 4) erros.push("O restante do sinal vai em no máximo 4 parcelas (ato, 30, 60 e 90 dias)");
-        if (totSinal(f.linhas) < totSinal(padrao.linhas))
-          erros.push("O sinal (com a reserva e a permuta) não pode ficar abaixo do da proposta: " + moeda(totSinal(padrao.linhas) / 100));
       }
+      /* 08/11/2026 (dono): "o sinal sempre tem que ser >= que o mínimo" — o mínimo é o da casa de agora (unidade 13, que veio
+         da 11, mais cara: 10 mil), com ou sem reserva paga; o sinal da proposta não entra na conta */
+      var pisoSinal = c(sinalMinimoCasa(f, padrao));
+      var sinalAgora = f.linhas.reduce(function (s, l) { return s + (l.t === "sinal" || l.t === "prereserva" || l.t === "permuta" ? totalLinhaC(l) : 0); }, 0);
+      if (sinalAgora < pisoSinal)
+        erros.push("O sinal (com a reserva e a permuta) não pode ficar abaixo do mínimo: " + moeda(pisoSinal / 100));
       var qtd = function (ls) { return ls.reduce(function (s, l) { return s + (l.t === "pos" ? Math.max(0, l.n) : 0); }, 0); };
       /* 31/10/2026 (dono): o prazo pode mudar no Alterar fluxo (cliente de 24x para 36x) — pós-chaves só 0, 12 ou 24
          parcelas; a comissão e o fiador seguem o prazo novo (ContratoVenda.planoDoFluxo / comPosChaves, PR #35) */
@@ -643,7 +737,115 @@ var FluxoLivre = (function () {
     f.linhas.forEach(function (l) { if (refaz[l.t]) { if (pos < 0) pos = linhas.length; } else linhas.push(l); });
     if (pos < 0) pos = linhas.length;
     linhas.splice.apply(linhas, [pos, 0].concat(novas));
-    return { linhas: linhas };
+    /* 08/11: as quantidades vêm das linhas de antes — sem mês vazio entre as partes da pré-chaves */
+    return { linhas: encaixarPre({ valor: f.valor, entrega: f.entrega, linhas: linhas }, null).linhas };
+  }
+  /* 08/11/2026 (bug no editor da venda): o fluxo gravado antes (FLUXO PERSONALIZADO) não tinha a reserva paga e o sinal
+     da proposta de hoje — "Reserva paga, financiamento, FGTS e subsídio não mudam" e "O sinal não pode ficar abaixo"
+     travavam o Salvar sem jeito de consertar na tela. Traz da proposta a reserva paga, o FGTS, o subsídio e (se o de
+     agora for menor) o sinal; o financiamento fica o de agora se a quantidade de linhas bate (pode ter baixado); a
+     diferença vai para as pré-chaves e os balões (Distribuir). { linhas, mudou: [textos] } ou { erro }. */
+  /* 08/11/2026 — sinal mínimo do fluxo padrão para a casa de agora (a conta do simulador, fpcGerar/sinalDe):
+     entrada = valor − financiamento − FGTS − subsídio; até R$ 60.200 o sinal é R$ 10.000; acima, cresce na proporção. */
+  function sinalMinimoCasa(f, padrao) {
+    f = normalizar(f);
+    /* 14/11/2026 (dono): "tá autorizado fazer com a entrada de 10.000,00" — a exceção da venda vale no lugar da conta */
+    var aut = padrao ? Number(normalizar(padrao).sinalMinimo) : 0;
+    if (aut > 0) return aut;
+    /* com a proposta, vale o financiamento dela (a carta): reduzir o financiamento joga a diferença nas parcelas e não sobe o sinal (dono 05/11) */
+    var base = padrao ? normalizar(padrao).linhas : f.linhas;
+    var B0 = (c(f.valor) - somaC(base.filter(function (l) { return l.t === "fin" || l.t === "fgts" || l.t === "subsidio"; }))) / 100;
+    var nPos = PRAZOS[prazoDasLinhas(f.linhas) || 48], basePos = nPos * SIM_POS_UNIT, baseMeio = SIM_CHEIA - 10000 - basePos;
+    var T = Math.max(B0, 10000);
+    if (T <= SIM_CHEIA + 0.01) return 10000;
+    return Math.round((1000 + 9000 * (T - 1000 - basePos) / (9000 + baseMeio)) * 100) / 100;
+  }
+  function alinharComProposta(f, padrao) {
+    f = normalizar(f);
+    if (!padrao) return { erro: "Sem o fluxo da proposta" };
+    var P = normalizar(padrao).linhas, L = f.linhas.slice(), mudou = [];
+    var tot = function (ls, tipos) { return ls.reduce(function (s, l) { return s + (tipos.indexOf(l.t) >= 0 ? totalLinhaC(l) : 0); }, 0); };
+    var de = function (ls, tipos) { return ls.filter(function (l) { return tipos.indexOf(l.t) >= 0; }); };
+    function trocar(tipos, rotulo) {
+      var novas = de(P, tipos).map(function (l) { return JSON.parse(JSON.stringify(l)); }), pos = -1, fica = [];
+      L.forEach(function (l) { if (tipos.indexOf(l.t) >= 0) { if (pos < 0) pos = fica.length; } else fica.push(l); });
+      if (pos < 0) pos = 0;
+      fica.splice.apply(fica, [pos, 0].concat(novas));
+      L = fica; mudou.push(rotulo);
+    }
+    /* a reserva paga entrou antes como 1ª parcela do sinal (mesmo valor): vira a linha da reserva, sem contar duas vezes */
+    var prP = tot(P, ["prereserva"]);
+    if (prP && !de(L, ["prereserva"]).length) {
+      var kS = L.findIndex(function (l) { return l.t === "sinal" && totalLinhaC(l) === prP; });
+      if (kS >= 0) L.splice(kS, 1);
+    }
+    ["prereserva", "fgts", "subsidio"].forEach(function (t) {
+      var a = de(L, [t]).map(function (l) { return totalLinhaC(l); }).sort().join("|"), b = de(P, [t]).map(function (l) { return totalLinhaC(l); }).sort().join("|");
+      if (a !== b) trocar([t], { prereserva: "reserva paga", fgts: "FGTS", subsidio: "subsídio" }[t]);
+    });
+    if (de(L, ["fin"]).length !== de(P, ["fin"]).length || tot(L, ["fin"]) > tot(P, ["fin"])) trocar(["fin"], "financiamento");
+    var sinaisAgora = tot(L, ["sinal", "prereserva", "permuta"]),
+        sinaisProp = c(sinalMinimoCasa({ valor: f.valor, entrega: f.entrega, linhas: L }, padrao));   /* 08/11 (dono): o mínimo da casa de agora */
+    if (sinaisAgora < sinaisProp) {
+      /* o sinal da proposta, menos a reserva paga (que já entrou acima); a permuta de agora fica e abate */
+      var falta = sinaisProp - tot(L, ["prereserva", "permuta"]), sinaisP = de(P, ["sinal"]);
+      var base = tot(sinaisP, ["sinal"]);
+      L = L.filter(function (l) { return l.t !== "sinal"; });
+      var pos = L.findIndex(function (l) { return l.t !== "prereserva"; }); if (pos < 0) pos = L.length;
+      var novas = [], dado = 0;
+      sinaisP.forEach(function (l, j) {
+        var alvo = j === sinaisP.length - 1 ? falta - dado : Math.round(falta * totalLinhaC(l) / (base || 1));
+        dado += alvo; if (alvo > 0) novas.push(comTotal(l, alvo));
+      });
+      L.splice.apply(L, [pos, 0].concat(novas));
+      mudou.push("sinal");
+    }
+    if (!mudou.length) return { linhas: f.linhas, mudou: [] };
+    var ds = distribuir({ valor: f.valor, entrega: f.entrega, linhas: L });
+    if (ds.erro) return { erro: "Trouxe " + mudou.join(", ") + " da proposta, mas: " + ds.erro };
+    return { linhas: ds.linhas, mudou: mudou };
+  }
+  /* 08/11/2026 (dono): "perguntar se já foi pago e, se sim, ignorar a data do sinal" (unidade 13: tiveram de mudar a data
+     do sinal porque travava). A reserva continua sendo parte do sinal: o valor pago vira a linha da reserva, que não trava
+     por data, e é descontado das outras parcelas do sinal, da mais antiga para a mais nova. O que ainda vai ser pago segue
+     a data que está no fluxo; se ela for anterior a hoje, o validar trava ("só não pode ter data anterior à data atual").
+     O total do fluxo não muda. pr = { valor, data }; ref = { assinatura, hoje } só para a devolução sem parcela de sinal.
+     { linhas, mudou: [textos] } ou { erro } */
+  function reservaNoFluxo(f, pr, ref) {
+    f = normalizar(f);
+    var pago = c(pr.valor), dPago = isoValida(pr.data) ? pr.data : "", dRef = refVencimento(ref || {}).d;
+    var jaC = 0, jaD = "";
+    f.linhas.forEach(function (l) { if (l.t === "prereserva") { jaC += totalLinhaC(l); jaD = l.d; } });
+    var falta = pago - jaC;
+    if (falta === 0 && jaD === dPago) return { linhas: f.linhas, mudou: [] };
+    var sinais = [], pos = -1, fica = [];
+    f.linhas.forEach(function (l) {
+      if (l.t !== "sinal" && l.t !== "prereserva") { fica.push(l); return; }
+      if (pos < 0) pos = fica.length;
+      if (l.t === "prereserva") return;
+      for (var j = 0; j < Math.max(1, l.n); j++) {
+        var vC = j === l.n - 1 && l.n > 1 && positivo(l.u) ? c(l.u) : c(l.v);
+        sinais.push({ t: "sinal", vC: vC, n: 1, d: isoValida(l.d) ? maisMeses(l.d, j * l.i) : l.d, i: 1, x: l.x });
+      }
+    });
+    if (pos < 0) pos = 0;
+    sinais.sort(function (a, b) { return String(a.d) < String(b.d) ? -1 : String(a.d) > String(b.d) ? 1 : 0; });
+    /* reserva corrigida para menos: a diferença volta para a 1ª parcela do sinal, que mantém a data */
+    if (falta < 0) { if (sinais.length) sinais[0].vC += -falta; else sinais.push({ t: "sinal", vC: -falta, n: 1, d: dRef || dPago, i: 1, x: "" }); }
+    var resto = Math.max(0, falta);
+    sinais = sinais.filter(function (s) {
+      var usa = Math.min(resto, s.vC);
+      s.vC -= usa; resto -= usa;
+      return s.vC > 0;
+    });
+    if (resto > 0) return { erro: "A reserva paga (" + moeda(pago / 100) + ") passa do sinal do fluxo — confira o valor" };
+    var mudou = ["reserva de " + moeda(pago / 100) + " paga em " + dataBR(dPago) + " registrada como parte do sinal"];
+    var novas = pago > 0 ? [{ t: "prereserva", v: pago / 100, n: 1, d: dPago, i: 1, x: "" }] : [];
+    sinais.forEach(function (s) {
+      novas.push({ t: "sinal", v: s.vC / 100, n: 1, d: s.d, i: 1, x: s.x });
+    });
+    fica.splice.apply(fica, [pos, 0].concat(novas));
+    return { linhas: fica, mudou: mudou };
   }
   /* Sugestão "Distribuir": a diferença (falta ou sobra) vai proporcional ao total de cada pré-chaves e balão; os centavos
      no maior. Sinal, pós-chaves e o resto não mudam. { linhas } ou { erro }. */
@@ -878,6 +1080,7 @@ var FluxoLivre = (function () {
     um("subsidio", fl.subsidio, "");
     var out = { valor: positivo(fl.valorVenda) ? fl.valorVenda : 0, entrega: isoValida(fl.entrega) ? fl.entrega : "", linhas: L };
     if (ass) out.assinatura = ass;
+    if (ass && isoValida(fl.data30) && isoValida(fl.data60) && isoValida(fl.data90)) out.prazosSinal = [ass, fl.data30, fl.data60, fl.data90];
     return out;
   }
 
@@ -919,7 +1122,7 @@ var FluxoLivre = (function () {
            PRAZOS: PRAZOS, TIPOS_BEM: TIPOS_BEM, QUITA_PADRAO: QUITA_PADRAO, normalizarBem: normalizarBem, faltasBem: faltasBem, semDadosDoBem: semDadosDoBem, resumoBem: resumoBem,
            crlvDaLeitura: crlvDaLeitura, preencherBemCrlv: preencherBemCrlv,
            docValido: docValido, docFormatado: docFormatado, renavamValido: renavamValido, placaValida: placaValida, chassiValido: chassiValido, prazoDasLinhas: prazoDasLinhas, mudarPrazo: mudarPrazo, distribuir: distribuir, guiar: guiar, tetoFinanciamento: tetoFinanciamento,
-           normalizar: normalizar, validar: validar, corrigirDatas: corrigirDatas, refVencimento: refVencimento, encaixarPre: encaixarPre, cabemPre: cabemPre, FIM_PARCELAS_PRE: FIM_PARCELAS_PRE, redistribuir: redistribuir, aplicarDesconto: aplicarDesconto, valorDoDesconto: valorDoDesconto, doPadrao: doPadrao, abaterSinal: abaterSinal, expandir: expandir,
+           normalizar: normalizar, validar: validar, corrigirDatas: corrigirDatas, refVencimento: refVencimento, encaixarPre: encaixarPre, reservaNoFluxo: reservaNoFluxo, alinharComProposta: alinharComProposta, sinalMinimoCasa: sinalMinimoCasa, cabemPre: cabemPre, FIM_PARCELAS_PRE: FIM_PARCELAS_PRE, redistribuir: redistribuir, aplicarDesconto: aplicarDesconto, valorDoDesconto: valorDoDesconto, doPadrao: doPadrao, abaterSinal: abaterSinal, expandir: expandir,
            serializar: serializar, ler: ler, ordenar: ordenar, totalLinha: function (l) { return totalLinhaC(normalizar({ linhas: [l] }).linhas[0] || {}) / 100; },
            soma: function (linhas) { return somaC(normalizar({ linhas: linhas }).linhas) / 100; }, maisMeses: maisMeses, moeda: moeda, dataBR: dataBR };
 })();

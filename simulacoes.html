@@ -496,7 +496,29 @@ html[data-tema="escuro"] .ent-eq b,html[data-tema="escuro"] .ent-bloco .v,html[d
 /* ranking de corretores/imobiliárias lado a lado, empilha no celular (mesma
    quebra que o portal já usa para os KPIs, ver .kpis acima) */
 .sim-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:900px){.sim-2col{grid-template-columns:1fr}}
+@media(max-width:900px){.sim-2col{grid-template-columns:1fr}
+  /* 18/11/2026 — CAUSA da página de 861 px no celular: item de grid tem min-width:auto, então o cartão do ranking
+     crescia até a largura da tabela de dentro e esticava a página inteira (o .tbl-wrap rolava, mas o cartão não
+     encolhia). Com min-width:0 a tabela rola dentro do próprio .tbl-wrap. */
+  .sim-2col>*{min-width:0}}
+/* 18/11/2026 — celular (Conferência de celular, CLAUDE.md): proposta aberta, janela do termo e o Sim/Não cabem na
+   tela, rolam na vertical, alvo de toque de 44 px e input com 16 px (o iPhone não dá zoom). Desktop não muda. */
+@media(max-width:600px){
+  .modal-ov{padding:8px}
+  .modal-cx{padding:16px 14px;max-height:calc(100dvh - 16px);overflow-wrap:anywhere}
+  .modal-cx .bt,.modal-cx button{min-height:44px}
+  .modal-cx input,.modal-cx select,.modal-cx textarea{font-size:16px}
+  .modal-cx input:not([type=checkbox]):not([type=radio]),.modal-cx select{min-height:44px}
+  #prop-pr-fundo{padding:8px!important}
+  #prop-pr-fundo>div{padding:14px!important;overflow-wrap:anywhere}
+  #prop-pr-fundo button,#prop-pr-fundo .bt{min-height:44px}
+  #prop-pr-fundo input,#prop-pr-fundo select{font-size:16px}
+  #prop-pr-fundo input:not([type=checkbox]):not([type=radio]),#prop-pr-fundo select{min-height:44px}
+  #prop-pr-fundo .vb-blocos .dz-pr-pag input,#prop-pr-fundo .vb-blocos .dz-pr-pag .bt{height:44px}
+  .sn-fundo{align-items:flex-start!important;overflow-y:auto;padding:8px!important}
+  .sn-fundo>[role=dialog]{margin:auto 0;max-height:calc(100dvh - 16px);overflow-y:auto}
+  .sn-fundo button{min-height:44px;flex:1}
+}
 /* linha de total nas mini-tabelas do modal (fluxo de pagamento), no mesmo
    azul do cabeçalho das tabelas grandes — para lembrar o e-mail enviado */
 .sim-tot td{background:var(--azul);color:#fff;font-weight:800;border-color:rgba(255,255,255,.22)!important}
@@ -718,8 +740,14 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           <div class="novo-bar">
             <button class="bt mp-sim" onclick="novoEscolherUn('sim')">＋ Fazer simulação</button>
             <button class="bt mp-prop" onclick="novoEscolherUn('prop')">＋ SUBIR PASTA</button>
+            <a class="bt az" style="text-decoration:none" href="https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/tabela.html" target="_blank" rel="noopener" title="Abre a tabela numa aba nova: SIMULAR e SUBIR PASTA de cada unidade abrem em outra aba">📋 Abrir tabela de disponibilidades</a>
+            <button class="bt az" id="bt-planilhaFluxo-pdf" onclick="planilhaFluxoPortal('pdf')" title="Valor, avaliação, financiamento (80% da avaliação) e o fluxo padrão de cada unidade à venda">⬇ Tabela de disponibilidades PDF</button>
+            <button class="bt az" id="bt-planilhaFluxo-xlsx" onclick="planilhaFluxoPortal('xlsx')" title="Valor, avaliação, financiamento (80% da avaliação) e o fluxo padrão de cada unidade à venda">⬇ Tabela de disponibilidades Excel</button>
+            <!-- 14/11/2026 (dono) — fluxo personalizado sem proposta e sem dado de cliente; só no portal (venda/fluxo-personalizado.js) -->
+            <button class="bt verde" id="bt-fxp" onclick="fluxoPersonalizadoAbrir('')" title="Monta um fluxo de pagamento para mostrar ao cliente, sem enviar proposta e sem dados dele. Nada é gravado.">✎ Fluxo personalizado</button>
           </div>
         </div>
+        <div id="fxp-caixa"></div>
         <div id="rp-faixa-prop" style="display:none"></div><!-- 12/11: reservas que caem em 24 h (venda/reserva-prazo-ui.js) -->
         <div class="kpis k5" id="prop-cortes"></div>
         <div class="card">
@@ -820,8 +848,9 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
   </div>
 
 <script src="app.js?v=46"></script>
-<script src="venda/FluxoLivre.js?v=17" defer></script><!-- 29/10: Alterar fluxo -->
-<script src="venda-dossie.js?v=82" defer></script><!-- 28/10: termo de reserva pela proposta (VendaBlocos.montarPreReserva) -->
+<script src="venda/FluxoLivre.js?v=24" defer></script><!-- 29/10: Alterar fluxo -->
+<script src="venda/fluxo-personalizado.js?v=1" defer></script><!-- 14/11: fluxo personalizado sem proposta (só no portal) -->
+<script src="venda-dossie.js?v=88" defer></script><!-- 28/10: termo de reserva pela proposta (VendaBlocos.montarPreReserva) -->
 <script src="venda/contrato-vendida.js?v=4" defer></script>
 <script src="venda/atualizar-venda.js?v=1"></script><!-- 07/11: Atualizar venda pela proposta -->
 <script src="venda/reserva-prazo-ui.js?v=1"></script><!-- 12/11: Adiar / Reabrir reserva e faixa "cai amanhã" -->
@@ -2209,7 +2238,12 @@ function altPropConta(){
   const o={preco, financiado:fin, fgts:fgtsP+fgtsC, subsidio:sub, nSinal:Number(d.sinalParcelas)||4,
            prazoEntrada:altPrazo(d.prazoEntrada||p.prazoEntrada), ano:hoje.getFullYear(), mes:hoje.getMonth()+1, primeira:d.primeiraParcela||""};
   const g0=fpcGerar(Object.assign({},o,{informado:0}));
-  return {u, novo, preco, aval, teto, fin, fgtsP, fgtsC, sub, o, g0, min:g0.sinalMinimo, max:Math.max(10000, Math.round(g0.entradaCliente*100)/100)};
+  /* 08/11: o sinal mínimo da casa de ANTES (com o financiamento da proposta) — se o sinal da proposta era só o mínimo
+     dela, trocar de casa leva o sinal para o mínimo da casa nova (para cima OU para baixo) */
+  const precoAnt=Number(p.preco)||Number(d.preco)||0, avalAnt=Number(p.avaliacao)||Number(d.avaliacao)||0;
+  const finAnt=Math.min(Number(p.valorFinanciado)||avalAnt*0.8, avalAnt*0.8||Infinity);
+  const minAnt=fpcGerar(Object.assign({},o,{preco:precoAnt, financiado:finAnt, informado:0})).sinalMinimo;
+  return {u, novo, preco, aval, teto, fin, fgtsP, fgtsC, sub, o, g0, min:g0.sinalMinimo, minAnt, max:Math.max(10000, Math.round(g0.entradaCliente*100)/100)};
 }
 function altPropCalc(trocouUnidade){
   const A=ALT_P; if(!A) return;
@@ -2220,6 +2254,12 @@ function altPropCalc(trocouUnidade){
     ? "crédito aprovado na CAIXA (limitado a 80% da avaliação) — não muda aqui"
     : "sem crédito aprovado: pode alterar, até 80% da avaliação ("+simBRL(k.teto)+")"+(altNum("alt-fin")>k.teto+0.5?' <b style="color:#C0392B">— acima do teto, vale '+simBRL(k.teto)+'</b>':"");
   /* sinal mínimo da unidade: abaixo dele o valor sobe sozinho até o mínimo */
+  const infEl0=document.getElementById("alt-inf");
+  if(trocouUnidade){
+    /* 08/11 (dono, un. 11 → 13): o sinal da proposta que era só o mínimo da casa de antes vira o mínimo da casa nova */
+    const infProp=Number(A.p.valorEntrada)||0;
+    infEl0.value=altMoeda(k.novo && infProp<=k.minAnt+0.01 ? k.min : Math.max(infProp, k.min));
+  }
   let inf=altNum("alt-inf"); const av=document.getElementById("alt-aviso");
   let nota="";
   if(inf < k.min-0.005){ nota="O valor para o sinal subiu de "+simBRL(inf)+" para "+simBRL(k.min)+" (sinal mínimo desta unidade)."; inf=k.min; if(document.activeElement!==infEl || trocouUnidade) infEl.value=altMoeda(inf); }
@@ -2265,6 +2305,53 @@ async function altPropSalvar(){
   UNS=[];
   try{ await propCarregar(true); simCarregarUnidades(true); }catch(e){}
   setTimeout(()=>{ try{ propVer(p.id); }catch(e){} }, 400);
+}
+
+/* 14/11/2026 (dono) — FLUXO PERSONALIZADO sem proposta e sem dado de cliente, só no portal (o site do corretor não tem).
+   id vazio: abre em branco na barra da aba; id de proposta: abre dentro dela, já com a unidade e os valores dela.
+   Não grava nada: a proposta fica como está. A conta e a tela moram em venda/fluxo-personalizado.js. */
+async function fluxoPersonalizadoAbrir(id){
+  const p = id ? PROPS.find(x=>x.id===id) : null;
+  const cx = document.getElementById(p ? "fxp-prop" : "fxp-caixa"); if(!cx) return;
+  if(cx.dataset.aberto==="1" && !cx.innerHTML.trim()) cx.dataset.aberto="";
+  if(cx.dataset.aberto==="1"){ cx.scrollIntoView({behavior:"smooth", block:"start"}); return; }
+  cx.dataset.aberto="1";
+  cx.innerHTML='<div class="sim-aviso ok"><span class="load"></span> Carregando as unidades e a conta do fluxo…</div>';
+  try{ await Promise.all([altCarregarCalc(), altGarantirUnidades()]); if(typeof FluxoPersonalizado==="undefined") throw new Error("fluxo-personalizado"); }
+  catch(e){ cx.innerHTML='<div class="sim-aviso err">Não consegui carregar a conta do fluxo agora. Tente de novo.</div>'; cx.dataset.aberto=""; return; }
+  const unidades = UNS.filter(u=>Number(u.valorVenda)>0 && Number(u.avaliacao)>0)
+    .map(u=>({unidade:u.unidade, tipo:u.tipo, valorVenda:Number(u.valorVenda)||0, avaliacao:Number(u.avaliacao)||0, estado:novoEstadoUn(u)}));
+  let inicial = {};
+  if(p){
+    const d = p.dados||{};
+    inicial = {unidade:p.unidade, fin:Number(p.valorFinanciado)||0, fgts:(Number(d.saldoFgts!=null?d.saldoFgts:p.fgts)||0)+(Number(d.saldoFgtsConjuge)||0),
+               sub:Number(p.subsidio)||Number(d.subsidio)||0, sinal:Number(p.valorEntrada)||0, nSinal:Number(d.sinalParcelas)||4,
+               prazo:altPrazo(d.prazoEntrada||p.prazoEntrada), primeira:d.primeiraParcela||"",
+               diluir:(d.diluicao&&d.diluicao.length?d.diluicao.slice(0,2):[0,0]).map(x=>Number(x)||0)};
+  }
+  FluxoPersonalizado.abrir(cx, {unidades, inicial, logo:SIMULADOR_URL+"assets/logo-ipes-arvore.jpg",
+    origem: p ? "Aberto com os valores da proposta "+(p.proposta||"")+" — a proposta não muda." : "",
+    aoFechar:()=>{ cx.dataset.aberto=""; }});
+  cx.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* 07/11/2026 (dono) — PLANILHA DO FLUXO PADRÃO (o mesmo gerador do mapa: planilha-fluxo.js do simulador) */
+async function planilhaFluxoPortal(formato){
+  formato = formato==="pdf" ? "pdf" : "xlsx";   // 08/11: PDF e Excel
+  const b=document.getElementById("bt-planilhaFluxo-"+formato); if(!b) return;
+  const txt=b.textContent; b.disabled=true; b.textContent="Gerando…";
+  try{
+    await altGarantirUnidades();
+    if(!UNS.length) throw new Error("não consegui carregar as unidades");
+    if(typeof planilhaFluxoPadrao!=="function"){
+      await new Promise((ok,falha)=>{ const sc=document.createElement("script"); sc.src=SIMULADOR_URL+"planilha-fluxo.js?v="+Date.now();
+        sc.onload=ok; sc.onerror=()=>falha(new Error("não carregou o gerador")); document.head.appendChild(sc); });
+    }
+    const n=await planilhaFluxoPadrao(UNS, formato);
+    b.textContent="✓ Baixado ("+n+" unidades)";
+    setTimeout(()=>{ b.textContent=txt; }, 4000);
+  }catch(e){ alert("Não consegui gerar a planilha: "+((e&&e.message)||e)); b.textContent=txt; }
+  finally{ b.disabled=false; }
 }
 
 /* ---------- SIMULAÇÃO ---------- */
@@ -4136,7 +4223,9 @@ function propVer(id){
     <div class="alt-acoes">
       ${podeGravar?`<button class="bt verde" onclick="altPropAbrir('${p.id}')">✎ Alterar unidade / valor financiado</button>`:""}
       <button class="bt az" onclick="fluxoPdf('prop','${p.id}')">📄 Gerar PDF do fluxo</button>
+      <button class="bt ghost" onclick="fluxoPersonalizadoAbrir('${p.id}')" title="Abre o fluxo personalizado já com a unidade e os valores desta proposta. Não muda a proposta: nada é gravado.">✎ Fluxo personalizado (não grava)</button>
     </div>
+    <div id="fxp-prop"></div>
     <div id="alt-prop"></div>
     ${propResumoValores(p)}
     ${propQuadroFluxo(p)}
@@ -5169,7 +5258,7 @@ async function propStatusInterno(id, nome){
 /* 28/10 (dono): pergunta com "Sim" e "Não" iguais, nenhum destacado (o confirm do navegador realça o OK). */
 function propSimNao(msg){
   return new Promise(res=>{
-    const f=document.createElement("div");
+    const f=document.createElement("div"); f.className="sn-fundo";   /* 18/11: classe só para o CSS de celular */
     f.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px";
     const bt="min-width:96px;padding:9px 18px;border-radius:8px;border:1px solid var(--borda,#c9d3da);background:var(--card,#fff);color:var(--text,#1f2328);font:inherit;font-weight:600;cursor:pointer";
     f.innerHTML='<div role="dialog" aria-modal="true" style="background:var(--card,#fff);color:var(--text,#1f2328);border-radius:12px;max-width:420px;width:100%;padding:20px 22px;box-shadow:0 10px 30px rgba(0,0,0,.25)">'+

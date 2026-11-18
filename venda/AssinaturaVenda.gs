@@ -496,6 +496,7 @@ function assEnviarTermo_(col, p, pid, cols, doc, gerado) {
   var dAss = {}, k;
   for (k in x.d) dAss[k] = x.d[k];
   dAss.comprador2 = null; dAss.corretor = null;
+  dAss.semSelfie = true;   /* 07/11/2026 (dono): selfie só no contrato; o termo de reserva fica só com o token por e-mail */
   if (dAss.condominio && dAss.condominio.conjugeComprador && !prConjugeIncluido_(p.pageId)) {
     var cond = {};
     for (k in dAss.condominio) if (k !== "conjugeComprador") cond[k] = dAss.condominio[k];
@@ -1108,6 +1109,9 @@ function assinaturaCancelar_(col, sess, p) {
     return est;
   }
   est.cancelou = true;
+  /* 09/11/2026 (dono): "sempre que cancela o envelope da reserva tem que apagar a data" — sem a data, a reserva não entra
+     paga no fluxo (Alterar fluxo e contrato). Só no cancelamento de verdade (descartar rascunho não passa aqui). */
+  if (doc && doc.pre && est.ok) est.pagamentoApagado = prApagarPagamentoAoCancelar_(p.pageId, sess);
   return est;
 }
 
@@ -1191,7 +1195,7 @@ var ASS_TRAVA_CONTRATO = ["gerarPreContrato", "aprovarPreContrato", "gerarContra
                           "excluirArquivoEspaco" /* 05/11: documento do dossiê não sai com o contrato enviado ou assinado */];
 /* 03/11: só o envelope ABERTO trava aqui. Assinado, salvarFluxo e lerCrlv já respondem FLUXO_CONTRATO_ASSINADO ("mudar o
    fluxo agora exige aditivo"); o Corrigir aqui da conferência segue aberto depois de assinado (dado do cadastro). */
-var ASS_TRAVA_SO_ABERTO = ["salvarFluxo", "lerCrlv", "corrigirConferencia"];
+var ASS_TRAVA_SO_ABERTO = ["salvarFluxo", "lerCrlv", "corrigirConferencia", "confirmarReservaPaga" /* 08/11: mexe no fluxo */];
 var ASS_TRAVA_TERMO = ["gerarTermoPreReserva", "salvarContaPreReserva", "salvarConjugePreReserva"];
 var ASS_TRAVA_ENVELOPE = ["assinaturaEnviar", "assinaturaReenviar", "assinaturaCancelar", "assinaturaTrocarEmail"];
 var ASS_MSG_ABERTO = "O contrato já foi enviado para assinatura. Para mudar, cancele o envelope primeiro.";

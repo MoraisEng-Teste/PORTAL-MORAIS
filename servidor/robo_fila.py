@@ -88,6 +88,15 @@ class Notion:
             return json.loads(r.read().decode())
 
 
+def _sem_opcao_segurar(e) -> bool:
+    """Resposta 400 do Notion dizendo que a opção "boleto-segurar" não existe na coluna TIPO."""
+    try:
+        msg = str(json.loads(e.read().decode("utf-8", "replace")).get("message") or "")
+    except Exception:
+        return False
+    return "boleto-segurar" in msg and "not found" in msg
+
+
 def texto(prop) -> str:
     if not prop:
         return ""
@@ -201,6 +210,21 @@ class Fila:
                             and (self.nome != "teste" or TESTE_PODE_GRAVAR.exists()))
         self.pode_gravar_recebimento = bool(cfg.get("pode_gravar_recebimento")) and APLICAR_RECEBIMENTO.exists()
 
+    def pendentes_de_segurar(self) -> list:
+        try:
+            r = self.notion.api("POST", "/databases/%s/query" % self.db, {
+                "filter": {"and": [{"property": COL["tipo"], "select": {"equals": "boleto-segurar"}},
+                                   {"property": COL["situacao"], "select": {"equals": "PENDENTE"}}]},
+                "sorts": [{"property": COL["pedido_em"], "direction": "ascending"}], "page_size": 50})
+        except urllib.error.HTTPError as e:
+            # 16/11: o Notion só cria a opção do select no 1º pedido gravado com ela. Sem a opção, a busca volta 400
+            # "select option ... not found" — quer dizer que nunca houve Segurar. Os boletos ficaram de 11 a 16/11 sem
+            # emitir por causa disso. Qualquer outro erro continua impedindo a emissão.
+            if e.code == 400 and _sem_opcao_segurar(e):
+                return []
+            raise
+        return r.get("results") or []
+
     def sinal(self) -> None:
         r = self.notion.api("POST", "/databases/%s/query" % self.db,
                             {"filter": {"property": COL["tipo"], "select": {"equals": "SINAL"}}, "page_size": 1})
@@ -256,6 +280,8 @@ class Fila:
         alvo = str(payload.get("pageId") or "")[:8]
         if tipo == "robo-rodar":
             return self.rodar_de_novo(linha, payload)
+        if tipo == "boleto-segurar":
+            return self.segurar_boleto(linha, payload)
         montado = argumentos(tipo, payload, self.pode_gravar_recebimento if tipo == "mc-recebimento" else self.pode_gravar)
         if not montado:
             self.marcar(linha["id"], "ERRO", "pedido inválido (%s)" % tipo)
@@ -320,6 +346,33 @@ class Fila:
                 pass
         return "FEITO" if ok else "ERRO"
 
+
+    def segurar_boleto(self, linha: dict, payload: dict) -> str:
+        """09/11: Segurar/Soltar da página Boletos e Financeiro. Só mexe num arquivo do servidor, sem usar o Mais
+        Controle: não espera a vez dele, então vale mesmo com a rodada de boletos em andamento."""
+        acao, parcela, quem = str(payload.get("acao") or ""), str(payload.get("parcela") or ""), str(payload.get("quem") or "")
+        if self.nome == "teste":
+            ok, msg = False, "a fila de teste não segura boleto"
+        elif not RE_ID.match(parcela):
+            ok, msg = False, "parcela inválida"
+        else:
+            BP = None
+            try:
+                sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+                import boletos_portal as BP
+                ok, msg = _uma_escrita_por_vez(lambda: BP.pedir(acao, parcela, quem))
+            except Exception as e:
+                ok, msg = False, type(e).__name__
+            if BP is not None:
+                if not ok:
+                    try:
+                        BP.registrar_recusa(parcela, msg)
+                    except Exception as e:
+                        log("[boletos] recusa não gravada (%s)" % type(e).__name__)
+                BP.publicar(lambda m: log("[boletos] " + m))   # recusa também publica: a tela precisa avisar
+        self.marcar(linha["id"], "FEITO" if ok else "ERRO", msg)
+        log("[%s] boleto-segurar %s %s: %s" % (self.nome, acao[:8], parcela[:8], msg))
+        return "FEITO" if ok else "ERRO"
 
     def reorganizar(self, linha: dict, quem: str) -> str:
         try:
@@ -472,6 +525,37 @@ def na_vez(nome: str, funcao, espera_s: float = ESPERA_VEZ_S, dormir=time.sleep,
         f.close()
 
 
+def _uma_escrita_por_vez(funcao, tentativas: int = 30, dormir=time.sleep):
+    """A fila e o robô de boletos atendem Segurar: sem esta trava, um podia apagar a marca que o outro acabou de gravar."""
+    CENTRAL.mkdir(parents=True, exist_ok=True)
+    f = open(CENTRAL / "boletos-seguradas.trava", "a+")
+    try:
+        for _ in range(tentativas):
+            if _travar(f):
+                try:
+                    return funcao()
+                finally:
+                    _soltar(f)
+            dormir(1)
+        return False, "outro pedido ainda está sendo gravado"
+    finally:
+        f.close()
+
+
+def atender_seguradas_pendentes() -> None:
+    """09/11: antes da rodada de boletos. A fila pode estar presa num lançamento de venda; um Segurar pedido antes das
+    10:00 não pode perder para a emissão por causa disso. Levanta erro se não conseguir ler a fila: quem chama não emite."""
+    for fila in carregar():
+        if fila.nome == "teste":
+            continue
+        for linha in fila.pendentes_de_segurar():
+            try:
+                payload = json.loads(texto(linha["properties"].get(COL["payload"])) or "{}")
+            except ValueError:
+                payload = {}
+            fila.segurar_boleto(linha, payload)
+
+
 def rodada() -> int:
     saude = {"em": agora_iso(), "filas": {}}
     erro = 0
@@ -479,7 +563,9 @@ def rodada() -> int:
         st = {"feitos": 0, "erros": 0}
         try:
             fila.sinal()
-            for linha in fila.pendentes():
+            # Segurar primeiro, em ordem estável: não usa o Mais Controle e tem hora para valer
+            pedidos = sorted(fila.pendentes(), key=lambda l: texto(l["properties"].get(COL["tipo"])) != "boleto-segurar")
+            for linha in pedidos:
                 if fila.atender(linha) == "FEITO":
                     st["feitos"] += 1
                 else:
@@ -538,6 +624,13 @@ ROBOS = {
     # 05/11: documentos do Orçamento (matrícula, certidão mãe, alvará, habite-se) -> dossiê do imóvel das casas de rua
     # com venda. Só lê o ERP; grava no Notion só com ROBOS_APLICAR.txt. Precisa de "vars": {"DB_VENDAS": ...}.
     "documentos": ["robo_mc_documentos.py"],
+    # 06/11: boletos do mês do Reserva dos Ipês pela Cobrança Fácil (venda/mc/boletos.py).
+    # Dias úteis 10:00; já emite, mas só com _central\BOLETOS_APLICAR.txt (o dono cria). Sem ele, só a lista.
+    "boletos": [["robo_mc_boletos.py", "--emitir"]],
+    # 16/11: conferência de compras (OC) do Mapa de Obras — Rocha Mármores / VIDRO ALVES (aprova a OC) e Serralheria do
+    # Fabio (2ª parcela para o próximo dia útil) depois do SIM do engenheiro. Tabela oc_conferencia no Supabase
+    # (supabase_key_arquivo + vars.SUPABASE_URL). Grava no ERP SÓ com _central\OCS_APLICAR.txt (trava própria, o dono cria).
+    "ocs": ["robo_mc_ocs.py"],
 }
 REPO_GH = "MoraisEng-Teste/PORTAL-MORAIS"
 ARQ_MEDICOES = "dist/mc_medicoes/contratos.json"
@@ -615,15 +708,31 @@ def robo_antigo(nome: str) -> int:
         log("[%s] sem a chave \"robos\" em %s" % (nome, CONFIG.name))
         return 2
     env, pior = env_robos(cfg), 0
-    for script in ROBOS[nome]:
+    if nome == "boletos":
         try:
-            r = subprocess.run([sys.executable, script], cwd=RAIZ, env=env, capture_output=True, text=True,
+            atender_seguradas_pendentes()
+        except Exception as e:             # emitir parcela segurada não tem volta; atrasar um dia tem
+            log("[boletos] não emiti: não consegui ler os pedidos de segurar (%s)" % type(e).__name__)
+            return 1
+    for item in ROBOS[nome]:
+        script = item if isinstance(item, str) else item[0]       # 06/11: item = texto ou [script, argumento...]
+        argv = [sys.executable] + ([item] if isinstance(item, str) else list(item))
+        try:
+            r = subprocess.run(argv, cwd=RAIZ, env=env, capture_output=True, text=True,
                                encoding="utf-8", errors="replace", timeout=PRAZO_ROBO_ANTIGO_S)
             codigo, fim = r.returncode, ((r.stdout or "").strip().splitlines() or [""])[-1]
             if codigo:
                 fim = ((r.stderr or "").strip().splitlines() or [fim])[-1]
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
             codigo, fim = 124, "passou de %d min" % (PRAZO_ROBO_ANTIGO_S // 60)
+            try:            # 16/11: guarda o que o robô já tinha dito (antes a saída se perdia no prazo esgotado)
+                def _txt(b):
+                    return b.decode("utf-8", "replace") if isinstance(b, bytes) else (b or "")
+                (LOGS / ("saida-%s.txt" % nome)).write_text("%s %s código 124 (passou de %d min)\n%s\n%s" % (
+                    agora_iso(), script, PRAZO_ROBO_ANTIGO_S // 60, _txt(e.stdout)[-60000:], _txt(e.stderr)[-20000:]),
+                    encoding="utf-8")
+            except Exception:
+                pass
         log("[%s] %s código %s %s" % (nome, script, codigo, str(fim)[:200]))
         try:                    # 04/11: a saída inteira da última rodada de cada robô (o log só guarda a última linha)
             if "r" in locals():
@@ -648,6 +757,13 @@ def robo_antigo(nome: str) -> int:
         except Exception as e:
             log("[medidores] publicar FALHOU %s: %s" % (type(e).__name__, str(e)[:200]))
             pior = 1
+    if nome in ("boletos", "retratos"):   # 09/11: a página Boletos e Financeiro lê o que estas duas rodadas produzem
+        try:
+            sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+            import boletos_portal as BP
+            BP.publicar(lambda m: log("[boletos] " + m))
+        except Exception as e:             # a página atrasada não muda o resultado do robô
+            log("[boletos] publicar FALHOU %s" % type(e).__name__)
     saude = json.loads(SAUDE.read_text(encoding="utf-8")) if SAUDE.exists() else {}
     saude.setdefault("robos", {})[nome] = {"em": agora_iso(), "codigo": pior}
     SAUDE.write_text(json.dumps(saude, ensure_ascii=False, indent=1), encoding="utf-8")

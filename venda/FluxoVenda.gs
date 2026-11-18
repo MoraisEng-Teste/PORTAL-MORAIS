@@ -6,6 +6,7 @@
  * histórico (Propriedade FLUXO_HIST_<página>).
  * Etapa 1 (este arquivo): tela, gravação e histórico. Etapa 2: o contrato lê a lista (ContratoVenda.gruposFluxo).
  * Até a etapa 3 o robô do Mais Controle para quando a venda tem fluxo alterado. */
+var FLUXO_SINAL_AUT = "SINAL MÍNIMO AUTORIZADO";
 var FLUXO_COL = "FLUXO PERSONALIZADO", FLUXO_HIST = "FLUXO_HIST_", FLUXO_HIST_MAX = 8500;
 /* dono 29/10: mudar o VALOR DA CASA só Julio Cesar e João Vitor — os logins do portal ficam na Propriedade
    FLUXO_PRECO_USUARIOS (separados por vírgula). Vazia = ninguém muda o valor da casa. */
@@ -93,7 +94,12 @@ function fluxoPadrao_(pg) {
   var cond = ctrDadosCondominio_(ctrPorChave_(pg.properties)).condominio;
   cond.valorParaEntrada = ctrValorParaEntrada_(cond.idProposta);
   /* 31/10: a pré-reserva paga entra como 1ª parcela do sinal (abatida dele), como no contrato */
-  return FluxoLivre.doPadrao(cond.fluxo, ContratoVenda.excedenteSinal(cond), ContratoVenda.preReservaPaga(cond));
+  var padrao = FluxoLivre.doPadrao(cond.fluxo, ContratoVenda.excedenteSinal(cond), ContratoVenda.preReservaPaga(cond));
+  /* 14/11/2026 (dono): exceção por venda — a coluna SINAL MÍNIMO AUTORIZADO (número) troca o mínimo calculado do sinal.
+     Vazia ou sem a coluna = a regra de sempre (FluxoLivre.sinalMinimoCasa). */
+  var aut = ctrNum_(ctrCampo_(ctrPorChave_(pg.properties), FLUXO_SINAL_AUT));
+  if (aut && aut > 0) padrao.sinalMinimo = aut;
+  return padrao;
 }
 
 /* Ação "salvarFluxo": p.fluxo = { valor, linhas } | p.voltar = true (volta ao fluxo do simulador); p.motivo;
@@ -150,6 +156,28 @@ function salvarFluxo_(col, sess, p) {
   ctrLog_("salvarFluxo " + pid + " por " + (item.por || "?") + (p.voltar ? ": voltou ao fluxo da proposta" : ": " + FluxoLivre.ler(texto).linhas.length + " linhas"));
   return { ok: true, fluxo: fluxoEstado_(p.pageId, { properties: Object.assign({}, pg.properties, (function () {
     var o = {}; o[real] = { type: "rich_text", rich_text: props[real].rich_text.map(function (t) { return { plain_text: t.text.content }; }) }; return o; })()) }) };
+}
+/* 08/11/2026 (dono): resposta "a reserva já foi paga" ao gerar o contrato. Grava valor e data (salvarPagamentoPreReserva_,
+   com as mesmas validações e o histórico) e, se a venda tem fluxo alterado, põe a reserva dentro dele (FluxoLivre.reservaNoFluxo),
+   pelo mesmo caminho do Salvar do fluxo: mesmas travas e mesmo histórico. Sem fluxo alterado o abatimento já é automático.
+   O que ainda vai ser pago segue a data do fluxo: data anterior a hoje não salva o fluxo (a reserva fica gravada e a tela
+   manda abrir o Alterar fluxo). */
+function confirmarReservaPaga_(col, sess, p) {
+  var rp = salvarPagamentoPreReserva_(col, sess, { pageId: p.pageId, valor: p.valor, data: p.data });
+  if (!rp.ok) return rp;
+  var pg = ctrLerPaginaVenda_(p.pageId), pers = FluxoLivre.ler(fluxoTextoDaLinha_(pg));
+  if (!pers) return rp;
+  var hoje = (typeof HOJE_VENDA_TESTE_ === "string" ? HOJE_VENDA_TESTE_ : Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyy-MM-dd"));
+  var ajuste = FluxoLivre.reservaNoFluxo(pers, { valor: rp.valor, data: rp.dataPagamento }, { assinatura: fluxoPadrao_(pg).assinatura, hoje: hoje });
+  if (ajuste.erro) return { ok: false, erro: "CAMPOS_INVALIDOS", erros: [ajuste.erro] };
+  if (!ajuste.mudou.length) return rp;
+  var novo = JSON.parse(FluxoLivre.serializar(pers));
+  novo.linhas = ajuste.linhas;
+  var r = salvarFluxo_(col, sess, { pageId: p.pageId, fluxo: novo, motivo: "Reserva paga: " + ajuste.mudou.join("; ") });
+  if (!r.ok) { r.reservaGravada = { valor: rp.valor, dataPagamento: rp.dataPagamento, dataLimite: rp.dataLimite, dataLimiteDigitada: rp.dataLimiteDigitada, historico: rp.historico }; return r; }
+  rp.fluxo = r.fluxo;
+  rp.fluxoMudou = ajuste.mudou;
+  return rp;
 }
 /* rich_text do Notion: até 2000 caracteres por pedaço */
 function fluxoPedacos_(s) {

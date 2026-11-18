@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabela de disponibilidades — Reserva do Ipês</title>
+<!-- 08/11/2026 (dono) — TABELA DE DISPONIBILIDADES em página: os botões SIMULAR e SUBIR PASTA
+     de cada linha abrem em NOVA ABA (no PDF o navegador abre o link na mesma aba, e isso não
+     dá para mudar de dentro do arquivo). Daqui também baixa o PDF e o Excel. -->
+<style>
+  /* 10/11/2026 (dono): cores da logo do Reserva do Ipês — tronco marrom e flores amarela, rosa, lilás e cinza */
+  :root{--marrom:#A86123;--marromEsc:#6E3E14;--amarelo:#ECC32B;--amarelo2:#D9AE17;--rosa:#E983A9;--lilas:#A88FC1;--cinza:#DADFDC;
+        --roxo:#7E5DAF;--roxo2:#694A97;--lilasClaro:#EFE9F6;--amareloClaro:#FDF3CF;--creme:#FBF6EC;
+        --texto:#3C2819;--suave:#6E5A46;--borda:#E8DCC8;--fundo:#FBF7EE;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:var(--fundo);color:var(--texto)}
+  header{background:#fff;color:var(--marrom);padding:10px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:relative;
+         border-bottom:5px solid transparent;border-image:linear-gradient(90deg,var(--amarelo) 0 25%,var(--rosa) 25% 50%,var(--lilas) 50% 75%,var(--cinza) 75% 100%) 1}
+  header img.logo{height:64px;width:auto;display:block}
+  header h1{font-size:20px;margin:0;flex:1;min-width:240px;color:var(--marrom);letter-spacing:.3px}
+  header span{font-size:12.5px;color:var(--marromEsc);font-weight:600;display:block;letter-spacing:0}
+  .bts{display:flex;gap:8px;flex-wrap:wrap}
+  .bt{border:0;border-radius:10px;padding:10px 16px;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer;background:var(--marrom);color:#fff}
+  .bt.v{background:var(--roxo);color:#fff}.bt:disabled{opacity:.6;cursor:wait}
+  main{max-width:1400px;margin:18px auto 60px;padding:0 16px}
+  .sub{font-size:13px;color:var(--marromEsc);font-style:italic;margin:0 0 10px}
+  .atencao{background:var(--amareloClaro);border-left:5px solid var(--marrom);border-radius:8px;padding:12px 14px;color:var(--marromEsc);font-weight:700;font-size:14px;line-height:1.45;margin-bottom:14px}
+  .wrap{overflow-x:auto;background:#fff;border:1px solid var(--borda);border-radius:12px}
+  table{border-collapse:collapse;width:100%;min-width:1100px;font-size:13px}
+  th{background:var(--marrom);color:#fff;border-bottom:3px solid var(--amarelo);font-size:11.5px;text-transform:uppercase;padding:9px 8px;text-align:center;position:sticky;top:0}
+  td{padding:6px 8px;border-bottom:1px solid #EFE4D2;text-align:right;white-space:nowrap}
+  td.un{text-align:center;font-weight:800;color:var(--marrom)}
+  td.fin{background:var(--lilasClaro)}
+  tr:nth-child(even) td:not(.fin){background:var(--creme)}
+  td.ac{text-align:center;padding:4px 5px}
+  a.btn{display:inline-block;border-radius:7px;padding:6px 10px;font-weight:800;font-size:12px;text-decoration:none;white-space:nowrap}
+  a.sim{background:var(--amarelo);color:var(--marromEsc)}a.sim:hover{background:var(--amarelo2)}
+  a.prop{background:var(--roxo);color:#fff}a.prop:hover{background:var(--roxo2)}
+  .tag{display:inline-block;margin-left:4px;font-size:10px;font-weight:800;color:#A23C68;background:#FBE8EF;border:1px solid #F2B8CD;border-radius:5px;padding:1px 4px}
+  .avisos{font-size:12px;color:var(--suave);line-height:1.5;margin-top:12px}
+  .avisos p{margin:4px 0}
+  #st{font-size:12.5px;color:var(--marromEsc)}
+  /* 10/11/2026 (dono): escolha do prazo da entrada e do FGTS */
+  .opcoes{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 22px;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:12px 16px;margin-bottom:12px}
+  .opcoes .grp{display:flex;flex-direction:column;gap:5px}
+  .opcoes label.t{font-size:11.5px;font-weight:800;color:var(--marromEsc);text-transform:uppercase;letter-spacing:.4px}
+  .seg{display:inline-flex;border:1.5px solid var(--marrom);border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:#fff;color:var(--marrom);font:inherit;font-weight:800;font-size:14px;padding:8px 16px;cursor:pointer}
+  .seg button+button{border-left:1.5px solid var(--marrom)}
+  .seg button.on{background:var(--marrom);color:#fff}
+  .fgts{display:flex;align-items:center;border:1.5px solid var(--borda);border-radius:9px;background:#fff;padding:0 10px}
+  .fgts:focus-within{border-color:var(--marrom)}
+  .fgts span{font-weight:800;color:var(--suave);font-size:14px}
+  .fgts input{border:0;outline:0;font:inherit;font-size:15px;font-weight:700;color:var(--texto);padding:8px 6px;width:140px;background:transparent}
+  /* 11/11/2026 (dono): ordenar por UNIDADE, VALOR ou AVALIAÇÃO clicando no título da coluna */
+  th.ord{cursor:pointer;user-select:none;white-space:nowrap}
+  th.ord:hover{background:var(--marromEsc)}
+  th.ord .seta{display:inline-block;margin-left:5px;font-size:10px;opacity:.55}
+  th.ord.on .seta{opacity:1;color:var(--amarelo)}
+  td.fin input{width:118px;border:1.5px solid #CDBBE3;border-radius:7px;padding:4px 6px;font:inherit;font-size:13px;font-weight:700;text-align:right;color:var(--texto);background:#fff}
+  td.fin input:focus{outline:0;border-color:var(--roxo)}
+  td.fin input.ed{border-color:var(--roxo);background:#F7F3FC}
+  td.fin small{display:block;font-size:10px;color:var(--suave);margin-top:2px}
+  td.fin small.teto{color:var(--suave)}
+  .bt-mini{border:1.5px solid var(--marrom);background:#fff;color:var(--marrom);border-radius:8px;padding:7px 10px;font:inherit;font-weight:800;font-size:12.5px;cursor:pointer}
+  .opcoes .dica{font-size:12px;color:var(--suave);max-width:420px;line-height:1.4}
+  .carregando{padding:30px;text-align:center;color:var(--suave)}
+  /* 14/11/2026 (dono): mapa das unidades abaixo da tabela — mesmo SVG, cores e bolinhas do mapa de vendas (index.html) */
+  h2.sec{font-size:16px;color:var(--marrom);border-bottom:3px solid var(--amarelo);padding-bottom:8px;margin:26px 0 12px}
+  .mapbox{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:12px;position:relative}
+  #mapScroll{overflow:auto;max-height:78vh;overscroll-behavior:contain;touch-action:pan-x pan-y pinch-zoom;-webkit-user-select:none;user-select:none;cursor:grab}
+  #mapScroll .mapa-vazio{aspect-ratio:6090/3920;background:#EFE7D8;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--suave);font-size:13px}
+  #mapScroll svg{display:block;height:auto}
+  #mapScroll svg *{-webkit-user-drag:none}
+  #mapScroll polygon{stroke:#A86018;stroke-width:3;cursor:pointer;transition:fill .1s}
+  #mapScroll polygon.sel{stroke:#2A2118;stroke-width:5}
+  .zoom{position:absolute;bottom:10px;right:10px;display:flex;gap:6px;z-index:6}
+  .zoom button{width:34px;height:34px;border-radius:6px;border:1px solid var(--borda);background:#fff;color:var(--marrom);font-size:18px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(42,33,24,.18)}
+  .legenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--suave)}
+  .legenda span{display:flex;align-items:center;gap:6px}
+  .legenda i{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.15)}
+  .dica-mapa{font-size:12px;color:var(--suave);margin:0 0 8px}
+  #pop{position:fixed;z-index:50;display:none;width:240px;background:#fff;border:1px solid var(--borda);border-radius:10px;box-shadow:0 8px 26px rgba(0,0,0,.2);padding:14px;overflow:hidden}
+  #pop h4{margin:0 0 8px;color:var(--marrom);font-size:15px;padding-right:16px}
+  #pop .val{font-size:13px;margin:2px 0}#pop .val b{color:var(--marromEsc)}
+  #pop img{width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;background:#EFE7D8;border-radius:6px;margin:8px 0;border:1px solid var(--borda)}
+  #pop .x{position:absolute;top:6px;right:10px;cursor:pointer;color:var(--suave);font-size:18px;z-index:2}
+  #pop .acoes{display:flex;gap:8px;margin-top:8px}
+  #pop .acoes a{flex:1;text-align:center;padding:8px 4px}
+  #pop .est{display:inline-block;font-size:11px;font-weight:800;color:#fff;border-radius:5px;padding:2px 7px;margin-left:4px;vertical-align:middle}
+  #pop .aviso{margin-top:8px;font-size:11px;color:#1F6FB2;background:#EAF2FA;border:1px solid #BBD5EC;border-radius:6px;padding:6px 8px}
+  @media print{header .bts,#st{display:none}body{background:#fff}.wrap{border:0}th{position:static}.zoom,#pop{display:none!important}#mapScroll{max-height:none;overflow:visible}}
+</style>
+</head>
+<body>
+<header>
+  <img class="logo" src="assets/logo-ipes-arvore.jpg" alt="Reserva do Ipês" onerror="this.style.display='none'">
+  <h1>Tabela de disponibilidades<span>Condomínio Reserva do Ipês · Morais Engenharia e Construção · <b id="data"></b></span></h1>
+  <div class="bts">
+    <button class="bt" id="bPdf" onclick="baixar('pdf')">⬇ PDF</button>
+    <button class="bt v" id="bXls" onclick="baixar('xlsx')">⬇ Excel</button>
+  </div>
+  <div id="st" style="width:100%"></div>
+</header>
+<main>
+  <div class="opcoes" id="opcoes">
+    <div class="grp"><label class="t">Entrada em</label>
+      <div class="seg" id="segPrazo"><button type="button" data-p="48" class="on">48x</button><button type="button" data-p="36">36x</button><button type="button" data-p="24">24x</button></div></div>
+    <div class="grp"><label class="t" for="fgts">FGTS do cliente (abate da entrada)</label>
+      <div class="fgts"><span>R$</span><input id="fgts" inputmode="numeric" placeholder="0,00" autocomplete="off"></div></div>
+    <div class="grp"><label class="t" for="finGeral">Financiamento (todas as unidades)</label>
+      <div class="fgts"><span>R$</span><input id="finGeral" inputmode="numeric" placeholder="80% da avaliação" autocomplete="off"></div></div>
+    <div class="grp"><label class="t">&nbsp;</label><button type="button" class="bt-mini" id="bFin80">Voltar a 80%</button></div>
+    <div class="dica">Clique em UNIDADE, VALOR ou AVALIAÇÃO para ordenar (de novo inverte). O financiamento vai até 80% da avaliação: dá para mudar aqui para todas ou na própria linha da unidade. Tudo recalcula na hora, e o PDF e o Excel saem como está na tela (o Excel com uma aba para cada prazo).</div>
+  </div>
+  <p class="sub" id="sub"></p>
+  <div class="atencao" id="atencao"></div>
+  <div class="wrap"><div class="carregando" id="tab">Carregando as unidades…</div></div>
+  <div class="avisos" id="avisos"></div>
+
+  <!-- 14/11/2026 (dono): mapa das unidades logo abaixo da tabela -->
+  <h2 class="sec">Mapa das unidades</h2>
+  <p class="dica-mapa">Clique na unidade para ver valor, avaliação e a planta, e para SIMULAR ou SUBIR PASTA (abre em outra aba, com o prazo, o FGTS e o financiamento escolhidos acima).</p>
+  <div class="mapbox">
+    <div style="position:relative"><div id="mapScroll"><div class="mapa-vazio">Carregando o mapa…</div></div>
+    <div class="zoom"><button type="button" onclick="zoomMapa(1.25)" title="Aproximar">+</button><button type="button" onclick="zoomMapa(0.8)" title="Afastar">−</button></div></div>
+    <div class="legenda" id="legenda"></div>
+  </div>
+</main>
+
+<div id="pop">
+  <span class="x" onclick="fecharPop()">×</span>
+  <h4 id="popTit"></h4>
+  <div class="val">Valor de venda: <b id="popVal"></b></div>
+  <div class="val">Avaliação: <b id="popAval"></b></div>
+  <div class="val" id="popFin" style="display:none">Financiamento: <b></b></div>
+  <img id="popImg" alt="Planta" decoding="async" style="display:none">
+  <div class="aviso" id="popAviso" style="display:none"><b>Unidade reservada.</b> Dá para simular e subir pasta, mas a proposta só é analisada se houver desistência.</div>
+  <div class="acoes" id="popAcoes">
+    <a class="btn sim" id="popSim" target="_blank" rel="noopener">SIMULAR</a>
+    <a class="btn prop" id="popProp" target="_blank" rel="noopener">SUBIR PASTA</a>
+  </div>
+</div>
+<script src="fluxo-calc.js"></script>
+<script src="planilha-fluxo.js?v=r9"></script>
+<script>
+  /* mesmo endereço do mapa (index.html) */
+  var APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxciC7C575zSGZgyoTeBFs48MR_apksHIxT03AV6elzJ6_c4ZtNTuTJVo9Ysjb4ik6w1g/exec';
+  var UNIDADES=[], OP={prazo:48, fgts:0, fin:0, finPor:{}, ordem:'unidade', desc:false};
+  var ORDENAVEIS={unidade:1, preco:1, aval:1};
+  function cabCol(c){
+    if(!ORDENAVEIS[c.k]) return '<th>'+esc(c.t)+'</th>';
+    var on=OP.ordem===c.k, seta=on?(OP.desc?'▼':'▲'):'⇅';
+    return '<th class="ord'+(on?' on':'')+'" data-ord="'+c.k+'" title="Ordenar por '+esc(c.t.toLowerCase())+'">'+esc(c.t)+'<span class="seta">'+seta+'</span></th>';
+  }
+  document.addEventListener('click', function(e){
+    var th=e.target.closest && e.target.closest('th[data-ord]'); if(!th) return;
+    var k=th.dataset.ord;
+    if(OP.ordem===k) OP.desc=!OP.desc; else { OP.ordem=k; OP.desc=false; }
+    pintar();
+  });
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function brl(v){ return 'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function num(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function parseMoeda(s){ s=String(s||'').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,''); return parseFloat(s)||0; }
+  function mascara(el){ var d=el.value.replace(/\D/g,''); el.value = d ? num(Number(d)/100) : ''; return parseMoeda(el.value); }
+  function aoVivo(){
+    return fetch(APPS_SCRIPT_URL+'?acao=unidades').then(function(r){return r.json();})
+      .then(function(j){ if(j&&j.ok&&j.unidades&&j.unidades.length) return j.unidades; throw 0; });
+  }
+  function local(){ return fetch('unidades.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():Promise.reject();}); }
+  /* 10/11/2026 (dono): prazo, FGTS e financiamento escolhidos no topo (também pelo endereço: ?prazo=36&fgts=15000&fin=200000) */
+  (function(){
+    var q=new URLSearchParams(location.search), p=Number(q.get('prazo')), f=parseFloat(q.get('fgts')), fi=parseFloat(q.get('fin'));
+    if([48,36,24].indexOf(p)>=0) OP.prazo=p;
+    if(f>0){ OP.fgts=Math.round(f*100)/100; document.getElementById('fgts').value=num(OP.fgts); }
+    if(fi>0){ OP.fin=Math.round(fi*100)/100; document.getElementById('finGeral').value=num(OP.fin); }
+    marcarPrazo();
+  })();
+  function marcarPrazo(){ document.querySelectorAll('#segPrazo button').forEach(function(b){ b.classList.toggle('on', Number(b.dataset.p)===OP.prazo); }); }
+  document.getElementById('segPrazo').addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return; OP.prazo=Number(b.dataset.p); marcarPrazo(); pintar();
+  });
+  var tm;
+  function depois(){ clearTimeout(tm); tm=setTimeout(pintar, 250); }
+  document.getElementById('fgts').addEventListener('input', function(){ OP.fgts=mascara(this); depois(); });
+  /* o geral vale para todas: apaga o que foi mudado linha a linha */
+  document.getElementById('finGeral').addEventListener('input', function(){ OP.fin=mascara(this); OP.finPor={}; depois(); });
+  document.getElementById('bFin80').addEventListener('click', function(){ OP.fin=0; OP.finPor={}; document.getElementById('finGeral').value=''; pintar(); });
+  /* financiamento na linha da unidade (até 80% da avaliação) */
+  document.addEventListener('input', function(e){
+    var el=e.target; if(!el.matches || !el.matches('input[data-fin]')) return;
+    var v=mascara(el), teto=Number(el.dataset.teto)||0;
+    if(v>teto){ v=teto; el.value=num(teto); }
+    if(v>0) OP.finPor[el.dataset.fin]=v; else delete OP.finPor[el.dataset.fin];
+    depois();
+  });
+  document.addEventListener('blur', function(e){
+    var el=e.target; if(el.matches && el.matches('input[data-fin]')) pintar();
+  }, true);
+  async function montar(){
+    try{ UNIDADES = await aoVivo(); }
+    catch(e){ try{ UNIDADES = await local(); }catch(e2){ UNIDADES = []; } }
+    if(!UNIDADES.length){ document.getElementById('tab').textContent='Não consegui carregar as unidades. Recarregue a página.'; return; }
+    pintar();
+  }
+  function celula(c, l){
+    if(c.k==='unidade') return esc(l.unidade)+(l.reservada?'<span class="tag" title="Reservada: a proposta só é analisada se houver desistência">RESERVADA</span>':'');
+    if(c.k==='fin') return '<input data-fin="'+esc(l.unidade)+'" data-teto="'+l.teto+'" inputmode="numeric" value="'+num(l.fin)+'" class="'+(l.finEditado?'ed':'')+'" title="Até '+brl(l.teto)+' (80% da avaliação)">'+
+      '<small class="'+(l.finEditado?'':'teto')+'">'+(l.finEditado?'máx. '+brl(l.teto):'80% da avaliação')+'</small>';
+    return brl(l[c.k]);
+  }
+  var ASSIN='';
+  async function pintar(){
+    if(!UNIDADES.length) return;
+    var D = await tabelaDisponibilidadesDados(UNIDADES, OP);
+    ULT_D = D; pintarMapa();
+    try{ var q=new URLSearchParams(location.search); q.set('prazo',OP.prazo);
+         if(OP.fgts>0) q.set('fgts',OP.fgts); else q.delete('fgts'); if(OP.fin>0) q.set('fin',OP.fin); else q.delete('fin');
+         history.replaceState(null,'',location.pathname+'?'+q.toString()); }catch(e){}
+    document.getElementById('data').textContent = D.dataBr;
+    document.getElementById('sub').textContent = D.subtitulo;
+    document.getElementById('atencao').textContent = D.atencao;
+    document.getElementById('avisos').innerHTML = D.avisos.map(function(a){ return '<p>'+esc(a)+'</p>'; }).join('');
+    var tab=document.getElementById('tab');
+    if(!D.lista.length){ tab.outerHTML='<div class="carregando" id="tab">Nenhuma unidade à venda no momento.</div>'; ASSIN=''; return; }
+    var assin = D.cols.map(function(c){return c.k;}).join(',')+'|'+OP.ordem+(OP.desc?'-':'+')+'|'+D.lista.map(function(l){return l.unidade;}).join(',');
+    var foco = document.activeElement;
+    if(assin===ASSIN && tab.tagName==='TABLE'){
+      /* mesma tabela: só troca os valores (não tira o cursor da caixa que a pessoa está digitando) */
+      D.lista.forEach(function(l, i){
+        var tr=tab.tBodies[0].rows[i]; if(!tr) return;
+        D.cols.forEach(function(c, j){
+          var td=tr.cells[j];
+          if(c.k==='fin'){
+            var inp=td.querySelector('input'), sm=td.querySelector('small');
+            if(inp!==foco) inp.value=num(l.fin);
+            inp.className=l.finEditado?'ed':''; sm.className=l.finEditado?'':'teto'; sm.textContent=l.finEditado?'máx. '+brl(l.teto):'80% da avaliação';
+          } else if(c.k!=='unidade') td.textContent=brl(l[c.k]);
+        });
+        tr.cells[D.cols.length].firstChild.href=D.link('simulador.html',l);
+        tr.cells[D.cols.length+1].firstChild.href=D.link('proposta.html',l);
+      });
+      tab.tHead.rows[0].cells[3].textContent=D.cols[3].t;   // a coluna 3 (financiamento) não é ordenável
+      return;
+    }
+    var h = '<table id="tab"><thead><tr>'+D.cols.map(cabCol).join('')+'<th>Simular</th><th>Subir pasta</th></tr></thead><tbody>';
+    D.lista.forEach(function(l){
+      h += '<tr>'+D.cols.map(function(c){
+        return '<td class="'+(c.k==='unidade'?'un':(c.destaque?'fin':''))+'">'+celula(c, l)+'</td>';
+      }).join('')+
+        '<td class="ac"><a class="btn sim" target="_blank" rel="noopener" href="'+esc(D.link('simulador.html',l))+'">SIMULAR</a></td>'+
+        '<td class="ac"><a class="btn prop" target="_blank" rel="noopener" href="'+esc(D.link('proposta.html',l))+'">SUBIR PASTA</a></td></tr>';
+    });
+    tab.outerHTML = h+'</tbody></table>';
+    ASSIN=assin;
+  }
+  function baixar(formato){
+    var b=document.getElementById(formato==='pdf'?'bPdf':'bXls'), st=document.getElementById('st');
+    if(!UNIDADES.length){ st.textContent='Aguarde as unidades carregarem.'; return; }
+    b.disabled=true; st.textContent='Gerando…';
+    planilhaFluxoPadrao(UNIDADES, formato, OP).then(function(n){ st.textContent='Baixado ('+(formato==='pdf'?'PDF, entrada em '+OP.prazo+'x':'Excel, abas 48x, 36x e 24x')+(OP.fgts>0?', FGTS '+brl(OP.fgts):'')+'): '+n+' unidades.'; })
+      .catch(function(e){ st.textContent='Não consegui gerar: '+((e&&e.message)||e); })
+      .then(function(){ b.disabled=false; });
+  }
+  /* =====================================================================
+     14/11/2026 (dono) — MAPA DAS UNIDADES abaixo da tabela.
+     Mesmas regras do mapa de vendas (index.html): a unidade fica sempre na
+     cor do tipo; reservada e vendida viram bolinha sólida no fundo do lote;
+     "em breve" fica cinza. SIMULAR / SUBIR PASTA abrem em outra aba e levam
+     o prazo, o FGTS e o financiamento escolhidos no topo (mesmo link da linha).
+     ===================================================================== */
+  var ULT_D=null, svgPronto=false;
+  var PALETA=['#F2C200','#7CB518','#8E5BB5','#17A398','#F06A1D','#D25FA6'], DEC_COR='#4A2A0C';
+  var COR_INDISP='#9AA0A6', COR_VENDIDO='#C1121F', COR_RESERVADA='#0B2E6B';
+  var PLANTAS_VERSAO='20261027b', SVGNS='http://www.w3.org/2000/svg';
+  var tiposOrdenados=[];
+  function corDoTipo(t,dec){ if(dec) return DEC_COR; var i=tiposOrdenados.indexOf(String(t)); return PALETA[(i<0?0:i)%PALETA.length]; }
+  function rgba(hex,a){ var n=parseInt(hex.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+  function estadoUn(u){
+    if(!u) return 'BREVE';
+    var cru=String(u.vendidaCru||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
+    if(u.vendido===true || cru==='SIM') return 'VENDIDA';
+    if(u.reservado===true || cru==='RESERVADA' || cru==='RESERVADO') return 'RESERVADA';
+    if(u.disponivel===false) return 'BREVE';
+    return 'DISPONIVEL';
+  }
+  function porNum(n){ return UNIDADES.find(function(u){ return String(u.unidade)===String(n) || (parseInt(u.unidade,10)===Number(n)); }); }
+  function corUnidade(u){ var e=estadoUn(u); return e==='BREVE' ? COR_INDISP : corDoTipo(u.tipo,u.decorado); }
+  function polDe(n){ return document.getElementById(String(n).padStart(2,'0')); }
+  function marcarUnidade(pol, u){
+    var id='mk-'+pol.id, velho=document.getElementById(id); if(velho) velho.remove();
+    var e=estadoUn(u), cor = e==='VENDIDA' ? COR_VENDIDO : (e==='RESERVADA' ? COR_RESERVADA : '');
+    if(!cor) return;
+    var bb; try{ bb=pol.getBBox(); }catch(er){ return; }
+    if(!bb || !bb.width) return;
+    var r=Math.max(8, Math.min(bb.width, bb.height)*0.24), m=r*1.35, num=parseInt(pol.id,10);
+    var cx=bb.x+bb.width/2, cy=bb.y+bb.height/2;
+    /* bolinha no FUNDO do lote (lado oposto à rua) — igual ao mapa de vendas */
+    if(num<=6) cx=bb.x+m;
+    else if(num>=31 && num<=39) cx=bb.x+bb.width-m;
+    else if((num>=19 && num<=30) || num>=52) cy=bb.y+bb.height-m;
+    else cy=bb.y+m;
+    var c=document.createElementNS(SVGNS,'circle');
+    c.setAttribute('id',id); c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r',r);
+    c.setAttribute('fill',cor); c.setAttribute('stroke','#fff'); c.setAttribute('stroke-width',Math.max(2,r*0.22));
+    c.style.pointerEvents='none';
+    pol.parentNode.insertBefore(c, pol.nextSibling);
+  }
+  function legenda(){
+    var dec=UNIDADES.find(function(u){ return u.decorado; });
+    var h=tiposOrdenados.map(function(t){ return '<span><i style="background:'+corDoTipo(t,false)+'"></i>Tipo '+esc(t)+'</span>'; }).join('');
+    if(dec) h+='<span><i style="background:'+DEC_COR+'"></i>Decorado</span>';
+    if(UNIDADES.some(function(u){ return estadoUn(u)==='BREVE'; })) h+='<span><i style="background:'+COR_INDISP+'"></i>Em breve</span>';
+    var bol='border-radius:50%;box-shadow:0 0 0 2px #fff,0 0 0 3px #ccc';
+    if(UNIDADES.some(function(u){ return estadoUn(u)==='RESERVADA'; })) h+='<span><i style="background:'+COR_RESERVADA+';'+bol+'"></i>Reservada</span>';
+    if(UNIDADES.some(function(u){ return estadoUn(u)==='VENDIDA'; })) h+='<span><i style="background:'+COR_VENDIDO+';'+bol+'"></i>Vendida</span>';
+    document.getElementById('legenda').innerHTML=h;
+  }
+  function pintarMapa(){
+    if(!svgPronto || !UNIDADES.length) return;
+    tiposOrdenados=[...new Set(UNIDADES.filter(function(u){ return !u.decorado; }).map(function(u){ return String(u.tipo); }))];
+    UNIDADES.forEach(function(u){
+      var pol=polDe(u.unidade); if(!pol) return;
+      var cor=corUnidade(u);
+      pol.dataset.base=rgba(cor,0.35); pol.dataset.hover=rgba(cor,0.7);
+      if(pol!==selPoly) pol.style.fill=pol.dataset.base;
+      marcarUnidade(pol,u);
+    });
+    legenda();
+  }
+  /* ---- pop-up da unidade ---- */
+  var selPoly=null;
+  function linhaDe(u){ return ULT_D && ULT_D.lista ? ULT_D.lista.find(function(l){ return String(l.unidade)===String(u.unidade); }) : null; }
+  function linkUn(pag, u){
+    var l=linhaDe(u);
+    if(l && ULT_D) return ULT_D.link(pag, l);
+    return pag+'?tipo='+encodeURIComponent(u.tipo)+'&unidade='+encodeURIComponent(u.unidade);
+  }
+  function abrirPop(u, evt){
+    fecharPop();
+    var pol=polDe(u.unidade);
+    if(pol){ pol.classList.add('sel'); pol.style.fill=rgba(corUnidade(u),0.95); selPoly=pol; }
+    var e=estadoUn(u), ROT={VENDIDA:['VENDIDA',COR_VENDIDO],RESERVADA:['RESERVADA',COR_RESERVADA],BREVE:['EM BREVE',COR_INDISP],DISPONIVEL:['DISPONÍVEL','#2E7D52']}[e];
+    document.getElementById('popTit').innerHTML='Unidade '+esc(u.unidade)+(u.decorado?' (Decorado)':' · Tipo '+esc(u.tipo))+
+      '<span class="est" style="background:'+ROT[1]+'">'+ROT[0]+'</span>';
+    document.getElementById('popVal').textContent=brl(u.valorVenda);
+    document.getElementById('popAval').textContent=brl(u.avaliacao);
+    var l=linhaDe(u), pf=document.getElementById('popFin');
+    pf.style.display=l?'block':'none'; if(l) pf.querySelector('b').textContent=brl(l.fin);
+    var img=document.getElementById('popImg');
+    var base='assets/plantas/'+(u.decorado?'decorado':('tipo-'+String(u.tipo).trim()));
+    var fontes=[base+'-480.jpg?v='+PLANTAS_VERSAO, base+'.jpg?v='+PLANTAS_VERSAO, u.planta||''].filter(Boolean), i=0;
+    img.onerror=function(){ i++; if(i<fontes.length) img.src=fontes[i]; else { img.onerror=null; img.style.display='none'; } };
+    img.style.display='block'; img.src=fontes[0];
+    var podeAgir = e==='DISPONIVEL' || e==='RESERVADA';
+    document.getElementById('popAcoes').style.display=podeAgir?'flex':'none';
+    document.getElementById('popAviso').style.display=e==='RESERVADA'?'block':'none';
+    if(podeAgir){
+      document.getElementById('popSim').href=linkUn('simulador.html',u);
+      document.getElementById('popProp').href=linkUn('proposta.html',u);
+    }
+    var pop=document.getElementById('pop'); pop.style.display='block';
+    var x=Math.min(evt.clientX+12, window.innerWidth-260), y=Math.min(evt.clientY+12, window.innerHeight-pop.offsetHeight-12);
+    pop.style.left=Math.max(8,x)+'px'; pop.style.top=Math.max(12,y)+'px';
+  }
+  function fecharPop(){
+    document.getElementById('pop').style.display='none';
+    if(selPoly){ selPoly.classList.remove('sel'); selPoly.style.fill=selPoly.dataset.base||''; selPoly=null; }
+  }
+  document.addEventListener('click', function(e){ var p=document.getElementById('pop'); if(p.style.display==='block' && !p.contains(e.target)) fecharPop(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharPop(); });
+  window.addEventListener('scroll', function(){ if(document.getElementById('pop').style.display==='block') fecharPop(); }, {passive:true});
+  /* ---- zoom (+ / −) e arrastar ---- */
+  var zLevel=1;
+  function zoomMapa(f){
+    var svg=document.querySelector('#mapScroll svg'), wrap=document.getElementById('mapScroll'); if(!svg) return;
+    var novo=Math.max(1,Math.min(6,zLevel*f)); if(novo===zLevel) return;
+    var px=wrap.clientWidth/2, py=wrap.clientHeight/2;
+    var fx=(wrap.scrollLeft+px)/svg.offsetWidth, fy=(wrap.scrollTop+py)/svg.offsetHeight;
+    zLevel=novo; svg.style.width=(zLevel*100)+'%';
+    wrap.scrollLeft=fx*svg.offsetWidth-px; wrap.scrollTop=fy*svg.offsetHeight-py;
+  }
+  function ligarMapa(){
+    var wrap=document.getElementById('mapScroll');
+    for(var n=1;n<=62;n++)(function(n){
+      var pol=polDe(n); if(!pol) return;
+      pol.addEventListener('click', function(e){ if(wrap.dataset.arrastou) return; e.stopPropagation(); var u=porNum(n); if(u) abrirPop(u,e); });
+      pol.addEventListener('mouseenter', function(){ if(pol!==selPoly && pol.dataset.hover) pol.style.fill=pol.dataset.hover; });
+      pol.addEventListener('mouseleave', function(){ if(pol!==selPoly && pol.dataset.base) pol.style.fill=pol.dataset.base; });
+    })(n);
+    /* arrastar: só captura o ponteiro depois de mover de verdade, senão o clique não chega na unidade */
+    var arr=false, cap=false, x0=0, y0=0, sl=0, st=0, moveu=0;
+    wrap.addEventListener('pointerdown', function(e){ if(e.button!==0) return; arr=true; cap=false; moveu=0; x0=e.clientX; y0=e.clientY; sl=wrap.scrollLeft; st=wrap.scrollTop; });
+    wrap.addEventListener('pointermove', function(e){
+      if(!arr) return; var dx=e.clientX-x0, dy=e.clientY-y0; moveu=Math.max(moveu,Math.abs(dx)+Math.abs(dy));
+      if(!cap && moveu>6){ cap=true; try{ wrap.setPointerCapture(e.pointerId); }catch(er){} }
+      if(cap){ wrap.scrollLeft=sl-dx; wrap.scrollTop=st-dy; }
+    });
+    function soltar(e){
+      if(!arr) return; arr=false;
+      if(cap){ try{ wrap.releasePointerCapture(e.pointerId); }catch(er){} }
+      if(moveu>6){ wrap.dataset.arrastou='1'; setTimeout(function(){ delete wrap.dataset.arrastou; },0); }
+      cap=false;
+    }
+    wrap.addEventListener('pointerup', soltar); wrap.addEventListener('pointercancel', soltar);
+  }
+  /* ---- carrega o SVG (aproveita o cache do mapa de vendas) e depois a foto aérea ---- */
+  function usarSvg(txt){
+    if(!txt || txt.indexOf('<svg')<0) return false;
+    var caixa=document.createElement('div'); caixa.innerHTML=txt;
+    var el=caixa.querySelector('svg'); if(!el) return false;
+    el.removeAttribute('width'); el.removeAttribute('height'); el.style.width='100%'; el.style.height='auto';
+    var wrap=document.getElementById('mapScroll'); wrap.innerHTML=''; wrap.appendChild(el);
+    svgPronto=true; ligarMapa(); pintarMapa();
+    var fundo=document.getElementById('mapaFundo');
+    if(fundo){ fundo.setAttribute('href','assets/mapa-fundo.jpg'); fundo.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href','assets/mapa-fundo.jpg'); }
+    return true;
+  }
+  function carregarMapa(tent){
+    try{ var c=localStorage.getItem('svgMapa-v2'); if(c && usarSvg(c)) return; }catch(e){}
+    fetch('assets/CONDOMINIO_VENDAS.svg').then(function(r){ if(!r.ok) throw 0; return r.text(); })
+      .then(function(t){ if(!usarSvg(t)) throw 0; try{ localStorage.setItem('svgMapa-v2', t); }catch(e){} })
+      .catch(function(){ if((tent||0)<4) setTimeout(function(){ carregarMapa((tent||0)+1); }, 4000);
+                         else document.querySelector('#mapScroll .mapa-vazio').textContent='Não consegui carregar o mapa. Recarregue a página.'; });
+  }
+  carregarMapa(0);
+  montar();
+</script>
+</body>
+</html>

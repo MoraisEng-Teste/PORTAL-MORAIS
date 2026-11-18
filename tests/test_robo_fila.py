@@ -75,6 +75,30 @@ def fila(linhas, nome="teste"):
     return f
 
 
+class NotionErro400:
+    def __init__(self, mensagem):
+        self.mensagem = mensagem
+
+    def api(self, metodo, caminho, corpo=None):
+        import io
+        import urllib.error
+        corpo = json.dumps({"object": "error", "status": 400, "message": self.mensagem}).encode()
+        raise urllib.error.HTTPError("https://api.notion.com" + caminho, 400, "Bad Request", {}, io.BytesIO(corpo))
+
+
+def test_16_11_sem_opcao_boleto_segurar_e_nenhum_pedido_e_outro_erro_continua_travando():
+    """Fila que nunca teve Segurar não tem a opção no select: o Notion responde 400 e os boletos pararam de 11 a 16/11."""
+    import urllib.error
+    import pytest
+    f = fila([])
+    f.notion = NotionErro400('select option "boleto-segurar" not found for property "TIPO". '
+                             'Available options: "mc-venda", "SINAL".')
+    assert f.pendentes_de_segurar() == []
+    f.notion = NotionErro400('Could not find property with name or id: TIPO')
+    with pytest.raises(urllib.error.HTTPError):
+        f.pendentes_de_segurar()
+
+
 def test_pego_recente_espera_e_pego_velho_volta():
     agora = dt.datetime.now(dt.timezone.utc)
     recente = (agora - dt.timedelta(minutes=2)).isoformat()
@@ -383,3 +407,174 @@ def test_atender_recebimento_usa_a_trava_dos_recebimentos(tmp_path, monkeypatch)
     ln["properties"]["PAYLOAD"]["rich_text"][0]["plain_text"] = json.dumps({"pageId": PG, "aplicar": True})
     assert f.atender(ln) == "FEITO"
     assert chamadas[0][1:] == ["-m", "venda.mc.recebimentos", "--page", PG, "--aplicar"] and len(chamadas) == 1
+
+
+def test_boletos_na_fila_com_emitir_e_robo_antigo_aceita_texto_ou_lista(tmp_path, monkeypatch):
+    """06/11: item de ROBOS pode ser texto (script sem argumentos) ou [script, arg...]; o env continua sem senha."""
+    assert "boletos" in R.ROBOS and R.ROBOS["boletos"] == [["robo_mc_boletos.py", "--emitir"]]
+    _cfg_robos(tmp_path, monkeypatch)
+    monkeypatch.setenv("MC_SENHA", "nao-pode")
+    chamadas = []
+
+    class Res:
+        returncode, stdout, stderr = 0, "ok\n", ""
+
+    def falso(argv, **k):
+        chamadas.append((argv[1:], k["env"]))
+        return Res()
+
+    monkeypatch.setattr(R.subprocess, "run", falso)
+    assert R.robo_antigo("boletos") == 0
+    assert chamadas[0][0] == ["robo_mc_boletos.py", "--emitir"]
+    assert "MC_SENHA" not in chamadas[0][1] and "MC_ROBO_SENHA" not in chamadas[0][1]
+    chamadas.clear()
+    assert R.robo_antigo("bases") == 0
+    assert chamadas[0][0] == ["robo_mc_bases.py"]
+
+
+def test_main_robo_boletos_passa_pela_vez_no_mc(monkeypatch):
+    vistos = []
+    monkeypatch.setattr(R, "na_vez", lambda nome, f: vistos.append(nome) or 0)
+    assert R.main(["--robo", "boletos"]) == 0
+    assert vistos == ["boletos"]
+
+
+class FilaDeMentira(R.Fila):
+    def __init__(self, nome="producao"):
+        self.nome, self.marcas = nome, []
+
+    def marcar(self, pid, situacao, resultado=""):
+        self.marcas.append((situacao, resultado))
+
+
+def _pedido(payload):
+    return {"id": "pg", "properties": {R.COL["tipo"]: {"type": "select", "select": {"name": "boleto-segurar"}},
+                                       R.COL["payload"]: {"type": "rich_text", "rich_text": [{"plain_text": json.dumps(payload)}]}}}
+
+
+def test_segurar_entra_pela_mesma_porta_da_fila_e_nao_pede_a_vez_09_11(tmp_path, monkeypatch):
+    import boletos_portal as BP
+    _central(tmp_path, monkeypatch)
+    chamadas = []
+    monkeypatch.setattr(BP, "pedir", lambda a, p, q: chamadas.append((a, p, q)) or (True, "segurada"))
+    monkeypatch.setattr(BP, "publicar", lambda log: chamadas.append("publicou"))
+    monkeypatch.setattr(R, "na_vez", lambda *a, **k: (_ for _ in ()).throw(AssertionError("não pode pedir a vez")))
+    f = FilaDeMentira()
+    assert f.atender(_pedido({"acao": "segurar", "parcela": "a" * 32, "quem": "ADM"})) == "FEITO"
+    assert chamadas == [("segurar", "a" * 32, "ADM"), "publicou"] and f.marcas == [("FEITO", "segurada")]
+
+
+def test_fila_de_teste_nunca_segura_09_11(monkeypatch):
+    import boletos_portal as BP
+    monkeypatch.setattr(BP, "pedir", lambda *a: (_ for _ in ()).throw(AssertionError("não pode chegar aqui")))
+    f = FilaDeMentira("teste")
+    assert f.atender(_pedido({"acao": "segurar", "parcela": "a" * 32, "quem": "ADM"})) == "ERRO"
+
+
+def test_parcela_invalida_nao_chega_ao_arquivo_09_11(monkeypatch):
+    import boletos_portal as BP
+    monkeypatch.setattr(BP, "pedir", lambda *a: (_ for _ in ()).throw(AssertionError("não pode chegar aqui")))
+    f = FilaDeMentira()
+    assert f.atender(_pedido({"acao": "segurar", "parcela": "../../x", "quem": "ADM"})) == "ERRO"
+
+
+def test_erro_ao_gravar_marca_erro_e_nao_derruba_a_fila_09_11(tmp_path, monkeypatch):
+    import boletos_portal as BP
+    _central(tmp_path, monkeypatch)
+    monkeypatch.setattr(BP, "registrar_recusa", lambda p, m: None)
+    monkeypatch.setattr(BP, "publicar", lambda log: None)
+
+    def cai(*a):
+        raise OSError("disco")
+    monkeypatch.setattr(BP, "pedir", cai)
+    f = FilaDeMentira()
+    assert f.atender(_pedido({"acao": "soltar", "parcela": "a" * 32, "quem": "ADM"})) == "ERRO"
+    assert f.marcas[0][0] == "ERRO" and "disco" not in f.marcas[0][1]
+
+
+def test_segurar_recusado_tambem_publica_para_a_tela_avisar_09_11(tmp_path, monkeypatch):
+    import boletos_portal as BP
+    _central(tmp_path, monkeypatch)
+    feitos = []
+    monkeypatch.setattr(BP, "pedir", lambda a, p, q: (False, "parcela fora da lista"))
+    monkeypatch.setattr(BP, "registrar_recusa", lambda p, m: feitos.append((p[:4], m)))
+    monkeypatch.setattr(BP, "publicar", lambda log: feitos.append("publicou"))
+    f = FilaDeMentira()
+    assert f.atender(_pedido({"acao": "segurar", "parcela": "a" * 32, "quem": "ADM"})) == "ERRO"
+    assert feitos == [("aaaa", "parcela fora da lista"), "publicou"]
+
+
+def test_rodada_da_fila_atende_segurar_antes_dos_outros_09_11(tmp_path, monkeypatch):
+    _central(tmp_path, monkeypatch)
+    monkeypatch.setattr(R, "SAUDE", tmp_path / "saude.json")
+    monkeypatch.setattr(R, "passo_coordenador", lambda: None)
+    ordem = []
+
+    class F:
+        nome = "producao"
+
+        def sinal(self):
+            pass
+
+        def pendentes(self):
+            return [_pedido_tipo("mc-venda"), _pedido_tipo("boleto-segurar")]
+
+        def atender(self, linha):
+            ordem.append(R.texto(linha["properties"][R.COL["tipo"]]))
+            return "FEITO"
+    monkeypatch.setattr(R, "carregar", lambda: [F()])
+    R.rodada()
+    assert ordem == ["boleto-segurar", "mc-venda"]
+
+
+def _pedido_tipo(tipo):
+    return {"id": "pg", "properties": {R.COL["tipo"]: {"type": "select", "select": {"name": tipo}}}}
+
+
+def test_antes_da_rodada_de_boletos_atende_os_pedidos_de_segurar_09_11(tmp_path, monkeypatch):
+    _cfg_robos(tmp_path, monkeypatch)
+    ordem = []
+    monkeypatch.setattr(R, "atender_seguradas_pendentes", lambda: ordem.append("seguradas"))
+
+    class Res:
+        returncode, stdout, stderr = 0, "ok\n", ""
+    monkeypatch.setattr(R.subprocess, "run", lambda *a, **k: ordem.append("robo") or Res())
+    import boletos_portal as BP
+    monkeypatch.setattr(BP, "publicar", lambda log: None)
+    assert R.robo_antigo("boletos") == 0
+    assert ordem == ["seguradas", "robo"]
+
+
+def test_sem_conseguir_ler_os_pedidos_de_segurar_nao_emite_09_11(tmp_path, monkeypatch):
+    _cfg_robos(tmp_path, monkeypatch)
+
+    def cai():
+        raise RuntimeError("Notion fora")
+    monkeypatch.setattr(R, "atender_seguradas_pendentes", cai)
+    monkeypatch.setattr(R.subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(AssertionError("não pode rodar o robô")))
+    assert R.robo_antigo("boletos") == 1
+
+
+def test_fila_de_teste_fica_fora_dos_pedidos_antes_da_rodada_09_11(monkeypatch):
+    atendidos = []
+
+    class F:
+        def __init__(self, nome):
+            self.nome = nome
+
+        def pendentes_de_segurar(self):
+            return [_pedido({"acao": "segurar", "parcela": "a" * 32, "quem": "ADM"})]
+
+        def segurar_boleto(self, linha, payload):
+            atendidos.append((self.nome, payload["acao"]))
+            return "FEITO"
+    monkeypatch.setattr(R, "carregar", lambda: [F("teste"), F("producao")])
+    R.atender_seguradas_pendentes()
+    assert atendidos == [("producao", "segurar")]
+
+
+def test_import_quebrado_nao_trava_a_fila_09_11(tmp_path, monkeypatch):
+    _central(tmp_path, monkeypatch)
+    monkeypatch.setitem(sys.modules, "boletos_portal", None)
+    f = FilaDeMentira()
+    assert f.atender(_pedido({"acao": "segurar", "parcela": "a" * 32, "quem": "ADM"})) == "ERRO"

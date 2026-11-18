@@ -201,8 +201,8 @@ fica com `ERRO: <motivo>` e "MC - RETRATO EM" com ` | ERRO <agora>: <motivo>` (s
 **Premissa do fuso:** a hora gravada é a hora local do servidor (`datetime.now()`), e o portal compara o mês dela com o mês de hoje
 em America/Sao_Paulo. O servidor precisa estar no fuso de Brasília/Goiânia (UTC-3); em outro fuso a leitura da virada do mês
 (e a das 05:00) cairia no mês errado e a tela pediria "Ler de novo" sem necessidade.
-Script: `robo_mc_retratos.py` (chama `python -m venda.mc.retrato --todas`). Tarefa agendada sugerida: todo dia às
-05:00, `python servidor\robo_fila.py --robo retratos`. **A chave "robos" de `robos-portal.json` precisa de
+Script: `robo_mc_retratos.py` (chama `python -m venda.mc.retrato --todas`). Tarefa agendada: todo dia às
+08:00, `python servidor\robo_fila.py --robo retratos`. **A chave "robos" de `robos-portal.json` precisa de
 `DB_VENDAS_COND` em "vars"** (id da base de vendas do condomínio), senão o robô sai com código 2 e avisa o motivo.
 A fila também precisa de `DB_VENDAS_COND` em "vars" para o retrato depois do Lançar: depois de gravar uma venda
 (lançar ou distrato com `--aplicar`, código 0), o robô da fila roda `venda.mc.retrato --todas` com o mesmo ambiente. Sem a chave o retrato
@@ -234,7 +234,7 @@ Mesmo Python (`pythonw.exe`, caminho completo), mesma conta e "só com o usuári
 | MoraisEng - Robo contas | todo dia 06:23 | `robo_fila.py --robo contas` |
 | MoraisEng - Robo bases | todo dia 07:17 | `robo_fila.py --robo bases` |
 | MoraisEng - Robo medicoes | seg a sáb, 07:20 a 19:20 de 2 em 2 h | `robo_fila.py --robo medicoes` |
-| MoraisEng - Robo retratos | todo dia 05:00 | `robo_fila.py --robo retratos` |
+| MoraisEng - Robo retratos | todo dia 08:00 | `robo_fila.py --robo retratos` |
 | MoraisEng - Robo indices | todo dia 09:00 | `robo_fila.py --indices` |
 Rodar cada uma uma vez (`schtasks /Run`) e mostrar o `Last Result`.
 
@@ -437,3 +437,163 @@ Se algo divergir, anotar o CORPO da resposta do ERP (log do servidor) e corrigir
 
 ## 5. (dono) Produção
 Só depois do teste certo: colunas na VENDAS de produção, publicar o PORTAL-VENDA de produção e ligar a trava na fila "producao".
+
+---
+
+# BOLETOS DO MÊS (06/11/2026) — Reserva dos Ipês pela Cobrança Fácil
+
+O robô `robo_mc_boletos.py` lê as parcelas a receber do mês vigente, fica só com as vendas do CONDOMÍNIO RESERVA DOS IPÊS
+e emite o boleto de cada parcela que a regra manda emitir (1 crédito da Cobrança Fácil por boleto). Entra na fila do servidor
+como os outros robôs: `ROBOS["boletos"]` em `servidor/robo_fila.py`, um de cada vez no Mais Controle (`na_vez`).
+
+Comando (à mão, na pasta do clone):
+```powershell
+python servidor\robo_fila.py --robo boletos
+```
+Por baixo ele roda `robo_mc_boletos.py --emitir`, e só emite com o interruptor do item 3 e só no mês de hoje.
+**Prévia (só ver a lista):** rode o mesmo comando enquanto `_central\BOLETOS_APLICAR.txt` NÃO existe; o robô então só
+monta o relatório, esperando a vez no Mais Controle como os outros. Não rode `robo_mc_boletos.py` direto.
+
+## 1. (servidor) Atualizar o clone e testar
+Como na seção dos robôs que rodavam no GitHub: `git pull` no clone e `python -m pytest -q tests venda/mc/testes`.
+No servidor (Windows) a suíte já mostra 7 falhas antigas que não são dos boletos (1 em `tests/test_robo_fila.py`, 6 em
+`tests/test_robo_mc_obras.py`); "7 failed" com o resto passando está certo.
+Não precisa de chave nova em `robos-portal.json`; o porteiro (Chrome logado no Mais Controle) é o mesmo dos outros robôs.
+
+## 2. (servidor, com o ok do dono) Tarefa agendada — dias úteis às 10:00
+Mesmo Python, mesma conta e "só com o usuário conectado" das outras tarefas. No Windows PowerShell 5.1 o `schtasks /TR`
+com aspas internas (`\"`) quebra ("Argumento/opção inválido"); use os comandos do próprio PowerShell (assim foi criada em 07/11/2026):
+```powershell
+$a = New-ScheduledTaskAction -Execute "C:\Users\<usuario>\AppData\Local\Programs\Python\Python312\pythonw.exe" -Argument '"C:\AUTOMAÇÕES MAIS CONTROLE\_portal\servidor\robo_fila.py" --robo boletos' -WorkingDirectory "C:\AUTOMAÇÕES MAIS CONTROLE\_portal"
+$t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 10:00
+Register-ScheduledTask -TaskName "MoraisEng - Boletos do mes" -Action $a -Trigger $t -Force
+(Get-ScheduledTask -TaskName "MoraisEng - Boletos do mes").Actions | Format-List Execute, Arguments, WorkingDirectory
+```
+O Escritório dos Robôs mostra a mesa "Boletos do mes" como as outras (pelo relatório de rodada), e o botão "Rodar de novo"
+(ADM e MASTER) dispara a mesma tarefa fora do horário, por exemplo depois de corrigir um cadastro. Se a rodada agendada e a
+manual coincidirem, a segunda espera a primeira (`robo-mc-vez.trava`) e, ao rodar, relê as parcelas: as que já têm boleto
+são puladas. Boleto que ficou SEM_CONFIRMACAO numa rodada não é pedido de novo nas rodadas seguintes do mês: o robô o
+segura em "decidir" ("emissão sem confirmação em <data>: conferir no Mais Controle antes de emitir"). Confira no Mais
+Controle; se o boleto não existir mesmo, emita pela tela.
+
+## 3. Ligar e desligar a emissão (o dono)
+- **Ligar:** criar o arquivo `_central\BOLETOS_APLICAR.txt` (vazio). Pelo Bloco de Notas, salvar com o tipo
+  "Todos os arquivos", para não virar `BOLETOS_APLICAR.txt.txt`.
+- **Desligar:** apagar o arquivo. Vale na hora, até no meio de uma rodada (é conferido antes de cada boleto).
+- Sem o arquivo a rodada só monta o relatório (prévia), mesmo agendada.
+
+## 4. Relatório e primeiro boleto
+- Relatório de cada rodada: `_central\boletos\AAAA-MM-DD_HHMMSS.json` e `.html`, fora do repositório (leva nome e valor).
+  O log público só tem contagens e 8 letras de id.
+- Primeiro boleto, com cuidado: criar o arquivo do item 3 e rodar uma vez com só uma parcela, pelo id dela:
+```powershell
+$env:BOLETOS_SO = "<id da parcela>"
+python servidor\robo_fila.py --robo boletos
+Remove-Item Env:BOLETOS_SO
+```
+  Conferir no relatório e no Mais Controle (boleto "Em processamento" e depois "Boleto emitido") antes de deixar a tarefa rodar solta.
+- Códigos de saída: 0 tudo certo · 1 houve recusado ou sem confirmação · 2 trava (saldo, teto, interruptor desligado no
+  meio ou mês que não é o de hoje) · 3 ERP fora. Na saída do robô vem, antes das contagens, `trava: <motivo>` quando uma
+  trava parou a emissão e `índice faltando: <lista>` quando faltou índice (sem nome nem valor).
+
+## 5. Regras (resumo)
+- Só o CONDOMÍNIO RESERVA DOS IPÊS e só o mês vigente (o INCC do mês só está corrigido para ele).
+- Emite: sinal de 30/60/90 dias, entrada, pré-chaves, pós-chaves e balões (intermediária e balão de entrega de chaves).
+- Nunca emite: ato (1º sinal, sempre por Pix), financiamento, FGTS e permuta. Tipo desconhecido vai para "decidir".
+- Novembro/2026: o boleto só sai a partir de 5 dias corridos antes do vencimento. De dezembro/2026 em diante, o mês inteiro.
+- Parcela do mês já vencida e sem boleto não emite: só avisa no relatório ("decidir").
+- Confere as tabelas INCC-M e IPCA do mês. Se faltar índice, só pré-chaves, pós-chaves e balões vão para "decidir"
+  (o motivo diz qual índice falta); sinal e entrada saem normalmente e o código continua 0. Ver o relatório.
+- Antes de emitir qualquer um, confere se o saldo de créditos cobre a lista toda. Se não cobrir, não emite nada
+  (código 2, `trava: saldo ...`); o motivo completo fica no relatório.
+- Teto de 62 boletos por rodada; acima disso não emite nada e pede para olhar.
+
+# PÁGINA BOLETOS E FINANCEIRO (09/11/2026)
+
+Página `boletos-financeiro.html` do portal: boletos do mês e financeiro por unidade do Reserva dos Ipês. O servidor monta o
+arquivo (`servidor/boletos_portal.py`) e sobe para `robos/boletos-financeiro.json` no bucket privado `analise`, depois da rodada
+de boletos, da leitura dos retratos e de cada Segurar ou Soltar. O link sai do `apps-script/BoletosFinanceiro.gs`, que confere o
+acesso `BOLETOS E FINANCEIRO` da coluna ACESSOS.
+
+- **Parcelas seguradas:** `_central\boletos\seguradas.json`. O robô de boletos não emite parcela que esteja nele e confere o
+  arquivo antes de cada boleto. Arquivo ilegível = o robô não emite nada e mostra a trava. Para soltar sem o portal, apague a parcela
+  do arquivo deixando o JSON válido.
+- **Último financeiro bom:** `_central\financeiro-condominio.json`, usado quando o Notion falha.
+- **Pedidos:** Segurar e Soltar entram na FILA DO ROBÔ com o tipo `boleto-segurar`; Atualizar agora usa o `robo-rodar` da tarefa
+  `MoraisEng - Robo retratos`. A fila de teste não segura boleto.
+
+---
+
+# CONFERÊNCIA DE COMPRAS (OC) (16/11/2026) — robô `ocs`
+
+Pedido do dono: o pagamento das OCs da **Rocha Mármores e Granitos**, da **VIDRO ALVES** e da **Serralheria do Fabio**
+só sai depois que o engenheiro confirma no **Mapa de Obras** (índice › 🧾 Conferência de compras) que a entrega / o
+serviço foi finalizado (OBRA · FORNECEDOR · Nº OC · DATA DA OC · ENGENHEIRO · SERVIÇO FINALIZADO? SIM/NÃO). Com o SIM:
+- Rocha / VIDRO ALVES → na OC, **Aprovação = Aprovado** e depois **Status da Compra = Aguardando**
+  (OC que já está aprovada não é mexida);
+- Serralheria do Fabio → no lançamento da OC, **vencimento da 2ª parcela = próximo dia útil** depois do SIM
+  (parcela já paga não é mexida; OC com mais de um lançamento vinculado = erro, fazer à mão).
+- Quem responde: só engenheiros (acesso OBRAS / DOCUMENTOS, ou ADM). Estagiário não — o dono libera depois.
+- (16/11, depois da 1ª descoberta) Quase toda OC já nasce "Aprovado" no MC. As da Rocha / VIDRO ALVES **sem lançamento**
+  (`financialValue` 0 na lista) entram na conferência e o robô volta a Aprovação para **"Aguardando aprovação"** (até
+  `OCS_MAX_VOLTAR`, 40, por rodada; só com `OCS_APLICAR.txt`). Com o SIM ele aprova de novo. Com lançamento, não mexe.
+- NF anexada: a cada rodada o robô olha a aba **Arquivos** de cada OC ainda não feita (`GET /folder?id=<oc>&origin=PURCHASE_ORDER`,
+  ou `/attachments/v2` se a primeira não responder). Tem arquivo → a linha fica **vermelha** no mapa com "📎 NF anexada".
+  A lista no mapa vai da OC mais antiga para a mais nova.
+
+Robô `robo_mc_ocs.py` (`python servidor\robo_fila.py --robo ocs`): lê as OCs pelo GraphQL de Compras (o mesmo pedido
+da tela Ordem de Compra), põe as novas (criadas a partir de `OCS_A_PARTIR_DE`, padrão 2026-11-16) — e, da Rocha /
+VIDRO ALVES, também as **antigas ainda sem lançamento e sem aprovação** dos últimos `OCS_ANTIGAS_MESES` (6) meses (pedido
+do dono, 16/11 tarde; quando a lista não diz se há lançamento, o robô abre "$ Lançamento" na tela, até `OCS_MAX_CONFERIR`
+(30) por rodada, e anota as que têm em `_central\ocs-com-lancamento.json`) — na tabela
+`oc_conferencia` do Supabase ORÇADO/REALIZADO e, para cada SIM, faz a mudança **pela tela** do MC (mesmos campos e
+botões de uma pessoa), relê para conferir e grava FEITO / ERRO / SIMULADO na linha. Só pelo porteiro.
+
+**Trava própria:** grava no ERP só com `_central\OCS_APLICAR.txt` (o dono cria). O `ROBOS_APLICAR.txt` NÃO liga este.
+Sem a chave: SIMULAÇÃO — abre a OC e o lançamento, acha os campos e escreve no mapa "faria: …".
+
+## 1. (dono) Tabela no Supabase
+SQL Editor do projeto ORÇADO/REALIZADO › colar `supabase/oc_conferencia.sql` › Run.
+
+## 2. (dono) Apps Script
+Colar o `apps-script/MapaObras.gs` novo nos TRÊS projetos (PORTAL-LEITURA, PORTAL-ESCRITA, PORTAL-ATIVIDADES) e
+publicar nova versão. Opcional: Propriedade `DB_FILA_ROBO` no **PORTAL-ESCRITA** (o id da FILA DO ROBÔ de produção, o
+mesmo do PORTAL-LEITURA) — com ela o SIM chama o robô na hora; sem ela, ele roda no horário. Teste: `mapaVersao` → `mo13`.
+
+## 3. (servidor) Atualizar o clone e testar
+```powershell
+cd "C:\AUTOMAÇÕES MAIS CONTROLE\_portal"; git pull
+python -m pytest -q tests/test_robo_mc_ocs.py tests/test_robo_fila.py
+```
+Não precisa de chave nova em `robos-portal.json` (usa `supabase_key_arquivo` e `vars.SUPABASE_URL` do robô de anexos).
+
+## 4. (servidor) Descoberta — só formato, nada gravado
+```powershell
+$env:DESCOBRIR="1"; $env:OCS_A_PARTIR_DE="2026-10-01"; $env:OCS_EXEMPLO="8312"
+python servidor\robo_fila.py --robo ocs
+Remove-Item Env:DESCOBRIR, Env:OCS_A_PARTIR_DE, Env:OCS_EXEMPLO
+```
+Devolver a saída: consulta da tela, campos de uma OC, códigos de aprovação/status, as OCs dos três fornecedores e os
+campos/botões da tela da OC de exemplo (para uma da Serralheria, use o nº dela em `OCS_EXEMPLO`: mostra as parcelas).
+Esperado na última linha: `OK: descoberta das OCs — N lida(s), M dos fornecedores da lista.`
+
+## 5. (servidor) Simulação
+`python servidor\robo_fila.py --robo ocs` — a última linha termina com `(SIMULAÇÃO)`. As OCs novas aparecem no mapa; um
+SIM de teste mostra "🧪 robô em teste" com o que ele faria.
+
+## 6. (dono) Ligar a gravação
+Criar `_central\OCS_APLICAR.txt` (vazio). Primeira vez com cuidado, uma OC só:
+```powershell
+$env:OCS_SO="8312"; python servidor\robo_fila.py --robo ocs; Remove-Item Env:OCS_SO
+```
+Conferir a OC no MC antes de deixar a tarefa rodar solta. Desligar = apagar o arquivo.
+
+## 7. (servidor, com o ok do dono) Tarefa agendada — seg a sáb, 07:10 a 19:10, de 2 em 2 h
+```powershell
+cd "C:\AUTOMAÇÕES MAIS CONTROLE\_central"
+.\registrar_tarefa.ps1 -Nome "Conferencia de OCs" -Pasta "C:\AUTOMAÇÕES MAIS CONTROLE\_portal" `
+    -Comando 'python servidor\robo_fila.py --robo ocs' -Hora 07:10 -Dias Monday,Tuesday,Wednesday,Thursday,Friday,Saturday `
+    -RepetirHoras 2 -DuracaoHoras 12 -SoMostrar
+```
+O nome **tem** que ser "MoraisEng - Conferencia de OCs" (é o que o SIM do mapa pede para rodar na hora). O Escritório de
+Robôs mostra a mesa "Conferência de compras (OC)".

@@ -11,7 +11,7 @@ const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const vendas = fs.readFileSync(path.join(RAIZ, "vendas.html"), "utf8");
 
 test("abas na ordem combinada", () => {
-  assert.deepEqual(P.ABAS.map(a => a[0]), ["resumo", "documentos", "compradores", "contrato", "recebimentos", "andamento"]);
+  assert.deepEqual(P.ABAS.map(a => a[0]), ["resumo", "documentos", "compradores", "contrato", "recebimentos", "andamento", "links"]);
 });
 
 test("cada campo vai para a aba certa", () => {
@@ -24,29 +24,50 @@ test("cada campo vai para a aba certa", () => {
   assert.equal(P.abaDoCampo("ASSINOU E ARMAZENOU CONTRATO DO BANCO?"), "andamento", "contrato do banco é andamento, não o nosso contrato");
 });
 
-test("Andamento por departamento, coluna nova cai em CADASTRO DA CASA", () => {
-  assert.equal(P.departamento("MANDOU TODOS OS DOCS. P/ CORESSPONDENTE?"), "BANCO E CORRESPONDENTE");
-  assert.equal(P.departamento("RECEBEU?"), "BANCO E CORRESPONDENTE");
-  assert.equal(P.departamento("RECEBEU TAXA VISTORIA?"), "ENTREGA DA CASA");
-  assert.equal(P.departamento("EMITIU RCPM?"), "BANCO E CORRESPONDENTE");
-  assert.equal(P.departamento("ITBI GERADO"), "CARTÓRIO E IMPOSTOS");
-  assert.equal(P.departamento("Nº DE CADASTRO PREFEITURA"), "CARTÓRIO E IMPOSTOS");
-  assert.equal(P.departamento("ENTEGOU A CASA E PEGOU TERMO DE ENTREGA?"), "ENTREGA DA CASA");
-  assert.equal(P.departamento("AGUA TRANSFERIDA"), "ÁGUA E ENERGIA");
-  assert.equal(P.departamento("DATA DA CONFERÊNCIA (TRANSFERÊNCIA)"), "ÁGUA E ENERGIA");
-  assert.equal(P.departamento("ARMAZENOU CONTRATO COMPRA E VENDA?"), "CONTRATO");
-  assert.equal(P.departamento("DATA DE ASSINATURA DO CONTRATO"), "BANCO E CORRESPONDENTE", "junto do assinou e armazenou (12/11)");
-  assert.deepEqual(P.porDepartamento(["ASSINOU E ARMAZENOU CONTRATO DO BANCO?", "DATA DE ASSINATURA DO CONTRATO", "ARMAZENOU CONTRATO COMPRA E VENDA?"])[0].campos,
-    ["ASSINOU E ARMAZENOU CONTRATO DO BANCO?", "DATA DE ASSINATURA DO CONTRATO"]);
-  assert.equal(P.departamento("LAYOUT"), "CADASTRO DA CASA");
-  const g = P.porDepartamento(["LAYOUT", "ITBI PAGO", "AGUA TRANSFERIDA", "ITBI GERADO"]);
-  assert.deepEqual(g.map(x => x.titulo), ["CARTÓRIO E IMPOSTOS", "ÁGUA E ENERGIA", "CADASTRO DA CASA"]);
-  assert.deepEqual(g[0].campos, ["ITBI PAGO", "ITBI GERADO"], "mantém a ordem recebida");
+/* 13/11/2026 (dono): o Andamento em ETAPAS na ordem da planilha de casas de rua da Secretaria de Vendas
+   (antes era por departamento e embaralhava a ordem do processo) */
+test("Andamento em etapas na ordem da planilha; coluna nova cai em OUTROS CAMPOS", () => {
+  assert.equal(P.etapa("MANDOU TODOS OS DOCS. P/ CORESSPONDENTE?"), "CONTRATO DE COMPRA E VENDA E DOCUMENTOS AO CORRESPONDENTE");
+  assert.equal(P.etapa("RECEBEU?"), "DEVOLUÇÃO E RECEBIMENTO DO BANCO", "RECEBEU? vem depois do cartório, como na planilha");
+  assert.equal(P.etapa("RECEBEU TAXA VISTORIA?"), "TAXA DE VISTORIA E AGÊNCIA");
+  assert.equal(P.etapa("ITBI GERADO"), "PREFEITURA, ITBI E CARTÓRIO");
+  assert.equal(P.etapa("Nº DE CADASTRO PREFEITURA"), "PREFEITURA, ITBI E CARTÓRIO");
+  assert.equal(P.etapa("ENTEGOU A CASA E PEGOU TERMO DE ENTREGA?"), "VISTORIA E ENTREGA DA CASA");
+  assert.equal(P.etapa("AGUA TRANSFERIDA"), "VISTORIA E ENTREGA DA CASA");
+  assert.equal(P.etapa("GEROU E ARMAZENOU GCAP?"), "GCAP", "GCAP depois da entrega, como na planilha");
+  assert.equal(P.etapa("DATA DE ASSINATURA DO CONTRATO"), "CONFORMIDADE E CONTRATO DO BANCO", "junto do assinou e armazenou (12/11)");
+  assert.equal(P.etapa("COLUNA NOVA QUALQUER"), "OUTROS CAMPOS");
+  assert.equal(P.departamento, P.etapa, "nome antigo continua respondendo");
+  /* a ordem da planilha (ORDEM_PREFIXOS do vendas.html, já resolvida nos nomes reais do Notion) não muda */
+  const planilha = ["AVALIAÇÃO", "VALIDADE ", " VALOR NA MÃO ", " COMISSÃO ", "ARMAZENOU CONTRATO COMPRA E VENDA?", "EMITIU RCPM?",
+    "MANDOU TODOS OS DOCS. P/ CORESSPONDENTE?", "DATA DE ENVIO DOS DOCUMENTOS", "MANDOU P/ CONFORMIDADE?", "PROCESSO CONFORME?",
+    "ASSINOU E ARMAZENOU CONTRATO DO BANCO?", "DATA DE ASSINATURA DO CONTRATO", "VALOR DA PARCELA", "TEVE FGTS?", "VALOR DO FGTS",
+    "TEM PROTOCOLO DE TRANS. ÁGUA", "TEM PROTOCOLO DE TRANS. ENERGIA", "RECEBEU TAXA VISTORIA?", "AGÊNCIA", "TEM NUMERO DE CADASTRO?",
+    "Nº DE CADASTRO PREFEITURA", "ITBI GERADO", "ITBI PAGO", "DEU ENTRADA NO CARTORIO?", "FICOU PRONTO O REGISTRO?", "DEVOLVEU NO BANCO?",
+    "RECEBEU?", "CASA APTA PARA A VISTORIA", "AGENDOU PRE VISTORIA?", "DATA DA PRÉ-VISTORIA", "TEM MANUAL DE OBRA?", "AGUA TRANSFERIDA",
+    "ENERGIA TRANSFERIDA", "ENTREGOU A CASA E PEGOU TERMO DE ENTREGA?", "DATA DA ENTREGA", "PREENCHEU A PESQUISA?",
+    "GEROU E ARMAZENOU GCAP?", "PAGOU GCAP?", "ENG. RESPONSÁEL", "MODELO?", "RESERVADA", "TIPO"];
+  const g = P.porEtapa(planilha.concat(["HISTÓRICO DO CONTRATO"]));
+  assert.deepEqual(g.flatMap(x => x.campos).filter(n => planilha.includes(n)), planilha, "ler o Andamento = ler a planilha");
+  assert.equal(g[0].titulo, "1 · AVALIAÇÃO E VALORES");
+  assert.equal(g[g.length - 1].etapa, "OUTROS CAMPOS");
+  assert.deepEqual(P.porEtapa(["ITBI PAGO", "AGUA TRANSFERIDA", "ITBI GERADO"]).map(x => x.titulo),
+    ["1 · PREFEITURA, ITBI E CARTÓRIO", "2 · VISTORIA E ENTREGA DA CASA"], "numeração só das etapas que aparecem");
+});
+
+test("13/11: modo lista (coluna lateral) com resumo do processo no topo e duas abas", () => {
+  assert.deepEqual(P.ABAS_LISTA.map(a => a[0]), ["etapas", "documentos"]);
+  assert.ok(vendas.includes('id="pn-modo" onclick="pnTrocarModo()"'), "botão de trocar o modo no cabeçalho");
+  assert.ok(vendas.includes('<div class="pn-topo" id="pn-topo"></div>'));
+  assert.ok(vendas.includes('#painel[data-modo="lista"]{top:0;right:0;left:auto;transform:none;width:min(640px,100vw)'), "lista = coluna à direita");
+  assert.ok(vendas.includes('#painel[data-aba="lista-documentos"] #dossie-wrap{display:block}'));
+  assert.ok(vendas.includes('localStorage.setItem("morais_pn_modo",PN_MODO)'), "escolha guardada por pessoa");
+  assert.match(vendas.slice(vendas.indexOf("function renderPainel(")), /pnPorEtapa\(porAba\.andamento\)/);
 });
 
 test("vendas.html: barra de abas no painel e cada parte com data-sec", () => {
   assert.match(vendas, /<div class="pn-abas cd-abas" id="pn-abas"><\/div>/);
-  assert.match(vendas, /\["resumo","documentos","compradores","contrato","andamento"\]\.map\(k=>`<div data-sec="\$\{k\}">\$\{sec\[k\]\}<\/div>`\)/);
+  assert.match(vendas, /\["resumo","documentos","compradores","contrato","andamento","links"\]\.map\(k=>`<div data-sec="\$\{k\}">\$\{sec\[k\]\}<\/div>`\)/);
   assert.match(vendas, /#painel\[data-aba="contrato"\] #contrato-wrap/);
   assert.match(vendas, /#painel\[data-aba="recebimentos"\] #contrato-wrap>:not\(\.vb-rec\)\{display:none\}/);
   const r = vendas.slice(vendas.indexOf("function renderPainel("), vendas.indexOf("/* ---------- COMENTÁRIOS (item 3)"));
@@ -197,6 +218,28 @@ test("espelho no navegador: caixas marcadas e o valor novo vai para a outra aba"
   assert.match(h, /Nome <span[^>]*>\(o mesmo do Resumo\)/);
   ctx.pnEspelhar("Email", "novo@b.co", el);
   assert.deepEqual(caixas.map(c => c.i.value), ["velho", "novo@b.co", "velho"], "só a outra caixa da mesma coluna muda");
+});
+
+/* 09/11/2026 — aba Links e Resumo do processo */
+test("layout, fotos e localização vão para a aba Links", () => {
+  assert.equal(P.abaDoCampo("LAYOUT"), "links");
+  assert.equal(P.abaDoCampo("FOTOS"), "links");
+  assert.equal(P.abaDoCampo("LOCALIZAÇÃO"), "links");
+  assert.equal(P.abaDoCampo("FOTOS DA VISTORIA"), "links", "começa com FOTOS");
+  assert.equal(P.abaDoCampo("ITBI PAGO"), "andamento");
+  assert.match(vendas, /#painel\[data-aba="links"\] #pn-body>\[data-sec="links"\]/);
+});
+test("resumo do processo acha as colunas pelo nome e pelo padrão", () => {
+  const r = P.resolverProcesso(["SITUAÇÃO DO PROCESSO", "TITULARIDADES TRANSFERIDAS?", "RECEBEU?", "RECEBEU TAXA VISTORIA?",
+    "GEROU E ARMAZENOU GCAP?", "PAGOU GCAP?", "DATA PAGAMENTO GCAP", "ENTEGOU A CASA E PEGOU TERMO DE ENTREGA?"]);
+  const m = Object.fromEntries(r.map(x => [x.chave, x.coluna]));
+  assert.deepEqual(r.map(x => x.chave), ["vendida", "situacao", "ligacoes", "recebeu", "gerou_gcap", "pagou_gcap", "data_gcap", "entregue"]);
+  assert.equal(m.recebeu, "RECEBEU?", "não pega RECEBEU TAXA VISTORIA?");
+  assert.equal(m.data_gcap, "DATA PAGAMENTO GCAP");
+  assert.equal(m.entregue, "ENTEGOU A CASA E PEGOU TERMO DE ENTREGA?");
+  assert.equal(r[0].calculado, true);
+  const sem = P.resolverProcesso(["RECEBEU?"]);
+  assert.deepEqual(sem.map(x => x.chave), ["vendida", "recebeu"], "coluna que não existe some");
 });
 
 /* 12/11/2026 (dono): duas datas de assinatura com nome que diz qual contrato é — só na tela */
