@@ -280,3 +280,22 @@ test("pares: ASSINOU E ARMAZENOU + data da Caixa num bloco só, um em cima do ou
   assert.deepEqual(P.agruparPares(["DATA DE ASSINATURA DO CONTRATO "]), ["DATA DE ASSINATURA DO CONTRATO "]);
   assert.match(vendas, /pnItens\(nomes\)\.map\(it=>Array\.isArray\(it\)\?`<div class="pn-par">`/);
 });
+
+/* Onda 2 (ux): colunas técnicas fora das planilhas para quem não é ADM */
+test("colunas técnicas: somem das planilhas para quem não é ADM/MASTER; contador ao lado de Todas as colunas", () => {
+  const i = vendas.indexOf("const COLUNAS_TECNICAS_FIM=");
+  const fim = vendas.indexOf("function verColunasTecnicas", i);
+  assert.ok(i >= 0 && fim > i);
+  const fonte = [vendas.slice(vendas.indexOf("const _NORM_CACHE="), vendas.indexOf("\n", vendas.indexOf("const _NORM_CACHE=")) + 1),
+    vendas.slice(vendas.indexOf("function _normNomeBruto("), vendas.indexOf("\n", vendas.indexOf("function _normNomeBruto(")) + 1),
+    vendas.slice(vendas.indexOf("function normNome(s){"), vendas.indexOf("\n}", vendas.indexOf("function normNome(s){")) + 2),
+    vendas.slice(i, fim)].join("\n");
+  const f = new Function(fonte + "\nreturn colunaTecnica;")();
+  ["ASSINATURA - ENVELOPE ID", "MC - VENDA ID", "MC - RETRATO", "MC - RETRATO EM", "ID PROPOSTA", "FLUXO PERSONALIZADO",
+    "HISTÓRICO DO CONTRATO", "PRÉ-RESERVA - HISTÓRICO", "PRÉ-RESERVA - PROGRESSO", "ASSINATURA - PROGRESSO", "ALERTA FOO"]
+    .forEach(n => assert.equal(f(n), true, n));
+  ["ITBI PAGO", "CLIENTES", "CONTRATO - SINAL VALOR", "ENDEREÇO"].forEach(n => assert.equal(f(n), false, n));
+  assert.match(vendas, /String\(\(typeof S!=="undefined"&&S&&S\.tipo\)\|\|""\)\.toUpperCase\(\); return tp==="ADM"\|\|tp==="MASTER"/);
+  assert.match(vendas, /id="cd-todas-n"/);
+  assert.match(vendas, /"Todas as colunas"|Todas as colunas<span id="cd-todas-n">/);
+});

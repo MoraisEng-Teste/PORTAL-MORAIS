@@ -1161,7 +1161,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
             <option value="INCOMPLETO">Cadastro incompleto</option>
             <option value="COMPLETO">Cadastro completo</option>
           </select>
-          <label class="cd-chk"><input type="checkbox" id="cd-todas" onchange="try{localStorage.setItem('cd_todas',this.checked?'1':'0')}catch(e){};condRender()"> Todas as colunas</label>
+          <label class="cd-chk"><input type="checkbox" id="cd-todas" onchange="try{localStorage.setItem('cd_todas',this.checked?'1':'0')}catch(e){};condRender()"> Todas as colunas<span id="cd-todas-n"></span></label>
           <button class="cd-bt" onclick="condCarregar(true)">↻ Atualizar</button>
           <span class="count" id="cd-count"></span>
         </div>
@@ -1704,6 +1704,16 @@ function dicaDe(nome,ctx){ const e=_rotEntrada(nome,ctx); return (e&&e[1])||""; 
 function rotuloRua(nome){ return rotuloDe(nome,"rua"); }
 function dicaAttr(nome){ const d=dicaDe(nome,"rua"); return d?` title="${esc(d)}"`:""; }
 function camposBase(onde){ return SCHEMA.filter(c=>c.tipo!=="rollup"&&c.tipo!=="relation"&&!nomeExcluido(c.nome,onde)&&c.nome!=="ENDEREÇO"&&RESUMO_NORM.indexOf(normNome(c.nome))<0); }
+/* Onda 2 (ux): colunas que ninguém edita à mão (ids, retrato, histórico, progresso, alertas) não entram nas planilhas
+   para quem não é ADM/MASTER. Continuam no Notion; só não viram coluna. */
+const COLUNAS_TECNICAS_FIM=["ENVELOPE ID","MC - VENDA ID","MC - RETRATO","MC - RETRATO EM","ID PROPOSTA","FLUXO PERSONALIZADO","HISTORICO DO CONTRATO",
+  "PRE-RESERVA - HISTORICO","PRE-RESERVA - PROGRESSO","ASSINATURA - PROGRESSO"];
+function colunaTecnica(nome){
+  const n=normNome(nome);
+  return n.indexOf("ALERTA ")===0 || COLUNAS_TECNICAS_FIM.some(f=>n.length>=f.length && n.slice(n.length-f.length)===f);
+}
+function verColunasTecnicas(){ const tp=String((typeof S!=="undefined"&&S&&S.tipo)||"").toUpperCase(); return tp==="ADM"||tp==="MASTER"; }
+function ocultaTecnica(nome){ return !verColunasTecnicas() && colunaTecnica(nome); }
 function ordemColunas(){
   // Setor com lista própria (COLUNAS_SETOR): mostra só aquilo, na ordem pedida.
   // Nome exato primeiro; se não achar, tenta fragmento — assim "ENG. RESPONSÁEL"
@@ -2114,7 +2124,7 @@ function condColunas(){
   cdOrdemRua().forEach(n=>{ const c=cdAchaColuna(n,usados); if(c){ usados.add(c.nome); out.push(c); } });
   CD_PADRAO.forEach(n=>{ const c=mapa[cdNorm(n)]; if(c&&!usados.has(c.nome)){ usados.add(c.nome); out.push(c); } });
   if(todas) COND.colunas.forEach(c=>{ if(c.tipo!=="files"&&!usados.has(c.nome)){ usados.add(c.nome); out.push(c); } });
-  return out.filter(Boolean);
+  return out.filter((c,i)=>c&&(i===0||!ocultaTecnica(c.nome)));
 }
 function condRender(){
   if(!COND) return;
@@ -2130,6 +2140,7 @@ function condRender(){
     return cdNorm([cdVal(l,tit),cdVal(l,"PROPONENTE"),cdVal(l,"CORRETOR"),cdVal(l,"IMOBILIÁRIA"),cdVal(l,"PROPOSTA")].join(" ")).indexOf(termo)>=0;
   }).sort((a,b)=>String(cdVal(a,tit)||"").localeCompare(String(cdVal(b,tit)||""),"pt-BR",{numeric:true}));
   document.getElementById("cd-count").textContent=linhas.length+" unidade(s)";
+  try{ const nt=document.getElementById("cd-todas-n"); if(nt) nt.textContent=" ("+COND.colunas.filter(c=>c.tipo!=="files"&&!ocultaTecnica(c.nome)).length+")"; }catch(e){}
   if(!COND.linhas.length){ document.getElementById("cd-wrap").innerHTML='<div class="vazio">Nenhuma venda no banco ainda. Marque uma proposta como <b>VENDIDA</b> em Simulações → Propostas para ela aparecer aqui.</div>'; return; }
   let h='<table><thead><tr>'+cols.map((c,i)=>'<th class="th-rot" title="'+esc(dicaDe(c.nome,"cond")||c.nome)+'">'+esc(cdRotuloTela(c.nome))+'</th>'+(i===0?'<th>Etapa</th>':'')).join("")+'</tr></thead><tbody>';
   linhas.forEach(l=>{
@@ -4046,7 +4057,7 @@ function ordenarPor(ctx, colNome){
 }
 
 function renderTabela(ctx){
-  const cols=ordemColunas().map(campoPorNome).filter(Boolean);
+  const cols=ordemColunas().filter((n,i)=>i===0||!ocultaTecnica(n)).map(campoPorNome).filter(Boolean);
   let html='<table><thead><tr><th>Nº</th>'+cols.map((c,i)=>thCol(c,i,ctx)).join("")+'</tr></thead><tbody>';
   DADOS[ctx].forEach(v=>{
     const dv=getV(v.valores,"DATA DA VENDA");
