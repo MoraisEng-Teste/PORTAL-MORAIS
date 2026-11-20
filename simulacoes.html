@@ -2256,7 +2256,7 @@ function simParaProposta(id){
     cpfCorretor:String(s.cpfCorretor||""),
     nomeCliente:String(s.cliente||""), cpfCliente:String(s.cpf||""), emailCorretor:String(s.email||"") };
   try{ localStorage.setItem("simParaProposta", JSON.stringify(d)); }
-  catch(e){ propAviso("Não consegui guardar os dados da simulação neste navegador.","Não foi possível abrir a proposta"); return; }
+  catch(e){ propCaixaAviso("Não consegui guardar os dados da simulação neste navegador.","Não foi possível abrir a proposta"); return; }
   window.open("https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/proposta.html?tipo="+encodeURIComponent(d.tipo)+
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
@@ -2594,7 +2594,7 @@ async function planilhaFluxoPortal(formato){
     const n=await planilhaFluxoPadrao(UNS, formato);
     b.textContent="✓ Baixado ("+n+" unidades)";
     setTimeout(()=>{ b.textContent=txt; }, 4000);
-  }catch(e){ propAviso("Não consegui gerar a planilha: "+((e&&e.message)||e),"Planilha não gerada"); b.textContent=txt; }
+  }catch(e){ propCaixaAviso("Não consegui gerar a planilha: "+((e&&e.message)||e),"Planilha não gerada"); b.textContent=txt; }
   finally{ b.disabled=false; }
 }
 
@@ -2664,7 +2664,7 @@ function fluxoPdf(tipo, id){
   if(tipo==="prop"){
     const p=PROPS.find(x=>x.id===id); if(!p) return;
     const fluxo=propParseEsquema(p.esquema);
-    if(!fluxo.length){ propAviso("Esta proposta ainda não tem fluxo gravado.","Sem fluxo para o PDF"); return; }
+    if(!fluxo.length){ propCaixaAviso("Esta proposta ainda não tem fluxo gravado.","Sem fluxo para o PDF"); return; }
     let mud=new Set();
     try{ const dil=propDilAplicar(p, fluxo); mud=new Set([...dil.mudou].map(ix=>fluxo[ix]&&fluxo[ix].i)); }catch(e){}
     const c=entDaProposta(p, fluxo);
@@ -2674,7 +2674,7 @@ function fluxoPdf(tipo, id){
     nome="Fluxo "+(p.proposta||("proposta un "+(p.unidade||"")));
   } else {
     const s=SIMS.find(x=>x.id===id); if(!s) return;
-    if(!propParseEsquema(s.esquema).length){ propAviso("Esta simulação ainda não tem fluxo (pode estar na fila).","Sem fluxo para o PDF"); return; }
+    if(!propParseEsquema(s.esquema).length){ propCaixaAviso("Esta simulação ainda não tem fluxo (pode estar na fila).","Sem fluxo para o PDF"); return; }
     corpo=simFluxoHtml(s);
     tit="Fluxo de pagamento da simulação";
     sub=(s.cliente||"")+" · Unidade "+(s.unidade||"")+(s.tipo?" (Tipo "+s.tipo+")":"")+" · "+simData(s.criadoEm);
@@ -2684,7 +2684,7 @@ function fluxoPdf(tipo, id){
   const estilos=[...document.querySelectorAll("style")].map(x=>x.outerHTML).join("\n");
   const hoje=new Date().toLocaleDateString("pt-BR");
   const w=window.open("", "_blank");
-  if(!w){ propAviso("O navegador bloqueou a janela do PDF.\n• Libere os pop-ups para o portal.\n• Depois tente de novo.","PDF bloqueado"); return; }
+  if(!w){ propCaixaAviso("O navegador bloqueou a janela do PDF.\n• Libere os pop-ups para o portal.\n• Depois tente de novo.","PDF bloqueado"); return; }
   w.document.open();
   w.document.write(`<!doctype html><html lang="pt-BR" data-tema="claro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(nome.replace(/\.pdf$/,""))}</title>
@@ -5284,7 +5284,7 @@ function propObsCelula(p){
 let PROP_OBS_ID=null;
 function propObsAbrir(id){
   const p=(PROPS||[]).find(x=>x.id===id); if(!p) return;
-  if(typeof ehSomenteLeitura==="function" && ehSomenteLeitura(S)){ propAviso("Seu perfil só permite ler. Peça a quem administra o portal para liberar a edição.","Somente leitura"); return; }
+  if(typeof ehSomenteLeitura==="function" && ehSomenteLeitura(S)){ propCaixaAviso("Seu perfil só permite ler. Peça a quem administra o portal para liberar a edição.","Somente leitura"); return; }
   PROP_OBS_ID=id;
   let m=document.getElementById("prop-obsModal");
   if(!m){
@@ -5735,7 +5735,7 @@ function propPerguntar(o){
   if(o.nao===""){ try{ alert(t); }catch(e){} return Promise.resolve(true); }
   return Promise.resolve(confirm(t));
 }
-function propAviso(texto, titulo){ return propPerguntar({titulo:titulo||"Aviso", texto:texto, sim:"Entendi", nao:""}); }
+function propCaixaAviso(texto, titulo){ return propPerguntar({titulo:titulo||"Aviso", texto:texto, sim:"Entendi", nao:""}); }
 /* 28/10 (dono): proposta que JÁ pagou a preferência também gera o termo — acha a linha da venda pela unidade
    na lista de vendas do condomínio (simsVendasCond, o mesmo da Planilha Casas Condomínio). */
 /* 06/11/2026 (dono): depois do Reservar, pergunta se gera o termo de pré-reserva; Sim abre a pergunta rápida
@@ -5767,7 +5767,7 @@ async function propPreReservaDaUnidade(id, o){
 /* 28/10/2026 — TERMO DE PRÉ-RESERVA pela proposta: abre por cima a mesma tela do cartão da unidade
    (conta para devolução, gerar, ver e enviar à Clicksign), desenhada pelo venda-dossie.js na linha da venda. */
 function propAbrirPreReserva(linha, o){
-  if(!window.VendaBlocos || !VendaBlocos.montarPreReserva){ propAviso("A tela do termo ainda está carregando. Tente de novo em instantes.","Termo de reserva"); return; }
+  if(!window.VendaBlocos || !VendaBlocos.montarPreReserva){ propCaixaAviso("A tela do termo ainda está carregando. Tente de novo em instantes.","Termo de reserva"); return; }
   let fundo=document.getElementById("prop-pr-fundo");
   if(!fundo){
     fundo=document.createElement("div"); fundo.id="prop-pr-fundo";
