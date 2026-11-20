@@ -208,9 +208,18 @@ function cpfValido(v){
     var d=(s*10)%11; if(d===10) d=0; if(d!==parseInt(c.charAt(t),10)) return false; }
   return true;
 }
-function apiPost(p){
-  return fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)})
-    .then(function(r){ return r.json(); });
+/* Onda 2 (item 11a): tempo-limite - 60 s na leitura, 180 s no envio. Estourou = erro com .tempo=true */
+function comTempo(url, opts, ms){
+  var ac=(typeof AbortController!=='undefined') ? new AbortController() : null, t=null;
+  if(ac){ opts=opts||{}; opts.signal=ac.signal; t=setTimeout(function(){ ac.abort(); }, ms); }
+  return fetch(url, opts).then(function(r){ return r.json(); }).then(function(j){ clearTimeout(t); return j; }, function(e){
+    clearTimeout(t);
+    if(e && e.name==='AbortError'){ var x=new Error('Demorou demais.'); x.tempo=true; throw x; }
+    throw e;
+  });
+}
+function apiPost(p, ms){
+  return comTempo(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)}, ms||60000);
 }
 function lerBase64(f){
   return new Promise(function(ok,err){
@@ -224,8 +233,7 @@ function lerBase64(f){
 /* ---------------- carga ---------------- */
 function carregar(){
   if(!ID || !TOKEN){ estado('erro','<b>Link incompleto.</b> Peça um novo link para a Morais.'); return; }
-  fetch(APPS_SCRIPT_URL+'?acao=vendaCompletar&p='+encodeURIComponent(ID)+'&t='+encodeURIComponent(TOKEN))
-    .then(function(r){ return r.json(); })
+  comTempo(APPS_SCRIPT_URL+'?acao=vendaCompletar&p='+encodeURIComponent(ID)+'&t='+encodeURIComponent(TOKEN), {}, 60000)
     .then(function(j){
       if(!j || !j.ok){
         estado('erro', j && j.erro==='LINK_INVALIDO'
@@ -236,8 +244,12 @@ function carregar(){
       DADOS=j; ARQ={};
       COND_GRUPOS = fiadorDispensado() ? /^(comprador[12]|fiador[12])$/ : /^comprador[12]$/;   // 30/10/2026
       pintar();
+      try{ rascunhoIniciar(); }catch(e){}
     })
-    .catch(function(){ estado('erro','<b>Sem conexão com o servidor.</b> Tente de novo em instantes.'); });
+    .catch(function(e){
+      if(e && e.tempo) estado('erro','<b>Demorou demais.</b> <a href="#" onclick="carregar();return false" style="display:inline-block;padding:10px 0">Tentar de novo</a>');
+      else estado('erro','<b>Sem conexão com o servidor.</b> Tente de novo em instantes.');
+    });
 }
 
 function htmlCampo(c){
@@ -529,15 +541,36 @@ function prepararLeitura(file){
     img.src=url;
   });
 }
+function normCmp(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function sugerirDoDocumento(el, v){
+  var velha=el.parentNode.querySelector('.sug-doc[data-para="'+el.id+'"]'); if(velha) velha.remove();
+  var d=document.createElement('div'); d.className='sug-doc'; d.setAttribute('data-para', el.id);
+  d.style.cssText='font-size:12.5px;margin:4px 0 0;color:#6B5A45;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+  d.innerHTML='<span>O documento diz: <b></b></span><button type="button" style="min-height:44px;padding:0 12px;border:1px solid #1a4d6b;background:#fff;color:#1a4d6b;border-radius:8px;font-weight:700;cursor:pointer">usar este</button>';
+  d.querySelector('b').textContent=v;
+  d.querySelector('button').onclick=function(){
+    el.value=v; mascarar(el); el.classList.add('lido'); delete el.dataset.digitado; d.remove();
+    try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(x){}
+    atualizarTrava();
+  };
+  el.insertAdjacentElement('afterend', d);
+}
 function preencher(chave, campos){
-  var mapa=MAPA_LEITURA[chave]||mapaEndereco(chave), n=0;
+  var mapa=MAPA_LEITURA[chave]||mapaEndereco(chave), n=0, sug=0;
   Object.keys(mapa).forEach(function(k){
     var v=campos[k]; if(!v) return;
     var el=document.getElementById('f-'+mapa[k]);
     if(!el) return;
-    /* 06/10 — o documento lido SEMPRE corrige o campo (antes só preenchia o que estava vazio) */
+    /* Onda 2 (item 11c): se o campo já tem valor diferente do lido (digitado ou já cadastrado), o valor da pessoa fica
+       e o do documento aparece embaixo, com "usar este". Campo vazio ou preenchido só por leitura anterior: o documento corrige. */
+    var atual=String(el.value||'').trim();
+    if(el.tagName!=='SELECT' && atual && normCmp(atual)!==normCmp(v) && (el.dataset.digitado || !el.classList.contains('lido'))){
+      sugerirDoDocumento(el, v); sug++; return;
+    }
+    var velha=el.parentNode && el.parentNode.querySelector('.sug-doc[data-para="'+el.id+'"]'); if(velha) velha.remove();
     el.value=v; mascarar(el); el.classList.add('lido'); n++;
   });
+  preencher.sugeridos=sug;
   /* comprovante de quem só tem o campo de endereço inteiro: monta a linha */
   if(/^end/.test(chave) && !n){
     var cap=chave.slice(3), un=document.getElementById('f-endereco'+cap);
@@ -560,18 +593,25 @@ function aoArquivo(chave, sub, tipoLeitura, input){
   st.className='lst lendo'; st.textContent='Lendo o documento…';
   prepararLeitura(arqs[0]).then(function(pre){
     if(!pre) throw {sem:'Arquivo grande demais ou em formato que não dá para ler.'};
-    return apiPost({acao:'lerDocumento', tipo:tipoLeitura, quem:chave, arquivo:pre});
+    return apiPost({acao:'lerDocumento', tipo:tipoLeitura, quem:chave, arquivo:pre}, 60000);
   }).then(function(r){
     if(r && r.ok && r.lido){
       var n=preencher(chave, r.campos||{});
       st.className='lst ok';
-      st.textContent = n ? '✓ Documento lido — '+n+' campo(s) preenchido(s). Confira.' : '✓ Documento lido — os campos já estavam preenchidos.';
+      var sg=preencher.sugeridos||0;
+      st.textContent = (n ? '✓ Documento lido — '+n+' campo(s) preenchido(s). Confira.' : (sg ? '✓ Documento lido.' : '✓ Documento lido — os campos já estavam preenchidos.'))+
+        (sg ? ' '+sg+' campo(s) já tinham outro valor: mantive o seu — veja "O documento diz" abaixo do campo.' : '');
     } else {
       st.className='lst err';
       st.textContent='Não consegui identificar as informações do documento — preencha os dados manualmente.';
     }
   }).catch(function(e){
     st.className='lst err';
+    if(e && e.tempo){
+      st.innerHTML='Demorou demais. <a href="#" style="display:inline-block;padding:10px 0">Tentar de novo</a> ou preencha os dados manualmente.';
+      st.querySelector('a').onclick=function(ev){ ev.preventDefault(); aoArquivo(chave, sub, tipoLeitura, input); };
+      return;
+    }
     st.textContent=(e && e.sem ? e.sem+' ' : 'Leitura indisponível agora. ')+'Preencha os dados manualmente.';
   });
 }
@@ -719,11 +759,12 @@ function enviar(){
   av.style.display='block'; av.className='aviso info'; av.innerHTML='<b>Enviando os dados…</b> não feche a página.';
   var falhas=[], enviados=0, gravados=0, faltamServ=[];
 
-  apiPost({acao:'completarVenda', pageId:ID, token:TOKEN, campos:campos}).then(function(j){
+  apiPost({acao:'completarVenda', pageId:ID, token:TOKEN, campos:campos}, 180000).then(function(j){
     /* 01/11: mensagem primeiro (DIA_INVALIDO, CONTRATO_JA_GERADO...); o código em erro só se não houver mensagem */
     if(!j || !j.ok) throw new Error(((j&&(j.mensagem||j.erro))||'erro desconhecido')+
       ((j&&j.recusados&&j.recusados.length) ? ' Campos que não podem mais ser mudados: '+j.recusados.join(', ')+'.' : ''));
     gravados=(j.gravados||[]).length;
+    try{ rascunhoApagar(); }catch(e){}   // o servidor guardou os campos: o rascunho deste aparelho nao e mais necessario
     faltamServ=j.faltam||j.pendencias||[];
     var chaves=Object.keys(ARQ).filter(function(ch){ return arquivosDe(ch).length && !(ch==='endConjuge' && cbEnd && cbEnd.checked); });
     /* 06/10 — comprovantes de renda: cada documento (contracheques, carteira...) vai para a coluna DELE */
@@ -748,11 +789,11 @@ function enviar(){
           return {nome:nm, tipo:f.type||'application/octet-stream', base64:b64};
         });
       })).then(function(anexos){
-        return apiPost({acao:'anexarVenda', pageId:ID, token:TOKEN, chave:item.envio, anexos:anexos});
+        return apiPost({acao:'anexarVenda', pageId:ID, token:TOKEN, chave:item.envio, anexos:anexos}, 180000);
       }).then(function(x){
         if(x && x.ok){ enviados+=(x.enviados||0); (x.falhas||[]).forEach(function(f){ falhas.push(f); }); }
         else falhas.push(nome+': '+((x&&(x.mensagem||x.erro))||'falhou'));
-      }).catch(function(){ falhas.push(nome+': sem resposta'); }).then(proximo);
+      }).catch(function(e){ falhas.push(nome+': '+(e && e.tempo ? 'demorou demais' : 'sem resposta')); }).then(proximo);
     }
     return proximo();
   }).then(function(){
@@ -772,11 +813,59 @@ function enviar(){
   }).catch(function(e){
     ENVIANDO=false; bt.disabled=false; bt.textContent='Enviar para a Morais';
     av.className='aviso erro';
-    av.innerHTML='Não consegui gravar: '+esc((e&&e.message)||'a resposta não chegou. Confira com a Morais antes de enviar de novo.');
+    av.innerHTML=(e && e.tempo)
+      ? '<b>Demorou demais.</b> Confira a conexão e clique em <b>Enviar para a Morais</b> para tentar de novo — o que já foi gravado não se perde.'
+      : 'Não consegui gravar: '+esc((e&&e.message)||'a resposta não chegou. Confira com a Morais antes de enviar de novo.');
   });
 }
 
 carregar();
+</script>
+<script>
+/* Onda 2 (item 11b) - rascunho local dos campos de texto (sem arquivos), chave pelo token do link, validade 7 dias.
+   Salva so o que a pessoa digitou; restaura sozinho so em campo que ainda esta como veio do servidor. */
+(function(){
+  var VALIDADE=7*864e5, timer=null, ligado=false, parado=false;
+  function ls(){ try{ return window.localStorage; }catch(e){ return null; } }
+  function chave(){ return 'rascunhoCompletar:'+(typeof TOKEN!=='undefined'?TOKEN:''); }
+  function campos(){ return [].slice.call(document.querySelectorAll('#conteudo input[id^="f-"], #conteudo select[id^="f-"], #conteudo textarea[id^="f-"]')).filter(function(el){ return el.type!=='file'; }); }
+  function salvar(){
+    if(parado) return; var s=ls(); if(!s || typeof TOKEN==='undefined' || !TOKEN) return;
+    try{
+      var v={}, tem=false;
+      campos().forEach(function(el){ if(el.dataset.digitado && String(el.value||'')!==''){ v[el.id]={v:el.value,o:el.dataset.orig||''}; tem=true; } });
+      if(tem) s.setItem(chave(), JSON.stringify({ts:Date.now(), v:v})); else s.removeItem(chave());
+    }catch(e){}
+  }
+  window.rascunhoApagar=function(){ parado=true; clearTimeout(timer); try{ var s=ls(); if(s) s.removeItem(chave()); }catch(e){} };
+  window.rascunhoIniciar=function(){
+    parado=false;
+    campos().forEach(function(el){ if(el.dataset.orig===undefined) el.dataset.orig=el.value; });
+    var s=ls(), d=null;
+    try{ d=JSON.parse((s&&s.getItem(chave()))||'null'); if(d && (!d.ts || Date.now()-d.ts>VALIDADE)){ s.removeItem(chave()); d=null; } }catch(e){ d=null; }
+    if(d && d.v){
+      var n=0;
+      campos().forEach(function(el){
+        var x=d.v[el.id]; if(!x || el.value===x.v || el.value!==x.o) return;
+        el.value=x.v; el.dataset.digitado='1';
+        try{ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
+        n++;
+      });
+      if(n){
+        var av=document.getElementById('avisoEnvio');
+        if(av){ av.style.display='block'; av.className='aviso info'; av.innerHTML='Recuperei '+n+' campo(s) que você tinha digitado neste aparelho. Os documentos precisam ser anexados de novo.'; }
+      }
+    }
+    if(!ligado){
+      ligado=true;
+      document.addEventListener('input', function(e){
+        var el=e.target;
+        if(e.isTrusted===false || !el || !el.id || el.id.indexOf('f-')!==0) return;
+        el.dataset.digitado='1'; clearTimeout(timer); timer=setTimeout(salvar, 800);
+      });
+    }
+  };
+})();
 </script>
 <script>
 /* Onda 2 (item 10) — limite de anexo conferido AO ESCOLHER o arquivo (mesma regra e mesma mensagem nas três telas).
