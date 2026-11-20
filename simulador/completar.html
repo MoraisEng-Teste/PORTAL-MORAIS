@@ -369,6 +369,7 @@ function carregar(){
         return;
       }
       DADOS=j; pintar();
+      try{ rascunhoIniciar(); }catch(e){}
     })
     .catch(function(){ estado('erro','<b>Sem conexão com o servidor.</b> Tente de novo em instantes.'); });
 }
@@ -1643,6 +1644,7 @@ function enviar(){
   }).then(function(j){
     bt.disabled=false;
     if(j && j.ok){
+      try{ rascunhoApagar(); }catch(e){}   // Onda 2: o servidor guardou; o rascunho deste aparelho sai
       av.className='aviso ok';
       av.innerHTML='<b>Enviado.</b> '+(j.gravados&&j.gravados.length ? j.gravados.length+' campo(s) atualizados. ' : '')+
         ((j.anexos&&j.anexos.ok) ? j.anexos.ok+' documento(s) anexados.' : '')+
@@ -1666,6 +1668,52 @@ function enviar(){
 }
 
 carregar();
+</script>
+<script>
+/* Onda 2 (item 11b) - rascunho local dos campos de texto (sem arquivos), chave pelo token do link, validade 7 dias.
+   Salva so o que a pessoa digitou; restaura sozinho so em campo que ainda esta como veio do servidor. */
+(function(){
+  var VALIDADE=7*864e5, timer=null, ligado=false, parado=false;
+  function ls(){ try{ return window.localStorage; }catch(e){ return null; } }
+  function chave(){ return 'rascunhoCompletar:'+(typeof TOKEN!=='undefined'?TOKEN:''); }
+  function campos(){ return [].slice.call(document.querySelectorAll('#conteudo input[id^="c-"], #conteudo select[id^="c-"], #conteudo textarea[id^="c-"]')).filter(function(el){ return el.type!=='file'; }); }
+  function salvar(){
+    if(parado) return; var s=ls(); if(!s || typeof TOKEN==='undefined' || !TOKEN) return;
+    try{
+      var v={}, tem=false;
+      campos().forEach(function(el){ if(el.dataset.digitado && String(el.value||'')!==''){ v[el.id]={v:el.value,o:el.dataset.orig||''}; tem=true; } });
+      if(tem) s.setItem(chave(), JSON.stringify({ts:Date.now(), v:v})); else s.removeItem(chave());
+    }catch(e){}
+  }
+  window.rascunhoApagar=function(){ parado=true; clearTimeout(timer); try{ var s=ls(); if(s) s.removeItem(chave()); }catch(e){} };
+  window.rascunhoIniciar=function(){
+    parado=false;
+    campos().forEach(function(el){ if(el.dataset.orig===undefined) el.dataset.orig=el.value; });
+    var s=ls(), d=null;
+    try{ d=JSON.parse((s&&s.getItem(chave()))||'null'); if(d && (!d.ts || Date.now()-d.ts>VALIDADE)){ s.removeItem(chave()); d=null; } }catch(e){ d=null; }
+    if(d && d.v){
+      var n=0;
+      campos().forEach(function(el){
+        var x=d.v[el.id]; if(!x || el.value===x.v || el.value!==x.o) return;
+        el.value=x.v; el.dataset.digitado='1';
+        try{ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
+        n++;
+      });
+      if(n){
+        var av=document.getElementById('avisoEnvio');
+        if(av){ av.style.display='block'; av.className='aviso info'; av.innerHTML='Recuperei '+n+' campo(s) que você tinha digitado neste aparelho. Os documentos precisam ser anexados de novo.'; }
+      }
+    }
+    if(!ligado){
+      ligado=true;
+      document.addEventListener('input', function(e){
+        var el=e.target;
+        if(e.isTrusted===false || !el || !el.id || el.id.indexOf('c-')!==0) return;
+        el.dataset.digitado='1'; clearTimeout(timer); timer=setTimeout(salvar, 800);
+      });
+    }
+  };
+})();
 </script>
 <script>
 /* Onda 2 (item 10) — limite de anexo conferido AO ESCOLHER o arquivo (mesma regra e mesma mensagem nas três telas).
