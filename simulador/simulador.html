@@ -139,6 +139,9 @@
   body:not(.com-ver) .com-info{display:none!important;}
   .bt-com{background:none;border:1px dashed var(--marrom2,#7A4A16);color:var(--marrom,#4A2A0C);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;}
   @media(max-width:640px){.bt-com{min-height:44px;font-size:14px;}}
+  /* celular: a faixa de passos corta no 3º; esta linha diz em que passo a pessoa está */
+  .passo-mobile{display:none;font-size:13px;font-weight:800;color:var(--marrom);margin:0 0 6px;}
+  @media(max-width:640px){.passo-mobile{display:block;}}
 </style>
 </head>
 <body>
@@ -160,6 +163,11 @@
 </header>
 
 <main>
+  <div class="passo-mobile" id="passoMobile" aria-live="polite"></div>
+  <script>document.addEventListener('DOMContentLoaded',function(){var ps=document.querySelector('.passos'),el=document.getElementById('passoMobile');if(!ps||!el)return;
+    function at(){var todos=ps.querySelectorAll('.passo'),a=ps.querySelector('.passo.ativo');if(!a)return;var n=[].indexOf.call(todos,a)+1;
+      var nome=String((a.firstChild&&a.firstChild.textContent)||'').replace(/^\d+\.\s*/,'').trim();el.textContent='Passo '+n+' de '+todos.length+' · '+nome;}
+    at();if(window.MutationObserver)new MutationObserver(at).observe(ps,{subtree:true,attributes:true,attributeFilter:['class']});});</script>
   <div class="passos">
     <div class="passo ativo" data-passo="1" onclick="voltarPasso(1)">1. Unidade e perfil</div>
     <div class="passo" data-passo="2" onclick="voltarPasso(2)">2. Condições</div>
