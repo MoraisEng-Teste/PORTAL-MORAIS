@@ -69,3 +69,95 @@ test("item 5: Resumo (rua e condomínio) tem a caixa 'Faltam N dados' alimentada
   f.FALTAS_CONTRATO["abc1"] = { lista: ["Fiador 1: nome"], origem: "cadastro" };
   assert.match(f.faltasContratoBox("abc-1", "cond"), /Faltam 1 dado de compradores e fiadores para o contrato/);
 });
+
+/* ---- item 6: endereço e botão Voltar (histórico) — navegador simulado ---- */
+function navegador(hashInicial = "") {
+  const ini = vendas.indexOf("let _navMudo=0;"), fim = vendas.indexOf("/* ---------- SETOR ---------- */", ini);
+  assert.ok(ini > 0 && fim > ini);
+  const fonteNorm = [vendas.slice(vendas.indexOf("const _NORM_CACHE="), vendas.indexOf("\n", vendas.indexOf("const _NORM_CACHE=")) + 1),
+    vendas.slice(vendas.indexOf("function _normNomeBruto("), vendas.indexOf("\n", vendas.indexOf("function _normNomeBruto(")) + 1),
+    vendas.slice(vendas.indexOf("function normNome(s){"), vendas.indexOf("\n}", vendas.indexOf("function normNome(s){")) + 2)].join("\n");
+  const corpo = `
+    const pilha = [{ state: null, url: "/vendas.html" + ${JSON.stringify(hashInicial)} }]; let pos = 0; const ouvintes = {};
+    const location = { pathname: "/vendas.html", search: "", get hash() { const u = pilha[pos].url; const i = u.indexOf("#"); return i < 0 ? "" : u.slice(i); } };
+    const history = {
+      get state() { return pilha[pos].state; },
+      pushState(s, _t, u) { pilha.length = pos + 1; pilha.push({ state: s, url: u }); pos++; },
+      replaceState(s, _t, u) { pilha[pos] = { state: s, url: u }; },
+      back() { pos = Math.max(0, pos - 1); disparar(); }
+    };
+    function disparar() { (ouvintes.popstate || []).forEach(f => f({ state: pilha[pos].state })); }
+    const window = { history, addEventListener(n, f) { (ouvintes[n] = ouvintes[n] || []).push(f); } };
+    const tela = { setor: false, aba: null, painel: false, card: false, sujo: false, perguntou: 0 };
+    const SETORES_AREA = [{ nome: "Secretaria de Vendas", ativo: true }, { nome: "Gestor de Vendas", ativo: true }];
+    const ABAS = { "Secretaria de Vendas": ["atividades", "alertas", "planilha"], "Gestor de Vendas": ["vendidas", "estoque"] };
+    const abasDoSetor = n => ABAS[n];
+    let SETOR_ATUAL = "Secretaria de Vendas", OBRA_ABERTA = null, COND_ABERTA = null; const COND = { linhas: [{ id: "u1" }] };
+    const document = { getElementById(id) {
+      if (id === "view-setor") return { style: { get display() { return tela.setor ? "block" : "none"; } } };
+      if (id === "cd-card") return { style: { get display() { return tela.card ? "block" : "none"; } }, get innerHTML() { return tela.card ? "x" : ""; } };
+      if (id === "painel") return { classList: { contains: () => tela.painel } };
+      return null; },
+      querySelector() { return tela.aba ? { dataset: { t: tela.aba } } : null; } };
+    function abrirSetor(n) { SETOR_ATUAL = n; tela.setor = true; navMudo(() => abaSetor(abasDoSetor(n)[0])); navPush(null); }
+    function abaSetor(t) { tela.aba = t; navPush(null); }
+    function irHubTela() { tela.setor = false; }
+    function irHub() { irHubTela(); navPush(null); }
+    function abrirObra(id) { OBRA_ABERTA = id; tela.painel = true; navPush("painel", id); }
+    function fecharObra() { const estava = tela.painel; OBRA_ABERTA = null; tela.painel = false; if (estava) navFechouOverlay("painel"); }
+    function condAbrir(id) { COND_ABERTA = id; tela.card = true; navPush("card", id); }
+    function condFechar() { if (tela.sujo) { tela.perguntou++; return; } COND_ABERTA = null; tela.card = false; navFechouOverlay("card"); }
+    ${vendas.slice(ini, fim)}
+    return { tela, pilha, get pos() { return pos; }, history, window, location, abrirSetor, abaSetor, irHub, abrirObra, fecharObra, condAbrir, condFechar,
+             voltar: () => history.back(), navIniciar, get SETOR_ATUAL() { return SETOR_ATUAL; } };`;
+  return new Function(fonteNorm + "\n" + corpo)();
+}
+
+test("item 6: setor e aba entram no histórico; Voltar volta de aba e de setor; sem passo repetido", () => {
+  const n = navegador();
+  n.navIniciar();
+  n.abrirSetor("Secretaria de Vendas");
+  assert.equal(n.pilha.at(-1).url, "/vendas.html#setor/secretaria-de-vendas");
+  n.abaSetor("alertas"); n.abaSetor("alertas");
+  assert.equal(n.pilha.at(-1).url, "/vendas.html#setor/secretaria-de-vendas/alertas");
+  assert.equal(n.pilha.length, 3, "hub, setor, aba (a mesma aba duas vezes não empilha)");
+  n.voltar(); assert.equal(n.tela.aba, "atividades");
+  n.voltar(); assert.equal(n.tela.setor, false, "Voltar do setor leva ao início");
+  assert.equal(n.pos, 0);
+});
+
+test("item 6: cartão e painel abertos são um passo; Voltar fecha o cartão antes de voltar de aba", () => {
+  const n = navegador();
+  n.navIniciar(); n.abrirSetor("Secretaria de Vendas"); n.abaSetor("planilha");
+  n.condAbrir("u1");
+  assert.equal(n.pilha.at(-1).url, "/vendas.html#setor/secretaria-de-vendas/planilha", "mesmo endereço, sem id");
+  assert.equal(n.pilha.at(-1).state.ov, "card");
+  n.voltar();
+  assert.equal(n.tela.card, false, "o cartão fechou");
+  assert.equal(n.tela.aba, "planilha", "e continua na mesma aba");
+  assert.equal(n.history.state.ov, null);
+  n.abrirObra("p1"); n.fecharObra();
+  assert.equal(n.history.state.ov, null, "fechar pelo botão tira o passo do painel");
+  n.voltar(); assert.equal(n.tela.aba, "atividades", "depois do cartão, Voltar volta de aba");
+});
+
+test("item 6: Voltar com algo não salvo passa pela pergunta e, ao continuar editando, o cartão segue aberto no seu passo", () => {
+  const n = navegador();
+  n.navIniciar(); n.abrirSetor("Gestor de Vendas"); n.condAbrir("u1"); n.tela.sujo = true;
+  n.voltar();
+  assert.equal(n.tela.perguntou, 1, "perguntou 'Sair sem salvar?'");
+  assert.equal(n.tela.card, true, "continua aberto");
+  assert.equal(n.history.state.ov, "card", "o passo do cartão foi devolvido");
+  n.tela.sujo = false; n.condFechar();
+  assert.equal(n.tela.card, false); assert.equal(n.history.state.ov, null);
+});
+
+test("item 6: abrir a página com #setor/<slug>/<aba> reabre setor e aba, nunca o cartão; id não vai no endereço", () => {
+  const n = navegador("#setor/secretaria-de-vendas/alertas");
+  n.navIniciar();
+  assert.equal(n.tela.setor, true); assert.equal(n.tela.aba, "alertas"); assert.equal(n.tela.card, false);
+  assert.equal(n.pilha.length, 1, "não empilha nada ao carregar");
+  const ruim = navegador("#setor/nao-existe/x"); ruim.navIniciar(); assert.equal(ruim.tela.setor, false);
+  const m = navegador(); m.navIniciar(); m.abrirSetor("Secretaria de Vendas"); m.abrirObra("0123456789abcdef0123456789abcdef");
+  assert.ok(m.pilha.every((p) => !/[0-9a-f]{32}/.test(p.url)), "nenhum endereço tem o id");
+});

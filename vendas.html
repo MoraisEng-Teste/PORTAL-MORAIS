@@ -1864,6 +1864,7 @@ async function boot(){
   await carregarPlanilha("hub");
   _mapaObraId=null; _vendidasPorEnd=null;   // dados novos: refaz os índices derivados
   atualizarBadgesSetores(); // 1ª passada (sem atividades ainda); a promise acima repinta
+  navIniciar();   /* ux: #setor/<slug>[/<aba>] reabre setor e aba (nunca o cartão) */
   abrirCasaDaUrl();
   /* 04/11/2026 (dono): o mapa do Reserva (RESERVADA até a ETAPA Concluída) não pode depender de alguém abrir a
      Planilha Casas Condomínio — confere ao abrir a Gestão de Vendas, depois do resto carregar e a cada 15 min */
@@ -1967,9 +1968,92 @@ function montarSetorSelects(){
     const atual=el.value; el.innerHTML=ops; el.value=atual;
   });
 }
-function irHub(){ document.getElementById("view-setor").style.display="none"; document.getElementById("view-hub").style.display="block"; }
+function irHub(){ irHubTela(); navPush(null); }
+
+/* ---------- ENDEREÇO E BOTÃO VOLTAR (Onda 2, ux) ----------
+   Setor aberto, aba do setor e cartão/painel aberto entram no histórico do navegador (history.pushState):
+     #setor/<slug>  ·  #setor/<slug>/<aba>   (a aba só aparece quando não é a primeira do setor)
+   e um passo extra quando o cartão do condomínio ou o painel da casa abre — Voltar FECHA o cartão/painel (passando
+   pela pergunta "Sair sem salvar?") e só depois volta de aba/setor. Nada de id do Notion, nome ou CPF no endereço:
+   o id do cartão fica só no state do histórico (para o "avançar"), nunca na barra. Ao carregar com hash, reabre o
+   setor e a aba — nunca o cartão. */
+let _navMudo=0;
+const navSlug=n=>normNome(n).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+function navSetorPorSlug(slug){ return SETORES_AREA.find(s=>s.ativo&&navSlug(s.nome)===slug)||null; }
+function navSetorVisivel(){ const v=document.getElementById("view-setor"); return !!v&&v.style.display==="block"; }
+function navAbaAtual(){ const b=document.querySelector("#view-setor .tab.on"); return b?b.dataset.t:null; }
+function navEstado(ov,id){
+  const vis=navSetorVisivel();
+  return {vv:1,setor:vis?navSlug(SETOR_ATUAL):null,aba:vis?navAbaAtual():null,ov:ov||null,id:ov?(id||null):null};
+}
+function navUrl(st){
+  if(!st||!st.setor) return location.pathname;
+  const info=navSetorPorSlug(st.setor), primeira=info?abasDoSetor(info.nome)[0]:null;
+  return location.pathname+"#setor/"+st.setor+(st.aba&&st.aba!==primeira?"/"+st.aba:"");
+}
+function navIgual(a,b){ return !!a&&!!b&&a.setor===b.setor&&a.aba===b.aba&&(a.ov||null)===(b.ov||null); }
+/* empilha UM passo (nunca repetido); ov = "card" | "painel" quando o passo é o cartão/painel aberto */
+function navPush(ov,id){
+  if(_navMudo||!window.history||!history.pushState) return;
+  const st=navEstado(ov,id), cur=history.state;
+  try{
+    if(navIgual(cur,st)){ if(ov&&cur.id!==st.id) history.replaceState(st,"",navUrl(st)); return; }
+    history.pushState(st,"",navUrl(st));
+  }catch(e){}
+}
+/* o cartão/painel fechou pelo botão, Esc ou clique fora: tira o passo dele do histórico */
+function navFechouOverlay(tipo){
+  if(_navMudo||!window.history) return;
+  const cur=history.state; if(cur&&cur.ov===tipo) try{ history.back(); }catch(e){}
+}
+function navOverlayAberto(){
+  const c=document.getElementById("cd-card"), p=document.getElementById("painel");
+  if(p&&p.classList.contains("on")) return "painel";
+  if(c&&c.style.display!=="none"&&c.innerHTML) return "card";
+  return null;
+}
+function navMudo(fn){ _navMudo++; try{ fn(); }finally{ _navMudo--; } }
+/* leva a tela ao setor/aba do estado, sem mexer no histórico */
+function navAplicar(st){
+  navMudo(()=>{
+    if(!st||!st.setor){ if(navSetorVisivel()) irHub(); return; }
+    const info=navSetorPorSlug(st.setor); if(!info) return;
+    if(!navSetorVisivel()||SETOR_ATUAL!==info.nome) abrirSetor(info.nome);
+    if(st.aba&&st.aba!==navAbaAtual()&&abasDoSetor(info.nome).indexOf(st.aba)>=0) abaSetor(st.aba);
+  });
+}
+window.addEventListener("popstate",e=>{
+  const st=e.state||{vv:1,setor:null,aba:null,ov:null};
+  const aberto=navOverlayAberto();
+  if(aberto&&!st.ov){
+    /* Voltar com cartão/painel aberto: o passo dele já saiu — devolve (para o "Continuar editando" não perder o lugar) e
+       fecha pelo caminho de sempre, que pergunta "Sair sem salvar?" quando há o que perder */
+    try{ history.pushState(navEstado(aberto,aberto==="painel"?OBRA_ABERTA:COND_ABERTA),"",navUrl(navEstado())); }catch(x){}
+    if(aberto==="painel") fecharObra(); else condFechar();
+    return;
+  }
+  navAplicar(st);
+  if(st.ov&&!aberto&&st.id){
+    /* "Avançar" até um passo de cartão/painel: reabre o mesmo */
+    navMudo(()=>{ if(st.ov==="painel") abrirObra(st.id); else if(COND&&COND.linhas.some(l=>l.id===st.id)) condAbrir(st.id); });
+  }
+});
+function navIniciar(){
+  if(!window.history||!history.replaceState) return;
+  const m=/^#setor\/([a-z0-9-]+)(?:\/([a-z]+))?$/.exec(location.hash||"");
+  let st={vv:1,setor:null,aba:null,ov:null,id:null};
+  if(m){
+    const info=navSetorPorSlug(m[1]);
+    if(info){
+      navMudo(()=>{ abrirSetor(info.nome); if(m[2]&&abasDoSetor(info.nome).indexOf(m[2])>=0) abaSetor(m[2]); });
+      st=navEstado();
+    }
+  }
+  try{ history.replaceState(st,"",st.setor?navUrl(st):location.pathname+location.search); }catch(e){}
+}
 
 /* ---------- SETOR ---------- */
+function irHubTela(){ document.getElementById("view-setor").style.display="none"; document.getElementById("view-hub").style.display="block"; }
 function abrirSetor(nome){
   SETOR_ATUAL=nome;
   document.getElementById("setor-nome").textContent=nome;
@@ -1992,11 +2076,13 @@ function abrirSetor(nome){
     const b=document.querySelector('#view-setor .tab[data-t="'+t+'"]');
     if(b){ b.style.display=""; barra.appendChild(b); }   // reordena de fato
   });
-  abaSetor(abas[0]);
+  navMudo(()=>abaSetor(abas[0]));
+  navPush(null);   /* ux: setor aberto = um passo no histórico */
   if(abas.indexOf("atividades")>=0){ if(ATIV_ALL.length) atvBadge('#view-setor .tab[data-t="atividades"]', atividadesDoSetor(nome).length); carregarAtividades(); }
 }
 function abaSetor(t){
   document.querySelectorAll("#view-setor .tab").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  navPush(null);   /* ux: aba nova = um passo no histórico (igual à atual não empilha) */
   ["atividades","alertas","atrasados","planilha","condominio","modelo","semtipo","estoque","vendidas"].forEach(x=>{
     const el=document.getElementById("st-"+x); if(el) el.style.display = x===t?"block":"none";
   });
@@ -2217,7 +2303,7 @@ async function condSalvar(id,prop,valor){
 /* ---- card da unidade ---- */
 /* UX onda 1: com algo digitado e não salvo, pergunta antes de fechar (✕ Fechar, clique no fundo e Esc) */
 let _condSairJa=false;
-function condFechar(){ if(!_condSairJa&&window.VendaBlocos&&VendaBlocos.temNaoSalvo&&VendaBlocos.temNaoSalvo()&&window.VendaPergunta){ VendaPergunta.sairSemSalvar(()=>{ _condSairJa=true; try{ condFechar(); }finally{ _condSairJa=false; } }); return; } COND_ABERTA=null; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; }
+function condFechar(){ if(!_condSairJa&&window.VendaBlocos&&VendaBlocos.temNaoSalvo&&VendaBlocos.temNaoSalvo()&&window.VendaPergunta){ VendaPergunta.sairSemSalvar(()=>{ _condSairJa=true; try{ condFechar(); }finally{ _condSairJa=false; } }); return; } COND_ABERTA=null; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; navFechouOverlay("card"); }
 /* pergunta simples dentro da página (sem confirm() nativo): Esc ou "Continuar editando" voltam; "Sair sem salvar" segue */
 window.VendaPergunta={
   sairSemSalvar(seguir){
@@ -2495,6 +2581,7 @@ function condAplicarGravados(id,gravados){
 function condAbrir(id){
   const l=COND.linhas.find(x=>x.id===id); if(!l) return;
   COND_ABERTA=id;
+  navPush("card",id);   /* ux: Voltar fecha o cartão */
   const g=n=>cdVal(l,n), fx=condFluxo(l), tit=COND.titulo;
   const ass=g("DATA DE ASSINATURA DO CONTRATO"), dia=g("DIA PAGAMENTO PARCELAS"), ent=g("DATA DA ENTREGA");
   document.getElementById("cd-card").innerHTML='<div class="cd-cardbox" data-aba="'+COND_ABA+'">'+
@@ -4495,6 +4582,7 @@ function temSensiveis(){ return SCHEMA.some(c=>c.sensivel); }
 let OBRA_ABERTA=null;   // id da obra no painel aberto (null = painel fechado)
 async function abrirObra(pageId){
   OBRA_ABERTA=pageId;
+  navPush("painel",pageId);   /* ux: Voltar fecha o painel */
   pnModalAbrir();
   document.getElementById("overlay").classList.add("on"); document.getElementById("painel").classList.add("on");
   const body=document.getElementById("pn-body"); body.innerHTML='<div class="vazio"><span class="load"></span> Carregando…</div>';
@@ -5375,7 +5463,7 @@ async function confirmarDistrato(pageId){
   }
 }
 
-function fecharObra(){ const estava=document.getElementById("painel").classList.contains("on"); OBRA_ABERTA=null; document.getElementById("overlay").classList.remove("on"); document.getElementById("painel").classList.remove("on"); if(estava) pnModalFechar(); }
+function fecharObra(){ const estava=document.getElementById("painel").classList.contains("on"); OBRA_ABERTA=null; document.getElementById("overlay").classList.remove("on"); document.getElementById("painel").classList.remove("on"); if(estava){ pnModalFechar(); navFechouOverlay("painel"); } }
 /* 05/11/2026 (dono): o painel da casa de rua é um modal central (igual ao cartão do condomínio). Ao abrir: a página
    de trás para de rolar, o foco vai para o "✕ Fechar" e o Tab fica preso dentro; Esc ou clique fora (#overlay)
    fecham e o foco volta para quem abriu. Reabrir a casa com o painel já aberto (recarregar) não mexe em nada. */
