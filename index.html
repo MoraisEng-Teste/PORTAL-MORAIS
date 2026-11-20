@@ -738,7 +738,7 @@ function desenharGrafico(qual){
   const box=document.getElementById("g-"+qual); if(!box) return;
   const cfg=GRAF_CFG[qual];
   if(!PORTAL||!PORTAL.ok||!PORTAL.series){
-    box.innerHTML='<div class="graf-vazio">Sem dados publicados ainda — rode o workflow “Publicar site” no GitHub.</div>';
+    box.innerHTML='<div class="graf-vazio">Os dados ainda não chegaram — tente de novo em alguns minutos; se continuar, avise o suporte.</div>';
     return;
   }
   const serie=PORTAL.series[cfg.serie]||{};

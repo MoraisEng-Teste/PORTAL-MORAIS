@@ -119,7 +119,16 @@ function atualizarToken(novo){
     try{ const raw=st.getItem(KEY); if(!raw) return; const o=JSON.parse(raw); if(o&&o.token){ o.token=novo; st.setItem(KEY, JSON.stringify(o)); } }catch(e){}
   });
 }
-function irParaLogin(){ localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); location.href=LOGIN; }
+/* Guarda onde a pessoa estava para o login devolvê-la ao mesmo lugar (só caminho
+   do próprio site, terminando em .html, nunca o próprio login). */
+function guardarVolta(){
+  try{
+    const p=location.pathname;
+    if(!/\.html$/i.test(p) || /(^|\/)login\.html$/i.test(p)) return;
+    sessionStorage.setItem("morais_volta", p+location.search+location.hash);
+  }catch(e){}
+}
+function irParaLogin(){ guardarVolta(); localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); location.href=LOGIN; }
 function exigirSessao(){ const s=sessao(); if(!s||!s.token||sessaoVencida(s)){ irParaLogin(); } return s; }
 /* MASTER vê TODOS os sistemas do hub (Vendas etc.), como o ADM — é um perfil
    de diretor. O que ele não pode é MEXER: não edita endereço nem dá baixa em
@@ -878,10 +887,10 @@ function filaPendente(){ return fila().length > 0; }
 /* ---------- textos de erro amigáveis ---------- */
 const ERROS_TEXTO = {
   OFFLINE_SEM_CACHE: "sem internet e sem dados salvos ainda",
-  SEM_DADOS_PUBLICADOS: "os dados ainda não foram publicados — rode o workflow 'Publicar site' no GitHub",
-  ERRO_API: "não consegui falar com o servidor (confira se o Apps Script está publicado)",
+  SEM_DADOS_PUBLICADOS: "os dados ainda não chegaram — tente de novo em alguns minutos; se continuar, avise o suporte",
+  ERRO_API: "não consegui falar com o servidor — confira sua internet e tente de novo",
   TEMPO_ESGOTADO: "o servidor demorou demais pra responder — tente de novo",
-  NAO_AUTORIZADO: "sua sessão venceu — abrindo o login para você entrar de novo",
+  NAO_AUTORIZADO: "sua sessão venceu — abrindo o login para você entrar de novo (o que não foi salvo se perde)",
   /* devolvido quando o Apps Script não conseguiu ler as Propriedades do
      script (acontece sob concorrência). NÃO é sessão expirada — a tela não
      deve deslogar ninguém por causa disso. */
@@ -922,6 +931,10 @@ function erroTexto(codigo){
     const base=String(codigo).slice(0,i).trim(), det=String(codigo).slice(i+1).trim();
     if(ERROS_TEXTO[base]) return ERROS_TEXTO[base]+(det?" ("+det+")":"");
   }
+  /* código sem tradução: não mostrar o código cru sozinho. Só embrulha o que
+     parece código (MAIÚSCULAS_COM_UNDERLINE); texto já legível passa como veio. */
+  if(/^[A-Z0-9_ÁÀÂÃÉÊÍÓÔÕÚÇ ]+(:.*)?$/.test(String(codigo)) && /[A-Z]{3}/.test(String(codigo)))
+    return "Algo deu errado (código "+codigo+"). Tente de novo; se continuar, avise o suporte.";
   return codigo;
 }
 
@@ -1465,8 +1478,8 @@ if("serviceWorker" in navigator){ window.addEventListener("load", ()=>navigator.
     "CANCELAR":"Fecha sem gravar nada",
     "FECHAR":"Fecha este painel",
     "X":"Fechar (Esc)",
-    "SALVAR":"Grava no Notion",
-    "SINCRONIZAR":"Busca no Notion os dados mais recentes",
+    "SALVAR":"Grava",
+    "SINCRONIZAR":"Busca os dados mais recentes",
     "ATUALIZAR":"Recarrega os dados",
     "ATUALIZAR DADOS AGORA":"Limpa o cache do servidor e pede um build do site — só ADM",
     "TENTAR DE NOVO":"Tenta carregar novamente",
@@ -1474,26 +1487,26 @@ if("serviceWorker" in navigator){ window.addEventListener("load", ()=>navigator.
     "VOLTAR PARA O DASHBOARD":"Volta para a página inicial do portal",
     "VOLTAR PARA POS OBRA":"Volta para a lista do pós obra",
     "MARCAR TODAS":"Marca todas as opções da lista",
-    "ENVIAR":"Envia para o Notion",
+    "ENVIAR":"Envia",
     "VISUALIZAR":"Abre o arquivo numa nova aba",
     "ARQ.":"Abre a obra para ver os arquivos",
     "ABRIR OBRA":"Abre o painel desta obra",
     "CONFIRMAR DISTRATO":"Limpa os dados da venda e arquiva as atividades — não tem desfazer",
-    "CRIAR":"Grava no Notion",
+    "CRIAR":"Grava",
     "CRIAR OBRA":"Grava a obra e fecha o formulário",
     "CRIAR E CONTINUAR":"Grava e deixa o formulário aberto para a próxima",
     "NOVA OBRA":"Abre o formulário de obra nova",
     "NOVO SERVICO":"Abre o formulário de chamado de pós obra",
     "SERVICO DE POS OBRA":"Cria um chamado de assistência para esta obra",
-    "GERAR PDF":"Monta o PDF da proposta e guarda no Notion",
+    "GERAR PDF":"Monta o PDF da proposta e guarda",
     "COPIAR":"Copia para a área de transferência",
     "WHATSAPP":"Abre a conversa no WhatsApp com o texto pronto",
     "IMPRIMIR":"Abre a versão para impressão",
     "EXPORTAR":"Baixa os dados em arquivo",
-    "DIAGNOSTICO":"Confere as colunas das bases no Notion e mostra o que falta",
+    "DIAGNOSTICO":"Confere as colunas das bases e mostra o que falta",
     "DAR BAIXA":"Marca a atividade como feita, gravando na obra",
-    "EXCLUIR":"Remove — no Notion fica na lixeira por 30 dias",
-    "ANEXAR":"Envia um arquivo para o Notion"
+    "EXCLUIR":"Remove — fica na lixeira por 30 dias",
+    "ANEXAR":"Envia um arquivo"
   };
   const N=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()
             .replace(/^[\s→←↻🔄✕×✓⚠📎👁🔓📷🌙+\-·•]+|[\s…:]+$/g,"").replace(/\s+/g," ").trim();
@@ -1501,7 +1514,7 @@ if("serviceWorker" in navigator){ window.addEventListener("load", ()=>navigator.
     ["pfechar","Fechar (Esc)"],["hdr-fechar","Volta para a tela anterior"],["hdr-back","Volta para a tela anterior"],
     ["btema","Alterna entre tema claro e escuro"],["bt-graf","Mostra ou esconde o gráfico"],
     ["exp-toggle","Expande ou recolhe"],["gar-toggle","Mostra ou esconde os detalhes da garantia"],
-    ["gar-cab","Mostra ou esconde os detalhes"],["scard","Abre os detalhes"],["btn-sync","Busca no Notion os dados mais recentes"],
+    ["gar-cab","Mostra ou esconde os detalhes"],["scard","Abre os detalhes"],["btn-sync","Busca os dados mais recentes"],
     ["recarregar","Recarrega os dados"],["btn-volta-dash","Volta para a página inicial do portal"],
     ["btn-voltar","Volta para a tela anterior"],["sair","Sai do portal e encerra a sessão neste navegador"]
   ];
