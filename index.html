@@ -943,46 +943,84 @@ function porCnt(chave, n){
   const t=(CNT_ROTULO[chave]?CNT_ROTULO[chave](n):n+" itens pendentes");
   el.textContent=n; el.title=t; el.setAttribute("aria-label",t); el.hidden=false;
 }
+/* 20/11/26 — INÍCIO MAIS LEVE. Antes, toda abertura baixava ligacoes.json,
+ * pos_obra.json e docs.json INTEIROS só para escrever três números de selo.
+ * Agora os números calculados ficam guardados (cópia "selos_v1", com a hora e o
+ * carimbo do dist/updated.json) e:
+ *   - aparecem NA HORA, a partir da cópia;
+ *   - os arquivos grandes só são baixados (depois do primeiro desenho) se a
+ *     cópia tiver mais de 15 min, se faltar algum número ou se o updated.json
+ *     indicar publicação mais nova que a da cópia.
+ * Segunda visita com dado igual: 0 dos 3 arquivos grandes (só o updated.json,
+ * de poucos bytes). */
+const SELOS_CHAVE="selos_v1", SELOS_IDADE=15*60*1000;
+const SELOS_SETORES=["LIGAÇÕES","PÓS OBRA","DOCUMENTOS"];
+let _selosCalculando=false;
+function depoisDoDesenho(fn){
+  if(window.requestIdleCallback) requestIdleCallback(()=>fn(),{timeout:4000});
+  else setTimeout(fn,300);
+}
+/* cada cálculo devolve o número, ou null se o arquivo não veio */
+const SELOS_CALC={
+  "LIGAÇÕES":async()=>{
+    const r=await lerEstatico("ligacoes.json","ligacoes"); if(!r||!r.ok) return null;
+    let n=0;
+    (r.ligacoes||[]).forEach(l=>{
+      const v=l.valores||{};
+      for(const k in v){
+        if(String(k).toUpperCase().indexOf("ALERTA")<0 && String(k).toUpperCase().indexOf("ELERTA")<0) continue;
+        if(String(v[k]||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").indexOf("ATRASAD")>=0){ n++; return; }
+      }
+    });
+    return n;
+  },
+  "PÓS OBRA":async()=>{
+    const r=await lerEstatico("pos_obra.json","pos_obra"); if(!r||!r.ok) return null;
+    return (r.obras||[]).reduce((a,o)=>a+(o.servicosAbertos||0),0);
+  },
+  "DOCUMENTOS":async()=>{
+    const r=await lerEstatico("docs.json","docs"); if(!r||!r.ok) return null;
+    const hoje=new Date().toISOString().slice(0,10);
+    /* mesma regra da tela do setor: atividade que ainda não começou não é
+       cobrança de hoje */
+    let atv=(r.atividades||[]).filter(a=>!a.dataInicial||String(a.dataInicial).slice(0,10)<=hoje).length;
+    let alertas=0;
+    try{
+      const M=criarMotorAlertas(r.campos||[]);
+      alertas=M.contar(r.obras||[]).total;
+      /* 05/10/26: mesma lista limpa da tela (coluna da obra, sem cópias) */
+      atv=M.atividadesAbertas(r.atividades||[], r.obras||[]).length;
+    }catch(e){}
+    return atv+alertas;
+  }
+};
 function contadoresDosSetores(){
-  if(podeAcessar(S,"LIGAÇÕES")){
-    lerEstaticoJa("ligacoes.json","ligacoes", r=>{
-      if(!r||!r.ok) return;
-      const lista=r.ligacoes||[];
-      let n=0;
-      lista.forEach(l=>{
-        const v=l.valores||{};
-        for(const k in v){
-          if(String(k).toUpperCase().indexOf("ALERTA")<0 && String(k).toUpperCase().indexOf("ELERTA")<0) continue;
-          if(String(v[k]||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").indexOf("ATRASAD")>=0){ n++; return; }
-        }
-      });
-      porCnt("LIGAÇÕES", n);
-    });
-  }
-  if(podeAcessar(S,"PÓS OBRA")){
-    lerEstaticoJa("pos_obra.json","pos_obra", r=>{
-      if(!r||!r.ok) return;
-      const obras=r.obras||[];
-      porCnt("PÓS OBRA", obras.reduce((a,o)=>a+(o.servicosAbertos||0),0));
-    });
-  }
-  if(podeAcessar(S,"DOCUMENTOS")){
-    lerEstaticoJa("docs.json","docs", r=>{
-      if(!r||!r.ok) return;
-      const hoje=new Date().toISOString().slice(0,10);
-      /* mesma regra da tela do setor: atividade que ainda não começou não é
-         cobrança de hoje */
-      let atv=(r.atividades||[]).filter(a=>!a.dataInicial||String(a.dataInicial).slice(0,10)<=hoje).length;
-      let alertas=0;
+  const lib=SELOS_SETORES.filter(k=>podeAcessar(S,k));
+  if(!lib.length) return;
+  const c=cacheGet(SELOS_CHAVE);
+  const v=(c&&c.v&&c.v.n)?c.v:null;
+  if(v) lib.forEach(k=>{ if(k in v.n) porCnt(k, v.n[k]); });          // na hora, sem rede
+  depoisDoDesenho(async()=>{
+    if(_selosCalculando) return;
+    _selosCalculando=true;
+    try{
+      let upd="";
       try{
-        const M=criarMotorAlertas(r.campos||[]);
-        alertas=M.contar(r.obras||[]).total;
-        /* 05/10/26: mesma lista limpa da tela (coluna da obra, sem cópias) */
-        atv=M.atividadesAbertas(r.atividades||[], r.obras||[]).length;
+        const r=await fetch("dist/updated.json?v="+Math.floor(Date.now()/60000),{cache:"no-cache"});
+        if(r.ok) upd=String((await r.json()).updated_at||"");
       }catch(e){}
-      porCnt("DOCUMENTOS", atv+alertas);
-    });
-  }
+      const velha=!v || (Date.now()-c.t)>SELOS_IDADE;
+      const faltaAlgum=!!v && lib.some(k=>!(k in v.n));
+      const maisNovo=!!v && !!upd && upd!==String(v.upd||"");
+      if(!(velha||faltaAlgum||maisNovo)) return;                       // a cópia ainda vale: nada a baixar
+      const n=Object.assign({}, v?v.n:{});
+      for(const k of lib){
+        let x=null; try{ x=await SELOS_CALC[k](); }catch(e){}
+        if(x!=null){ n[k]=x; porCnt(k,x); }
+      }
+      cacheSet(SELOS_CHAVE,{upd:upd||(v&&v.upd)||"", n:n});
+    }finally{ _selosCalculando=false; }
+  });
 }
 function pintarKpis(r){
   PORTAL=r;
