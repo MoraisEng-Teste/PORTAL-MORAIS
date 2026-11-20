@@ -925,7 +925,7 @@ async function carregar(){
     pintar();
     carregarContas();          // já deixa a lista de contas pronta para o formulário
   }catch(e){
-    document.getElementById("view").innerHTML=`<div class="vazio">Não consegui ler os dados das obras .<details><summary>Detalhe técnico</summary>${esc(e.message)}. O arquivo é gerado no build do GitHub — step "Buscar dados das Obras".</details></div>`;
+    document.getElementById("view").innerHTML=`<div class="vazio">Não consegui ler os dados das obras. <button class="bt bt-mini" onclick="carregar()">Tentar de novo</button><details><summary>Detalhe técnico</summary>${esc(e.message)}. O arquivo é gerado no build do GitHub — step "Buscar dados das Obras".</details></div>`;
   }
 }
 
