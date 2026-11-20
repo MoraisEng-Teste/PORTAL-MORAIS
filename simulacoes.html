@@ -2176,7 +2176,7 @@ function simParaProposta(id){
     cpfCorretor:String(s.cpfCorretor||""),
     nomeCliente:String(s.cliente||""), cpfCliente:String(s.cpf||""), emailCorretor:String(s.email||"") };
   try{ localStorage.setItem("simParaProposta", JSON.stringify(d)); }
-  catch(e){ alert("Não consegui guardar os dados da simulação neste navegador."); return; }
+  catch(e){ propAviso("Não consegui guardar os dados da simulação neste navegador.","Não foi possível abrir a proposta"); return; }
   window.open("https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/proposta.html?tipo="+encodeURIComponent(d.tipo)+
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
@@ -2293,11 +2293,11 @@ function novoNovaAba(){
   try{ const l = document.getElementById("novo-formFr").contentWindow.location.href; if(l && l!=="about:blank") url = l; }catch(e){}
   window.open(url, "_blank");
 }
-function novoFecharForm(){
+async function novoFecharForm(){
   const fr = document.getElementById("novo-formFr");
   let enviado = false;
   try{ enviado = /enviado\.html/i.test(fr.contentWindow.location.pathname); }catch(e){}
-  if(!enviado && !confirm("Fechar o formulário? O que ainda não foi enviado se perde.")) return;
+  if(!enviado && !(await propPerguntar({titulo:"Fechar o formulário?", texto:"• O que ainda não foi enviado se perde.", sim:"Fechar formulário", nao:"Continuar preenchendo", perigo:true}))) return;
   document.getElementById("novo-form").classList.add("hide");
   document.body.style.overflow = "";
   fr.src = "about:blank";
@@ -2448,7 +2448,7 @@ async function altPropSalvar(){
   const mudouUn=!!k.novo, mudouFin=!A.cred && Math.abs(k.fin-(Number(p.valorFinanciado)||0))>0.5, mudouInf=Math.abs(inf-(Number(p.valorEntrada)||0))>0.005;
   const av=document.getElementById("alt-aviso"), bt=document.getElementById("alt-bt");
   if(!mudouUn && !mudouFin && !mudouInf){ av.className="sim-aviso err"; av.textContent="Nada mudou: escolha outra unidade ou altere um valor."; return; }
-  if(mudouUn && !confirm("Trocar a proposta da unidade "+p.unidade+" para a unidade "+k.novo+"?")) return;
+  if(mudouUn && !(await propPerguntar({titulo:"Trocar de unidade?", texto:"• A proposta sai da unidade "+p.unidade+".\n• Ela passa para a unidade "+k.novo+".", sim:"Trocar para a unidade "+k.novo, nao:"Voltar"}))) return;
   const venda={valorEntrada:inf, saldoFgts:k.fgtsP, saldoFgtsConjuge:k.fgtsC, subsidio:k.sub, prazoEntrada:k.o.prazoEntrada,
     sinalParcelas:k.o.nSinal, diluicao:dil, esquema:altEsquema(g.fluxo), esquemaOriginal:(dil[0]||dil[1]) ? altEsquema(g.fluxoOriginal||[]) : "",
     financiado:k.fin, entradaTotal:g.total, sinal:g.sinaisTotal, devolucao:g.devolucao};
@@ -2514,7 +2514,7 @@ async function planilhaFluxoPortal(formato){
     const n=await planilhaFluxoPadrao(UNS, formato);
     b.textContent="✓ Baixado ("+n+" unidades)";
     setTimeout(()=>{ b.textContent=txt; }, 4000);
-  }catch(e){ alert("Não consegui gerar a planilha: "+((e&&e.message)||e)); b.textContent=txt; }
+  }catch(e){ propAviso("Não consegui gerar a planilha: "+((e&&e.message)||e),"Planilha não gerada"); b.textContent=txt; }
   finally{ b.disabled=false; }
 }
 
@@ -2584,7 +2584,7 @@ function fluxoPdf(tipo, id){
   if(tipo==="prop"){
     const p=PROPS.find(x=>x.id===id); if(!p) return;
     const fluxo=propParseEsquema(p.esquema);
-    if(!fluxo.length){ alert("Esta proposta ainda não tem fluxo gravado."); return; }
+    if(!fluxo.length){ propAviso("Esta proposta ainda não tem fluxo gravado.","Sem fluxo para o PDF"); return; }
     let mud=new Set();
     try{ const dil=propDilAplicar(p, fluxo); mud=new Set([...dil.mudou].map(ix=>fluxo[ix]&&fluxo[ix].i)); }catch(e){}
     const c=entDaProposta(p, fluxo);
@@ -2594,7 +2594,7 @@ function fluxoPdf(tipo, id){
     nome="Fluxo "+(p.proposta||("proposta un "+(p.unidade||"")));
   } else {
     const s=SIMS.find(x=>x.id===id); if(!s) return;
-    if(!propParseEsquema(s.esquema).length){ alert("Esta simulação ainda não tem fluxo (pode estar na fila)."); return; }
+    if(!propParseEsquema(s.esquema).length){ propAviso("Esta simulação ainda não tem fluxo (pode estar na fila).","Sem fluxo para o PDF"); return; }
     corpo=simFluxoHtml(s);
     tit="Fluxo de pagamento da simulação";
     sub=(s.cliente||"")+" · Unidade "+(s.unidade||"")+(s.tipo?" (Tipo "+s.tipo+")":"")+" · "+simData(s.criadoEm);
@@ -2604,7 +2604,7 @@ function fluxoPdf(tipo, id){
   const estilos=[...document.querySelectorAll("style")].map(x=>x.outerHTML).join("\n");
   const hoje=new Date().toLocaleDateString("pt-BR");
   const w=window.open("", "_blank");
-  if(!w){ alert("O navegador bloqueou a janela do PDF. Libere pop-ups para o portal e tente de novo."); return; }
+  if(!w){ propAviso("O navegador bloqueou a janela do PDF.\n• Libere os pop-ups para o portal.\n• Depois tente de novo.","PDF bloqueado"); return; }
   w.document.open();
   w.document.write(`<!doctype html><html lang="pt-BR" data-tema="claro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(nome.replace(/\.pdf$/,""))}</title>
@@ -2678,7 +2678,7 @@ async function simRefazerErros(){
   const av=document.getElementById("sim-avisoErros");
   const bt=document.getElementById("sim-btRefazerErros");
   if(!erros.length){ av.className="sim-aviso ok"; av.textContent="Nenhuma simulação com erro."; return; }
-  if(!confirm("Devolver "+qtd(erros.length,"simulação com erro","simulações com erro")+" para a fila?")) return;
+  if(!(await propPerguntar({titulo:"Devolver para a fila?", texto:"• "+qtd(erros.length,"simulação com erro","simulações com erro")+" volta para a fila.\n• Cada uma tenta de novo desde o começo.", sim:"Devolver para a fila", nao:"Voltar"}))) return;
   bt.disabled=true;
   let ok=0, falha=[];
   for(let i=0;i<erros.length;i++){
@@ -4126,7 +4126,7 @@ async function propDilValidar(id){
   const fx=propParseEsquema(p.esquema); propDilAplicar(p,fx);
   const novo=propDilEsquemaNovo(p.esquema, fx);
   if(novo===p.esquema){ st.msg="Nada mudou no fluxo."; propDilRepintar(id); return; }
-  if(!confirm("Gravar este novo fluxo na proposta?\n\nEle passa a ser o fluxo oficial (é o que vai para a venda). O fluxo anterior fica guardado num comentário da proposta no Notion.")) return;
+  if(!(await propPerguntar({titulo:"Salvar novo fluxo?", texto:"• Ele passa a ser o fluxo oficial, o que vai para a venda.\n• O fluxo anterior fica guardado num comentário da proposta.", sim:"Salvar novo fluxo", nao:"Voltar"}))) return;
   st.gravando=true; st.msg="Gravando…"; propDilRepintar(id);
   const av=document.getElementById("prop-dil-av-"+id);
   const parar=av ? propDilProg(av, ["Lendo a proposta no Notion…","Gravando o novo fluxo (ESQUEMA ENTRADA e DADOS)…","Guardando o fluxo anterior num comentário…"], 12) : ()=>{};
@@ -4637,7 +4637,7 @@ function propVer(id){
         <button type="button" title="Verde" onmousedown="event.preventDefault()" onclick="propCor('#1D7A45')"><span style="color:#1D7A45;font-weight:800">A</span></button>
         <button type="button" title="Cor normal" onmousedown="event.preventDefault()" onclick="propCor('#2A2118')"><span style="font-weight:800">A</span></button>
         <span class="sep"></span>
-        <button type="button" title="Inserir link" onmousedown="event.preventDefault()" onclick="propLink()">🔗 Link</button>
+        <button type="button" title="Inserir link" onmousedown="event.preventDefault()" onclick="propLink()"><span aria-hidden="true">🔗</span> Link</button>
         <button type="button" title="Limpar formatação" onmousedown="event.preventDefault()" onclick="propFmt('removeFormat')">⌫ Limpar</button>
       </div>
       <div id="prop-msg" class="prop-editor" contenteditable="true"
@@ -5022,7 +5022,7 @@ function propPerfilHtml(campos){
 /* 02/10 (item 10) — alerta ao corretor: e-mail com o link de complemento e a lista do que falta */
 async function propAlerta(id){
   const av=document.getElementById("prop-alertaInfo"); if(!av) return;
-  if(!confirm("Enviar ao CORRETOR um e-mail com o link para completar a proposta e a lista do que falta?")) return;
+  if(!(await propPerguntar({titulo:"Enviar alerta ao corretor?", texto:"• O corretor recebe um e-mail.\n• O e-mail traz o link para completar a proposta.\n• E a lista do que falta.", sim:"Enviar alerta", nao:"Voltar"}))) return;
   /* 05/10 (item 6) — andamento visível, como na venda */
   const etapas=["Montando a lista do que falta…","Gerando o link de complemento…","Enviando o e-mail ao corretor (resposta na conversa da proposta)…"];
   const t0=Date.now();
@@ -5136,7 +5136,7 @@ function propObsCelula(p){
 let PROP_OBS_ID=null;
 function propObsAbrir(id){
   const p=(PROPS||[]).find(x=>x.id===id); if(!p) return;
-  if(typeof ehSomenteLeitura==="function" && ehSomenteLeitura(S)){ alert("Perfil somente leitura."); return; }
+  if(typeof ehSomenteLeitura==="function" && ehSomenteLeitura(S)){ propAviso("Seu perfil só permite ler. Peça a quem administra o portal para liberar a edição.","Somente leitura"); return; }
   PROP_OBS_ID=id;
   let m=document.getElementById("prop-obsModal");
   if(!m){
@@ -5232,10 +5232,11 @@ async function propEnviarCorresp(id, chave, nome, email){
   const n=PROP_ARQ_TOTAL[id];
   const hist=String((document.getElementById("prop-correspHist")||{}).textContent||"");
   const jaFoi = !!propEnviosCorresp(PROP_ENVIO_ATUAL||p.envioCorrespondente||"")[propCorrNorm(nome)];
-  if(!confirm("Enviar a documentação da proposta "+(p.proposta||"")+" ("+(p.cliente||"")+" · Un. "+(p.unidade||"")+")\n"+
-              "para "+nome+" — "+email+"?\n\n"+
-              "Vai o PDF da proposta"+(n===undefined?" e os documentos anexados":" + "+qtd(n,"documento anexado","documentos anexados"))+"."+
-              (jaFoi?"\n\nATENÇÃO: esta proposta JÁ foi enviada para "+nome+" antes.":""))) return;
+  if(!(await propPerguntar({titulo:"Enviar a documentação ao correspondente?",
+      texto:"• Proposta "+(p.proposta||"")+" ("+(p.cliente||"")+" · Un. "+(p.unidade||"")+").\n• Para "+nome+" — "+email+".\n"+
+            "• Vai o PDF da proposta"+(n===undefined?" e os documentos anexados":" + "+qtd(n,"documento anexado","documentos anexados"))+"."+
+            (jaFoi?"\n• Atenção: esta proposta já foi enviada para "+nome+" antes.":""),
+      sim:"Enviar documentação", nao:"Voltar"}))) return;
   cx.dataset.enviando="1";
   cx.querySelectorAll("button").forEach(b=>b.disabled=true);
   info.innerHTML='<span class="load"></span> Gerando o PDF, juntando os documentos e enviando para <b>'+esc(nome)+'</b>… (pode levar até 1 minuto)';
@@ -5501,11 +5502,11 @@ async function propStatusInterno(id, nome){
   if(k==="DISTRATO"){
     motivo=((document.getElementById("prop-siMotivo")||{}).value||"").trim();
     if(!motivo){ const av0=document.getElementById("prop-siAviso"); av0.className="sim-aviso err"; av0.textContent="Escreva o motivo do distrato."; return; }
-    if(!confirm("Confirmar o DISTRATO da unidade "+(p.unidade||"")+"?\n\nA venda sai da lista de vendas do condomínio (fica guardada em distratos) e a unidade volta a DISPONÍVEL.")) return;
+    if(!(await propPerguntar({titulo:"Confirmar o distrato?", texto:"• A venda da unidade "+(p.unidade||"")+" sai da lista de vendas do condomínio.\n• Ela fica guardada em distratos.\n• A unidade volta a ficar disponível.", sim:"Confirmar distrato da unidade "+(p.unidade||""), nao:"Voltar", perigo:true}))) return;
   } else if(k==="VENDIDA"){
-    if(!confirm("Marcar a unidade "+(p.unidade||"")+" como VENDIDA?\n\nNo mapa a unidade fica RESERVADA até a ETAPA da venda ficar Concluída; os dados da venda são revalidados na lista de vendas do condomínio e o corretor recebe o e-mail.")) return;
+    if(!(await propPerguntar({titulo:"Marcar como vendida?", texto:"• No mapa, a unidade "+(p.unidade||"")+" fica reservada até a etapa da venda ficar concluída.\n• Os dados da venda são conferidos de novo na lista de vendas do condomínio.\n• O corretor recebe o e-mail.", sim:"Marcar unidade "+(p.unidade||"")+" como vendida", nao:"Voltar"}))) return;
   } else if(k==="PAGOU PREFERENCIA"){
-    if(!confirm("Marcar RESERVA PAGA na unidade "+(p.unidade||"")+"?\n\nA linha da venda já é criada na lista de vendas do condomínio.")) return;
+    if(!(await propPerguntar({titulo:"Marcar reserva paga?", texto:"• A reserva da unidade "+(p.unidade||"")+" fica como paga.\n• A linha da venda já é criada na lista de vendas do condomínio.", sim:"Marcar reserva paga", nao:"Voltar"}))) return;
   }
   const av=document.getElementById("prop-siAviso");
   const etapas = k==="DISTRATO"
@@ -5557,7 +5558,7 @@ async function propStatusInterno(id, nome){
     if(r.avisoUnidade) h+="<br><span style='font-size:12px;color:var(--vermelho)'>Unidade: "+esc(r.avisoUnidade)+"</span>";
     av.className="sim-aviso ok"; av.innerHTML=h;
     if(k==="PAGOU PREFERENCIA" && r.venda && r.venda.linha &&
-       await propSimNao("Preferência paga. Gerar o termo de reserva agora?"))
+       await propSimNao("Reserva paga. Gerar o termo de reserva agora?"))
       propAbrirPreReserva(String(r.venda.linha));
   }
   propSincronizarTudo();
@@ -5578,6 +5579,15 @@ function propSimNao(msg){
     document.body.appendChild(f);
   });
 }
+/* 20/11/2026 (onda 3) — pergunta e aviso no padrão do portal (window.moraisPerguntar, do app.js). Sem o app.js
+   (página aberta sozinha) cai no confirm/alert do navegador. o = {titulo, texto, sim, nao, perigo}. Devolve Promise<boolean>. */
+function propPerguntar(o){
+  if(typeof window.moraisPerguntar==="function") return window.moraisPerguntar(o);
+  const t=(o.titulo?o.titulo+"\n\n":"")+(o.texto||"");
+  if(o.nao===""){ try{ alert(t); }catch(e){} return Promise.resolve(true); }
+  return Promise.resolve(confirm(t));
+}
+function propAviso(texto, titulo){ return propPerguntar({titulo:titulo||"Aviso", texto:texto, sim:"Entendi", nao:""}); }
 /* 28/10 (dono): proposta que JÁ pagou a preferência também gera o termo — acha a linha da venda pela unidade
    na lista de vendas do condomínio (simsVendasCond, o mesmo da Planilha Casas Condomínio). */
 /* 06/11/2026 (dono): depois do Reservar, pergunta se gera o termo de pré-reserva; Sim abre a pergunta rápida
@@ -5609,7 +5619,7 @@ async function propPreReservaDaUnidade(id, o){
 /* 28/10/2026 — TERMO DE PRÉ-RESERVA pela proposta: abre por cima a mesma tela do cartão da unidade
    (conta para devolução, gerar, ver e enviar à Clicksign), desenhada pelo venda-dossie.js na linha da venda. */
 function propAbrirPreReserva(linha, o){
-  if(!window.VendaBlocos || !VendaBlocos.montarPreReserva){ alert("A tela do termo ainda está carregando — tente de novo em instantes."); return; }
+  if(!window.VendaBlocos || !VendaBlocos.montarPreReserva){ propAviso("A tela do termo ainda está carregando. Tente de novo em instantes.","Termo de reserva"); return; }
   let fundo=document.getElementById("prop-pr-fundo");
   if(!fundo){
     fundo=document.createElement("div"); fundo.id="prop-pr-fundo";
@@ -5628,11 +5638,11 @@ function propFecharPreReserva(){
   if(window.VendaBlocos && VendaBlocos.soltarPreReserva) VendaBlocos.soltarPreReserva();
 }
 async function propStatus(id, status){
-  if(status==="VENDIDA" && !confirm("Marcar esta proposta como VENDIDA?\n\nOs dados vão para a lista de vendas do condomínio. No mapa a unidade fica RESERVADA até a ETAPA da venda ficar Concluída.")) return;
+  if(status==="VENDIDA" && !(await propPerguntar({titulo:"Marcar como vendida?", texto:"• Os dados vão para a lista de vendas do condomínio.\n• No mapa, a unidade fica reservada até a etapa da venda ficar concluída.", sim:"Marcar como vendida", nao:"Voltar"}))) return;
   /* 03/11/2026 (dono): Reservar cria a venda, manda o link ao corretor e abre o prazo de 5 dias */
-  if(status==="RESERVADA" && !confirm("Reservar esta proposta?\n\n• a unidade fica RESERVADA no mapa;\n• a venda é criada na lista de vendas do condomínio;\n• o corretor recebe o link para completar dados e documentos;\n• prazo de "+PROP_RESERVA_DIAS+" dias corridos para gerar o contrato — sem contrato, a reserva cai sozinha.")) return;
+  if(status==="RESERVADA" && !(await propPerguntar({titulo:"Reservar esta proposta?", texto:"• A unidade "+((PROPS.find(x=>x.id===id)||{}).unidade||"")+" fica reservada no mapa.\n• A venda é criada na lista de vendas do condomínio.\n• O corretor recebe o link para completar dados e documentos.\n• Prazo de "+PROP_RESERVA_DIAS+" dias corridos para gerar o contrato; sem contrato, a reserva cai sozinha.", sim:"Reservar unidade "+((PROPS.find(x=>x.id===id)||{}).unidade||""), nao:"Voltar"}))) return;
   if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)==="RESERVADA" &&
-     !confirm("Negar esta proposta reservada?\n\nA unidade volta a disponível e a venda criada na reserva vai para distratos.")) return;
+     !(await propPerguntar({titulo:"Negar a proposta reservada?", texto:"• A unidade volta a ficar disponível.\n• A venda criada na reserva vai para distratos.", sim:"Negar proposta", nao:"Voltar", perigo:true}))) return;
   if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)!=="RESERVADA"){
     const pn=PROPS.find(x=>x.id===id)||{};
     if(!(await propSimNao("Negar a proposta de "+(pn.cliente||"este cliente")+"? A unidade "+(pn.unidade||"")+" fica livre."))) return;
@@ -5726,6 +5736,8 @@ function propEstiloEditor(){
       border-radius:4px;padding:4px 8px;font-size:13px;color:var(--text);line-height:1.2;}
     .prop-barra button:hover{background:var(--sup);border-color:var(--border);}
     .prop-barra .sep{width:1px;height:18px;background:var(--border);margin:0 4px;}
+    .prop-linkbox{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);border-bottom:none;padding:6px 7px;background:var(--bg2);}
+    .prop-linkbox input{flex:1 1 220px;min-width:0;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font:inherit;font-size:16px;background:var(--sup);color:var(--text);}
     .prop-editor{min-height:170px;max-height:340px;overflow:auto;border:1px solid var(--border);
       border-radius:0 0 6px 6px;padding:11px 13px;font-size:14px;line-height:1.6;
       background:#fff;color:#2A2118;outline:none;}
@@ -5767,11 +5779,33 @@ function propCor(c){
   try{ document.execCommand("styleWithCSS",false,true); }catch(e){}
   document.execCommand("foreColor",false,c);
 }
+/* 20/11/2026 (onda 3) — o endereço do link é pedido num campo na própria barra do editor (antes: prompt do navegador).
+   A seleção do texto é guardada antes de o campo tomar o foco e devolvida ao aplicar. */
+let PROP_LINK_SEL=null;
 function propLink(){
-  const u=prompt("Endereço do link (https://…)");
-  if(!u) return;
-  document.getElementById("prop-msg").focus();
+  const ed=document.getElementById("prop-msg"); if(!ed) return;
+  let cx=document.getElementById("prop-linkBox");
+  if(cx){ cx.remove(); return; }
+  PROP_LINK_SEL=null;
+  try{ const sel=window.getSelection(); if(sel.rangeCount && ed.contains(sel.getRangeAt(0).commonAncestorContainer)) PROP_LINK_SEL=sel.getRangeAt(0).cloneRange(); }catch(e){}
+  cx=document.createElement("div"); cx.id="prop-linkBox"; cx.className="prop-linkbox";
+  cx.innerHTML='<input id="prop-linkUrl" type="url" inputmode="url" placeholder="Endereço do link (https://…)" aria-label="Endereço do link">'+
+    '<button type="button" class="bt az" onclick="propLinkAplicar()">Inserir link</button>'+
+    '<button type="button" class="bt" onclick="propLinkFechar()">Cancelar</button>';
+  ed.parentNode.insertBefore(cx, ed);
+  const inp=document.getElementById("prop-linkUrl");
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); propLinkAplicar(); } else if(e.key==="Escape"){ e.preventDefault(); propLinkFechar(); } });
+  inp.focus();
+}
+function propLinkFechar(){ const cx=document.getElementById("prop-linkBox"); if(cx) cx.remove(); const ed=document.getElementById("prop-msg"); if(ed) ed.focus(); }
+function propLinkAplicar(){
+  const inp=document.getElementById("prop-linkUrl"), ed=document.getElementById("prop-msg"); if(!inp||!ed) return;
+  const u=String(inp.value||"").trim();
+  if(!u){ inp.focus(); return; }
+  ed.focus();
+  try{ if(PROP_LINK_SEL){ const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(PROP_LINK_SEL); } }catch(e){}
   document.execCommand("createLink",false,u);
+  const cx=document.getElementById("prop-linkBox"); if(cx) cx.remove();
 }
 function propResumoAnexos(){
   const el=document.getElementById("prop-anexos");

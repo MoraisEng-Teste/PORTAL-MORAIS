@@ -12,6 +12,12 @@
  * em nov/2028; pós-chaves a partir do mês seguinte ao balão da entrega. */
 var FluxoPersonalizado = (function () {
   function FL() { return typeof FluxoLivre !== "undefined" ? FluxoLivre : require("./FluxoLivre.js"); }
+  /* 20/11/2026 (onda 3): pergunta no padrão do portal (window.moraisPerguntar, do app.js); sem ele, cai no confirm do
+     navegador. Devolve Promise<boolean> — quem chama continua no .then, nunca depende de resposta na hora. */
+  function perguntar(o) {
+    if (typeof window !== "undefined" && typeof window.moraisPerguntar === "function") return window.moraisPerguntar(o);
+    return Promise.resolve(typeof confirm === "function" ? confirm((o.titulo ? o.titulo + "\n\n" : "") + (o.texto || "")) : true);
+  }
   function r2(v) { return Math.round((Number(v) || 0) * 100) / 100; }
   function c(v) { return Math.round((Number(v) || 0) * 100); }
   function pad(n) { return ("0" + n).slice(-2); }
@@ -221,7 +227,11 @@ var FluxoPersonalizado = (function () {
     }
     function recalcular(forcar) {
       if (!sel) return;
-      if (editado && !forcar && !confirm("Mudar as condições refaz o fluxo padrão e apaga os ajustes feitos nas linhas. Refazer?")) return;
+      if (editado && !forcar) {
+        perguntar({ titulo: "Refazer o fluxo padrão?", texto: "• Mudar as condições refaz o fluxo padrão.\n• Os ajustes feitos nas linhas são apagados.", sim: "Refazer o fluxo", nao: "Voltar", perigo: true })
+          .then(function (ok) { if (ok) recalcular(true); });
+        return;
+      }
       var cnd = condicoes(), teto = r2(cnd.aval * 0.8);
       $('[data-h="preco"]').textContent = r2(cnd.preco) !== r2(sel.valorVenda) ? "tabela: " + brl(sel.valorVenda) : "valor de tabela";
       $('[data-h="fin"]').textContent = "até 80% da avaliação: " + brl(teto);
@@ -342,7 +352,12 @@ var FluxoPersonalizado = (function () {
       limparDesf();   // qualquer outra mudança encerra a chance de desfazer (senão o desfazer apagaria a mudança nova)
       if (cf) {
         if (cf === "un") {
-          if (editado && !confirm("Trocar de unidade apaga os ajustes feitos no fluxo. Trocar?")) { a.value = sel ? String(sel.unidade) : ""; return; }
+          if (editado) {
+            var novaUn = a.value;
+            perguntar({ titulo: "Trocar de unidade?", texto: "• Trocar de unidade apaga os ajustes feitos no fluxo.", sim: "Trocar de unidade", nao: "Voltar", perigo: true })
+              .then(function (ok) { if (ok) { editado = false; escolher(novaUn); } else a.value = sel ? String(sel.unidade) : ""; });
+            return;
+          }
           editado = false; escolher(a.value); return;
         }
         if (cf === "ass" || cf === "dia") opcoesPri();
@@ -369,7 +384,12 @@ var FluxoPersonalizado = (function () {
         return;
       }
       if (a !== "tirar") limparDesf();
-      if (bb === "fechar") { if (!editado || confirm("Fechar apaga o fluxo montado (nada foi gravado). Fechar?")) { el.innerHTML = ""; if (cfg.aoFechar) cfg.aoFechar(); } return; }
+      if (bb === "fechar") {
+        var fecha = function () { el.innerHTML = ""; if (cfg.aoFechar) cfg.aoFechar(); };
+        if (!editado) fecha();
+        else perguntar({ titulo: "Fechar o fluxo?", texto: "• O fluxo montado é apagado.\n• Nada foi gravado.", sim: "Fechar e apagar", nao: "Continuar editando", perigo: true }).then(function (ok) { if (ok) fecha(); });
+        return;
+      }
       if (bb === "finmax") { f("fin").value = din(res.finMax); recalcular(true); return; }
       if (!fluxo) return;
       if (bb === "pdf") { imprimir(); return; }
@@ -378,7 +398,11 @@ var FluxoPersonalizado = (function () {
         if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(function () { fim(true); }, function () { fim(false); }); else fim(false);
         return;
       }
-      if (bb === "padrao") { if (!editado || confirm("Voltar ao fluxo padrão apaga os ajustes. Voltar?")) recalcular(true); return; }
+      if (bb === "padrao") {
+        if (!editado) recalcular(true);
+        else perguntar({ titulo: "Voltar ao fluxo padrão?", texto: "• Os ajustes feitos nas linhas são apagados.", sim: "Voltar ao padrão", nao: "Continuar editando", perigo: true }).then(function (ok) { if (ok) recalcular(true); });
+        return;
+      }
       if (bb === "solta") { travas = {}; guiar(); desenhar(); return; }
       if (bb === "enc") { encaixar(null); guiar(); editado = true; desenhar(); return; }
       if (bb === "add") {
