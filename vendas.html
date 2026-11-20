@@ -227,6 +227,10 @@ tbody tr.sit1:hover td,tbody tr.sit2:hover td,tbody tr.sit3:hover td{filter:brig
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--azul-esc);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .toast.on{opacity:1}
+/* UX onda 1: aviso de erro fica na tela até fechar (ou 12 s) */
+.toast.erro{background:var(--vermelho);pointer-events:auto;display:flex;align-items:flex-start;gap:10px;max-width:min(92vw,560px);line-height:1.4}
+.toast .toast-x{flex:0 0 auto;background:transparent;border:0;color:#fff;font:inherit;font-size:18px;line-height:1;cursor:pointer;min-width:44px;min-height:44px;margin:-10px -16px -10px 0}
+.toast .toast-x:focus-visible{outline:2px solid #fff;outline-offset:-4px;border-radius:10px}
 .semacesso{max-width:460px;margin:80px auto;text-align:center;color:var(--text3)}
 .vazio{padding:26px;text-align:center;color:var(--text3);font-size:13px}
 /* dado sensível: não vem no dist/ (público). Chega pelo Apps Script ao abrir a obra. */
@@ -1446,7 +1450,22 @@ function abasDoSetor(nome){
   return abas;
 }
 
-function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),1900); }
+/* toast(texto, {tipo:"erro"|"ok", ms}) — sucesso some em ~3 s; erro fica até a pessoa fechar (✕) ou 12 s.
+   Sem tipo, mensagens que começam com "Erro", "Não salvou", "Não criou" ou "E-mail inválido" valem como erro. */
+let _toastT=null;
+function toast(m,o){
+  const t=document.getElementById("toast");
+  const erro=((o&&o.tipo)||(/^(Erro|Não salvou|Não criou|E-mail inválido)/.test(String(m))?"erro":"ok"))==="erro";
+  clearTimeout(_toastT);
+  t.textContent=m; t.classList.toggle("erro",erro);
+  if(erro){
+    const x=document.createElement("button"); x.type="button"; x.className="toast-x"; x.setAttribute("aria-label","Fechar aviso"); x.textContent="✕";
+    x.onclick=()=>{ clearTimeout(_toastT); t.classList.remove("on"); };
+    t.appendChild(x); t.setAttribute("role","alert");
+  } else t.removeAttribute("role");
+  t.classList.add("on");
+  _toastT=setTimeout(()=>t.classList.remove("on"),(o&&o.ms)||(erro?12000:3000));
+}
 /* MASTER: vê tudo o que o ADM vê, mas não edita
    ENDEREÇO nem apaga nada do banco (obra, atividade, distrato). No resto ele
    enxerga e edita como ADM — é um diretor, não um observador.
@@ -2079,7 +2098,7 @@ async function condSalvar(id,prop,valor){
   toast("Salvando "+prop+"…");
   let r=null;
   try{ r=await chamar({action:"simsVendaSalvar",pageId:id,prop:prop,valor:valor},70000); }catch(e){ r=null; }
-  if(!r||!r.ok){ toast("Não salvou: "+((r&&(r.mensagem||r.erro))||"sem resposta")); condRender(); return false; }
+  if(!r||!r.ok){ toast("Não salvou: "+((r&&(r.mensagem||(r.erro?erroTexto(r.erro):"")))||"sem resposta")); condRender(); return false; }
   if(r.linha){ const i=COND.linhas.findIndex(x=>x.id===id); if(i>=0) COND.linhas[i]=r.linha; }
   if(r.aviso) toast(r.aviso); else if(r.calculo) toast("Salvo — fluxo recalculado."+(r.calculo.avisos&&r.calculo.avisos.length?" "+r.calculo.avisos[0]:"")); else toast("Salvo.");
   condRender(); if(COND_ABERTA===id) condAbrir(id);
@@ -2810,7 +2829,7 @@ async function condCalcular(id){
     const b3=document.getElementById("cd-calc"); if(b3){ b3.disabled=false; b3.textContent="Salvar e recalcular o fluxo"; }
     return;
   }
-  if(r&&r.erro&&!/ACAO|DESCONHECID|SEM_RESPOSTA/i.test(r.erro)){ fimProg(false); toast("Não salvou: "+(r.mensagem||r.erro)); bt.disabled=false; bt.textContent="Salvar e recalcular o fluxo"; return; }
+  if(r&&r.erro&&!/ACAO|DESCONHECID|SEM_RESPOSTA/i.test(r.erro)){ fimProg(false); toast("Não salvou: "+(r.mensagem||erroTexto(r.erro))); bt.disabled=false; bt.textContent="Salvar e recalcular o fluxo"; return; }
   /* servidor antigo: grava uma por uma, como antes */
   for(const [prop,val] of novos){
     const atual=cdVal(l,prop), a=atual==null?"":String(atual).slice(0,10);
@@ -3323,7 +3342,7 @@ async function darBaixa(a,valor,d,btn){
       atvBadge('#view-setor .tab[data-t="atividades"]', n);
       atualizarBadgesSetores();
     },650);
-  } else { btn.disabled=false; btn.textContent="Dar baixa"; toast("Erro: "+r.erro); }
+  } else { btn.disabled=false; btn.textContent="Dar baixa"; toast("Erro: "+erroTexto(r.erro)); }
 }
 
 /* ---------- ALERTAS ---------- */
@@ -4620,7 +4639,7 @@ async function editarToggle(pageId,prop,btn){
   wrap.querySelectorAll(".tg").forEach(b=>b.classList.remove("on")); btn.classList.add("on");
   aplicarLocal(pageId,prop,valor);
   const r=await escrever({action:"updateVenda",pageId:pageId,prop:prop,tipo:"select",valor:valor},"Editar "+prop);
-  toast(r.ok?(r.enfileirado?"Salvo aqui ✓ — sobe quando reconectar":"Salvo ✓"):("Erro: "+r.erro));
+  toast(r.ok?(r.enfileirado?"Salvo aqui ✓ — sobe quando reconectar":"Salvo ✓"):("Erro: "+erroTexto(r.erro)));
 }
 /* Enquanto o valor sensível não chega do Apps Script, mostra um campo travado.
    Travado de propósito: input vazio e editável convidaria a digitar por cima e
@@ -5044,25 +5063,25 @@ async function editar(pageId,prop,tipo,valor,el){
   try{ pnEspelhar(prop,valor,el); }catch(e){}   // 05/11: a outra aba do painel mostra o valor novo (mesma coluna)
   const r=await escrever({action:"updateVenda",pageId:pageId,prop:prop,tipo:tipo,valor:valor},"Editar "+prop);
   if(el)el.style.borderColor=r.ok?(r.enfileirado?"#E67E22":"#4cd964"):"#C0392B";
-  toast(r.ok?(r.enfileirado?"Salvo aqui ✓ — sobe quando reconectar":"Salvo ✓"):("Erro: "+r.erro));
+  toast(r.ok?(r.enfileirado?"Salvo aqui ✓ — sobe quando reconectar":"Salvo ✓"):("Erro: "+erroTexto(r.erro)));
 }
 async function editarMulti(pageId,prop,el){
   const box=el.closest(".campo,.campo-inline"); const marc=[...box.querySelectorAll("input[type=checkbox]:checked")].map(i=>i.parentNode.textContent.trim());
   aplicarLocal(pageId,prop,marc);
   const r=await escrever({action:"updateVenda",pageId:pageId,prop:prop,tipo:"multi_select",valor:marc},"Editar "+prop);
-  toast(r.ok?(r.enfileirado?"Na fila ✓":"Salvo ✓"):("Erro: "+r.erro));
+  toast(r.ok?(r.enfileirado?"Na fila ✓":"Salvo ✓"):("Erro: "+erroTexto(r.erro)));
 }
 async function enviarArquivo(pageId,prop,input){
   const f=input.files[0]; if(!f)return; toast("Enviando "+f.name+"…");
   try{ const b64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result.split(",")[1]);rd.onerror=rej;rd.readAsDataURL(f);});
     const r=await escrever({action:"upload",pageId:pageId,prop:prop,filename:f.name,mimeType:f.type||"application/octet-stream",dataBase64:b64},"Arquivo: "+f.name);
-    toast(r.ok?(r.enfileirado?"Arquivo na fila ✓":"Arquivo enviado ✓"):("Erro: "+r.erro));
+    toast(r.ok?(r.enfileirado?"Arquivo na fila ✓":"Arquivo enviado ✓"):("Erro: "+erroTexto(r.erro)));
   }catch(e){ toast("Falha ao ler o arquivo"); }
 }
 async function excluirObra(pageId){
   if(!confirm("Excluir esta obra do Notion? (arquiva a página)"))return;
   const r=await escrever({action:"excluirVenda",pageId:pageId},"Excluir obra");
-  toast(r.ok?(r.enfileirado?"Na fila ✓":"Excluída ✓"):("Erro: "+r.erro));
+  toast(r.ok?(r.enfileirado?"Na fila ✓":"Excluída ✓"):("Erro: "+erroTexto(r.erro)));
   if(r.ok&&!r.enfileirado){ fecharObra(); carregarPlanilha(document.getElementById("view-setor").style.display!=="none"?"set":"hub"); }
 }
 /* ---------- DISTRATO ---------- */
