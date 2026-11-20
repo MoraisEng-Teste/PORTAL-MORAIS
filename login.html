@@ -72,7 +72,7 @@ button:disabled{opacity:.6;cursor:default}
       <img src="img/logo.png" alt="Morais Engenharia" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
       <span class="fallback" style="display:none">MORAIS</span>
     </div>
-    <h1>Sistemas Internos</h1>
+    <h1>Portal Morais</h1>
     <div class="sub">Engenharia e Construção</div>
 
     <div class="erro" id="erro"></div>
@@ -109,6 +109,23 @@ const DESTINO = "index.html";   // pra onde vai depois de logar (portal)
 /* =========================================== */
 
 const KEY = "morais_sessao";
+const VOLTA = "morais_volta";   // endereço onde a pessoa estava quando a sessão venceu (guardado pelo app.js)
+
+/* Para onde ir depois de entrar: a página em que a pessoa estava (se for uma
+   página .html do próprio portal, nunca o login) ou o início. */
+function destinoPosLogin(){
+  let v = null;
+  try { v = sessionStorage.getItem(VOLTA); sessionStorage.removeItem(VOLTA); } catch(e){}
+  if(!v || typeof v !== "string" || v.charAt(0) !== "/" || v.charAt(1) === "/" || v.indexOf("\\") >= 0) return DESTINO;
+  try{
+    const u = new URL(v, location.href);
+    const base = location.pathname.replace(/[^\/]*$/, "");   // pasta onde está o login.html
+    if(u.origin !== location.origin) return DESTINO;
+    if(u.pathname.indexOf(base) !== 0 || !/\.html$/i.test(u.pathname)) return DESTINO;
+    if(/(^|\/)login\.html$/i.test(u.pathname)) return DESTINO;
+    return u.pathname + u.search + u.hash;
+  }catch(e){ return DESTINO; }
+}
 
 function sessaoSalva(){
   try { return JSON.parse(localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "null"); }
@@ -162,8 +179,9 @@ function mostrarBloqueio(segundos){
 }
 
 const MENSAGENS = {
-  LOGIN_NAO_ENCONTRADO: "Login não encontrado.",
-  SENHA_INCORRETA:      "Senha incorreta.",
+  /* uma mensagem só: dizer qual dos dois errou ajuda quem tenta adivinhar logins */
+  LOGIN_NAO_ENCONTRADO: "Login ou senha incorretos.",
+  SENHA_INCORRETA:      "Login ou senha incorretos.",
   INFORME_LOGIN:        "Digite o login.",
   BLOQUEADO:            "Muitas tentativas. Aguarde e tente de novo.",
   NAO_AUTORIZADO:       "Sessão expirada. Entre novamente."
@@ -184,17 +202,17 @@ async function entrar(){
     const res = await api({ action:"login", login, senha });
     if(!res.ok){
       if(res.erro==="BLOQUEADO"){ mostrarBloqueio(res.segundos); return; }
-      let msg = MENSAGENS[res.erro] || ("Erro: " + res.erro);
-      if(res.erro==="SENHA_INCORRETA" && typeof res.restantes==="number") msg += " ("+res.restantes+" tentativa(s) restante(s))";
+      let msg = MENSAGENS[res.erro] || ("Não deu para entrar agora (código " + res.erro + "). Tente de novo em 1 minuto.");
+      if((res.erro==="SENHA_INCORRETA"||res.erro==="LOGIN_NAO_ENCONTRADO") && typeof res.restantes==="number") msg += " ("+res.restantes+" tentativa(s) restante(s))";
       mostrarErro(msg); return;
     }
 
     const dados = JSON.stringify({ token: res.token, ...res.sessao });
     sessionStorage.removeItem(KEY); localStorage.removeItem(KEY);
     (manter ? localStorage : sessionStorage).setItem(KEY, dados);
-    location.href = DESTINO;
+    location.href = destinoPosLogin();
   }catch(err){
-    mostrarErro("Não consegui falar com o servidor. Confira a URL do Apps Script e a internet.");
+    mostrarErro("Não consegui falar com o servidor. Confira sua internet e tente de novo.");
   }finally{
     btn.textContent = "Entrar";
     // durante o bloqueio o botão continua travado (quem libera é o contador)
@@ -210,7 +228,7 @@ async function entrar(){
    Apps Script, que continua conferindo em toda leitura e escrita real. */
 (function(){
   const s = sessaoSalva();
-  if(s && s.token && API.indexOf("COLE_AQUI") !== 0){ location.href = DESTINO; return; }
+  if(s && s.token && API.indexOf("COLE_AQUI") !== 0){ location.href = destinoPosLogin(); return; }
   document.getElementById("login").focus();
 })();
 </script>
