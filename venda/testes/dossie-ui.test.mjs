@@ -66,7 +66,7 @@ test("mensagens de erro em português, com o caso do arquivo guardado", () => {
   assert.equal(D.mensagemDeErro("LEITURA_FALHOU", true), "Arquivo guardado; a leitura falhou — use Ler de novo.");
   assert.equal(D.mensagemDeErro("NAO_AUTORIZADO"), "Sua sessão expirou — entre de novo no portal.");
   assert.equal(D.mensagemDeErro("TIPO_DE_ARQUIVO_NAO_SUPORTADO"), "Formato não suportado — envie foto em JPG ou PNG, ou PDF. (Foto de iPhone em HEIC: tire um print ou exporte como JPG.)");
-  assert.equal(D.mensagemDeErro("COLUNA_FALTANDO: VALOR DO SUBSÍDIO"), "A base não tem a coluna VALOR DO SUBSÍDIO — avise o desenvolvedor.");
+  assert.equal(D.mensagemDeErro("COLUNA_FALTANDO: VALOR DO SUBSÍDIO"), "Falta um campo na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a base não tem a coluna VALOR DO SUBSÍDIO.)");
   assert.equal(D.mensagemDeErro("XPTO"), "Algo deu errado (XPTO) — tente de novo.");
   assert.equal(D.mensagemDeErro("TROCAR_SEM_ARQUIVO"), "Escolha o arquivo novo para trocar.");
 });
@@ -142,10 +142,10 @@ test("contrato: sem estado ainda mostra carregando", () => {
 /* entrega 9: os três estados */
 const PRE = (x = {}) => ({ gerado: false, etapa: "PRE", pre: Object.assign({ nome: "PRÉ-CONTRATO - X [#0a1b2c3d].pdf", url: "https://drive.example/p", em: "", conferido: false, desatualizado: false }, x) });
 
-test("contrato (a) sem pré-contrato: só Gerar pré-contrato, habilitado; nada de Visualizar nem Conferi", () => {
+test("contrato (a) sem pré-contrato: só Gerar prévia do contrato, habilitado; nada de Visualizar nem Conferi", () => {
   for (const est of [{ gerado: false }, { gerado: false, etapa: "NENHUM", pre: null }]) {
     const h = D.htmlContrato(est, uic());
-    assert.match(h, />Gerar pré-contrato</);
+    assert.match(h, />Gerar prévia do contrato</);
     assert.doesNotMatch(botao(h, "c-pre"), /disabled/);
     assert.equal(botao(h, "c-ver"), null);
     assert.equal(botao(h, "c-aprovar"), null);
@@ -153,15 +153,15 @@ test("contrato (a) sem pré-contrato: só Gerar pré-contrato, habilitado; nada 
   }
 });
 
-test("contrato (b) pré-contrato gerado: botão Visualizar pré-contrato (PDF vem pelo portal), Conferi e Gerar pré-contrato de novo", () => {
+test("contrato (b) pré-contrato gerado: botão Visualizar prévia (PDF vem pelo portal), Conferi e Gerar prévia do contrato de novo", () => {
   const h = D.htmlContrato(PRE(), uic());
-  assert.match(h, /data-acao="c-ver-pre"[^>]*>Visualizar pré-contrato</);
+  assert.match(h, /data-acao="c-ver-pre"[^>]*>Visualizar prévia</);
   assert.doesNotMatch(h, /drive\.example/, "o link do Drive não vai para a tela");
-  assert.match(h, /Pré-contrato: PRÉ-CONTRATO - X \[#0a1b2c3d\]\.pdf/);
+  assert.match(h, /Prévia do contrato: PRÉ-CONTRATO - X \[#0a1b2c3d\]\.pdf/);
   assert.match(h, /amarelo = preenchido pelo app; vermelho = ficou em branco/);
   assert.match(h, />Conferi, está tudo certo — gerar contrato</);
   assert.doesNotMatch(botao(h, "c-aprovar"), /disabled/);
-  assert.match(h, />Gerar pré-contrato de novo</);
+  assert.match(h, />Gerar prévia do contrato de novo</);
   assert.equal(botao(h, "c-ver"), null);
   /* nenhuma URL vinda do servidor vira âncora */
   assert.doesNotMatch(D.htmlContrato(PRE({ url: "javascript:alert(1)" }), uic()), /javascript:/);
@@ -171,18 +171,18 @@ test("contrato (b) pré-contrato gerado: botão Visualizar pré-contrato (PDF ve
 
 test("contrato (b) pré-contrato desatualizado: aviso e Conferi travado; Gerar de novo liberado", () => {
   const h = D.htmlContrato(PRE({ desatualizado: true }), uic());
-  assert.match(h, /Os dados mudaram depois deste pré-contrato/);
+  assert.match(h, /Os dados mudaram depois desta prévia do contrato/);
   assert.match(botao(h, "c-aprovar"), /disabled/);
   assert.doesNotMatch(botao(h, "c-pre"), /disabled/);
 });
 
 test("contrato: gerando (pré-contrato ou final) avisa e desabilita todos os botões", () => {
   const h = D.htmlContrato({ gerado: true, nome: "Contrato.pdf", etapa: "FINAL" }, uic({ ocupadoContrato: "pre" }));
-  assert.match(h, /gerando o pré-contrato… \(até 1 minuto\)/);
+  assert.match(h, /gerando a prévia do contrato… \((pode levar até 2 minutos)\)/);
   assert.match(botao(h, "c-pre"), /disabled/);
   assert.match(botao(h, "c-ver"), /disabled/);
   const a = D.htmlContrato(PRE(), uic({ ocupadoContrato: "aprovar" }));
-  assert.match(a, /gerando o contrato… \(até 1 minuto\)/);
+  assert.match(a, /gerando o contrato… \((pode levar até 2 minutos)\)/);
   assert.match(botao(a, "c-aprovar"), /disabled/);
   assert.match(botao(a, "c-pre"), /disabled/);
 });
@@ -198,14 +198,14 @@ test("estadoContrato e etapaContrato: resposta nova e antiga", () => {
 });
 
 test("mensagemContrato: pré-contrato faltando ou desatualizado", () => {
-  assert.equal(D.mensagemContrato({ erro: "PRECONTRATO_FALTANDO" }), "Gere o pré-contrato e confira antes de gerar o contrato.");
-  assert.match(D.mensagemContrato({ erro: "PRECONTRATO_DESATUALIZADO" }), /^Os dados mudaram depois do pré-contrato/);
+  assert.equal(D.mensagemContrato({ erro: "PRECONTRATO_FALTANDO" }), "Gere a prévia do contrato e confira antes de gerar o contrato.");
+  assert.match(D.mensagemContrato({ erro: "PRECONTRATO_DESATUALIZADO" }), /^Os dados mudaram depois da prévia do contrato/);
 });
 
 test("mensagemContrato: erros do Conferi dizem o que fazer (01/11)", () => {
-  assert.equal(D.mensagemContrato({ erro: "PRECONTRATO_REFAZER" }), "Não consegui gerar o contrato — gere o pré-contrato de novo, confira e tente outra vez.");
+  assert.equal(D.mensagemContrato({ erro: "PRECONTRATO_REFAZER" }), "Não consegui gerar o contrato — gere a prévia do contrato de novo, confira e tente outra vez.");
   assert.equal(D.mensagemContrato({ erro: "NOTION_OCUPADO" }), "O sistema está ocupado — espere 1 minuto e tente de novo.");
-  assert.equal(D.mensagemContrato({ erro: "CONTRATO_EM_ASSINATURA" }), "Este contrato já foi enviado para assinatura. Para mudar, cancele o envelope primeiro.");
+  assert.equal(D.mensagemContrato({ erro: "CONTRATO_EM_ASSINATURA" }), "Este contrato já foi enviado para assinatura. Para mudar, cancele o envio para assinatura primeiro.");
 });
 
 test("contrato: faltas viram lista escapada com o título", () => {
@@ -389,7 +389,7 @@ const ESTADO_ENVIADO = {
 };
 test("03/11: aba Contrato com o envelope aberto — só leitura: faixa, Visualizar, Ver fluxo e o que vai no contrato em texto", () => {
   const h = D.htmlContratoLeitura(D.estadoContrato(ESTADO_ENVIADO), { rascunho: {} });
-  assert.match(h, /Contrato enviado para assinatura — só leitura\. Para mudar algo, cancele o envelope\./);
+  assert.match(h, /Contrato enviado para assinatura — só leitura\. Para mudar algo, cancele o envio para assinatura\./);
   assert.equal((h.match(/data-acao="c-ver"/g) || []).length, 1);
   assert.match(h, /data-acao="c-ver-cfd-pre"/);
   assert.match(h, /data-acao="c-fluxo-ver"/);
@@ -420,9 +420,9 @@ test("03/11: contrato final desatualizado — estadoContrato guarda o aviso do s
   assert.equal(D.estadoContrato(ESTADO_ENVIADO).envioDesatualizado, undefined, "servidor antigo: sem o campo");
 });
 test("03/11: mensagens — ENVELOPE_ABERTO e CONTRATO_DESATUALIZADO usam o texto do servidor; sem ele, o texto de cancelar o envelope", () => {
-  assert.equal(D.mensagemContrato({ erro: "ENVELOPE_ABERTO", mensagem: "O termo já foi enviado para assinatura. Para mudar, cancele o envelope do termo primeiro." }),
-               "O termo já foi enviado para assinatura. Para mudar, cancele o envelope do termo primeiro.");
-  assert.equal(D.mensagemContrato({ erro: "ENVELOPE_ABERTO" }), "O contrato já foi enviado para assinatura. Para mudar, cancele o envelope primeiro.");
+  assert.equal(D.mensagemContrato({ erro: "ENVELOPE_ABERTO", mensagem: "O termo já foi enviado para assinatura. Para mudar, cancele o envio para assinatura do termo primeiro." }),
+               "O termo já foi enviado para assinatura. Para mudar, cancele o envio para assinatura do termo primeiro.");
+  assert.equal(D.mensagemContrato({ erro: "ENVELOPE_ABERTO" }), "O contrato já foi enviado para assinatura. Para mudar, cancele o envio para assinatura primeiro.");
 });
 test("03/11: a aba Contrato troca para só leitura quando o envelope abre e volta quando cancela (fonte)", async () => {
   const fs = await import("node:fs");

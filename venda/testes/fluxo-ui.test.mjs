@@ -31,7 +31,7 @@ test("venda lançada: o botão Alterar fluxo some e a linha diz que já foi lan�
   assert.match(l, /Já lançado no Mais Controle com este fluxo; não muda mais por aqui\./);
   assert.equal(botao(l, "c-fluxo-abrir"), "");
   assert.match(botao(l, "c-fluxo-ver"), />Ver fluxo/);
-  for (const [trava, txt] of [["FLUXO_ASSINATURA_ABERTA", /cancele o envelope/], ["FLUXO_CONTRATO_ASSINADO", /aditivo/]]) {
+  for (const [trava, txt] of [["FLUXO_ASSINATURA_ABERTA", /cancele o envio para assinatura/], ["FLUXO_CONTRATO_ASSINADO", /aditivo/]]) {
     const h = D.htmlContrato(estado({ ...fechado, trava }), {});
     assert.match(h, txt);
     assert.match(botao(h, "c-fluxo-abrir"), /disabled/);

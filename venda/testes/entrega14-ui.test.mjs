@@ -54,10 +54,10 @@ test("Recebimentos: rascunho e arquivo escolhido sobrevivem ao redesenho; ocupad
 
 test("Recebimentos: mensagens de sucesso, avisos de e-mail e erros", () => {
   assert.equal(D.mensagemRec({ ok: true, emails: 2 }, "Sinal"), "Recebimento do Sinal confirmado — e-mail de aviso enviado.");
-  assert.match(D.mensagemRec({ ok: true, aviso: "EMAIL_NAO_CONFIGURADO" }, "Sinal"), /não está configurado \(RECEBIMENTO_EMAILS\)/);
+  assert.match(D.mensagemRec({ ok: true, aviso: "EMAIL_NAO_CONFIGURADO" }, "Sinal"), /não está configurado — peça ajuda a quem cuida do sistema\. \(Detalhe técnico: RECEBIMENTO_EMAILS\.\)/);
   assert.match(D.mensagemRec({ ok: true, aviso: "EMAIL_FALHOU" }, "Entrada"), /^Recebimento do Entrada confirmado, mas o e-mail de aviso não saiu/);
   assert.match(D.mensagemRec({ ok: false, erro: "COMPROVANTE_OBRIGATORIO" }), /Escolha o comprovante/);
-  assert.match(D.mensagemRec({ ok: false, erro: "COLUNA_FALTANDO: RECEBIMENTO - SINAL DATA" }), /A base não tem a coluna RECEBIMENTO - SINAL DATA/);
+  assert.match(D.mensagemRec({ ok: false, erro: "COLUNA_FALTANDO: RECEBIMENTO - SINAL DATA" }), /a base não tem a coluna RECEBIMENTO - SINAL DATA/);
   assert.match(D.mensagemRec({ ok: false, erro: "ACAO_DESCONHECIDA" }), /ainda não foram ligados/);
 });
 

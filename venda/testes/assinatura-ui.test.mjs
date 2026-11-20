@@ -105,7 +105,7 @@ test("rascunho que ficou na Clicksign: Enviar desabilitado e orienta Descartar r
   const h = A.montarBlocoAssinatura(ctx({ estado: { situacao: "RASCUNHO", envelope: true, signatarios: [] } }));
   assert.match(botao(h, "a-enviar")[0], /disabled/);
   assert.doesNotMatch(botao(h, "a-atualizar")[0], /disabled/);
-  assert.match(h, /Rascunho na Clicksign \(não foi enviado\)\. O envio parou no meio\. Clique em Descartar rascunho e envie de novo\./);
+  assert.match(h, /Envio incompleto na Clicksign \(não foi enviado\)\. Clique em Descartar rascunho e envie de novo\./);
 });
 
 test("ocupado ou perfil TESTES: botões desabilitados; TESTES também não atualiza (Atualizar grava na casa)", () => {
@@ -142,14 +142,14 @@ test("mensagens amigáveis por código", () => {
   assert.match(m({ erro: "SEM_CONTRATO_GERADO" }), /Gere o contrato/);
   assert.match(m({ erro: "FALTAM_DADOS", faltas: ["a"] }), /Complete os dados/);
   assert.equal(m({ erro: "CLICKSIGN_FALHOU", passo: "requisitos", http: 422, detalhe: "role inválido" }),
-               "A Clicksign recusou o envio (passo: requisitos, código 422: role inválido). Nada foi enviado aos signatários — avise o desenvolvedor.");
+               "A Clicksign recusou o envio (passo: requisitos, código 422: role inválido). Nada foi enviado aos assinantes — peça ajuda a quem cuida do sistema.");
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "envelope", http: 0, detalhe: "" }), /não respondeu/);
   assert.match(m({ erro: "GRAVACAO_FALHOU", envelopeId: "env-1" }), /env-1.*Atualizar situação.*não envie de novo/);
   assert.match(m({ erro: "GRAVACAO_FALHOU", rascunhoApagado: true }), /Nada foi enviado.*tente de novo/);
   assert.match(m({ erro: "ASSINATURA_OCUPADA" }), /outro envio.*em andamento/);
   assert.match(m({ erro: "CONTRATO_DESATUALIZADO" }), /Os dados mudaram depois de gerar o contrato — gere de novo/);
   assert.equal(m({ erro: "TERMO_DESATUALIZADO" }), "Os dados mudaram depois de gerar o termo de reserva — gere o termo de novo e depois envie.");
-  assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "documento", http: 422, rascunhoApagado: true }), /Nada foi enviado aos signatários/);
+  assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "documento", http: 422, rascunhoApagado: true }), /Nada foi enviado aos assinantes/);
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "documento", http: 422, envelopeId: "env-1", rascunhoApagado: false }),
                /Clique em Descartar rascunho e envie de novo/);
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "ativar", http: 0, envelopeId: "env-1", rascunhoApagado: false, incerto: true }),
@@ -283,12 +283,12 @@ test("27/10: cada signatário mostra o e-mail para onde a Clicksign mandou (esca
   assert.doesNotMatch(h, /<b>@x/);
 });
 
-test("29/10 Cancelar envelope: só com ENVIADO; confirma, chama assinaturaCancelar e mostra CANCELADO (Enviar de novo liberado)", async () => {
+test("29/10 Cancelar envio para assinatura: só com ENVIADO; confirma, chama assinaturaCancelar e mostra CANCELADO (Enviar de novo liberado)", async () => {
   const pend = { papel: "Testemunha 1", assinou: false, situacao: "pendente", data: "" };
   const c0 = ctx({ estado: { situacao: "ENVIADO", envelope: true, signatarios: [pend] } });
   const h = A.montarBlocoAssinatura(c0);
   assert.doesNotMatch(botao(h, "a-cancelar")[0], /disabled/);
-  assert.match(h, />Cancelar envelope</);
+  assert.match(h, />Cancelar envio para assinatura</);
   const assinado = A.montarBlocoAssinatura(ctx({ estado: { situacao: "ASSINADO", envelope: true, signatarios: [] } }));
   assert.equal(botao(assinado, "a-cancelar").length, 0);
   const t = A.montarBlocoAssinatura(ctx({ testes: true, estado: { situacao: "ENVIADO", envelope: true, signatarios: [pend] } }));
@@ -301,7 +301,7 @@ test("29/10 Cancelar envelope: só com ENVIADO; confirma, chama assinaturaCancel
     chamar: async (x) => { chamadas.push(x); return { ok: true, cancelou: true, situacao: "CANCELADO", envelope: true, signatarios: [pend] }; } });
   assert.deepEqual(chamadas, [{ action: "assinaturaCancelar", pageId: "p" }]);
   assert.equal(ok.estado.situacao, "CANCELADO");
-  assert.match(ok.msg, /Envelope cancelado/);
+  assert.match(ok.msg, /Envio para assinatura cancelado/);
   assert.equal(A.podeEnviar(ok), true);
   const termo = await A.executarAcaoAssinatura("p-cancelar", ctx({ doc: "PRE_RESERVA", estado: c0.estado }), { pageId: "p", confirmar: () => true,
     chamar: async (x) => { chamadas.push(x); return { ok: false, erro: "ENVELOPE_NAO_ATIVO" }; } });
@@ -323,7 +323,7 @@ test("Descartar rascunho: botão com RASCUNHO (TESTES e ocupado não), texto sem
   assert.equal(botao(h, "a-descartar").length, 1);
   assert.doesNotMatch(botao(h, "a-descartar")[0], /disabled/);
   assert.match(h, />Descartar rascunho</);
-  assert.match(h, /O envio parou no meio\. Clique em Descartar rascunho e envie de novo\./);
+  assert.match(h, /Clique em Descartar rascunho e envie de novo\./);
   assert.doesNotMatch(h, /apague o rascunho na Clicksign/);
   assert.equal(botao(A.montarBlocoAssinatura(ctx({ estado: { situacao: "ENVIADO", envelope: true, signatarios: [] } })), "a-descartar").length, 0);
   assert.equal(botao(A.montarBlocoAssinatura(ctx({ testes: true, estado: c0.estado })), "a-descartar").length, 0);
@@ -344,7 +344,7 @@ test("Descartar rascunho: botão com RASCUNHO (TESTES e ocupado não), texto sem
 
 test("Descartar rascunho: se o servidor não descartou (já enviado), a tela mostra o avisoTexto dele", async () => {
   const c0 = ctx({ estado: { situacao: "RASCUNHO", envelope: true, signatarios: [] } });
-  const avisoTexto = "O contrato já tinha sido enviado aos signatários. Nada foi descartado — a situação foi atualizada.";
+  const avisoTexto = "O contrato já tinha sido enviado aos assinantes. Nada foi descartado — a situação foi atualizada.";
   const r = await A.executarAcaoAssinatura("a-descartar", c0, { pageId: "p", confirmar: () => true,
     chamar: async () => ({ ok: true, descartou: false, situacao: "ENVIADO", envelope: true, signatarios: [], avisoTexto }) });
   assert.equal(r.msg, avisoTexto);
@@ -514,7 +514,7 @@ test("03/11: clique em Enviar com o contrato desatualizado não chama o servidor
   const msg = "O fluxo ou as condições especiais mudaram depois do contrato. Gere o contrato de novo antes de enviar.";
   assert.equal(A.mensagemAssinatura({ erro: "CONTRATO_DESATUALIZADO", mensagem: msg }), msg);
   assert.match(A.mensagemAssinatura({ erro: "CONTRATO_DESATUALIZADO" }), /gere de novo/, "carimbo (sem mensagem) segue com o texto de antes");
-  assert.equal(A.mensagemAssinatura({ erro: "ENVELOPE_ABERTO", mensagem: "cancele o envelope" }), "cancele o envelope");
+  assert.equal(A.mensagemAssinatura({ erro: "ENVELOPE_ABERTO", mensagem: "cancele o envio para assinatura" }), "cancele o envio para assinatura");
 });
 test("03/11: com o envelope aberto o bloco da Clicksign segue com Atualizar, Reenviar e Cancelar (sem Prévia)", () => {
   const h = A.montarBlocoAssinatura(ctx({ estado: { situacao: "ENVIADO", envelope: true, signatarios: [{ papel: "Comprador 1", situacao: "pendente" }] } }));
@@ -575,7 +575,7 @@ test("Trocar e-mail: pergunta o e-mail, confere, confirma e manda signerId + e-m
 });
 
 test("Trocar e-mail: erros do servidor viram mensagem que diz o que fazer", async () => {
-  for (const [erro, re] of [["TROCA_SEM_REQUISITOS", /cancele o envelope e envie de novo/], ["TROCA_INCOMPLETA", /e-mail antigo e o novo/],
+  for (const [erro, re] of [["TROCA_SEM_REQUISITOS", /cancele o envio para assinatura e envie de novo/], ["TROCA_INCOMPLETA", /e-mail antigo e o novo/],
                             ["EMAIL_REPETIDO", /outra pessoa/], ["SIGNATARIO_JA_ASSINOU", /já assinou/]]) {
     const r = await A.executarAcaoAssinatura("a-trocar-email", ctx({ estado: COM_IDS }), { pageId: "p", alvo: "sig-2",
       perguntar: () => "novo@teste.example", confirmar: () => true, chamar: async () => ({ ok: false, erro }) });

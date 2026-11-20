@@ -227,6 +227,10 @@ tbody tr.sit1:hover td,tbody tr.sit2:hover td,tbody tr.sit3:hover td{filter:brig
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--azul-esc);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .toast.on{opacity:1}
+/* UX onda 1: aviso de erro fica na tela até fechar (ou 12 s) */
+.toast.erro{background:var(--vermelho);pointer-events:auto;display:flex;align-items:flex-start;gap:10px;max-width:min(92vw,560px);line-height:1.4}
+.toast .toast-x{flex:0 0 auto;background:transparent;border:0;color:#fff;font:inherit;font-size:18px;line-height:1;cursor:pointer;min-width:44px;min-height:44px;margin:-10px -16px -10px 0}
+.toast .toast-x:focus-visible{outline:2px solid #fff;outline-offset:-4px;border-radius:10px}
 .semacesso{max-width:460px;margin:80px auto;text-align:center;color:var(--text3)}
 .vazio{padding:26px;text-align:center;color:var(--text3);font-size:13px}
 /* dado sensível: não vem no dist/ (público). Chega pelo Apps Script ao abrir a obra. */
@@ -372,6 +376,16 @@ tr.setor-detalhe td{background:var(--bg2);padding:12px 16px}
 .cd-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:800}
 .cd-tag.ok{background:#EAF6EF;color:#1D5433}.cd-tag.pend{background:#FDECEA;color:#8A2E17}
 .cd-ov{position:fixed;inset:0;background:rgba(15,30,45,.55);z-index:60;overflow:auto;padding:24px 12px}
+/* UX onda 1: pergunta "Sair sem salvar?" dentro da página (cartão do condomínio e editor de fluxo) */
+.cd-ov.cd-perg{z-index:65;display:flex;align-items:center;justify-content:center}
+.cd-ov.cd-perg .cd-cardbox{max-width:420px;margin:0}
+.cd-perg p{margin:6px 0 14px;line-height:1.45}
+.cd-perg-bts{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+/* botões de perigo (Distrato, Cancelar envio para assinatura, Descartar rascunho): contorno vermelho, afastados dos vizinhos */
+.cd-bt.perigo,.bt.perigo{border:1.5px solid var(--vermelho);color:var(--vermelho);background:var(--sup);margin-inline-start:10px}
+html[data-tema="escuro"] .bt.ghost.perigo,html[data-tema="escuro"] .cd-bt.perigo{color:#ff8a7a;background:var(--sup)}
+.cd-bt.perigo:hover,.bt.perigo:hover{background:rgba(192,57,43,.1)}
+@media (max-width:700px){.cd-perg-bts .cd-bt{min-height:44px;flex:1 1 140px}}
 .cd-cardbox{background:var(--sup);border-radius:14px;max-width:880px;margin:0 auto;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 .cd-cardbox h3{margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--azul)}
 .cd-cardbox .sub{color:var(--text3);font-size:13px;margin:2px 0 14px}
@@ -1055,7 +1069,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
 
     <!-- HUB -->
     <section id="view-hub">
-      <div class="crumb"><a class="btn-voltar" href="index.html">← Voltar para o Dashboard</a></div>
+      <div class="crumb"><a class="btn-voltar" href="index.html">← Início</a></div>
       <div class="sec"><span class="cond">Setores</span></div>
       <div class="setores" id="setores"></div>
 
@@ -1109,7 +1123,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
            a incluir também ⏳ (sit1, >20 dias) — antes só mostrava sit2/sit3 e por isso
            parecia "não mostrar todos" comparado à Planilha com os 3 filtros marcados -->
       <div id="st-atrasados" style="display:none">
-        <div id="at-lista"><div class="vazio">Abra a Planilha uma vez pra carregar a situação do processo.</div></div>
+        <div id="at-lista"><div class="vazio">Carregando a situação do processo…</div></div>
       </div>
 
       <div id="st-planilha" style="display:none">
@@ -1145,11 +1159,11 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
             <option value="INCOMPLETO">Cadastro incompleto</option>
             <option value="COMPLETO">Cadastro completo</option>
           </select>
-          <label class="cd-chk"><input type="checkbox" id="cd-todas" checked onchange="try{localStorage.setItem('cd_todas',this.checked?'1':'0')}catch(e){};condRender()"> Todas as colunas</label>
+          <label class="cd-chk"><input type="checkbox" id="cd-todas" onchange="try{localStorage.setItem('cd_todas',this.checked?'1':'0')}catch(e){};condRender()"> Todas as colunas</label>
           <button class="cd-bt" onclick="condCarregar(true)">↻ Atualizar</button>
           <span class="count" id="cd-count"></span>
         </div>
-        <div class="cd-dica">Clique no número da <b>unidade</b> para abrir o card com o fluxo de pagamento. Clique numa célula com fundo azulado para editar.
+        <div class="cd-dica">Clique no número da <b>unidade</b> para abrir o cartão com o fluxo de pagamento. Clique numa célula com fundo azulado para editar.
           Ao preencher a <b>data de assinatura</b>, o <b>dia de pagamento</b> ou a <b>data da entrega</b>, as datas, o nº de parcelas e os valores do fluxo são recalculados.</div>
         <div id="rp-faixa-cond" style="display:none"></div><!-- 12/11: reservas que caem em 24 h (venda/reserva-prazo-ui.js) -->
         <div class="tabela-wrap" id="cd-wrap"><div class="vazio">Carregando…</div></div>
@@ -1439,7 +1453,22 @@ function abasDoSetor(nome){
   return abas;
 }
 
-function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),1900); }
+/* toast(texto, {tipo:"erro"|"ok", ms}) — sucesso some em ~3 s; erro fica até a pessoa fechar (✕) ou 12 s.
+   Sem tipo, mensagens que começam com "Erro", "Não salvou", "Não criou" ou "E-mail inválido" valem como erro. */
+let _toastT=null;
+function toast(m,o){
+  const t=document.getElementById("toast");
+  const erro=((o&&o.tipo)||(/^(Erro|Não salvou|Não criou|E-mail inválido)/.test(String(m))?"erro":"ok"))==="erro";
+  clearTimeout(_toastT);
+  t.textContent=m; t.classList.toggle("erro",erro);
+  if(erro){
+    const x=document.createElement("button"); x.type="button"; x.className="toast-x"; x.setAttribute("aria-label","Fechar aviso"); x.textContent="✕";
+    x.onclick=()=>{ clearTimeout(_toastT); t.classList.remove("on"); };
+    t.appendChild(x); t.setAttribute("role","alert");
+  } else t.removeAttribute("role");
+  t.classList.add("on");
+  _toastT=setTimeout(()=>t.classList.remove("on"),(o&&o.ms)||(erro?12000:3000));
+}
 /* MASTER: vê tudo o que o ADM vê, mas não edita
    ENDEREÇO nem apaga nada do banco (obra, atividade, distrato). No resto ele
    enxerga e edita como ADM — é um diretor, não um observador.
@@ -1877,7 +1906,7 @@ function abaSetor(t){
   if(t==="planilha" && (!DADOS.set.length || PLANILHA_SETOR!==SETOR_ATUAL)) carregarPlanilha("set");
   if(t==="condominio") abrirCondominio();
   if(t==="alertas") renderAlertas();
-  if(t==="atrasados") renderAtrasados();
+  if(t==="atrasados"){ renderAtrasados(); if(!(DADOS.set.length||DADOS.hub.length)) Promise.resolve(carregarPlanilha("set")).then(()=>renderAtrasados()); }   /* UX: abre carregando sozinha, sem pedir para abrir a Planilha antes */
   if(t==="modelo") abrirCasasModelo();
   if(t==="semtipo") abrirSemTipo();
   if(t==="estoque"){ if(DOCS_OK) renderEstoque(); else carregarDocumentos().then(renderEstoque); }
@@ -2072,7 +2101,7 @@ async function condSalvar(id,prop,valor){
   toast("Salvando "+prop+"…");
   let r=null;
   try{ r=await chamar({action:"simsVendaSalvar",pageId:id,prop:prop,valor:valor},70000); }catch(e){ r=null; }
-  if(!r||!r.ok){ toast("Não salvou: "+((r&&(r.mensagem||r.erro))||"sem resposta")); condRender(); return false; }
+  if(!r||!r.ok){ toast("Não salvou: "+((r&&(r.mensagem||(r.erro?erroTexto(r.erro):"")))||"sem resposta")); condRender(); return false; }
   if(r.linha){ const i=COND.linhas.findIndex(x=>x.id===id); if(i>=0) COND.linhas[i]=r.linha; }
   if(r.aviso) toast(r.aviso); else if(r.calculo) toast("Salvo — fluxo recalculado."+(r.calculo.avisos&&r.calculo.avisos.length?" "+r.calculo.avisos[0]:"")); else toast("Salvo.");
   condRender(); if(COND_ABERTA===id) condAbrir(id);
@@ -2080,7 +2109,41 @@ async function condSalvar(id,prop,valor){
 }
 
 /* ---- card da unidade ---- */
-function condFechar(){ COND_ABERTA=null; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; }
+/* UX onda 1: com algo digitado e não salvo, pergunta antes de fechar (✕ Fechar, clique no fundo e Esc) */
+let _condSairJa=false;
+function condFechar(){ if(!_condSairJa&&window.VendaBlocos&&VendaBlocos.temNaoSalvo&&VendaBlocos.temNaoSalvo()&&window.VendaPergunta){ VendaPergunta.sairSemSalvar(()=>{ _condSairJa=true; try{ condFechar(); }finally{ _condSairJa=false; } }); return; } COND_ABERTA=null; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; }
+/* pergunta simples dentro da página (sem confirm() nativo): Esc ou "Continuar editando" voltam; "Sair sem salvar" segue */
+window.VendaPergunta={
+  sairSemSalvar(seguir){
+    if(document.getElementById("cd-pergunta")) return;
+    const antes=document.activeElement;
+    const ov=document.createElement("div"); ov.id="cd-pergunta"; ov.className="cd-ov cd-perg";
+    ov.setAttribute("role","alertdialog"); ov.setAttribute("aria-modal","true"); ov.setAttribute("aria-labelledby","cd-perg-t");
+    ov.innerHTML='<div class="cd-cardbox"><h3 id="cd-perg-t">Sair sem salvar?</h3>'+
+      '<p>O que você digitou e não salvou será perdido.</p>'+
+      '<div class="cd-perg-bts"><button type="button" class="cd-bt perigo" data-perg="sair">Sair sem salvar</button>'+
+      '<button type="button" class="cd-bt" data-perg="ficar">Continuar editando</button></div></div>';
+    const fechar=()=>{ ov.remove(); if(antes&&antes.focus&&document.contains(antes)) try{ antes.focus({preventScroll:true}); }catch(e){} };
+    ov.addEventListener("click",e=>{
+      const b=e.target.closest&&e.target.closest("[data-perg]");
+      if(b&&b.getAttribute("data-perg")==="sair"){ fechar(); seguir(); }
+      else if(b||e.target===ov) fechar();
+    });
+    document.body.appendChild(ov);
+    const f=ov.querySelector('[data-perg="ficar"]'); if(f) f.focus();
+  },
+  aberta(){ return !!document.getElementById("cd-pergunta"); },
+  cancelar(){ const ov=document.getElementById("cd-pergunta"); if(ov){ const b=ov.querySelector('[data-perg="ficar"]'); if(b) b.click(); } }
+};
+/* Esc fecha o cartão do condomínio (como o painel da rua), sem passar por cima de janelas abertas por cima dele */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape"||e.defaultPrevented) return;
+  if(window.VendaPergunta&&VendaPergunta.aberta()){ e.preventDefault(); VendaPergunta.cancelar(); return; }
+  const c=document.getElementById("cd-card");
+  if(!c||c.style.display==="none"||!c.innerHTML) return;
+  if(document.querySelector(".pdfoverlay.on,.av-fundo,.rp-fundo")) return;
+  e.preventDefault(); condFechar();
+});
 function condFluxo(l){
   /* 31/10/2026 (dono): venda com o fluxo alterado no portal (Alterar fluxo) — o quadro mostra a lista que vai para o
      contrato e para o Mais Controle (venda/quadro-fluxo.js), não as colunas do simulador */
@@ -2173,7 +2236,7 @@ function condEtapas(l){
     {nome:"Datas do fluxo", alvo:"#cd-ass", feito:!!(g("DATA DE ASSINATURA DO CONTRATO")&&g("DIA PAGAMENTO PARCELAS")&&g("DATA DA ENTREGA")),
      sub:"", prox:"preencher data de assinatura, dia de pagamento e entrega e salvar o fluxo"},
     {nome:"Contrato", alvo:".vb-ct", feito:cdTemArq(g("CONTRATO GERADO"))||!!aSit,
-     sub:"", prox:"gerar o pré-contrato, conferir e gerar o contrato"},
+     sub:"", prox:"gerar a prévia do contrato, conferir e gerar o contrato"},
     {nome:"Assinaturas", alvo:".vb-ass", feito:aSit==="ASSINADO", erro:ruim(aSit),
      sub:aSit==="ENVIADO"?"assinando"+(aProg?" · "+aProg:""):aSit==="ASSINADO"?"assinado":ruim(aSit)?aSit.toLowerCase():"", prox:aSit==="ENVIADO"?"esperar as assinaturas (ou reenviar o link)":"enviar o contrato para assinatura na Clicksign"},
     {nome:"Mais Controle", alvo:".vb-mc", feito:!!String(g("MC - VENDA ID")||"").trim(),
@@ -2299,7 +2362,7 @@ function condQuadroHtml(l,fx){
     '<tr class="tot"><td colspan="3">TOTAL DO PRO SOLUTO</td><td class="r">'+cdBRL(fx.total)+'</td></tr></tbody></table>'+
     (falta.length?'<div class="cd-falta"><b>Para fechar o fluxo falta:</b> '+falta.join("; ")+'.</div>':'')+
     (fx.alterado
-      ?'<div class="cd-aviso"><b>Fluxo alterado no portal</b> (botão Alterar fluxo, na Tela de venda acima): é este fluxo que vai para o contrato e para o Mais Controle. Mudar a data de assinatura, o dia de pagamento ou a entrega aqui em cima <b>não</b> mexe nestas parcelas — ajuste pelo Alterar fluxo.</div>'
+      ?'<div class="cd-aviso"><b>Fluxo alterado no portal</b> (botão Alterar fluxo, na aba Contrato): é este fluxo que vai para o contrato e para o Mais Controle. Mudar a data de assinatura, o dia de pagamento ou a entrega aqui em cima <b>não</b> mexe nestas parcelas — ajuste pelo Alterar fluxo.</div>'
       :'<div class="cd-aviso"><b>Atenção:</b> As parcelas e os valores do fluxo podem sofrer alteração de acordo com a data de assinatura do contrato.</div>');
 }
 /* 31/10/2026 (dono): o dossiê avisa o que gravou (Alterar fluxo → FLUXO PERSONALIZADO, venda-dossie.js
@@ -2353,7 +2416,7 @@ function condAbrir(id){
       '<div class="cd-prog" id="cd-prog" style="display:none;flex-basis:100%"></div>'+
     '</div>'+
     '<details class="cd-dobra"><summary>Quadro do pro soluto (sinal, pré-chaves, balões, pós-chaves)</summary><div id="cd-quadro">'+condQuadroHtml(l,fx)+'</div>'+
-      '<div style="margin-top:10px"><button type="button" class="cd-bt" onclick="condPdfFluxo(COND_ABERTA)">📄 PDF do fluxo para o cliente</button></div></details>'+
+      '<div style="margin-top:10px"><button type="button" class="cd-bt" title="PDF do fluxo para mandar ao cliente" onclick="condPdfFluxo(COND_ABERTA)">📄 PDF do fluxo</button></div></details>'+
     '</div>'+
     '<div data-sec="andamento">'+condAndamentoHtml(l)+'</div>'+
     condTelaVendaHtml()+
@@ -2456,10 +2519,10 @@ function condDistratoHtml(l){
   if(!condPodeDistrato(l)) return '<div class="cd-dica" style="margin-top:10px">Distrato: esta venda não tem proposta ligada (ID PROPOSTA) — faça pela proposta em Simulações.</div>';
   const un=esc(String(cdVal(l,COND&&COND.titulo||"UNIDADE")||cdVal(l,"UNIDADE")||""));
   return '<div class="cd-dist" style="margin-top:14px">'+
-    '<button type="button" class="cd-bt" style="background:#6B5A45;border-color:#6B5A45;color:#fff" onclick="condDistratoAbrir()">Distrato</button>'+
+    '<button type="button" class="cd-bt perigo" onclick="condDistratoAbrir()">Distrato</button>'+
     '<div id="cd-dist-box" style="display:none;margin-top:8px;border:1.5px solid #E7B3A6;background:#FDF1EE;border-radius:10px;padding:12px">'+
       '<b style="color:#8A2E17">Distrato da unidade '+un+'</b>'+
-      '<div style="font-size:12px;margin:4px 0 8px">A venda é copiada (com os arquivos) para a base <b>DISTRATOS CONDOMÍNIO</b>, sai do BANCO DE DADOS VENDAS CONDOMÍNIO e a unidade volta a <b>DISPONÍVEL</b>. A proposta fica como DISTRATO.</div>'+
+      '<div style="font-size:12px;margin:4px 0 8px">A venda é copiada (com os arquivos) para os <b>distratos</b>, sai da lista de vendas do condomínio e a unidade volta a <b>DISPONÍVEL</b>. A proposta fica como DISTRATO.</div>'+
       '<textarea id="cd-dist-motivo" rows="3" placeholder="Motivo do distrato (obrigatório)" style="width:100%;box-sizing:border-box;font:inherit;font-size:13px"></textarea>'+
       '<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="cd-bt" id="cd-dist-ok" onclick="condDistrato(COND_ABERTA)">Confirmar distrato</button>'+
       '<button type="button" class="cd-bt" onclick="condDistratoAbrir(false)">Cancelar</button></div>'+
@@ -2480,10 +2543,10 @@ async function condDistrato(id){
   const motivo=((document.getElementById("cd-dist-motivo")||{}).value||"").trim();
   if(!pid){ av.style.color="var(--vermelho)"; av.textContent="Esta venda não tem proposta ligada (ID PROPOSTA)."; return; }
   if(!motivo){ av.style.color="var(--vermelho)"; av.textContent="Escreva o motivo do distrato."; return; }
-  if(!confirm("Confirmar o DISTRATO da unidade "+un+"?\n\nA venda sai do BANCO DE DADOS VENDAS CONDOMÍNIO (fica guardada em DISTRATOS CONDOMÍNIO) e a unidade volta a DISPONÍVEL.")) return;
+  if(!confirm("Confirmar o DISTRATO da unidade "+un+"?\n\nA venda sai da lista de vendas do condomínio (fica guardada nos distratos) e a unidade volta a DISPONÍVEL.")) return;
   const ok=document.getElementById("cd-dist-ok"); if(ok) ok.disabled=true;
   const t0=Date.now();
-  const pintar=()=>{ av.style.color=""; av.innerHTML='<span class="load"></span> Copiando a venda e os arquivos para DISTRATOS CONDOMÍNIO, tirando a linha do banco de vendas e liberando a unidade… '+Math.round((Date.now()-t0)/1000)+' s'; };
+  const pintar=()=>{ av.style.color=""; av.innerHTML='<span class="load"></span> Copiando a venda e os arquivos para os distratos, tirando a linha da lista de vendas e liberando a unidade… '+Math.round((Date.now()-t0)/1000)+' s'; };
   pintar(); const tm=setInterval(pintar,1000);
   let r=null;
   try{ r=await chamar({action:"simsStatusInternoAcao", pageId:pid, status:"DISTRATO", motivo:motivo}, 240000, true); }
@@ -2499,7 +2562,7 @@ async function condDistrato(id){
   const a=r.arquivos||{};
   av.style.color="";
   av.innerHTML='<b>✓ Distrato feito.</b> '+(r.semVenda?"Não havia linha desta proposta no banco de vendas — unidade liberada e proposta marcada como DISTRATO."
-    :'Venda guardada em <b>DISTRATOS CONDOMÍNIO</b>'+(r.distratoUrl?' (<a href="'+esc(r.distratoUrl)+'" target="_blank" rel="noopener">abrir no Notion</a>)':'')+
+    :'Venda guardada nos <b>distratos</b>'+(r.distratoUrl?' (<a href="'+esc(r.distratoUrl)+'" target="_blank" rel="noopener">abrir no Notion</a>)':'')+
      ' e retirada do banco de vendas. Unidade '+esc(String(r.unidade||un))+' DISPONÍVEL.'+
      '<br><span style="font-size:12px">Arquivos: '+(a.copiados||0)+' copiado(s)'+(a.naFila?' · '+a.naFila+' coluna(s) terminando em segundo plano':'')+
      ((a.falhas||[]).length?' · <span style="color:var(--vermelho)">'+esc(a.falhas.join("; "))+'</span>':'')+'</span>')+
@@ -2769,7 +2832,7 @@ async function condCalcular(id){
     const b3=document.getElementById("cd-calc"); if(b3){ b3.disabled=false; b3.textContent="Salvar e recalcular o fluxo"; }
     return;
   }
-  if(r&&r.erro&&!/ACAO|DESCONHECID|SEM_RESPOSTA/i.test(r.erro)){ fimProg(false); toast("Não salvou: "+(r.mensagem||r.erro)); bt.disabled=false; bt.textContent="Salvar e recalcular o fluxo"; return; }
+  if(r&&r.erro&&!/ACAO|DESCONHECID|SEM_RESPOSTA/i.test(r.erro)){ fimProg(false); toast("Não salvou: "+(r.mensagem||erroTexto(r.erro))); bt.disabled=false; bt.textContent="Salvar e recalcular o fluxo"; return; }
   /* servidor antigo: grava uma por uma, como antes */
   for(const [prop,val] of novos){
     const atual=cdVal(l,prop), a=atual==null?"":String(atual).slice(0,10);
@@ -3282,7 +3345,7 @@ async function darBaixa(a,valor,d,btn){
       atvBadge('#view-setor .tab[data-t="atividades"]', n);
       atualizarBadgesSetores();
     },650);
-  } else { btn.disabled=false; btn.textContent="Dar baixa"; toast("Erro: "+r.erro); }
+  } else { btn.disabled=false; btn.textContent="Dar baixa"; toast("Erro: "+erroTexto(r.erro)); }
 }
 
 /* ---------- ALERTAS ---------- */
@@ -3647,7 +3710,7 @@ function campoAlvoDoAlerta(textoAlerta){
 function renderAtrasados(){
   const box=document.getElementById("at-lista");
   const dados = DADOS.set.length?DADOS.set:DADOS.hub;
-  if(!dados.length){ box.innerHTML='<div class="vazio">Abra a Planilha uma vez para carregar a situação do processo.</div>'; return; }
+  if(!dados.length){ box.innerHTML='<div class="vazio"><span class="load"></span> Carregando a situação do processo… <button type="button" class="bt ghost" style="margin-left:8px" onclick="Promise.resolve(carregarPlanilha(\'set\')).then(renderAtrasados)">Carregar</button></div>'; return; }
   const ORDEM={sit3:0, sit2:1, sit1:2}; // mais urgente primeiro
   const COR={sit1:"#E8CE5A", sit2:"#c0392b", sit3:"#E67E22"};   // 06/11: ⚠️ e 🚨 trocaram de cor
   const TXT={sit1:"⏳ Tempo corrido > 20 dias", sit2:"⚠️ Tempo corrido > 45 dias", sit3:"🚨 Tempo corrido > 45 dias e não recebeu"};
@@ -4579,7 +4642,7 @@ async function editarToggle(pageId,prop,btn){
   wrap.querySelectorAll(".tg").forEach(b=>b.classList.remove("on")); btn.classList.add("on");
   aplicarLocal(pageId,prop,valor);
   const r=await escrever({action:"updateVenda",pageId:pageId,prop:prop,tipo:"select",valor:valor},"Editar "+prop);
-  toast(r.ok?(r.enfileirado?"Salvo aqui ✓ — sobe quando reconectar":"Salvo ✓"):("Erro: "+r.erro));
+  toast(r.ok?(r.enfileirado?"Salvo aqui ✓ — sobe quando reconectar":"Salvo ✓"):("Erro: "+erroTexto(r.erro)));
 }
 /* Enquanto o valor sensível não chega do Apps Script, mostra um campo travado.
    Travado de propósito: input vazio e editável convidaria a digitar por cima e
@@ -5003,25 +5066,25 @@ async function editar(pageId,prop,tipo,valor,el){
   try{ pnEspelhar(prop,valor,el); }catch(e){}   // 05/11: a outra aba do painel mostra o valor novo (mesma coluna)
   const r=await escrever({action:"updateVenda",pageId:pageId,prop:prop,tipo:tipo,valor:valor},"Editar "+prop);
   if(el)el.style.borderColor=r.ok?(r.enfileirado?"#E67E22":"#4cd964"):"#C0392B";
-  toast(r.ok?(r.enfileirado?"Salvo aqui ✓ — sobe quando reconectar":"Salvo ✓"):("Erro: "+r.erro));
+  toast(r.ok?(r.enfileirado?"Salvo aqui ✓ — sobe quando reconectar":"Salvo ✓"):("Erro: "+erroTexto(r.erro)));
 }
 async function editarMulti(pageId,prop,el){
   const box=el.closest(".campo,.campo-inline"); const marc=[...box.querySelectorAll("input[type=checkbox]:checked")].map(i=>i.parentNode.textContent.trim());
   aplicarLocal(pageId,prop,marc);
   const r=await escrever({action:"updateVenda",pageId:pageId,prop:prop,tipo:"multi_select",valor:marc},"Editar "+prop);
-  toast(r.ok?(r.enfileirado?"Na fila ✓":"Salvo ✓"):("Erro: "+r.erro));
+  toast(r.ok?(r.enfileirado?"Na fila ✓":"Salvo ✓"):("Erro: "+erroTexto(r.erro)));
 }
 async function enviarArquivo(pageId,prop,input){
   const f=input.files[0]; if(!f)return; toast("Enviando "+f.name+"…");
   try{ const b64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result.split(",")[1]);rd.onerror=rej;rd.readAsDataURL(f);});
     const r=await escrever({action:"upload",pageId:pageId,prop:prop,filename:f.name,mimeType:f.type||"application/octet-stream",dataBase64:b64},"Arquivo: "+f.name);
-    toast(r.ok?(r.enfileirado?"Arquivo na fila ✓":"Arquivo enviado ✓"):("Erro: "+r.erro));
+    toast(r.ok?(r.enfileirado?"Arquivo na fila ✓":"Arquivo enviado ✓"):("Erro: "+erroTexto(r.erro)));
   }catch(e){ toast("Falha ao ler o arquivo"); }
 }
 async function excluirObra(pageId){
   if(!confirm("Excluir esta obra do Notion? (arquiva a página)"))return;
   const r=await escrever({action:"excluirVenda",pageId:pageId},"Excluir obra");
-  toast(r.ok?(r.enfileirado?"Na fila ✓":"Excluída ✓"):("Erro: "+r.erro));
+  toast(r.ok?(r.enfileirado?"Na fila ✓":"Excluída ✓"):("Erro: "+erroTexto(r.erro)));
   if(r.ok&&!r.enfileirado){ fecharObra(); carregarPlanilha(document.getElementById("view-setor").style.display!=="none"?"set":"hub"); }
 }
 /* ---------- DISTRATO ---------- */
@@ -5075,14 +5138,14 @@ const DIST_ERROS={ DISTRATO_SINAL_FALTA:"Responda se houve sinal/pagamento receb
   DISTRATO_SEM_PREVIA:"Veja primeiro o que acontece no Mais Controle (prévia).",
   DISTRATO_PREVIA_OUTRA_RESPOSTA:"As respostas mudaram depois da prévia — peça a prévia de novo.",
   DISTRATOS_NAO_CONFIGURADO:"A base DISTRATOS não está configurada (Propriedade DB_DISTRATOS). Nada foi limpo.",
-  MC_NAO_CONFIGURADO:"O robô do Mais Controle não está configurado (GITHUB_TOKEN). Nada foi limpo.",
-  MC_DISPARO_FALHOU:"Não consegui acionar o robô do Mais Controle. Nada foi limpo — tente de novo.",
-  MC_PROCESSANDO:"O robô ainda está trabalhando nesta venda. Aguarde um pouco." };
+  MC_NAO_CONFIGURADO:"O Mais Controle não está configurado (GITHUB_TOKEN). Nada foi limpo.",
+  MC_DISPARO_FALHOU:"Não consegui acionar o Mais Controle. Nada foi limpo — tente de novo.",
+  MC_PROCESSANDO:"O Mais Controle ainda está trabalhando nesta venda. Aguarde um pouco." };
 async function pedirPreviaDistrato(){
   const out=document.getElementById("dist-previa"), erro=document.getElementById("dist-erro");
   const pageId=DIST_PAGE; if(!pageId) return;
   distMudou(); erro.textContent="";
-  out.innerHTML='<span class="load"></span> Pedindo a prévia ao robô do Mais Controle (leva 1 a 3 minutos)…';
+  out.innerHTML='<span class="load"></span> Pedindo a prévia ao Mais Controle (leva 1 a 3 minutos)…';
   let r; try{ r=await chamar(Object.assign({action:"distratoPrevia", pageId:pageId}, distResp())); }catch(e){ r={ok:false,erro:"REDE"}; }
   if(!r||!r.ok){ out.textContent=""; erro.textContent=DIST_ERROS[(r&&r.erro)||""]||("Não foi possível: "+erroTexto((r&&r.erro)||"REDE")); return; }
   if(r.semErp){ out.textContent=r.texto; DIST_PREVIA_OK=true; document.getElementById("dist-ok").disabled=false; return; }
@@ -5091,13 +5154,13 @@ async function pedirPreviaDistrato(){
     if(DIST_PAGE!==pageId) return;
     let e; try{ e=await chamar({action:"distratoEstado", pageId:pageId}); }catch(x){ e=null; }
     if(e&&e.ok&&!e.processando){
-      out.textContent=e.texto||"(o robô não escreveu nada)";
+      out.textContent=e.texto||"(o Mais Controle não escreveu nada)";
       DIST_PREVIA_OK=!!e.previaOk; document.getElementById("dist-ok").disabled=!DIST_PREVIA_OK;
-      if(!DIST_PREVIA_OK) erro.textContent="O robô recusou ou falhou — leia acima. O distrato não pode seguir assim.";
+      if(!DIST_PREVIA_OK) erro.textContent="O Mais Controle recusou ou falhou — leia acima. O distrato não pode seguir assim.";
       else setTimeout(()=>document.getElementById("dist-senha").focus(),50);
       return;
     }
-    if(Date.now()-inicio>6*60*1000){ out.textContent="O robô não respondeu em 6 minutos. Tente a prévia de novo mais tarde."; return; }
+    if(Date.now()-inicio>6*60*1000){ out.textContent="O Mais Controle não respondeu em 6 minutos. Tente a prévia de novo mais tarde."; return; }
     DIST_POLL=setTimeout(olhar,8000);
   };
   DIST_POLL=setTimeout(olhar,15000);
@@ -5138,7 +5201,7 @@ async function confirmarDistrato(pageId){
     fecharDistrato(); fecharObra();
     toast("Distrato registrado ✓ — "+(r.camposLimpos||marcados)+" campo(s) limpo(s)"+
           (r.atividadesApagadas?(" e "+r.atividadesApagadas+" atividade(s) apagada(s)"):"")+
-          (r.erp==="ROBO_ACIONADO"?" — o robô está aplicando no Mais Controle (resultado na base DISTRATOS, coluna MC - DISTRATO)":""));
+          (r.erp==="ROBO_ACIONADO"?" — o Mais Controle está aplicando o distrato (resultado nos distratos, coluna MC - DISTRATO)":""));
     ler({action:"atividades"},"atividades").then(x=>{ if(x&&x.ok){ ATIV_ALL=x.atividades; atualizarBadgesSetores(); if(document.getElementById("st-atividades").style.display!=="none") carregarAtividades(); } });
     carregarPlanilha(document.getElementById("view-setor").style.display!=="none"?"set":"hub");
   } else {

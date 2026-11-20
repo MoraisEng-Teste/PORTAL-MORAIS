@@ -12,10 +12,10 @@
   var SITUACAO = {
     ENVIADO: "Enviado — aguardando assinaturas",
     ASSINADO: "Assinado por todos",
-    RECUSADO: "Recusado por um signatário — confira o motivo na Clicksign e envie de novo",
+    RECUSADO: "Recusado por um assinante — confira o motivo na Clicksign e envie de novo",
     CANCELADO: "Cancelado na Clicksign — pode enviar de novo",
     EXPIRADO: "Prazo vencido sem todas as assinaturas — pode enviar de novo",
-    RASCUNHO: "Rascunho na Clicksign (não foi enviado). O envio parou no meio. Clique em Descartar rascunho e envie de novo."
+    RASCUNHO: "Envio incompleto na Clicksign (não foi enviado). Clique em Descartar rascunho e envie de novo."
   };
   var MSG = {
     NAO_AUTORIZADO: "Sua sessão expirou — entre de novo no portal.",
@@ -30,52 +30,52 @@
     /* 01/11/2026 (revisão final, I3): o envio sem resposta pode ter dado certo (o servidor repete a Clicksign por até 180 s) */
     SEM_RESPOSTA_ENVIO: "A Clicksign está demorando. O envio pode ter dado certo — espere 1 minuto e clique em Atualizar situação antes de tentar de novo.",
     PORTAL_VENDA_NAO_CONFIGURADO: "A assinatura ainda não foi ligada neste ambiente.",
-    CLICKSIGN_SEM_TOKEN: "A assinatura ainda não foi ligada neste ambiente (falta o token da Clicksign) — avise o administrador.",
-    CLICKSIGN_URL_INVALIDA: "O endereço da Clicksign está errado nas configurações — avise o administrador.",
+    CLICKSIGN_SEM_TOKEN: "A assinatura ainda não foi ligada neste ambiente — peça ajuda a quem cuida do sistema. (Detalhe técnico: falta o token da Clicksign.)",
+    CLICKSIGN_URL_INVALIDA: "A ligação com a Clicksign está errada nas configurações — peça ajuda a quem cuida do sistema. (Detalhe técnico: endereço da Clicksign inválido.)",
     RASCUNHO_NAO_APAGADO: "A Clicksign não apagou o rascunho — tente Descartar rascunho de novo em 1 minuto.",
     ENVELOPE_ABERTO: "Este contrato já está com a Clicksign — use Atualizar situação.",
     PRAZO_INVALIDO: "A data limite para assinar tem de ficar entre amanhã e 89 dias à frente.",
     SEM_CONTRATO_GERADO: "Gere o contrato antes de enviar para assinatura.",
     FALTAM_DADOS: "Complete os dados abaixo e envie de novo.",
-    CADASTRO_NAO_CONFIGURADO: "Os cadastros do contrato não estão configurados — avise o administrador.",
+    CADASTRO_NAO_CONFIGURADO: "Os cadastros do contrato não estão configurados — peça ajuda a quem cuida do sistema.",
     CONTRATO_ILEGIVEL: "Não consegui abrir o PDF do contrato gerado — gere o contrato de novo.",
     DOWNLOAD_ASSINADO_FALHOU: "Não consegui baixar o PDF assinado da Clicksign — tente Atualizar situação daqui a pouco.",
-    UPLOAD_FALHOU: "Não consegui guardar o PDF assinado na casa — tente Atualizar situação de novo.",
-    CLICKSIGN_ENVELOPE_SEM_DOCUMENTO: "O envelope na Clicksign está sem documento — avise o desenvolvedor.",
+    UPLOAD_FALHOU: "Não consegui guardar o PDF assinado na venda — tente Atualizar situação de novo.",
+    CLICKSIGN_ENVELOPE_SEM_DOCUMENTO: "O envio para assinatura na Clicksign está sem documento — peça ajuda a quem cuida do sistema.",
     SEM_ENVELOPE: "Este contrato ainda não foi enviado para assinatura.",
     NINGUEM_PENDENTE: "Todos já assinaram — não há link para reenviar. Use Atualizar situação.",
-    ENVELOPE_NAO_ATIVO: "O envelope não está mais aguardando assinaturas — use Atualizar situação.",
+    ENVELOPE_NAO_ATIVO: "O envio para assinatura não está mais aguardando assinaturas — use Atualizar situação.",
     /* entrega 14: Ver contrato assinado */
     SEM_ASSINADO: "O PDF assinado ainda não está na casa — use Atualizar situação.",
-    ASSINADO_ILEGIVEL: "Não consegui abrir o PDF assinado guardado na casa — use Atualizar situação ou avise o desenvolvedor.",
+    ASSINADO_ILEGIVEL: "Não consegui abrir o PDF assinado guardado na venda — use Atualizar situação ou peça ajuda a quem cuida do sistema.",
     ASSINADO_GRANDE: "O PDF assinado ficou grande demais para abrir pelo portal — abra pelo Notion.",
     /* 30/10: rubricas do comprador e documentos só dele (memorial, projeto aprovado) */
     RUBRICAS_FALTANDO: "A tela está desatualizada — recarregue a página (Ctrl+F5) e envie de novo.",
     RUBRICAS_DE_OUTRO_PDF: "O contrato mudou enquanto a tela lia o PDF — envie de novo.",
-    RUBRICAS_INVALIDAS: "As posições das rubricas saíram erradas — gere o contrato de novo ou avise o desenvolvedor.",
-    RUBRICAS_NAO_ACHADAS: "Não achei no contrato os campos “ASSINATURA: ____” que o comprador rubrica — gere o contrato de novo ou avise o desenvolvedor.",
+    RUBRICAS_INVALIDAS: "As posições das rubricas saíram erradas — gere o contrato de novo ou peça ajuda a quem cuida do sistema.",
+    RUBRICAS_NAO_ACHADAS: "Não achei no contrato os campos “ASSINATURA: ____” que o comprador rubrica — gere o contrato de novo ou peça ajuda a quem cuida do sistema.",
     RUBRICAS_SEM_LEITOR: "Não consegui abrir o leitor de PDF do navegador — confira a internet e tente de novo.",
-    MEMORIAL_NAO_CONFIGURADO: "O modelo do memorial descritivo não abre — avise o administrador.",
-    MEMORIAL_FALHOU: "Não consegui gerar o memorial descritivo — tente de novo ou avise o desenvolvedor.",
-    PROJETO_NAO_CONFIGURADO: "O PDF do projeto aprovado não abre — avise o administrador.",
+    MEMORIAL_NAO_CONFIGURADO: "O modelo do memorial descritivo não abre — peça ajuda a quem cuida do sistema.",
+    MEMORIAL_FALHOU: "Não consegui gerar o memorial descritivo — tente de novo ou peça ajuda a quem cuida do sistema.",
+    PROJETO_NAO_CONFIGURADO: "O PDF do projeto aprovado não abre — peça ajuda a quem cuida do sistema.",
     /* 01/11/2026 (plano 23 A): depois de assinado por todos, só visualizar */
     NAO_ASSINADO: "Ainda não foi assinado por todos — use Atualizar situação.",
-    DOCUMENTO_NAO_ENCONTRADO: "Esse documento não está mais no envelope — recarregue a página.",
+    DOCUMENTO_NAO_ENCONTRADO: "Esse documento não está mais no envio para assinatura — recarregue a página.",
     CONTRATO_ASSINADO: "O contrato já foi assinado por todos — nada mais muda nele. Recarregue a página.",
     TERMO_ASSINADO: "O termo de reserva já foi assinado por todos — nada mais muda nele. Recarregue a página.",
     /* 03/11: Trocar e-mail (sem cancelar o envelope) */
     EMAIL_INVALIDO: "Esse e-mail não parece válido — confira e tente de novo.",
     EMAIL_IGUAL: "Esse já é o e-mail desta pessoa na Clicksign.",
-    EMAIL_REPETIDO: "Esse e-mail já é de outra pessoa do envelope — cada pessoa precisa de um e-mail.",
-    SIGNATARIO_NAO_ACHADO: "Essa pessoa não está mais no envelope — clique em Atualizar situação.",
+    EMAIL_REPETIDO: "Esse e-mail já é de outra pessoa do envio para assinatura — cada pessoa precisa de um e-mail.",
+    SIGNATARIO_NAO_ACHADO: "Essa pessoa não está mais no envio para assinatura — clique em Atualizar situação.",
     SIGNATARIO_JA_ASSINOU: "Essa pessoa já assinou — o e-mail dela não muda mais.",
-    TROCA_SEM_REQUISITOS: "Este envelope não tem guardado o que a troca precisa (foi enviado antes desta versão) — para corrigir, cancele o envelope e envie de novo.",
-    TROCA_INCOMPLETA: "A troca parou no meio e não deu para desfazer: a Clicksign ficou com o e-mail antigo e o novo. Cancele o envelope e envie de novo.",
+    TROCA_SEM_REQUISITOS: "Este envio para assinatura não tem guardado o que a troca precisa (foi enviado antes desta versão) — para corrigir, cancele o envio para assinatura e envie de novo.",
+    TROCA_INCOMPLETA: "A troca parou no meio e não deu para desfazer: a Clicksign ficou com o e-mail antigo e o novo. Cancele o envio para assinatura e envie de novo.",
     /* 18/11/2026: troca de fiadores (termos num envelope próprio) */
     TROCA_SEM_ENVELOPE: "A troca de fiadores é para contrato já enviado para assinatura. Antes do envio, corrija os fiadores e gere o contrato de novo.",
     TROCA_DESATUALIZADA: "Os dados mudaram depois da prévia ou dos termos gerados — clique em Atualizar prévia e gere os termos de novo.",
     TROCA_SEM_TERMOS_GERADOS: "Gere os termos novos antes de enviar.",
-    TROCA_RASCUNHO_PENDENTE: "O envio anterior dos termos parou em rascunho na Clicksign — descarte o rascunho dos termos e tente de novo.",
+    TROCA_RASCUNHO_PENDENTE: "O envio anterior dos termos ficou incompleto na Clicksign — descarte o rascunho dos termos e tente de novo.",
     SEM_TERMOS: "Esta venda não tem termos de confissão (só existem com parcelas depois das chaves).",
     SO_CONDOMINIO: "A troca de fiadores é só para vendas do condomínio.",
     COTA_GOOGLE_ESGOTADA: "A cota diária do Google acabou — nada mais foi feito. Tente de novo amanhã (o que já foi feito fica guardado).",
@@ -155,37 +155,37 @@
     if ((e === "CONTRATO_DESATUALIZADO" || e === "ENVELOPE_ABERTO") && typeof r.mensagem === "string" && r.mensagem) return r.mensagem;
     if (!e) {
       if (r.aviso === "NOTIFICACAO_FALHOU")
-        return "Enviado, mas o e-mail de aviso falhou — use Atualizar situação; se ninguém receber, avise o desenvolvedor.";
+        return "Enviado, mas o e-mail de aviso falhou — use Atualizar situação; se ninguém receber, peça ajuda a quem cuida do sistema.";
       if (r.aviso === "ASSINATURAS_INCOMPLETAS")
-        return "A Clicksign finalizou o envelope, mas não registrou a assinatura de todos — confira o PDF assinado e avise o desenvolvedor.";
+        return "A Clicksign finalizou o envio para assinatura, mas não registrou a assinatura de todos — confira o PDF assinado e peça ajuda a quem cuida do sistema.";
       return "";
     }
     if (e === "CLICKSIGN_FALHOU") {
       var consulta = /^consultar/.test(String(r.passo || ""));
       if (r.incerto)
-        return "A Clicksign não respondeu ao ativar o envelope " + r.envelopeId + " e não deu para confirmar se ele foi enviado — use Atualizar situação daqui a pouco; não envie de novo.";
+        return "A Clicksign não respondeu ao ativar o envio para assinatura " + r.envelopeId + " e não deu para confirmar se ele foi enviado — use Atualizar situação daqui a pouco; não envie de novo.";
       /* rascunho que não foi apagado: barra novo envio até sumir da Clicksign */
       var sobra = r.envelopeId && r.rascunhoApagado === false
-        ? " O envelope ficou como rascunho na Clicksign (nada foi enviado aos signatários). O envio parou no meio. Clique em Descartar rascunho e envie de novo." : "";
+        ? " O envio para assinatura ficou incompleto na Clicksign (nada foi enviado aos assinantes). Clique em Descartar rascunho e envie de novo." : "";
       if (!r.http) return "A Clicksign não respondeu (passo: " + r.passo + ")" +
-        (consulta ? " — tente Atualizar situação daqui a pouco." : (sobra ? "." + sobra : ". Nada foi enviado aos signatários — tente de novo em alguns minutos."));
+        (consulta ? " — tente Atualizar situação daqui a pouco." : (sobra ? "." + sobra : ". Nada foi enviado aos assinantes — tente de novo em alguns minutos."));
       return "A Clicksign recusou " + (consulta ? "a consulta" : "o envio") + " (passo: " + r.passo + ", código " + r.http +
         (r.detalhe ? ": " + r.detalhe : "") + ")." +
-        (consulta ? " Avise o desenvolvedor." : (sobra || " Nada foi enviado aos signatários — avise o desenvolvedor."));
+        (consulta ? " Peça ajuda a quem cuida do sistema." : (sobra || " Nada foi enviado aos assinantes — peça ajuda a quem cuida do sistema."));
     }
     if (e === "GRAVACAO_FALHOU" && r.envelopeId)
-      return "O envelope " + r.envelopeId + " foi enviado aos signatários, mas o portal não conseguiu anotar na casa — use Atualizar situação daqui a pouco; não envie de novo.";
+      return "O envio para assinatura " + r.envelopeId + " foi enviado aos assinantes, mas o portal não conseguiu anotar na venda — use Atualizar situação daqui a pouco; não envie de novo.";
     if (e === "GRAVACAO_FALHOU" && r.rascunhoApagado)
-      return "Não consegui anotar o envelope na casa, então ele foi desfeito. Nada foi enviado aos signatários — tente de novo.";
-    if (e === "GRAVACAO_FALHOU") return "Não consegui gravar a situação na casa — tente Atualizar situação de novo.";
+      return "Não consegui anotar o envio para assinatura na venda, então ele foi desfeito. Nada foi enviado aos assinantes — tente de novo.";
+    if (e === "GRAVACAO_FALHOU") return "Não consegui gravar a situação na venda — tente Atualizar situação de novo.";
     if (e.indexOf("CLICKSIGN_SEM_LINK_ASSINADO") === 0)
-      return "A Clicksign diz que terminou, mas não entregou o link do PDF assinado — avise o desenvolvedor.";
+      return "A Clicksign diz que terminou, mas não entregou o link do PDF assinado — peça ajuda a quem cuida do sistema.";
     if (e.indexOf("CLICKSIGN_STATUS_DESCONHECIDO") === 0)
-      return "A Clicksign devolveu uma situação que o portal não conhece — avise o desenvolvedor.";
+      return "A Clicksign devolveu uma situação que o portal não conhece — peça ajuda a quem cuida do sistema.";
     if (e === "REENVIO_RECENTE")
       return "O link já foi reenviado há pouco — espere " + (Number(r.minutos) || 10) + " minuto" + (Number(r.minutos) === 1 ? "" : "s") + " para reenviar de novo.";
-    if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "A base não tem a coluna " + e.slice(17) + " — avise o desenvolvedor.";
-    if (e.indexOf("TIPO_DE_COLUNA_ERRADO: ") === 0) return "A coluna " + e.slice(23) + " está com o tipo errado no Notion — avise o desenvolvedor.";
+    if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "Falta um campo na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a base não tem a coluna " + e.slice(17) + ".)";
+    if (e.indexOf("TIPO_DE_COLUNA_ERRADO: ") === 0) return "Um campo está configurado errado na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a coluna " + e.slice(23) + " está com o tipo errado no Notion.)";
     return MSG[e] || "Algo deu errado (" + e + ") — tente de novo.";
   }
 
@@ -211,7 +211,7 @@
     if (c.ocupado === "atualizar") h += '<div class="dz-linha"><b>consultando…</b></div>';
     if (c.ocupado === "baixar") h += '<div class="dz-linha"><b>abrindo o documento assinado…</b></div>';
     if (!Array.isArray(c.assinados)) h += '<div class="vazio">carregando os documentos assinados…</div>';
-    else if (!c.assinados.length && !c.msg) h += '<div class="vazio">Nenhum documento no envelope.</div>';
+    else if (!c.assinados.length && !c.msg) h += '<div class="vazio">Nenhum documento no envio para assinatura.</div>';
     else if (c.assinados.length) h += '<ul class="ass-lista ass-docs">' + c.assinados.map(function (d) {
       var rot = ehTermo(c) && d.tipo === "contrato" ? "Termo de reserva" : (ROTULO_DOC[d.tipo] || "Documento");
       var dis = c.ocupado ? " disabled" : "";
@@ -282,7 +282,7 @@
     var t = termosDe(c);
     if (!t || !t.envelope) return "";
     var sit = situacaoDe(t), ocup = !!c.ocupado || !!c.testes;
-    var h = '<div class="dz-linha"><b>Termos de confissão</b> <span class="ass-data">(envelope próprio)</span> — ' + esc(SITUACAO[sit] || sit || "sem situação gravada") + "</div>";
+    var h = '<div class="dz-linha"><b>Termos de confissão</b> <span class="ass-data">(envio próprio)</span> — ' + esc(SITUACAO[sit] || sit || "sem situação gravada") + "</div>";
     var sigs = (sit === "CANCELADO" || sit === "EXPIRADO") ? [] : (t.signatarios || []);
     if (sigs.length) h += '<ul class="ass-lista">' + sigs.map(function (s) {
       var st = sitSignatario(s), rot = ROTULO_SIG[st] || ROTULO_SIG.pendente, d = dataCurta(s.data);
@@ -296,10 +296,10 @@
     if (sit === "ENVIADO") {
       h += '<div class="dz-linha">';
       if (pend) h += '<button type="button" class="bt ghost bt-mini" data-acao="a-t-reenviar"' + (ocup ? " disabled" : "") + ">Reenviar link dos termos</button> ";
-      h += '<button type="button" class="bt ghost bt-mini" data-acao="a-t-cancelar"' + (ocup ? " disabled" : "") + ">Cancelar envelope dos termos</button></div>";
+      h += '<button type="button" class="bt ghost bt-mini perigo" data-acao="a-t-cancelar"' + (ocup ? " disabled" : "") + ">Cancelar envio para assinatura dos termos</button></div>";
     }
     if (sit === "RASCUNHO" && !c.testes)
-      h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="a-t-descartar"' + (ocup ? " disabled" : "") + ">Descartar rascunho dos termos</button></div>";
+      h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini perigo" data-acao="a-t-descartar"' + (ocup ? " disabled" : "") + ">Descartar rascunho dos termos</button></div>";
     return h;
   }
   /* Trocar fiadores: quem já pode enviar o contrato (o TESTES não), com o contrato enviado e não assinado por todos */
@@ -311,13 +311,13 @@
     var h = '<div class="dz-fia-bloco ass-troca"><div class="dz-linha dz-grupo"><b>Trocar fiadores</b></div>';
     if (c.ocupado === "troca") h += '<div class="dz-linha"><b>' + esc(t.passo || "consultando…") + "</b></div>";
     h += '<div class="dz-linha dz-nota">1) Corrija o fiador abaixo e salve. 2) Anexe o documento dele (DOC. FIADOR) e rode a Conferência dos documentos. ' +
-      "3) Gere os termos novos e confira. 4) Envie: os termos antigos em andamento são cancelados e os novos vão num envelope próprio (o contrato não muda).</div>";
+      "3) Gere os termos novos e confira. 4) Envie: os termos antigos em andamento são cancelados e os novos vão num envio próprio (o contrato não muda).</div>";
     h += '<div class="ass-troca-fia"></div>';
     if (pv.problemas && pv.problemas.length) h += '<div class="dz-aviso">Antes de gerar os termos novos:</div><ul>' + pv.problemas.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>";
     /* 18/11 (dono): "o contrato já gerado manda" — as travas de data contra hoje/assinatura não valem ao refazer os termos */
     var ign = Number(pv.datasIgnoradas || pv.sinalIgnorado) || 0;
     if (ign) h += '<div class="dz-linha dz-nota">Travas de data ignoradas (o contrato já gerado manda): ' + ign + (ign === 1 ? " aviso" : " avisos") + ".</div>";
-    if (pv.cancelar) h += '<div class="dz-linha"><span class="dz-rot">Será cancelado (envelope ' + (pv.envelopeAntigo === "termos" ? "dos termos" : "do contrato") + "): " +
+    if (pv.cancelar) h += '<div class="dz-linha"><span class="dz-rot">Será cancelado (envio para assinatura ' + (pv.envelopeAntigo === "termos" ? "dos termos" : "do contrato") + "): " +
       (pv.cancelar.length ? esc(pv.cancelar.map(function (x) { return x.nome; }).join("; ")) : "nenhum termo em andamento") + "</span></div>";
     if (pv.assinam && pv.assinam.length) h += '<div class="dz-linha"><span class="dz-rot">Recebem os termos novos: ' +
       esc(pv.assinam.map(function (s) { return s.nome ? s.nome + " (" + s.papel + ")" : s.papel; }).join("; ")) + "</span></div>";
@@ -379,7 +379,7 @@
     if (acao === "a-troca-gerar") {
       if (!c.troca.previa || !c.troca.previa.liberado) return c;
       if (!deps.confirmar("Gerar os termos de confissão novos com os fiadores de agora? O contrato não muda; nada vai para a Clicksign ainda.")) return c;
-      ocupar("gerando os termos novos… (até 1 minuto)");
+      ocupar("gerando os termos novos… (pode levar até 4 minutos)");
       var g = await chamarSeguro(deps, { action: "trocarFiadoresGerar", pageId: deps.pageId, carimbo: c.troca.previa.carimbo });
       if (!g.ok) return copia(c, { ocupado: null, msg: mensagemTroca(g) });
       var lt = await lerLinhasTermos(g, deps);
@@ -423,12 +423,12 @@
     if (base === "a-reenviar") n = await reenviarLink(ct, d2);
     else if (base === "a-trocar-email") n = await trocarEmail(ct, d2);
     else if (base === "a-cancelar" || base === "a-descartar") {
-      if (!deps.confirmar(base === "a-cancelar" ? "Cancelar o envelope dos termos de confissão na Clicksign? O contrato não muda; ninguém mais assina estes termos."
-                                                 : "Descartar o rascunho dos termos na Clicksign? Nada foi enviado aos signatários.")) return c;
+      if (!deps.confirmar(base === "a-cancelar" ? "Cancelar o envio para assinatura dos termos de confissão na Clicksign? O contrato não muda; ninguém mais assina estes termos."
+                                                 : "Descartar o rascunho dos termos na Clicksign? Nada foi enviado aos assinantes.")) return c;
       if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "cancelar", msg: "" }));
       var r = await chamarSeguro(deps, { action: "assinaturaCancelar", pageId: deps.pageId, doc: "TERMOS", descartar: base === "a-descartar" ? true : undefined });
       if (!r.ok) return copia(c, { ocupado: null, msg: mensagemAssinatura(r) });
-      return copia(c, { ocupado: null, recarregar: true, msg: base === "a-cancelar" ? "Envelope dos termos cancelado na Clicksign." : "Rascunho dos termos descartado." });
+      return copia(c, { ocupado: null, recarregar: true, msg: base === "a-cancelar" ? "Envio para assinatura dos termos cancelado na Clicksign." : "Rascunho dos termos descartado." });
     } else return c;
     return copia(c, { estado: copia(c.estado, { termos: n.estado }), ocupado: null, msg: n.msg });
   }
@@ -443,10 +443,10 @@
     if (assinado(c)) return montarDocumentosAssinados(c);   /* 01/11 (plano 23 A): só visualizar */
     var e = c.estado, sit = situacaoDe(e);
     if (c.troca && !termo) return h + htmlTroca(c) + (c.msg ? '<div class="dz-msg">' + esc(c.msg) + "</div>" : "");   /* 18/11: modo Trocar fiadores */
-    if (c.ocupado === "enviar") h += '<div class="dz-linha"><b>enviando… (até 1 minuto)</b></div>';
+    if (c.ocupado === "enviar") h += '<div class="dz-linha"><b>enviando… (pode levar até 4 minutos)</b></div>';
     if (c.ocupado === "atualizar") h += '<div class="dz-linha"><b>consultando…</b></div>';
     if (c.ocupado === "reenviar") h += '<div class="dz-linha"><b>reenviando…</b></div>';
-    if (c.ocupado === "cancelar") h += '<div class="dz-linha"><b>cancelando o envelope na Clicksign…</b></div>';
+    if (c.ocupado === "cancelar") h += '<div class="dz-linha"><b>cancelando o envio para assinatura na Clicksign…</b></div>';
     if (c.ocupado === "trocar-email") h += '<div class="dz-linha"><b>trocando o e-mail na Clicksign…</b></div>';
     if (c.ocupado === "ver") h += '<div class="dz-linha"><b>abrindo o ' + (termo ? "termo" : "contrato") + ' assinado…</b></div>';
     if (!c.contratoGerado) h += '<div class="dz-aviso">Gere o ' + (termo ? "termo" : "contrato") + ' antes de enviar para assinatura.</div>';
@@ -496,11 +496,11 @@
     if (e.envelope && situacaoDe(e) === "ENVIADO" && pendentes(e))
       h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'reenviar"' + (podeReenviar(c) ? "" : " disabled") + ">Reenviar link de assinatura</button>";
     if (e.envelope && situacaoDe(e) === "ENVIADO" && !e.contratoAssinado)
-      h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'cancelar"' + (podeCancelar(c) ? "" : " disabled") + ">Cancelar envelope</button>";
+      h += ' <button type="button" class="bt ghost bt-mini perigo" data-acao="' + x + 'cancelar"' + (podeCancelar(c) ? "" : " disabled") + ">Cancelar envio para assinatura</button>";
     if (!termo && c.podeTrocarFiadores && e.envelope && sit === "ENVIADO" && !c.testes)
       h += ' <button type="button" class="bt ghost bt-mini" data-acao="a-troca-abrir"' + (podeTrocarFiadores(c) ? "" : " disabled") + ">Trocar fiadores</button>";
     if (e.envelope && situacaoDe(e) === "RASCUNHO" && !c.testes)
-      h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'descartar"' + (podeDescartar(c) ? "" : " disabled") + ">Descartar rascunho</button>";
+      h += ' <button type="button" class="bt ghost bt-mini perigo" data-acao="' + x + 'descartar"' + (podeDescartar(c) ? "" : " disabled") + ">Descartar rascunho</button>";
     /* só leitura: o perfil TESTES também vê */
     if (podeVerAssinado(c)) h += ' <button type="button" class="bt bt-mini" data-acao="' + x + 'ver-assinado"' + (c.ocupado ? " disabled" : "") + ">Ver " + (termo ? "termo" : "contrato") + " assinado</button>";
     h += "</div>";
@@ -584,7 +584,7 @@
       c = copia(c, { prazo: prazo });
     }
     if (enviar && !deps.confirmar("Enviar o " + (ehTermo(c) ? "termo de reserva" : "contrato") + " para assinatura até " + dataBr(prazo) +
-                                  "? Cada signatário recebe um e-mail da Clicksign para assinar; depois dessa data o envelope é cancelado.")) return c;
+                                  "? Cada assinante recebe um e-mail da Clicksign para assinar; depois dessa data o envio para assinatura é cancelado.")) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: enviar ? "enviar" : "atualizar", msg: "", faltas: null, corrigir: null }));
     var r, pedido = comDoc(c, { action: enviar ? "assinaturaEnviar" : "assinaturaEstado", pageId: deps.pageId });
     if (enviar) pedido.prazo = prazo;
@@ -620,7 +620,7 @@
     if (r.termos) estado.termos = r.termos;
     if (Array.isArray(r.jaAssinado)) estado.jaAssinado = r.jaAssinado;
     var msg = r.aguardandoArquivo ? AGUARDANDO_ARQUIVO
-      : (mensagemAssinatura(r) || (enviar ? "Enviado — cada signatário recebe o e-mail da Clicksign." : "Situação atualizada."));
+      : (mensagemAssinatura(r) || (enviar ? "Enviado — cada assinante recebe o e-mail da Clicksign." : "Situação atualizada."));
     /* unidade 22 (01/11): avisos do envio (rubrica que a Clicksign guardou diferente, pessoa sem posição, aviso do leitor) */
     if (enviar && Array.isArray(r.avisos) && r.avisos.length) msg += " Atenção: " + r.avisos.join("; ") + ".";
     return copia(c, { estado: estado, ocupado: null, faltas: null, corrigir: null, msg: msg });
@@ -690,7 +690,7 @@
     novo = String(novo).trim().toLowerCase();
     if (!EMAIL_OK.test(novo)) return copia(c, { msg: MSG.EMAIL_INVALIDO });
     if (novo === String(s.email || "").toLowerCase()) return copia(c, { msg: MSG.EMAIL_IGUAL });
-    if (!deps.confirmar("Trocar o e-mail de " + quem + " para " + novo + "? A Clicksign manda o link de assinatura para o e-mail novo e o antigo deixa de valer. O envelope continua o mesmo (quem já assinou não assina de novo).")) return c;
+    if (!deps.confirmar("Trocar o e-mail de " + quem + " para " + novo + "? A Clicksign manda o link de assinatura para o e-mail novo e o antigo deixa de valer. O envio para assinatura continua o mesmo (quem já assinou não assina de novo).")) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "trocar-email", msg: "" }));
     var r;
     try { r = await deps.chamar(comDoc(c, { action: "assinaturaTrocarEmail", pageId: deps.pageId, signerId: s.id, email: novo })); }
@@ -709,7 +709,7 @@
   async function cancelarEnvelope(c, deps) {
     if (!podeCancelar(c)) return c;
     var oque = ehTermo(c) ? "termo de reserva" : "contrato";
-    if (!deps.confirmar("Cancelar o envelope do " + oque + " na Clicksign? Ninguém mais consegue assinar este envelope " +
+    if (!deps.confirmar("Cancelar o envio para assinatura do " + oque + " na Clicksign? Ninguém mais consegue assinar este envio para assinatura " +
                         "e as assinaturas já feitas nele deixam de valer. Depois dá para enviar de novo.")) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "cancelar", msg: "" }));
     var r;
@@ -719,14 +719,14 @@
     if (!r.ok) return copia(c, { ocupado: null, msg: mensagemAssinatura(r) });
     var estado = { situacao: r.situacao || "CANCELADO", envelope: true, signatarios: r.signatarios || [], temAssinado: !!r.temAssinado };
     return copia(c, { estado: estado, ocupado: null, faltas: null, corrigir: null,
-                      msg: "Envelope cancelado na Clicksign — ninguém mais recebe pedido de assinatura dele." });
+                      msg: "Envio para assinatura cancelado na Clicksign — ninguém mais recebe pedido de assinatura dele." });
   }
 
   /* Descartar rascunho: a mesma ação assinaturaCancelar; com envelope draft o servidor apaga e limpa as colunas.
    * Se a Clicksign não respondeu, nada foi apagado: pede para tentar de novo. */
   async function descartarRascunho(c, deps) {
     if (!podeDescartar(c)) return c;
-    if (!deps.confirmar("Descartar o rascunho do " + (ehTermo(c) ? "termo de reserva" : "contrato") + " na Clicksign? Nada foi enviado aos signatários; depois é só enviar de novo.")) return c;
+    if (!deps.confirmar("Descartar o rascunho do " + (ehTermo(c) ? "termo de reserva" : "contrato") + " na Clicksign? Nada foi enviado aos assinantes; depois é só enviar de novo.")) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "cancelar", msg: "" }));
     var r;
     try { r = await deps.chamar(comDoc(c, { action: "assinaturaCancelar", pageId: deps.pageId, descartar: true })); }
