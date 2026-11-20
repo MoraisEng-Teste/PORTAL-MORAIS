@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Envio concluído – Reserva do Ipês</title>
+<title>Envio concluído – Reserva dos Ipês</title>
 <!--
   r62 — PÁGINA DE CONFIRMAÇÃO
   Depois de enviar uma proposta (proposta.html) ou uma simulação
@@ -76,8 +76,8 @@
 <body>
 <header>
   <div class="logos">
+    <img src="assets/logo-ipes.jpg" alt="Reserva dos Ipês">
     <img src="assets/logo-morais.png" alt="Morais Engenharia">
-    <img src="assets/logo-ipes.jpg" alt="Reserva do Ipês">
   </div>
   <div class="titulo">
     <h1 id="hTitulo">Envio concluído</h1>
@@ -131,7 +131,7 @@
   var NUM  = param('numero') || (ENV && ENV.numero) || '';
 
   if(TIPO === 'proposta'){
-    document.title = 'Proposta enviada – Reserva do Ipês';
+    document.title = 'Proposta enviada – Reserva dos Ipês';
     $('hTitulo').textContent = 'Proposta de Compra';
     $('btNovo').style.display = 'none';
     if(NUM){ $('codigo').textContent = NUM; $('codigo').style.display = 'inline-block'; }
@@ -142,8 +142,8 @@
     $('corpo').innerHTML = (ENV && ENV.html) ||
       '<div class="bloco">A proposta foi registrada. O e-mail com a proposta completa chega em alguns minutos.</div>';
   } else {
-    document.title = 'Simulação enviada – Reserva do Ipês';
-    $('hTitulo').textContent = 'Simula Operação Imobiliária';
+    document.title = 'Simulação enviada – Reserva dos Ipês';
+    $('hTitulo').textContent = 'Simulação de financiamento';
     estado('processando', 'Solicitação recebida',
       'Simulando as linhas selecionadas na CAIXA. O resultado chega por e-mail em alguns minutos.');
     $('corpo').innerHTML = '<div class="bloco info">Pode fechar esta página ou voltar ao mapa — a simulação ' +

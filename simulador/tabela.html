@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tabela de disponibilidades — Reserva do Ipês</title>
-<!-- 08/11/2026 (dono) — TABELA DE DISPONIBILIDADES em página: os botões SIMULAR e SUBIR PASTA
+<title>Tabela de disponibilidades — Reserva dos Ipês</title>
+<!-- 08/11/2026 (dono) — TABELA DE DISPONIBILIDADES em página: os botões SIMULAR e Enviar proposta
      de cada linha abrem em NOVA ABA (no PDF o navegador abre o link na mesma aba, e isso não
      dá para mudar de dentro do arquivo). Daqui também baixa o PDF e o Excel. -->
 <style>
-  /* 10/11/2026 (dono): cores da logo do Reserva do Ipês — tronco marrom e flores amarela, rosa, lilás e cinza */
+  /* 10/11/2026 (dono): cores da logo do Reserva dos Ipês — tronco marrom e flores amarela, rosa, lilás e cinza */
   :root{--marrom:#A86123;--marromEsc:#6E3E14;--amarelo:#ECC32B;--amarelo2:#D9AE17;--rosa:#E983A9;--lilas:#A88FC1;--cinza:#DADFDC;
         --roxo:#7E5DAF;--roxo2:#694A97;--lilasClaro:#EFE9F6;--amareloClaro:#FDF3CF;--creme:#FBF6EC;
         --texto:#3C2819;--suave:#6E5A46;--borda:#E8DCC8;--fundo:#FBF7EE;}
@@ -94,8 +94,8 @@
 </head>
 <body>
 <header>
-  <img class="logo" src="assets/logo-ipes-arvore.jpg" alt="Reserva do Ipês" onerror="this.style.display='none'">
-  <h1>Tabela de disponibilidades<span>Condomínio Reserva do Ipês · Morais Engenharia e Construção · <b id="data"></b></span></h1>
+  <img class="logo" src="assets/logo-ipes-arvore.jpg" alt="Reserva dos Ipês" onerror="this.style.display='none'">
+  <h1>Tabela de disponibilidades<span>Condomínio Reserva dos Ipês · Morais Engenharia e Construção · <b id="data"></b></span></h1>
   <div class="bts">
     <button class="bt" id="bPdf" onclick="baixar('pdf')">⬇ PDF</button>
     <button class="bt v" id="bXls" onclick="baixar('xlsx')">⬇ Excel</button>
@@ -120,7 +120,7 @@
 
   <!-- 14/11/2026 (dono): mapa das unidades logo abaixo da tabela -->
   <h2 class="sec">Mapa das unidades</h2>
-  <p class="dica-mapa">Clique na unidade para ver valor, avaliação e a planta, e para SIMULAR ou SUBIR PASTA (abre em outra aba, com o prazo, o FGTS e o financiamento escolhidos acima).</p>
+  <p class="dica-mapa">Clique na unidade para ver valor, avaliação e a planta, e para SIMULAR ou Enviar proposta (abre em outra aba, com o prazo, o FGTS e o financiamento escolhidos acima).</p>
   <div class="mapbox">
     <div style="position:relative"><div id="mapScroll"><div class="mapa-vazio">Carregando o mapa…</div></div>
     <div class="zoom"><button type="button" onclick="zoomMapa(1.25)" title="Aproximar">+</button><button type="button" onclick="zoomMapa(0.8)" title="Afastar">−</button></div></div>
@@ -138,7 +138,7 @@
   <div class="aviso" id="popAviso" style="display:none"><b>Unidade reservada.</b> Dá para simular e subir pasta, mas a proposta só é analisada se houver desistência.</div>
   <div class="acoes" id="popAcoes">
     <a class="btn sim" id="popSim" target="_blank" rel="noopener">SIMULAR</a>
-    <a class="btn prop" id="popProp" target="_blank" rel="noopener">SUBIR PASTA</a>
+    <a class="btn prop" id="popProp" target="_blank" rel="noopener">Enviar proposta</a>
   </div>
 </div>
 <script src="fluxo-calc.js"></script>
@@ -244,13 +244,13 @@
       tab.tHead.rows[0].cells[3].textContent=D.cols[3].t;   // a coluna 3 (financiamento) não é ordenável
       return;
     }
-    var h = '<table id="tab"><thead><tr>'+D.cols.map(cabCol).join('')+'<th>Simular</th><th>Subir pasta</th></tr></thead><tbody>';
+    var h = '<table id="tab"><thead><tr>'+D.cols.map(cabCol).join('')+'<th>Simular</th><th>Enviar proposta</th></tr></thead><tbody>';
     D.lista.forEach(function(l){
       h += '<tr>'+D.cols.map(function(c){
         return '<td class="'+(c.k==='unidade'?'un':(c.destaque?'fin':''))+'">'+celula(c, l)+'</td>';
       }).join('')+
         '<td class="ac"><a class="btn sim" target="_blank" rel="noopener" href="'+esc(D.link('simulador.html',l))+'">SIMULAR</a></td>'+
-        '<td class="ac"><a class="btn prop" target="_blank" rel="noopener" href="'+esc(D.link('proposta.html',l))+'">SUBIR PASTA</a></td></tr>';
+        '<td class="ac"><a class="btn prop" target="_blank" rel="noopener" href="'+esc(D.link('proposta.html',l))+'">Enviar proposta</a></td></tr>';
     });
     tab.outerHTML = h+'</tbody></table>';
     ASSIN=assin;
@@ -267,7 +267,7 @@
      14/11/2026 (dono) — MAPA DAS UNIDADES abaixo da tabela.
      Mesmas regras do mapa de vendas (index.html): a unidade fica sempre na
      cor do tipo; reservada e vendida viram bolinha sólida no fundo do lote;
-     "em breve" fica cinza. SIMULAR / SUBIR PASTA abrem em outra aba e levam
+     "em breve" fica cinza. SIMULAR / Enviar proposta abrem em outra aba e levam
      o prazo, o FGTS e o financiamento escolhidos no topo (mesmo link da linha).
      ===================================================================== */
   var ULT_D=null, svgPronto=false;
