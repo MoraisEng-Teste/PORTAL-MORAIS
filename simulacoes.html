@@ -932,15 +932,46 @@ addEventListener("offline",()=>simNet(false));
 /* 20/11/2026 (ux) — a aba aberta lembra a última usada; na primeira vez abre em Propostas (o trabalho do dia) */
 const SIM_ABA_KEY="morais_sim_aba";
 const SIM_ABAS=["painel","recebidas","propostas","analise","unidades","servidores"];
+/* Endereço e botão Voltar: a aba vai no hash (#propostas, #indicadores…) e a ficha aberta ganha um passo
+   (#propostas/ficha) para o Voltar fechá-la em vez de sair da página. Nunca vai id de proposta nem dado de pessoa. */
+const SIM_HASH={painel:"indicadores",recebidas:"recebidas",propostas:"propostas",analise:"analise",unidades:"unidades",servidores:"servidores"};
+function simAbaDeHash(h){
+  const t=String(h||"").replace(/^#/,"").split("/")[0];
+  return SIM_ABAS.find(n=>SIM_HASH[n]===t)||"";
+}
+let _abaAtual="", _fichaHist=false, _fichaHash="";
+function simHistAba(nome, semHist, inicial){
+  _abaAtual=nome;
+  const h="#"+SIM_HASH[nome];
+  try{
+    if(inicial) history.replaceState(null,"",h);
+    else if(!semHist && location.hash!==h) history.pushState(null,"",h);
+  }catch(e){}
+}
+function simHistFicha(){
+  if(_fichaHist) return;                 // já há um passo da ficha: não empilha outro
+  try{ _fichaHash="#"+(SIM_HASH[_abaAtual]||"propostas")+"/ficha"; history.pushState(null,"",_fichaHash); _fichaHist=true; }catch(e){}
+}
+addEventListener("popstate",function(){
+  const h=location.hash, sub=h.replace(/^#/,"").split("/")[1]||"", nome=simAbaDeHash(h);
+  const m=document.getElementById("sim-modal"), aberta=!!m && !m.classList.contains("hide");
+  if(aberta && _fichaHist && sub!=="ficha"){ simPedirFechar(true); return; }   // Voltar com a ficha aberta: fecha (pergunta do e-mail incluída)
+  if(aberta && !_fichaHist) simFecharDet(true);
+  if(sub==="ficha" && !_fichaHist){ try{ history.replaceState(null,"","#"+SIM_HASH[nome||"propostas"]); }catch(e){} }   // a ficha não se refaz pelo Avançar
+  if(!nome || nome===_abaAtual) return;
+  const bt=document.querySelector('.tab[data-tab="'+nome+'"]'); if(!bt||bt.classList.contains("hide")) return;
+  trocarTab(nome,true);
+});
 function simAbaInicial(){
-  let a="";
-  try{ a=localStorage.getItem(SIM_ABA_KEY)||""; }catch(e){}
+  let a=simAbaDeHash(location.hash);
+  if(!a){ try{ a=localStorage.getItem(SIM_ABA_KEY)||""; }catch(e){} }
   if(SIM_ABAS.indexOf(a)<0) a="propostas";
   if(a==="servidores" && String((S&&S.tipo)||"").toUpperCase()!=="ADM") a="propostas";
   return a;
 }
 function trocarTab(nome, semHist, inicial){
   try{ localStorage.setItem(SIM_ABA_KEY, nome); }catch(e){}
+  simHistAba(nome, semHist, inicial);
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.tab===nome));
   /* set/26 r5 — a aba "Nova proposta" saiu: o preenchimento é pelo mapa
      (proposta.html), do mesmo jeito que a simulação. Aqui o portal só
@@ -2096,7 +2127,13 @@ function simParaProposta(id){
   window.open("https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/proposta.html?tipo="+encodeURIComponent(d.tipo)+
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
-function simFecharDet(){ document.getElementById("sim-modal").classList.add("hide"); }
+function simFecharDet(viaPop){
+  document.getElementById("sim-modal").classList.add("hide");
+  if(_fichaHist){                         // a ficha tinha um passo no histórico: desfaz esse passo (se for o do topo)
+    _fichaHist=false;
+    if(!viaPop && location.hash===_fichaHash){ try{ history.back(); }catch(e){} }
+  }
+}
 /* e-mail da ficha com texto digitado e não enviado (assunto alterado ou mensagem preenchida) */
 function simEmailPendente(){
   const ed=document.getElementById("prop-msg"), as=document.getElementById("prop-assunto");
@@ -2106,12 +2143,16 @@ function simEmailPendente(){
 }
 /* fecha a ficha; se há e-mail não enviado, pergunta antes (pergunta Sim/Não da tela, não o confirm do navegador) */
 let _simFechando=false;
-async function simPedirFechar(){
+async function simPedirFechar(viaPop){
   if(_simFechando) return;
   _simFechando=true;
   try{
-    if(simEmailPendente() && !(await propSimNao("Há um e-mail escrito e ainda não enviado. Fechar a ficha mesmo assim?"))) return;
-    simFecharDet();
+    if(simEmailPendente() && !(await propSimNao("Há um e-mail escrito e ainda não enviado. Fechar a ficha mesmo assim?"))){
+      /* disse "não" depois de apertar Voltar: o navegador já andou um passo, então refaz o passo da ficha */
+      if(viaPop===true && _fichaHist){ try{ history.pushState(null,"",_fichaHash); }catch(e){} }
+      return;
+    }
+    simFecharDet(viaPop===true);
   } finally { _simFechando=false; }
 }
 /* Esc fecha a ficha, a menos que haja outra janela por cima dela */
@@ -4428,6 +4469,7 @@ function propVer(id){
     <div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simPedirFechar()">Fechar</button></div>
     ${podeGravar?'':'<div id="prop-detAviso" class="sim-aviso" style="margin-top:10px"></div>'}`;
   document.getElementById("sim-modal").classList.remove("hide");
+  simHistFicha();   // Voltar do navegador fecha a ficha
   const asu=document.getElementById("prop-assunto"); if(asu) asu.dataset.orig=asu.value;
   const ed=document.getElementById("prop-msg");
   if(ed){
