@@ -130,7 +130,7 @@ test("↻ fica na coluna entre Tipo e Valor de cada, por linha; o botão Redistr
   const h = D.htmlFluxo(fechado, { fluxoEd: editor() }, "");
   assert.match(h, /<th>Tipo<\/th><th>↻<\/th><th>Valor de cada \(R\$\)<\/th>/);
   const linhaPre = h.match(/<tr data-fx-linha="1">.*?<\/tr>/s)[0];
-  assert.match(linhaPre, /<\/select>.*?<\/td><td><button[^>]*data-acao="c-fluxo-red"[^>]*>↻<\/button><\/td><td><input[^>]*data-fx="v"/s);
+  assert.match(linhaPre, /<\/select>.*?<\/td><td><button[^>]*data-acao="c-fluxo-red"[^>]*>↻<span class="bt-txt"> Redistribuir<\/span><\/button><\/td><td data-rot="Valor de cada \(R\$\)"><input[^>]*data-fx="v"/s);
   assert.doesNotMatch(h, />Redistribuir<\/button>/);
   const linhaFin = h.match(/<tr data-fx-linha="2">.*?<\/tr>/s)[0];
   assert.equal((linhaFin.match(/<td/g) || []).length, (linhaPre.match(/<td/g) || []).length, "linha fixa com o mesmo nº de colunas");
@@ -341,7 +341,7 @@ test("guiado: apagar uma linha desloca os cadeados; recomeçar limpa", () => {
 test("guiado: o editor explica o cadeado; o ↻ continua entre o tipo e o valor", () => {
   const h = D.htmlFluxo(fechado, { fluxoEd: reguaUI() }, "");
   assert.match(h, /trava \(🔒\)/);
-  assert.match(linhaTr(h, 1), /<\/select>.*?<\/td><td><button[^>]*data-acao="c-fluxo-red"[^>]*>↻<\/button><\/td><td><input[^>]*data-fx="v"/s);
+  assert.match(linhaTr(h, 1), /<\/select>.*?<\/td><td><button[^>]*data-acao="c-fluxo-red"[^>]*>↻<span class="bt-txt"> Redistribuir<\/span><\/button><\/td><td data-rot="Valor de cada \(R\$\)"><input[^>]*data-fx="v"/s);
 });
 
 /* ---- 04/11 (revisão): tipo e quantidade também travam; sugestão com a última diferente; cores pelo tema ---- */
@@ -410,7 +410,7 @@ test("editor: quantidade da pré-chaves mostra quantas cabem; partes no mesmo m�
 test("editor: coluna Última mostra o vencimento da última parcela (14/11, dono); linha de uma parcela fica com traço", () => {
   const h = D.htmlContrato(estado(fechado), { fluxoEd: editor() });
   assert.match(h, /<th>A cada \(meses\)<\/th><th>Última<\/th><th>Descrição<\/th>/);
-  const celula = (k) => (h.match(new RegExp('<td class="vb-fx-fim" data-k="' + k + '"[^>]*>([^<]*)</td>')) || [])[1];
+  const celula = (k) => (h.match(new RegExp('<td class="vb-fx-fim" data-rot="Última" data-k="' + k + '"[^>]*>([^<]*)</td>')) || [])[1];
   assert.equal(celula(0), "—");            /* sinal: uma parcela */
   assert.equal(celula(1), "10/07/2028");   /* 20 parcelas mensais a partir de 10/12/2026 */
   /* toda linha tem as mesmas 10 colunas do cabeçalho (o layout do cartão do condomínio conta as colunas pela posição) */

@@ -1192,16 +1192,16 @@
       var carta = l.t === "fin" ? F.tetoFinanciamento(ed.padrao) : 0;
       if (tp.fixo && carta > 0) {
         h += '<tr data-fx-linha="' + k + '"><td><b>' + esc(tp.nome) + '</b><div class="dz-nota">até ' + esc(F.moeda(carta)) + " (carta de aprovação)</div></td><td></td>" +
-          '<td><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right"' +
+          '<td data-rot="Valor de cada (R$)"><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right"' +
           ' aria-label="Valor do financiamento, até ' + esc(F.moeda(carta)) + '">' +
-          "</td><td>" + esc(l.n) + "</td><td>—</td><td></td><td></td><td></td>" +
-          '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
+          "</td><td data-rot=\"Qtde\">" + esc(l.n) + "</td><td data-rot=\"1ª data\">—</td><td data-rot=\"A cada (meses)\"></td><td data-rot=\"Última\"></td><td data-rot=\"Descrição\"></td>" +
+          '<td class="vb-fx-tot" data-rot="Total" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
         return;
       }
       if (tp.fixo) {
         h += '<tr data-fx-linha="' + k + '"><td><b>' + esc(tp.nome) + '</b><div class="dz-nota">' + (l.t === "prereserva" ? "já recebida — abate o sinal" : "fixo — vem da proposta") + '</div></td><td></td>' +
-          '<td style="text-align:right">' + esc(numBR(l.v)) + "</td><td>" + esc(l.n) + "</td><td>" + esc(l.d ? F.dataBR(l.d) : "—") + "</td><td></td><td></td><td></td>" +
-          '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
+          '<td data-rot="Valor de cada (R$)" style="text-align:right">' + esc(numBR(l.v)) + "</td><td data-rot=\"Qtde\">" + esc(l.n) + "</td><td data-rot=\"1ª data\">" + esc(l.d ? F.dataBR(l.d) : "—") + "</td><td data-rot=\"A cada (meses)\"></td><td data-rot=\"Última\"></td><td data-rot=\"Descrição\"></td>" +
+          '<td class="vb-fx-tot" data-rot="Total" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
         return;
       }
       var guiada = ajustavelFx(l), trav = guiada && !!(ed.travadas || {})[k];
@@ -1211,30 +1211,30 @@
         '</select><div class="dz-nota">' + (tp.reajuste ? "reajuste " + esc(tp.reajuste) : "sem correção") + "</div></td>" +
         /* 30/10 (arquivo 17, item 2): o Redistribuir virou ícone, entre o tipo e o valor */
         '<td><button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-red" data-k="' + k + '"' + dis +
-        ' title="Redistribuir: joga a diferença inteira nesta linha" aria-label="Redistribuir a diferença nesta linha">↻</button></td>' +
-        '<td><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right">' +
+        ' title="Redistribuir: joga a diferença inteira nesta linha" aria-label="Redistribuir a diferença nesta linha">↻<span class="bt-txt"> Redistribuir</span></button></td>' +
+        '<td data-rot="Valor de cada (R$)"><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right">' +
         '<div class="dz-nota vb-fx-ult" data-k="' + k + '"' + (l.u && l.n > 1 ? ">última: " + esc(numBR(l.u)) : ' style="display:none">') + "</div>" +
         /* 04/11 (dono): "ajustado pelo simulador" ou a sugestão do que esta linha precisaria para fechar */
         (guiada ? '<div class="vb-fx-guia" data-k="' + k + '">' + htmlGuiaLinha(ed, k) + "</div>" : "") + "</td>" +
         /* 07/11 (dono): pré-chaves mês a mês — o campo não passa do que cabe até out/2028 sem cair no mês da outra parte */
         (function () {
           var cab = l.t === "pre" ? F.cabemPre({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, k) : null;
-          return '<td><input type="number" min="1"' + (cab ? ' max="' + cab + '"' : "") + ' data-fx="n" data-k="' + k + '" value="' + esc(l.n) + '"' + dis + ' style="width:4.5em">' +
+          return '<td data-rot="Qtde"><input type="number" min="1"' + (cab ? ' max="' + cab + '"' : "") + ' data-fx="n" data-k="' + k + '" value="' + esc(l.n) + '"' + dis + ' style="width:4.5em">' +
             (cab !== null ? '<div class="dz-nota vb-fx-cab" data-k="' + k + '">cabem ' + cab + "</div>" : "") + "</td>";
         })() +
-        '<td><input type="date" data-fx="d" data-k="' + k + '" value="' + esc(l.d) + '"' + dis + "></td>" +
-        '<td><input type="number" min="1" max="24" data-fx="i" data-k="' + k + '" value="' + esc(l.i || 1) + '"' + dis + ' style="width:4em"></td>' +
+        '<td data-rot="1ª data"><input type="date" data-fx="d" data-k="' + k + '" value="' + esc(l.d) + '"' + dis + "></td>" +
+        '<td data-rot="A cada (meses)"><input type="number" min="1" max="24" data-fx="i" data-k="' + k + '" value="' + esc(l.i || 1) + '"' + dis + ' style="width:4em"></td>' +
         /* 14/11 (dono): coluna "Última" — o vencimento da última parcela da linha (1ª data + (qtde − 1) × intervalo) */
-        '<td class="vb-fx-fim" data-k="' + k + '" style="white-space:nowrap">' + esc(ultimaDataFx(l)) + "</td>" +
+        '<td class="vb-fx-fim" data-rot="Última" data-k="' + k + '" style="white-space:nowrap">' + esc(ultimaDataFx(l)) + "</td>" +
         /* 03/11: na permuta, a descrição é o resumo do bem (formulário "Dados do bem") */
-        (l.t === "permuta" && l.b ? '<td style="min-width:10em">' + esc(F.resumoBem(F.normalizarBem(l.b)) || l.x || "") + "</td>"
-          : '<td><input type="text" maxlength="120" data-fx="x" data-k="' + k + '" value="' + esc(l.x || "") + '"' + dis +
+        (l.t === "permuta" && l.b ? '<td data-rot="Descrição" style="min-width:10em">' + esc(F.resumoBem(F.normalizarBem(l.b)) || l.x || "") + "</td>"
+          : '<td data-rot="Descrição"><input type="text" maxlength="120" data-fx="x" data-k="' + k + '" value="' + esc(l.x || "") + '"' + dis +
             ' placeholder="' + (l.t === "permuta" ? "resumo (os dados vão no Dados do bem)" : "opcional") + '" style="min-width:10em"></td>') +
-        '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td>" +
-        '<td style="white-space:nowrap">' +
+        '<td class="vb-fx-tot" data-rot="Total" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td>" +
+        '<td class="vb-fx-acoes" style="white-space:nowrap">' +
         (l.t === "permuta" ? '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-bem" data-k="' + k + '"' + dis + ">Dados do bem</button> " : "") +
         (guiada ? htmlTrava(k, trav, dis) + " " : "") +
-        '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-del" data-k="' + k + '"' + dis + ' aria-label="Apagar linha">✕</button></td></tr>';
+        '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-del" data-k="' + k + '"' + dis + ' title="Tirar esta linha" aria-label="Tirar a linha ' + (k + 1) + '">✕<span class="bt-txt"> Tirar</span></button></td></tr>';
     });
     h += "</tbody></table></div>";
     h += '<div class="dz-nota">Mexeu no valor ou na quantidade de uma pré-chaves, balão ou pós-chaves: a linha trava (🔒) e o simulador ajusta as outras soltas (🔓) para a conta fechar.</div>';
@@ -1275,7 +1275,7 @@
   function htmlTrava(k, trav, dis) {
     return '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-trava" data-k="' + k + '" aria-pressed="' + trav + '"' + dis +
       ' title="' + (trav ? "Travada: o simulador não mexe nesta linha (clique para soltar)" : "Solta: o simulador ajusta esta linha (clique para travar)") +
-      '" aria-label="' + (trav ? "Destravar a linha " : "Travar a linha ") + (k + 1) + '">' + (trav ? "🔒" : "🔓") + "</button>";
+      '" aria-label="' + (trav ? "Destravar a linha " : "Travar a linha ") + (k + 1) + '">' + (trav ? "🔒" : "🔓") + '<span class="bt-txt"> ' + (trav ? "Destravar" : "Travar") + "</span></button>";
   }
   function htmlGuiaLinha(ed, k) {
     var s = ed.sugestao;
@@ -1841,7 +1841,8 @@
    * esse recuo. Os blocos de contrato/assinatura/Mais Controle moram em .vb-blocos (.vb-ass / .vb-mc). */
   var NO_PAINEL = ["#dossie-wrap", "#pn-body .vb-blocos", "#pn-body .vb-ass", "#pn-body .vb-rec", "#pn-body .vb-mc"];
   function emCada(sufixo) { return NO_PAINEL.map(function (b) { return b + sufixo; }).join(","); }
-  var CSS = "#dossie-wrap .dz-linha,.vb-blocos .dz-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}" +
+  var CSS = ".bt-txt{display:none}@media (max-width:680px){.bt-txt{display:inline}}" +
+    "#dossie-wrap .dz-linha,.vb-blocos .dz-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}" +
     "#dossie-wrap .dz-rot,.vb-blocos .dz-rot{flex:1 1 200px}#dossie-wrap .on{outline:2px solid #4cd964}" +
     "#dossie-wrap .dz-aviso,.vb-blocos .dz-aviso{color:#E67E22;margin:6px 0}" +
     ".dz-faixa{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:8px 0;padding:9px 12px;border-left:4px solid #E67E22;border-radius:6px;background:rgba(226,160,58,.16);overflow-wrap:anywhere}" +
