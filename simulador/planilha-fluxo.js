@@ -17,10 +17,11 @@
  *   Uso: planilhaFluxoPadrao(unidades, formato, {prazo: 48|36|24, fgts: valor, fin: valor, finPor: {unidade: valor}})
  *   e tabelaDisponibilidadesDados(unidades, opcoes). 11/11: {ordem: 'unidade'|'preco'|'aval', desc: true|false}. fin/finPor = financiamento editado, sempre até 80% da avaliação.
  * 10/11/2026 (dono): Excel travado (proteção da planilha, senha ipes2026).
- * 10/11/2026 (dono): cores da logo do Reserva do Ipês e a logo (assets/logo-ipes-arvore.jpg) no topo.
+ * 10/11/2026 (dono): cores da logo do Reserva dos Ipês e a logo (assets/logo-ipes-arvore.jpg) no topo.
  * ------------------------------------------------------------------- */
 (function(){
-  var BASE = 'https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/';
+  /* pasta da própria página (serve no teste e na produção); o endereço do script, quando existe, tem prioridade */
+  var BASE = new URL('.', location.href).href;
   try{ if(document.currentScript && document.currentScript.src) BASE = document.currentScript.src.replace(/[^\/]*$/, ''); }catch(e){}
 
   function carregar(src){
@@ -46,7 +47,7 @@
     if(typeof ExcelJS === 'undefined') p.push(carregar('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'));
     return Promise.all(p);
   }
-  /* 10/11/2026 (dono): cores da LOGO do Reserva do Ipês (marrom do tronco + flores amarela, rosa, lilás e cinza) e a
+  /* 10/11/2026 (dono): cores da LOGO do Reserva dos Ipês (marrom do tronco + flores amarela, rosa, lilás e cinza) e a
      logo na tabela (PDF, Excel e página). */
   var COR = {marrom: [168, 97, 35], marromEsc: [110, 62, 20], amarelo: [236, 195, 43], rosa: [233, 131, 169],
              lilas: [168, 143, 193], roxo: [126, 93, 175], cinza: [218, 223, 220], creme: [251, 246, 236],
@@ -140,7 +141,7 @@
       ' · sem subsídio · sinal em 4x · entrada em ' + op.prazo + ' meses';
   }
 
-  /* 08/11/2026 (dono) — botões SIMULAR e SUBIR PASTA em cada linha: abrem o simulador / a proposta com a unidade já
+  /* 08/11/2026 (dono) — botões SIMULAR e ENVIAR PROPOSTA em cada linha: abrem o simulador / a proposta com a unidade já
      escolhida (10/11: e com o prazo; o simulador recebe também o FGTS) */
   function linkDe(pag, l, op){
     var u = BASE + pag + '?tipo=' + encodeURIComponent(l.tipo || '') + '&unidade=' + encodeURIComponent(String(l.unidade));
@@ -175,7 +176,7 @@
             subtitulo: subtituloDe(op, lista), avisos: avisosDe(op, lista)};
   }
   function nomeArq(M, ext){
-    return 'Tabela de disponibilidades - Reserva do Ipês - ' + (ext === 'xlsx' ? '' : M.op.prazo + 'x - ') +
+    return 'Tabela de disponibilidades - Reserva dos Ipês - ' + (ext === 'xlsx' ? '' : M.op.prazo + 'x - ') +
       (M.op.fgts > 0 ? 'FGTS ' + M.op.fgts.toLocaleString('pt-BR') + ' - ' : '') + M.dataBr.replace(/\//g, '-') + '.' + ext;
   }
 
@@ -191,7 +192,7 @@
       var xt = 10;
       if(lg){ try{ doc.addImage('data:image/jpeg;base64,' + lg, 'JPEG', 8, 2.2, 16.7, 18, 'logoIpes', 'FAST'); xt = 28; }catch(e){} }
       cor('setTextColor', COR.marrom); doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-      doc.text('CONDOMÍNIO RESERVA DO IPÊS', xt, 10.5);
+      doc.text('CONDOMÍNIO RESERVA DOS IPÊS', xt, 10.5);
       cor('setTextColor', COR.marromEsc); doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
       doc.text('TABELA DE DISPONIBILIDADES · ENTRADA EM ' + op.prazo + 'x', xt, 16.5);
       doc.setFontSize(8.5); cor('setTextColor', [120, 100, 80]);
@@ -209,15 +210,15 @@
       doc.text(doc.splitTextToSize(limpo(ATENCAO), W - 24), 12, 35.5);
     }
     /* larguras: as das colunas + os 2 botões, ajustadas para os 281 mm do A4 deitado menos as margens */
-    var ws = cols.map(function(c){ return c.w; }).concat([24, 29]), soma = ws.reduce(function(a, b){ return a + b; }, 0);
+    var ws = cols.map(function(c){ return c.w; }).concat([24, 34]), soma = ws.reduce(function(a, b){ return a + b; }, 0);
     ws = ws.map(function(x){ return x * 281 / soma; });
     var iSim = nc, iProp = nc + 1;
     doc.autoTable({
       head: [['UN.'].concat(cols.slice(1).map(function(c){
         if(c.k === 'fin') return 'FINANCIAM. (' + (/ATÉ/.test(c.t) ? 'ATÉ ' : '') + '80% DA AVALIAÇÃO)';   // cabe na coluna sem quebrar a palavra
-        return limpo(c.t); }), ['SIMULAR', 'SUBIR PASTA'])],
+        return limpo(c.t); }), ['SIMULAR', 'Enviar proposta'])],
       body: lista.map(function(l){
-        return cols.map(function(c){ return c.k === 'unidade' ? String(l.unidade) + (l.reservada ? ' (R)' : '') : brl(l[c.k]); }).concat(['SIMULAR', 'SUBIR PASTA']);
+        return cols.map(function(c){ return c.k === 'unidade' ? String(l.unidade) + (l.reservada ? ' (R)' : '') : brl(l[c.k]); }).concat(['SIMULAR', 'Enviar proposta']);
       }),
       startY: 46, margin: {top: 46, left: 8, right: 8, bottom: 14},
       theme: 'grid',
@@ -249,7 +250,7 @@
     });
     var y = doc.lastAutoTable.finalY + 6;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(7.8); cor('setTextColor', COR.marrom);
-    doc.text('Clique em SIMULAR ou SUBIR PASTA na linha da unidade para abrir o simulador / a proposta já com a unidade escolhida (no navegador, Ctrl + clique abre em nova aba).', 10, y);
+    doc.text('Clique em SIMULAR ou Enviar proposta na linha da unidade para abrir o simulador / a proposta já com a unidade escolhida (no navegador, Ctrl + clique abre em nova aba).', 10, y);
     y += 5;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); cor('setTextColor', [110, 90, 70]);
     M.avisos.forEach(function(t){
@@ -263,14 +264,14 @@
   /* uma aba do Excel (um prazo) */
   async function abaExcel(wb, M, lg){
     var lista = M.lista, op = M.op, dataBr = M.dataBr;
-    var cab = M.cab.concat(['SIMULAR', 'SUBIR PASTA']), ncol = cab.length, nc = M.cols.length;
+    var cab = M.cab.concat(['SIMULAR', 'Enviar proposta']), ncol = cab.length, nc = M.cols.length;
     var ws = wb.addWorksheet('Entrada ' + op.prazo + 'x', {views: [{state: 'frozen', ySplit: 4}], pageSetup: {orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0}});
     var MARROM = argb(COR.marrom), MARROM_ESC = argb(COR.marromEsc), LILAS_CLARO = argb(COR.lilasClaro), CREME = argb(COR.creme);
 
     /* logo na 1ª coluna, título ao lado; a linha de baixo do título leva as cores das flores */
     ws.mergeCells(1, 2, 1, ncol);
     var t = ws.getCell(1, 2);
-    t.value = {richText: [{text: 'CONDOMÍNIO RESERVA DO IPÊS', font: {bold: true, size: 16, color: {argb: MARROM}}},
+    t.value = {richText: [{text: 'CONDOMÍNIO RESERVA DOS IPÊS', font: {bold: true, size: 16, color: {argb: MARROM}}},
                           {text: '\nTABELA DE DISPONIBILIDADES · ENTRADA EM ' + op.prazo + 'x', font: {size: 11, color: {argb: MARROM_ESC}}}]};
     t.alignment = {vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true};
     ws.getRow(1).height = 52;
@@ -323,7 +324,7 @@
       M.cols.forEach(function(c, i){ if(c.destaque) row.getCell(i + 1).fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: LILAS_CLARO}}; });
       if(l.reservada){ var cu = row.getCell(1); cu.value = un + ' (R)'; }
       /* botões da linha: links para o simulador e a proposta com a unidade escolhida */
-      [[nc + 1, 'SIMULAR', 'simulador.html', argb(COR.amarelo), MARROM_ESC], [nc + 2, 'SUBIR PASTA', 'proposta.html', argb(COR.roxo), 'FFFFFFFF']].forEach(function(bt){
+      [[nc + 1, 'SIMULAR', 'simulador.html', argb(COR.amarelo), MARROM_ESC], [nc + 2, 'Enviar proposta', 'proposta.html', argb(COR.roxo), 'FFFFFFFF']].forEach(function(bt){
         var c = row.getCell(bt[0]);
         c.value = {text: bt[1], hyperlink: linkDe(bt[2], l, op), tooltip: bt[1] + ' — unidade ' + un};
         c.font = {bold: true, color: {argb: bt[4]}};
@@ -344,10 +345,10 @@
     });
 
     var larg = {unidade: 11, preco: 16, aval: 16, fin: 20, fgts: 16, sinal: 16, p1: 15, b1: 16, p2: 15, b2: 18, pos: 15};
-    M.cols.map(function(c){ return larg[c.k] || 15; }).concat([13, 15]).forEach(function(w, i){ ws.getColumn(i + 1).width = w; });
+    M.cols.map(function(c){ return larg[c.k] || 15; }).concat([13, 17]).forEach(function(w, i){ ws.getColumn(i + 1).width = w; });
     ws.autoFilter = {from: {row: 4, column: 1}, to: {row: 4 + lista.length, column: ncol}};
     /* 10/11/2026 (dono): planilha TRAVADA — ninguém altera valores nem colunas; dá para selecionar, copiar,
-       filtrar e clicar nos botões SIMULAR / SUBIR PASTA. Senha para destravar: ipes2026 */
+       filtrar e clicar nos botões SIMULAR / Enviar proposta. Senha para destravar: ipes2026 */
     await ws.protect('ipes2026', {spinCount: 1000, selectLockedCells: true, selectUnlockedCells: true, autoFilter: true, sort: false,
       formatCells: false, formatColumns: false, formatRows: false, insertColumns: false, insertRows: false, insertHyperlinks: false,
       deleteColumns: false, deleteRows: false, pivotTables: false, objects: false, scenarios: false});

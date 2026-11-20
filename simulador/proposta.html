@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Proposta de Compra – Reserva do Ipês</title>
+<title>Proposta de Compra – Reserva dos Ipês</title>
 <style>
   :root{
     --marrom:#7A4A16; --marrom2:#A86018; --amarelo:#EFB700; --amarelo2:#D8A818;
@@ -95,6 +95,7 @@
   .toast.ok{background:#EAF6EF;border:1px solid #8CC9A5;color:#1D5433;}
   .toast.processando{background:#FBEEC8;border:1px solid #EFB700;color:#7A4A16;}
   .toast .fecha{position:absolute;right:13px;top:10px;cursor:pointer;font-size:17px;opacity:.6;}
+  @media(max-width:640px){.toast{padding-right:56px;}.toast .fecha{right:0;top:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:24px;}}   /* alvo de toque de 44 px */
   .faltando{border-color:#B0431F !important;box-shadow:0 0 0 3px rgba(176,67,31,.18) !important;}
   .destaque-sim{background:#FFFBF0;border-color:var(--amarelo) !important;}
   .produto{border:1px solid var(--borda);border-left:4px solid var(--borda);border-radius:6px;
@@ -226,6 +227,13 @@
     opacity:0;pointer-events:none;padding:0;border:0;}
   .bt-cal{flex:0 0 46px;padding:0;background:#fff;border:1px solid var(--borda);border-radius:6px;font-size:18px;line-height:1;cursor:pointer;}
   input.data-invalida{border-color:#B0431F !important;box-shadow:0 0 0 3px rgba(176,67,31,.18) !important;}
+  /* comissão do corretor: escondida por padrão (o cliente pode estar olhando a tela); botão mostra/esconde */
+  body:not(.com-ver) .com-info{display:none!important;}
+  .bt-com{background:none;border:1px dashed var(--marrom2,#7A4A16);color:var(--marrom,#4A2A0C);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;}
+  @media(max-width:640px){.bt-com{min-height:44px;font-size:14px;}}
+  /* celular: a faixa de passos corta no 3º; esta linha diz em que passo a pessoa está */
+  .passo-mobile{display:none;font-size:13px;font-weight:800;color:var(--marrom);margin:0 0 6px;}
+  @media(max-width:640px){.passo-mobile{display:block;}}
 </style>
 </head>
 <body>
@@ -239,8 +247,8 @@
 
 <header>
   <div class="logos">
+    <img src="assets/logo-ipes.jpg" alt="Reserva dos Ipês">
     <img src="assets/logo-morais.png" alt="Morais Engenharia">
-    <img src="assets/logo-ipes.jpg" alt="Reserva do Ipês">
   </div>
   <div class="titulo">
     <h1>Proposta de Compra</h1>
@@ -250,6 +258,11 @@
 </header>
 
 <main>
+  <div class="passo-mobile" id="passoMobile" aria-live="polite"></div>
+  <script>document.addEventListener('DOMContentLoaded',function(){var ps=document.querySelector('.passos'),el=document.getElementById('passoMobile');if(!ps||!el)return;
+    function at(){var todos=ps.querySelectorAll('.passo'),a=ps.querySelector('.passo.ativo');if(!a)return;var n=[].indexOf.call(todos,a)+1;
+      var nome=String((a.firstChild&&a.firstChild.textContent)||'').replace(/^\d+\.\s*/,'').trim();el.textContent='Passo '+n+' de '+todos.length+' · '+nome;}
+    at();if(window.MutationObserver)new MutationObserver(at).observe(ps,{subtree:true,attributes:true,attributeFilter:['class']});});</script>
   <div class="passos">
     <div class="passo ativo" data-p="1" onclick="irPara(1)" title="Ir para este passo">1. Unidade e proponente</div>
     <div class="passo" data-p="2" onclick="irPara(2)" title="Ir para este passo">2. Renda e financiamento</div>
@@ -258,7 +271,7 @@
     <div class="passo" data-p="5" onclick="irPara(5)" title="Ir para este passo">5. Enviar</div>
   </div>
 
-  <form id="formProposta" autocomplete="off" novalidate>
+  <form id="formProposta" novalidate>
 
   <!-- ============================ PASSO 1 ============================ -->
   <section class="card" data-etapa="1">
@@ -340,9 +353,9 @@
     <div class="secao">Dados do proponente</div>
     <div class="linha">
       <div class="campo full"><label>Nome completo<span class="obrig">*</span></label>
-        <input type="text" name="cliente" data-pad="1" required></div>
+        <input autocomplete="off" type="text" name="cliente" data-pad="1" required></div>
       <div class="campo"><label>CPF<span class="obrig">*</span></label>
-        <input type="text" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required>
+        <input autocomplete="off" type="text" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required>
         <span class="ajuda" id="cpfAviso" style="display:none;color:#8A2E17">CPF inválido — confira os números.</span></div>
       <div class="campo"><label>Identidade</label><input type="text" name="identidade" data-pad="1"></div>
       <div class="campo"><label>Estado civil<span class="obrig">*</span></label>
@@ -363,18 +376,18 @@
       <div class="campo"><label>Nacionalidade</label><input type="text" name="nacionalidade" value="BR" data-pad="1"></div>
       <div class="campo"><label>Profissão</label><input type="text" name="profissao" data-pad="1"></div>
       <div class="campo"><label>Data de nascimento<span class="obrig">*</span></label><input type="date" name="dataNascimento" required></div>
-      <div class="campo"><label>E-mail do proponente<span class="obrig">*</span></label><input type="email" name="emailProponente" required></div>
+      <div class="campo"><label>E-mail do proponente<span class="obrig">*</span></label><input autocomplete="email" type="email" name="emailProponente" required></div>
       <!-- 30/09: endereço separado, igual ao banco de vendas (o comprovante de endereço lido preenche) -->
-      <div class="campo"><label>CEP<span class="obrig">*</span></label><input type="text" name="cep" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
-      <div class="campo full"><label>Endereço (rua, avenida ou quadra)<span class="obrig">*</span></label><input type="text" name="endereco" data-pad="1"></div>
+      <div class="campo"><label>CEP<span class="obrig">*</span></label><input autocomplete="postal-code" type="text" name="cep" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
+      <div class="campo full"><label>Endereço (rua, avenida ou quadra)<span class="obrig">*</span></label><input autocomplete="street-address" type="text" name="endereco" data-pad="1"></div>
       <div class="campo"><label>Número ou lote</label><input type="text" name="numero" data-pad="1"></div>
       <div class="campo"><label>Setor ou bairro<span class="obrig">*</span></label><input type="text" name="setor" data-pad="1"></div>
       <div class="campo"><label>Cidade<span class="obrig">*</span></label><input type="text" name="cidade" data-pad="1"></div>
       <!-- 02/10 (item 7) — só celular: o telefone fixo saiu (fica escondido para não quebrar o envio) -->
       <div class="campo" style="display:none"><label>Telefone</label>
-        <input type="text" name="telefone" inputmode="numeric" maxlength="15"></div>
+        <input autocomplete="tel" type="tel" name="telefone" inputmode="tel" maxlength="15"></div>
       <div class="campo"><label>Celular<span class="obrig">*</span></label>
-        <input type="text" name="celular" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000" required></div>
+        <input autocomplete="tel" type="tel" name="celular" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000" required></div>
       <!-- r46 (item 1) — "Possui imóvel próprio" removido: quem responde isso
            é o campo "Possui algum imóvel" do bloco da CAIXA, mais abaixo. -->
     </div>
@@ -396,26 +409,26 @@
       </div>
 
       <div class="linha">
-        <div class="campo"><label>Nome do cônjuge<span class="obrig">*</span></label><input type="text" name="conjuge" data-pad="1"></div>
+        <div class="campo"><label>Nome do cônjuge<span class="obrig">*</span></label><input autocomplete="off" type="text" name="conjuge" data-pad="1"></div>
         <div class="campo"><label>CPF do cônjuge<span class="obrig">*</span></label>
-          <input type="text" name="cpfConjuge" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
+          <input autocomplete="off" type="text" name="cpfConjuge" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
         <!-- 02/10 (item 8) — nascimento, e-mail e celular do cônjuge (FGTS, renda e origem foram para o passo 2) -->
-        <div class="campo"><label>Data de nascimento do cônjuge</label><input type="date" name="dataNascimentoConjuge"></div>
-        <div class="campo"><label>E-mail do cônjuge</label><input type="email" name="emailConjuge"></div>
+        <div class="campo"><label>Data de nascimento do cônjuge</label><input autocomplete="off" type="date" name="dataNascimentoConjuge"></div>
+        <div class="campo"><label>E-mail do cônjuge</label><input autocomplete="off" type="email" name="emailConjuge"></div>
         <div class="campo"><label>Celular do cônjuge</label>
-          <input type="text" name="celularConjuge" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000"></div>
+          <input autocomplete="off" type="tel" name="celularConjuge" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000"></div>
         <!-- r41 (item 10) -->
         <div class="campo"><label>Profissão do cônjuge</label>
-          <input type="text" name="profissaoConjuge" data-pad="1"></div>
+          <input autocomplete="off" type="text" name="profissaoConjuge" data-pad="1"></div>
         <!-- 01/10: RG e nacionalidade do cônjuge (o documento lido preenche) -->
         <div class="campo"><label>RG do cônjuge</label>
-          <input type="text" name="rgConjuge" data-pad="1" placeholder="Número e órgão emissor (ex.: 1234567 SSP/GO)"></div>
+          <input autocomplete="off" type="text" name="rgConjuge" data-pad="1" placeholder="Número e órgão emissor (ex.: 1234567 SSP/GO)"></div>
         <div class="campo"><label>Nacionalidade do cônjuge<span class="obrig">*</span></label>
-          <input type="text" name="nacionalidadeConjuge" value="BR" data-pad="1"></div>
+          <input autocomplete="off" type="text" name="nacionalidadeConjuge" value="BR" data-pad="1"></div>
       </div>
 
       <!-- 01/10: mora no mesmo endereço? se não, comprovante + endereço do cônjuge -->
-      <label class="check" style="margin:14px 0 8px"><input type="checkbox" name="conjugeMesmoEndereco" checked onchange="verEnderecoConjuge()">
+      <label class="check" style="margin:14px 0 8px"><input autocomplete="off" type="checkbox" name="conjugeMesmoEndereco" checked onchange="verEnderecoConjuge()">
         O cônjuge mora no mesmo endereço do proponente</label>
       <div id="boxEndConjuge" style="display:none">
         <div class="leitor">
@@ -427,11 +440,11 @@
           <span class="ajuda">O comprovante é lido e preenche o endereço do cônjuge abaixo — confira sempre.</span>
         </div>
         <div class="linha">
-          <div class="campo"><label>CEP do cônjuge<span class="obrig">*</span></label><input type="text" name="cepConjuge" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
-          <div class="campo full"><label>Endereço do cônjuge (rua, avenida ou quadra)<span class="obrig">*</span></label><input type="text" name="logradouroConjuge" data-pad="1"></div>
-          <div class="campo"><label>Número ou lote</label><input type="text" name="numeroConjuge" data-pad="1"></div>
-          <div class="campo"><label>Setor ou bairro<span class="obrig">*</span></label><input type="text" name="setorConjuge" data-pad="1"></div>
-          <div class="campo"><label>Cidade<span class="obrig">*</span></label><input type="text" name="cidadeConjuge" data-pad="1"></div>
+          <div class="campo"><label>CEP do cônjuge<span class="obrig">*</span></label><input autocomplete="off" type="text" name="cepConjuge" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
+          <div class="campo full"><label>Endereço do cônjuge (rua, avenida ou quadra)<span class="obrig">*</span></label><input autocomplete="off" type="text" name="logradouroConjuge" data-pad="1"></div>
+          <div class="campo"><label>Número ou lote</label><input autocomplete="off" type="text" name="numeroConjuge" data-pad="1"></div>
+          <div class="campo"><label>Setor ou bairro<span class="obrig">*</span></label><input autocomplete="off" type="text" name="setorConjuge" data-pad="1"></div>
+          <div class="campo"><label>Cidade<span class="obrig">*</span></label><input autocomplete="off" type="text" name="cidadeConjuge" data-pad="1"></div>
         </div>
       </div>
     </div>
@@ -473,11 +486,11 @@
       <h3>Cônjuge</h3>
       <div class="linha">
         <div class="campo"><label>Renda do cônjuge (R$)</label>
-          <input type="text" name="rendaAprovadaConjuge" inputmode="numeric" placeholder="0,00"></div>
+          <input autocomplete="off" type="text" name="rendaAprovadaConjuge" inputmode="numeric" placeholder="0,00"></div>
         <div class="campo campo-origem"><label>Origem da renda do cônjuge</label>
           <select name="origemRendaConjuge" onchange="montarAnexos();montarFluxo();"><option value="">Selecione…</option><option>CLT</option><option>SERVIDOR PÚBLICO</option><option>EMPRESÁRIO</option><option>AUTÔNOMO</option><option>MEI</option><option>MOTORISTA DE APLICATIVO</option><option>APOSENTADO / PENSIONISTA</option><option>PROFISSIONAL LIBERAL</option><option>RURAL</option><option>OUTRO</option></select></div>
         <div class="campo"><label>FGTS do cônjuge (R$)</label>
-          <input type="text" name="saldoFgtsConjuge" inputmode="numeric" placeholder="0,00"></div>
+          <input autocomplete="off" type="text" name="saldoFgtsConjuge" inputmode="numeric" placeholder="0,00"></div>
       </div>
     </div>
     <div class="linha">
@@ -615,11 +628,15 @@
       <div class="campo full" style="margin-bottom:16px;">
         <label>Prazo de parcelamento da entrada<span class="obrig">*</span></label>
         <div class="prazo-opts" id="prazoOpts">
-          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="24" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="24">24 meses</b><small>comissão 5,00%</small></label>
-          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="36" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="36">36 meses</b><small>comissão 4,75%</small></label>
-          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="48" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="48">48 meses</b><small>comissão 4,50%</small></label>
+          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="24" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="24">24 meses</b><small class="com-info">comissão 5,00%</small></label>
+          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="36" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="36">36 meses</b><small class="com-info">comissão 4,75%</small></label>
+          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="48" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="48">48 meses</b><small class="com-info">comissão 4,50%</small></label>
         </div>
-        <div class="comissao-box"><span>Comissão do corretor</span><b id="comissaoTxt">Escolha o prazo</b></div>
+        <button type="button" class="bt-com" id="btCom" aria-pressed="false">Ver minha comissão</button>
+        <script>(function(){var b=document.getElementById('btCom');if(!b)return;var v=false;try{v=sessionStorage.getItem('ux_comissao')==='1';}catch(e){}
+          function ap(){document.body.classList.toggle('com-ver',v);b.textContent=v?'Esconder comissão':'Ver minha comissão';b.setAttribute('aria-pressed',v?'true':'false');}
+          ap();b.onclick=function(){v=!v;ap();try{sessionStorage.setItem('ux_comissao',v?'1':'0');}catch(e){}};})();</script>
+        <div class="comissao-box com-info"><span>Comissão do corretor</span><b id="comissaoTxt">Escolha o prazo</b></div>
       </div>
       <!-- r97f (31/10/26, dono): mês da 1ª parcela pré-chaves -->
       <div class="campo full" style="margin-bottom:16px;">
@@ -685,21 +702,21 @@
       <div class="campo full"><label>Documento do fiador 1 (CNH ou RG + CPF)</label>
         <input type="file" accept="image/*,application/pdf" multiple id="fiador1-doc" onchange="aoAnexarFiador(1,this)">
         <div class="lst" id="lst-fiador-1"></div></div>
-      <div class="campo full"><label>Nome</label><input type="text" name="fiador1" data-pad="1"></div>
+      <div class="campo full"><label>Nome</label><input autocomplete="off" type="text" name="fiador1" data-pad="1"></div>
       <div class="campo"><label>CPF</label>
-        <input type="text" name="cpfFiador1" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
-      <div class="campo"><label>RG</label><input type="text" name="rgFiador1" data-pad="1" placeholder="Número e órgão emissor"></div>
-      <div class="campo"><label>Nacionalidade</label><input type="text" name="nacionalidadeFiador1" value="BR" data-pad="1"></div>
-      <div class="campo"><label>E-mail</label><input type="email" name="emailFiador1"></div>
+        <input autocomplete="off" type="text" name="cpfFiador1" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
+      <div class="campo"><label>RG</label><input autocomplete="off" type="text" name="rgFiador1" data-pad="1" placeholder="Número e órgão emissor"></div>
+      <div class="campo"><label>Nacionalidade</label><input autocomplete="off" type="text" name="nacionalidadeFiador1" value="BR" data-pad="1"></div>
+      <div class="campo"><label>E-mail</label><input autocomplete="off" type="email" name="emailFiador1"></div>
       <div class="campo full"><label>Comprovante de endereço do fiador 1</label>
         <input type="file" accept="image/*,application/pdf" multiple id="fiador1-end" onchange="aoAnexarFiadorEnd(1,this)">
         <div class="lst" id="lst-fiadorend-1"></div>
         <span class="ajuda">Conta de água, luz ou telefone dos últimos 3 meses. É lido e preenche o endereço abaixo.</span></div>
-      <div class="campo"><label>CEP</label><input type="text" name="cepFiador1" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
-      <div class="campo full"><label>Endereço (rua, avenida ou quadra)</label><input type="text" name="logradouroFiador1" data-pad="1"></div>
-      <div class="campo"><label>Número ou lote</label><input type="text" name="numeroFiador1" data-pad="1"></div>
-      <div class="campo"><label>Setor ou bairro</label><input type="text" name="setorFiador1" data-pad="1"></div>
-      <div class="campo"><label>Cidade</label><input type="text" name="cidadeFiador1" data-pad="1"></div>
+      <div class="campo"><label>CEP</label><input autocomplete="off" type="text" name="cepFiador1" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
+      <div class="campo full"><label>Endereço (rua, avenida ou quadra)</label><input autocomplete="off" type="text" name="logradouroFiador1" data-pad="1"></div>
+      <div class="campo"><label>Número ou lote</label><input autocomplete="off" type="text" name="numeroFiador1" data-pad="1"></div>
+      <div class="campo"><label>Setor ou bairro</label><input autocomplete="off" type="text" name="setorFiador1" data-pad="1"></div>
+      <div class="campo"><label>Cidade</label><input autocomplete="off" type="text" name="cidadeFiador1" data-pad="1"></div>
       <!-- 30/10/2026 (dono, Súmula 332 do STJ): estado civil do fiador; casado ou em união estável, o cônjuge também assina -->
       <div class="campo fia-civil"><label>Estado civil</label>
         <select name="estadoCivilFiador1" onchange="verConjugesFiadores()">
@@ -711,13 +728,13 @@
         <b>Fiador casado ou em união estável:</b> o cônjuge precisa assinar junto. O mais simples (e o preferido pela Morais)
         é o <b>cônjuge ser o fiador 2</b>.
         <div style="margin-top:8px"><button type="button" class="btn-secundario" onclick="usarConjugeComoFiador2()">Usar o cônjuge como fiador 2</button>
-        <label class="ajuda" style="margin-left:10px"><input type="checkbox" name="conjugeEhFiador2" onchange="verConjugesFiadores()"> o fiador 2 é o cônjuge do fiador 1</label></div>
+        <label class="ajuda" style="margin-left:10px"><input autocomplete="off" type="checkbox" name="conjugeEhFiador2" onchange="verConjugesFiadores()"> o fiador 2 é o cônjuge do fiador 1</label></div>
       </div>
       <div class="linha" id="dadosConjF1">
-        <div class="campo full"><label>Nome do cônjuge do fiador 1</label><input type="text" name="conjugeFiador1" data-pad="1"></div>
+        <div class="campo full"><label>Nome do cônjuge do fiador 1</label><input autocomplete="off" type="text" name="conjugeFiador1" data-pad="1"></div>
         <div class="campo"><label>CPF do cônjuge</label>
-          <input type="text" name="cpfConjugeFiador1" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
-        <div class="campo"><label>E-mail do cônjuge</label><input type="email" name="emailConjugeFiador1"></div>
+          <input autocomplete="off" type="text" name="cpfConjugeFiador1" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
+        <div class="campo"><label>E-mail do cônjuge</label><input autocomplete="off" type="email" name="emailConjugeFiador1"></div>
         <div class="ajuda" style="grid-column:1/-1">O cônjuge do fiador assina os termos de confissão junto com ele (assinatura eletrônica).</div>
       </div>
     </div>
@@ -727,21 +744,21 @@
       <div class="campo full"><label>Documento do fiador 2 (CNH ou RG + CPF)</label>
         <input type="file" accept="image/*,application/pdf" multiple id="fiador2-doc" onchange="aoAnexarFiador(2,this)">
         <div class="lst" id="lst-fiador-2"></div></div>
-      <div class="campo full"><label>Nome</label><input type="text" name="fiador2" data-pad="1"></div>
+      <div class="campo full"><label>Nome</label><input autocomplete="off" type="text" name="fiador2" data-pad="1"></div>
       <div class="campo"><label>CPF</label>
-        <input type="text" name="cpfFiador2" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
-      <div class="campo"><label>RG</label><input type="text" name="rgFiador2" data-pad="1" placeholder="Número e órgão emissor"></div>
-      <div class="campo"><label>Nacionalidade</label><input type="text" name="nacionalidadeFiador2" value="BR" data-pad="1"></div>
-      <div class="campo"><label>E-mail</label><input type="email" name="emailFiador2"></div>
+        <input autocomplete="off" type="text" name="cpfFiador2" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
+      <div class="campo"><label>RG</label><input autocomplete="off" type="text" name="rgFiador2" data-pad="1" placeholder="Número e órgão emissor"></div>
+      <div class="campo"><label>Nacionalidade</label><input autocomplete="off" type="text" name="nacionalidadeFiador2" value="BR" data-pad="1"></div>
+      <div class="campo"><label>E-mail</label><input autocomplete="off" type="email" name="emailFiador2"></div>
       <div class="campo full"><label>Comprovante de endereço do fiador 2</label>
         <input type="file" accept="image/*,application/pdf" multiple id="fiador2-end" onchange="aoAnexarFiadorEnd(2,this)">
         <div class="lst" id="lst-fiadorend-2"></div>
         <span class="ajuda">Conta de água, luz ou telefone dos últimos 3 meses. É lido e preenche o endereço abaixo.</span></div>
-      <div class="campo"><label>CEP</label><input type="text" name="cepFiador2" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
-      <div class="campo full"><label>Endereço (rua, avenida ou quadra)</label><input type="text" name="logradouroFiador2" data-pad="1"></div>
-      <div class="campo"><label>Número ou lote</label><input type="text" name="numeroFiador2" data-pad="1"></div>
-      <div class="campo"><label>Setor ou bairro</label><input type="text" name="setorFiador2" data-pad="1"></div>
-      <div class="campo"><label>Cidade</label><input type="text" name="cidadeFiador2" data-pad="1"></div>
+      <div class="campo"><label>CEP</label><input autocomplete="off" type="text" name="cepFiador2" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
+      <div class="campo full"><label>Endereço (rua, avenida ou quadra)</label><input autocomplete="off" type="text" name="logradouroFiador2" data-pad="1"></div>
+      <div class="campo"><label>Número ou lote</label><input autocomplete="off" type="text" name="numeroFiador2" data-pad="1"></div>
+      <div class="campo"><label>Setor ou bairro</label><input autocomplete="off" type="text" name="setorFiador2" data-pad="1"></div>
+      <div class="campo"><label>Cidade</label><input autocomplete="off" type="text" name="cidadeFiador2" data-pad="1"></div>
       <!-- 30/10/2026 (dono, Súmula 332 do STJ): estado civil do fiador; casado ou em união estável, o cônjuge também assina -->
       <div class="campo fia-civil"><label>Estado civil</label>
         <select name="estadoCivilFiador2" onchange="verConjugesFiadores()">
@@ -750,10 +767,10 @@
     </div>
     <div class="fia-conj" id="conjFiador2" style="display:none">
       <div class="linha">
-        <div class="campo full"><label>Nome do cônjuge do fiador 2</label><input type="text" name="conjugeFiador2" data-pad="1"></div>
+        <div class="campo full"><label>Nome do cônjuge do fiador 2</label><input autocomplete="off" type="text" name="conjugeFiador2" data-pad="1"></div>
         <div class="campo"><label>CPF do cônjuge</label>
-          <input type="text" name="cpfConjugeFiador2" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
-        <div class="campo"><label>E-mail do cônjuge</label><input type="email" name="emailConjugeFiador2"></div>
+          <input autocomplete="off" type="text" name="cpfConjugeFiador2" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
+        <div class="campo"><label>E-mail do cônjuge</label><input autocomplete="off" type="email" name="emailConjugeFiador2"></div>
         <div class="ajuda" style="grid-column:1/-1">O cônjuge do fiador assina os termos de confissão junto com ele (assinatura eletrônica).</div>
       </div>
     </div>
@@ -803,17 +820,17 @@
     <div class="lst" id="lst-creci-p5" style="display:none;margin-bottom:10px"></div>
     <div class="linha">
       <div class="campo"><label>Corretor<span class="obrig">*</span></label>
-        <input type="text" name="vendedor" data-pad="1" required></div>
+        <input autocomplete="name" type="text" name="vendedor" data-pad="1" required></div>
       <div class="campo"><label>CRECI</label><input type="text" name="creci" data-pad="1"></div>
       <!-- 07/10/2026: CPF do corretor (vai para a proposta e, na venda, para o banco de vendas) -->
       <div class="campo"><label>CPF do corretor<span class="obrig">*</span></label>
-        <input type="text" name="cpfCorretor" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required></div>
-      <div class="campo"><label>Imobiliária</label><input type="text" name="imobiliaria" data-pad="1"></div>
+        <input autocomplete="off" type="text" name="cpfCorretor" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required></div>
+      <div class="campo"><label>Imobiliária</label><input autocomplete="organization" type="text" name="imobiliaria" data-pad="1"></div>
       <div class="campo"><label>E-mail do corretor<span class="obrig">*</span></label>
-        <input type="email" name="email" required placeholder="email.do.corretor@exemplo.com">
+        <input autocomplete="email" type="email" name="email" required placeholder="email.do.corretor@exemplo.com">
         <span class="ajuda"><b>E-mail do CORRETOR</b>, não o do cliente — é para ele que vão a proposta e os avisos.</span></div>
       <div class="campo"><label>Celular do corretor<span class="obrig">*</span></label>
-        <input type="tel" name="celularCorretor" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000" required oninput="this.value=fmtTel(this.value)"></div>
+        <input autocomplete="tel" type="tel" name="celularCorretor" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000" required oninput="this.value=fmtTel(this.value)"></div>
       <div class="campo full"><label>Observações</label><input type="text" name="observacoes" data-pad="1"></div>
     </div>
 
@@ -1311,8 +1328,10 @@
     }
     var forma = fpFormaSinal_(c.sinais, B) + (c.nSinal > 1 ? ' (ou à vista)' : '');
     var t = TAB + grupo('FLUXO DE PAGAMENTO — A PAGAR (entrada restante)', B(c.aPagar), '#5A3A0B');
-    t += grupo('1 · SINAL — ' + esc(forma) + (c.cobertos > 0.005 ? (falta ? ' · abatido em parte' : ' · ABATIDO') : ''), B(c.falta), '#2E8B57');
-    c.sinalLinhas.forEach(function(x){
+    var sinalCoberto = c.cobertos > 0.005 && !falta;   /* só a exibição: sinal todo coberto pelo valor informado vira uma linha única (a conta não muda) */
+  t += grupo(sinalCoberto ? '1 · SINAL' : '1 · SINAL — ' + esc(forma) + (c.cobertos > 0.005 ? ' · abatido em parte' : ''), B(c.falta), '#2E8B57');
+  if(sinalCoberto) t += linha('Sinal de ' + B(c.S) + ' já coberto pelo valor informado.', '', '', VERDE);
+  else c.sinalLinhas.forEach(function(x){
       var st, est;
       if(x.falta <= 0.004){ st = '✓ abatido (' + B(x.valor) + ')'; est = VERDE; }
       else if(x.pago > 0.004){ st = '<b>⚠ ' + B(x.pago) + ' abatido de ' + B(x.valor) + '</b>'; est = VERM; }
@@ -3019,7 +3038,7 @@
          moeda(f.rendaAprovadaConjuge.value) && !f.origemRendaConjuge.value.trim())
         return erro('Escolha a <b>origem da renda do cônjuge</b>.', f.origemRendaConjuge);
       if(!prazoEscolhido())
-        return erro('Escolha o <b>prazo total da entrada</b> — é ele que define a comissão do corretor.', document.getElementById('prazoOpts'));
+        return erro('Escolha o <b>prazo total da entrada</b>.', document.getElementById('prazoOpts'));
       if(ULTIMO_CALCULO && ULTIMO_CALCULO.erroPrazo) return erro(ULTIMO_CALCULO.erroPrazo + '.', document.getElementById('primeiraOpts'));
       /* r96d — valor para a entrada: no mínimo o sinal desta unidade */
       montarFluxo();
@@ -3291,6 +3310,8 @@
       if(d.credito){
         val('subsidio', d.subsidio);
         val('parcelaFinanciamento', d.creditoParcela);
+        /* o valor do crédito aprovado informado na simulação também vem (só se o campo estiver vazio) */
+        if(f.creditoAprovado && !String(f.creditoAprovado.value||'').trim()) val('creditoAprovado', d.creditoValor);
       } else if(d.desejado){
         chk('desejadoProp', true); val('valorDesejado', d.valorDesejado);
       }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Completar proposta · Reserva do Ipês</title>
+<title>Completar proposta · Reserva dos Ipês</title>
 <style>
   :root{
     --marrom:#7A4A16; --amarelo:#EFB700; --fundo:#FBF7EF; --borda:#E7DCC7;
@@ -21,7 +21,7 @@
   h2{font-size:15px;color:var(--marrom);margin:0 0 4px}
   .sub{font-size:13px;color:var(--texto-suave);margin:0 0 14px}
   .grade{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:680px){.grade{grid-template-columns:1fr}}
+  @media(max-width:680px){.grade{grid-template-columns:1fr} input,select,textarea{font-size:16px}}   /* 16 px: o iPhone não dá zoom ao tocar no campo */
   /* 06/10 — celular: campos (inclusive data) do tamanho da tela */
   .grade input,.grade select{box-sizing:border-box;max-width:100%;min-width:0}
   .grade > *{min-width:0}
@@ -93,6 +93,10 @@
   .ajuda{display:block;font-size:11.5px;color:var(--texto-suave);margin-top:3px}
   .secao{grid-column:1/-1;font-size:12.5px;font-weight:800;color:var(--marrom);text-transform:uppercase;
     letter-spacing:.4px;margin-top:6px;padding-top:10px;border-top:1px dashed var(--borda)}
+  /* comissão do corretor: escondida por padrão (o cliente pode estar olhando a tela); botão mostra/esconde */
+  body:not(.com-ver) .com-info{display:none!important;}
+  .bt-com{background:none;border:1px dashed var(--marrom2,#7A4A16);color:var(--marrom,#4A2A0C);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;}
+  @media(max-width:640px){.bt-com{min-height:44px;font-size:14px;}}
 </style>
 </head>
 <body>
@@ -159,7 +163,11 @@
         <div id="vComp"></div>
         <div class="v-secao">4. Prazo de parcelamento da entrada</div>
         <div class="v-opts" id="vPrazos"></div>
-        <div class="ajuda" id="v-comissao"></div>
+        <button type="button" class="bt-com" id="btCom" aria-pressed="false">Ver minha comissão</button>
+        <script>(function(){var b=document.getElementById('btCom');if(!b)return;var v=false;try{v=sessionStorage.getItem('ux_comissao')==='1';}catch(e){}
+          function ap(){document.body.classList.toggle('com-ver',v);b.textContent=v?'Esconder comissão':'Ver minha comissão';b.setAttribute('aria-pressed',v?'true':'false');}
+          ap();b.onclick=function(){v=!v;ap();try{sessionStorage.setItem('ux_comissao',v?'1':'0');}catch(e){}};})();</script>
+        <div class="ajuda com-info" id="v-comissao"></div>
         <div class="v-secao">5. Sinal</div>
         <div class="v-opts">
           <label class="v-opt"><input type="radio" name="vSinal" value="1" onchange="vendaPintar()"><b>1x</b><small>à vista, no ato</small></label>
@@ -1076,7 +1084,7 @@ function vendaIniciar(){
   var COM={24:0.05,36:0.0475,48:0.045};
   document.getElementById('vPrazos').innerHTML=[24,36,48].map(function(n){
     return '<label class="v-opt"><input type="radio" name="vPrazo" value="'+n+'"'+(n===pz?' checked':'')+' onchange="vendaPintar()"><b>'+n+' meses</b>'+
-      '<small>comissão '+(COM[n]*100).toLocaleString('pt-BR',{minimumFractionDigits:2})+'%</small></label>'; }).join('');
+      '<small class="com-info">comissão '+(COM[n]*100).toLocaleString('pt-BR',{minimumFractionDigits:2})+'%</small></label>'; }).join('');
   var ns=Number(v.sinalParcelas)||4; var rs=document.querySelector('input[name="vSinal"][value="'+ns+'"]'); if(rs) rs.checked=true;
   VDIL=(v.diluicao && v.diluicao.length ? v.diluicao.slice(0,2) : [0,0]).map(function(x){ return Number(x)||0; });
   ['sl-valorEntrada','sl-saldoFgts','sl-saldoFgtsConjuge','sl-subsidio'].forEach(function(id){
