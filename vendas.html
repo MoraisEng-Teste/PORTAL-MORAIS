@@ -210,6 +210,9 @@ tbody tr.sit1:hover td,tbody tr.sit2:hover td,tbody tr.sit3:hover td{filter:brig
 .resumo{background:var(--sup);margin:0;padding:16px 22px;border-bottom:1px solid var(--border2);display:grid;grid-template-columns:repeat(2,1fr);gap:12px 18px}
 .ri .k{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text4);font-weight:700;margin-bottom:5px}
 .ri input,.ri select{width:100%}
+.pn-lnk{background:none;border:0;padding:4px 0;margin-top:4px;font:inherit;font-size:12px;font-weight:600;color:var(--azul);text-decoration:underline;cursor:pointer}
+html[data-tema="escuro"] .pn-lnk{color:var(--teal)}
+@media (max-width:680px){ .pn-lnk{min-height:44px;padding:10px 0} }
 .chips{display:flex;flex-wrap:wrap;gap:7px;padding:14px 22px 0}
 .chip{font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:20px;background:#e7f0f3;color:var(--azul)}
 .chip.alerta{background:#FFF3E0;color:#B45309;border:1px solid #FCD9A8}
@@ -5055,6 +5058,21 @@ function campoResumoHtml(c,valor,pageId,sensPendente){
 /* 05/11/2026 (dono): a mesma coluna em duas abas (Resumo e Compradores → Comprador 1). Cada caixa leva
    data-espelho=<nome normalizado>; ao editar uma, pnEspelhar põe o valor novo nas outras — nunca duas caixas
    divergindo. Grava uma vez só (o editar de sempre, na coluna de sempre). */
+/* Onda 3 (ux): Nome, CPF, WhatsApp e e-mail do Comprador 1 só se EDITAM na aba Compradores; no Resumo viram texto (que acompanha a
+   edição, pnEspelhar) com o atalho "editar em Compradores". É a mesma coluna do Notion, nada muda no salvar. */
+function pnEhEspelho(nome){ return (window.PainelCasa&&window.PainelCasa.ESPELHO_COMPRADOR1||[]).some(x=>normNome(x.coluna)===normNome(nome)); }
+function pnResumoHtml(c,valor,pageId,sensPendente){
+  if(!pnEhEspelho(c.nome)) return campoResumoHtml(c,valor,pageId,sensPendente);
+  const txt=(c.sensivel&&sensPendente)?"•••":(Array.isArray(valor)?valor.join(", "):(valor==null||valor===""?"—":String(valor)));
+  return `<div class="ri"><div class="k"${dicaAttr(c.nome)}>${esc(rotuloRua(c.nome))}</div><div class="ro ro-esp">${esc(txt)}</div>`+
+    `<button type="button" class="pn-lnk" onclick="pnEditarEmCompradores(this.closest('[data-espelho]').getAttribute('data-espelho'))">editar em Compradores</button></div>`;
+}
+function pnEditarEmCompradores(k){
+  pnTrocarAba("compradores");
+  const box=document.querySelector('#pn-body [data-sec="compradores"] [data-espelho="'+k+'"]');
+  const el=box&&box.querySelector("input:not([type=checkbox]):not([type=file]),select,textarea");
+  if(el){ try{ el.scrollIntoView({block:"center"}); }catch(e){} try{ el.focus(); }catch(e){} }
+}
 function pnMarcarEspelho(html,nome){
   const ehEsp=(window.PainelCasa&&window.PainelCasa.ESPELHO_COMPRADOR1||[]).some(x=>normNome(x.coluna)===normNome(nome));
   return ehEsp ? String(html).replace(/^<div class="(ri|campo)"/,`<div class="$1" data-espelho="${esc(normNome(nome))}"`) : html;
@@ -5073,7 +5091,10 @@ function pnEspelhar(prop,valor,el){
   const k=normNome(prop);
   body.querySelectorAll("[data-espelho]").forEach(box=>{
     if(box.getAttribute("data-espelho")!==k || (el&&box.contains(el))) return;
-    box.querySelectorAll("input:not([type=checkbox]):not([type=file]),select").forEach(i=>{ i.value=valor==null?"":String(valor); i.style.borderColor=""; });
+    box.querySelectorAll("input:not([type=checkbox]):not([type=file]),select,.ro-esp").forEach(i=>{
+      if(i.classList&&i.classList.contains("ro-esp")){ i.textContent=(valor==null||valor==="")?"—":String(valor); return; }
+      i.value=valor==null?"":String(valor); i.style.borderColor="";
+    });
   });
 }
 /* 04/11/2026 (dono): o painel da casa de rua em ABAS, igual ao cartão do condomínio. Antes era uma coluna só com
@@ -5271,7 +5292,7 @@ function renderPainel(V,pageId,sensPendente){
     const c=campoPorNome(n); if(!c)return "";
     if(nomeExcluido(c.nome,"painel")) return "";
     const val=getV(V,n);
-    return pnMarcarEspelho(campoResumoHtml(c,val,pageId,sensPendente),c.nome);
+    return pnMarcarEspelho(pnResumoHtml(c,val,pageId,sensPendente),c.nome);
   }).join("")+'</div>';
 
   // alertas / situação
