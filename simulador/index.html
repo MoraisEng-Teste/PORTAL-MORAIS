@@ -11,6 +11,8 @@
   header .logos{display:flex;align-items:center;gap:12px;} header .logos img{height:48px;background:#fff;border-radius:8px;padding:4px;}
   header h1{font-size:17px;font-weight:700;margin:0;} header span{font-size:12px;color:var(--amarelo);font-weight:600;}
   main{max-width:1280px;margin:24px auto 80px;padding:0 20px;}
+  .ultima-sim{margin:0 0 12px;font-size:13px;color:var(--texto-suave);}
+  .ultima-sim a,.ultima-sim button{display:inline-flex;align-items:center;min-height:44px;padding:0 4px;color:var(--marrom);font:inherit;font-weight:700;text-decoration:underline;background:none;border:0;cursor:pointer;}
   .bar-planilha{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-4px 0 14px;font-size:12.5px;color:#6B5A45}
   .bt-planilha{background:#27AE60;color:#fff;border:1px solid #1E8449;border-radius:10px;padding:10px 16px;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer}
   .bt-planilha:hover{background:#1E8449}.bt-planilha:disabled{opacity:.6;cursor:wait}
@@ -21,7 +23,7 @@
   .tcard:hover{box-shadow:0 4px 14px rgba(122,74,22,.15);transform:translateY(-2px);}
   .tcard b{display:block;font-size:17px;color:var(--marrom);margin-bottom:2px;} .tcard small{color:var(--texto-suave);font-size:13px;}
   .tcard .preco{display:block;margin-top:6px;font-size:13px;font-weight:700;color:var(--marrom2);}
-  .selo{display:inline-block;margin-top:10px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:.5px;color:#fff;}
+  .selo{display:inline-block;margin-top:10px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800;letter-spacing:.5px;color:#fff;}
   /* r44 — no celular os cards ocupavam a tela inteira e era preciso rolar
      muito só para ver as tipologias. Dois por linha e mais compactos. */
   .faixa-itbi{margin:0 0 16px;padding:11px 16px;border-radius:10px;text-align:center;
@@ -33,9 +35,9 @@
     .cards{grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:18px;}
     .tcard{padding:8px 6px;border-top-width:3px;border-radius:9px;}
     .tcard b{font-size:12.5px;margin-bottom:0;}
-    .tcard small{font-size:10px;line-height:1.3;}
-    .tcard .preco{font-size:11px;margin-top:2px;}
-    .selo{margin-top:5px;padding:2px 7px;font-size:9px;}
+    .tcard small{font-size:12px;line-height:1.3;}
+    .tcard .preco{font-size:12px;margin-top:2px;}
+    .selo{margin-top:5px;padding:2px 7px;font-size:12px;}
     .tcard.esqueleto{min-height:70px;}
     .faixa-itbi{padding:9px 12px;margin-bottom:12px;}
     .faixa-itbi b{font-size:16px;} .faixa-itbi span{font-size:12px;}
@@ -72,12 +74,12 @@
     background:rgba(255,255,255,.88);border:1px solid var(--borda);border-radius:10px;
     padding:6px 10px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(42,33,24,.12);}
   .marca-mapa img{height:40px;width:auto;display:block;}
-  .marca-mapa span{font-size:11px;font-weight:700;color:var(--marrom);line-height:1.25;max-width:110px;}
+  .marca-mapa span{font-size:12px;font-weight:700;color:var(--marrom);line-height:1.25;max-width:110px;}
   @media(max-width:640px){.marca-mapa img{height:30px;} .marca-mapa span{display:none;}}
   /* ITEM 2 — carregamento discreto: um anel com o percentual AO LADO da logo
      do mapa, no lugar do véu que cobria a página inteira. Some sozinho quando
      chega a 100%. Falha não gera mensagem: ele continua tentando. */
-  .marca-mapa .carga{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  .marca-mapa .carga{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
     color:var(--marrom);max-width:none;}
   .marca-mapa .carga i{width:16px;height:16px;border:2.5px solid #E7DCC7;border-top-color:var(--marrom);
     border-radius:50%;display:inline-block;animation:girar .9s linear infinite;}
@@ -101,7 +103,7 @@
   .aviso-mapa{margin-top:14px;padding:12px 14px;border:1px solid var(--borda);border-left:4px solid var(--amarelo);
     border-radius:8px;background:#FFFDF7;font-size:12.5px;line-height:1.55;color:var(--texto);}
   .aviso-mapa p{margin:0 0 8px;} .aviso-mapa p:last-child{margin:0;}
-  .aviso-mapa .miudo{font-size:11px;color:var(--texto-suave);}
+  .aviso-mapa .miudo{font-size:12px;color:var(--texto-suave);}
   @media(max-width:640px){ .aviso-mapa{font-size:12px;padding:10px 11px;} }
   .legenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--texto-suave);}
   /* espaço reservado à direita e embaixo: o selo do condomínio (.marca-mapa) fica ali e não cobre os itens */
@@ -146,7 +148,7 @@
     transition:opacity .25s ease;}
   #modal .planta img.alta{opacity:0;} #modal .planta img.alta.ok{opacity:1;}
   #modal .planta small{position:absolute;right:8px;bottom:6px;background:rgba(255,255,255,.85);
-    border-radius:5px;padding:2px 7px;font-size:11px;color:var(--texto-suave);}
+    border-radius:5px;padding:2px 7px;font-size:12px;color:var(--texto-suave);}
   #modal .uns{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:16px;}
   #modal .un-chip{border:1px solid var(--borda);border-radius:8px;padding:10px 12px;font-size:12px;text-align:left;background:#fff;}
   #modal .un-chip b{display:block;color:var(--marrom);font-size:14px;margin-bottom:2px;}
@@ -157,7 +159,7 @@
   #modal .un-chip.off{opacity:.5;}
   /* ITEM 11 — o card do tipo também envia proposta, não só simula */
   #modal .un-chip .cta2{display:flex;gap:5px;margin-top:8px;}
-  #modal .un-chip .cta2 button{flex:1;padding:5px 4px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;}
+  #modal .un-chip .cta2 button{flex:1;padding:5px 4px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;}
   #modal .un-chip .cta2 .s{background:var(--amarelo);color:var(--marrom);border:none;}
   #modal .un-chip .cta2 .p{background:#27AE60;color:#fff;border:1px solid #1E8449;font-weight:800;}
   /* celular: alvo de toque de pelo menos 44 px */
@@ -180,6 +182,8 @@
     .faixa-tipos .ft.on{background:var(--amarelo);border-color:var(--marrom2);}
   }
   #modal .un-chip .cta2 .p:hover{background:#1E8449;color:#fff;}
+  /* Onda 3 (item 5) — celular: toque de 44 px; tabelas do fluxo rolam dentro do próprio quadro */
+  @media(max-width:640px){ #pop h4,#modal h3{padding-right:44px} }
 </style>
 </head>
 <body>
@@ -189,10 +193,26 @@
   <div style="flex:1"><h1>Reserva dos Ipês — Mapa de Vendas</h1><span>Morais Engenharia e Construção</span></div>
 </header>
 <main>
+  <!-- Onda 3 (item 3) — última simulação deste aparelho (menos de 30 dias); sem nome nem CPF do cliente -->
+  <p id="ultimaSim" class="ultima-sim" style="display:none"></p>
+  <script>(function(){
+    var el=document.getElementById('ultimaSim'); if(!el) return;
+    function ler(){ try{ return JSON.parse(localStorage.getItem('ultimaSimulacaoInfo')||'null'); }catch(e){ return null; } }
+    function esquecer(){ try{ localStorage.removeItem('ultimaSimulacaoInfo'); localStorage.removeItem('ultimaSimulacao'); }catch(e){} el.style.display='none'; }
+    var d=ler();
+    if(!d || !d.ts || !d.unidade || Date.now()-d.ts>30*864e5 || Date.now()<d.ts) { if(d && d.ts && Date.now()-d.ts>30*864e5) esquecer(); return; }
+    var dt=new Date(d.ts), dia=('0'+dt.getDate()).slice(-2)+'/'+('0'+(dt.getMonth()+1)).slice(-2);
+    el.appendChild(document.createTextNode('Sua última simulação: unidade '+d.unidade+', '+dia+' · '));
+    var a=document.createElement('a'); a.href='simulador.html?tipo='+encodeURIComponent(d.tipo||'')+'&unidade='+encodeURIComponent(d.unidade)+'&refazer=1';
+    a.textContent='abrir de novo'; el.appendChild(a);
+    el.appendChild(document.createTextNode(' · '));
+    var b=document.createElement('button'); b.type='button'; b.textContent='esquecer'; b.onclick=esquecer; el.appendChild(b);
+    el.style.display='block';
+  })();</script>
   <!-- r51 (item 1) — condição comercial em destaque, acima das tipologias -->
   <div class="faixa-itbi"><b>ITBI e registro grátis!*</b>
     <span>A Morais paga o ITBI e o registro do imóvel — você não gasta nada com isso.</span>
-    <small style="display:block;font-size:10.5px;margin-top:3px;opacity:.85">Para as unidades disponíveis, conforme proposta assinada. *Válido para a aquisição do primeiro imóvel — veja as condições abaixo.</small></div>
+    <small style="display:block;font-size:12px;margin-top:3px;opacity:.85">Para as unidades disponíveis, conforme proposta assinada. *Válido para a aquisição do primeiro imóvel — veja as condições abaixo.</small></div>
 
   <h2 class="sec" id="hTipos">Tipos</h2>
   <div class="cards" id="cards"><div class="tcard esqueleto"></div><div class="tcard esqueleto"></div><div class="tcard esqueleto"></div><div class="tcard esqueleto"></div><div class="tcard esqueleto"></div></div>
@@ -246,7 +266,7 @@
   <div class="val">Valor de venda: <b id="popVal"></b></div>
   <img id="popImg" loading="lazy" decoding="async" width="1600" height="900"
        style="display:none;width:100%;height:auto;aspect-ratio:16/9;background:#EFE7D8;">
-  <div id="popAvisoProp" style="display:none;margin-top:8px;font-size:11px;color:#1F6FB2;background:#EAF2FA;border:1px solid #BBD5EC;border-radius:6px;padding:6px 8px;"></div>
+  <div id="popAvisoProp" style="display:none;margin-top:8px;font-size:12px;color:#1F6FB2;background:#EAF2FA;border:1px solid #BBD5EC;border-radius:6px;padding:6px 8px;"></div>
   <div class="msg-est" id="popMsg"></div>
   <div class="acoes">
     <button class="b1" id="popSim">Simular</button>

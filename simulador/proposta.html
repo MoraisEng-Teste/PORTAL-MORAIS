@@ -50,7 +50,9 @@
   .prazo-opts{display:flex;gap:10px;}
   .prazo-opt{flex:1;border:1px solid var(--borda);border-radius:8px;padding:12px;text-align:center;cursor:pointer;}
   .prazo-opt:has(input:checked){border-color:var(--marrom2);background:#FBEEC8;}
-  .prazo-opt input{display:none;}
+  .prazo-opt{position:relative;}
+  .prazo-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none;}
+  .prazo-opt:has(input:focus-visible){outline:3px solid var(--marrom2);outline-offset:2px;}
   .prazo-opt b{display:block;font-size:16px;color:var(--marrom);}
   .prazo-opt small{color:var(--texto-suave);}
   .produtos{display:flex;flex-direction:column;gap:8px;}
@@ -121,16 +123,16 @@
   .tabfluxo tr.lfalta td{background:#FDECEA;color:#8A2E17;}
   .tabfluxo tr.grupo td{background:var(--fundo);color:var(--marrom);font-weight:800;font-size:12px;letter-spacing:.3px;}
   .tag-obra{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#1F6FB2;color:#fff;
-    font-size:10px;font-weight:800;letter-spacing:.3px;vertical-align:middle;}
+    font-size:12px;font-weight:800;letter-spacing:.3px;vertical-align:middle;}
   .tag-pos{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#5B4A8A;color:#fff;
-    font-size:10px;font-weight:800;letter-spacing:.3px;vertical-align:middle;}
+    font-size:12px;font-weight:800;letter-spacing:.3px;vertical-align:middle;}
   .tag-sinal{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:var(--amarelo);color:var(--marrom);
-    font-size:10px;font-weight:800;vertical-align:middle;}
+    font-size:12px;font-weight:800;vertical-align:middle;}
   details.fluxo-det{margin-top:10px;} details.fluxo-det summary{cursor:pointer;font-weight:700;color:var(--marrom);font-size:13px;}
   .aviso-fluxo{margin:12px 0 4px;padding:10px 12px;border-radius:8px;background:#FBEEC8;
     border:1px solid #EFB700;color:#7A4A16;font-size:12.5px;line-height:1.5;}
   .aviso-legal{margin:16px 0 4px;padding:12px 14px;border:1px solid #D8CDB5;border-left:4px solid var(--marrom);
-    border-radius:6px;background:#FFFDF7;font-size:11.5px;line-height:1.55;color:var(--texto-suave);}
+    border-radius:6px;background:#FFFDF7;font-size:12px;line-height:1.55;color:var(--texto-suave);}
   .aviso-legal b{color:var(--marrom);}
   .anexo{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--borda);}
   .anexo label{flex:1;min-width:0;}
@@ -144,7 +146,7 @@
     .anexo.pedido{padding-left:8px;}
     .tag-doc{margin-left:0;margin-top:4px;display:inline-block;}
   }
-  .anexo label small{display:block;font-weight:400;font-size:11.5px;color:var(--texto-suave);margin-top:2px;}
+  .anexo label small{display:block;font-weight:400;font-size:12px;color:var(--texto-suave);margin-top:2px;}
   .anexo.pedido{background:#FFFBEF;border-left:3px solid var(--amarelo);padding-left:8px;}
   /* 07/10/2026: documento que já veio anexado fica verde e o campo de anexar apagado */
   .anexo.ja{background:#E3F5E8 !important;border-left:4px solid #27AE60 !important;padding-left:8px;}
@@ -164,7 +166,7 @@
     #listaDependentes input,#listaDependentes select{font-size:16px;padding:10px 11px;}
   }
   .tag-doc{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:10px;background:var(--amarelo);
-    color:var(--marrom);font-size:10px;font-weight:800;vertical-align:middle;}
+    color:var(--marrom);font-size:12px;font-weight:800;vertical-align:middle;}
   .anexo label{flex:1;font-size:13px;color:var(--texto);font-weight:600;margin:0;}
   .anexo input[type=file]{font-size:12px;max-width:290px;}
   /* r66 — leitura de documentos, prazo/comissão e CRECI */
@@ -172,7 +174,9 @@
   #composicaoProp h3,#resumoEntrada h3{display:none}
   .prazo-opt{flex:1;min-width:120px;border:1px solid var(--borda);border-radius:8px;padding:12px;text-align:center;cursor:pointer;background:#fff;}
   .prazo-opt:has(input:checked){border-color:var(--marrom);background:#FBEEC8;}
-  .prazo-opt input{display:none;}
+  .prazo-opt{position:relative;}
+  .prazo-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none;}
+  .prazo-opt:has(input:focus-visible){outline:3px solid var(--marrom2);outline-offset:2px;}
   .prazo-opt b{display:block;font-size:16px;color:var(--marrom);}
   .prazo-opt small{color:var(--texto-suave);}
   .leitor{background:#FFFDF7;border:1px dashed var(--borda);border-radius:8px;padding:12px 14px;margin-bottom:14px;}
@@ -209,7 +213,7 @@
     .card h2{font-size:15px;margin-bottom:14px;}
     .passos{overflow-x:auto;gap:5px;margin-bottom:14px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
     .passos::-webkit-scrollbar{display:none;}
-    .passo{flex:1 0 auto;min-width:72px;max-width:150px;font-size:11.5px;padding:8px 6px;line-height:1.25;}
+    .passo{flex:1 0 auto;min-width:72px;max-width:150px;font-size:12px;padding:8px 6px;line-height:1.25;}
     input,select,textarea{font-size:16px;}
     input[type=file]{font-size:13px;max-width:100%;}
     .rodape{gap:10px;flex-wrap:wrap;}
@@ -237,11 +241,21 @@
   /* celular: a faixa de passos corta no 3º; esta linha diz em que passo a pessoa está */
   .passo-mobile{display:none;font-size:13px;font-weight:800;color:var(--marrom);margin:0 0 6px;}
   @media(max-width:640px){.passo-mobile{display:block;}}
+  /* Onda 3 (item 5) — celular: toque de 44 px; tabelas do fluxo rolam dentro do próprio quadro */
+  #composicaoProp,#resumoEntrada,#fluxo{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;}
+  @media(max-width:640px){
+    .check{min-height:44px;align-items:center;}
+    .check input[type=checkbox],.check input[type=radio]{width:22px;height:22px;flex:none;margin-top:0;}
+    button,.btn-voltar,.produto{min-height:44px;}
+    .btn-voltar{display:inline-flex;align-items:center;}
+    .passo{min-height:44px;display:flex;align-items:center;justify-content:center;}
+    #lnkApagarRascunho{display:inline-block;padding:12px 0;}
+  }
 </style>
 </head>
 <body>
 
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
 <div id="avisoOffline" class="aviso-offline">
   <strong>Serviço temporariamente indisponível.</strong>
@@ -294,7 +308,7 @@
       </div>
     </div>
 
-    <div id="avisoUnidade" class="status erro" style="display:none;margin-bottom:14px"></div>
+    <div id="avisoUnidade" class="status erro" role="alert" aria-live="assertive" style="display:none;margin-bottom:14px"></div>
     <p class="ajuda" style="margin:-6px 0 12px"><a href="#" id="lnkApagarRascunho" style="color:inherit;text-decoration:underline">Apagar rascunho deste aparelho</a></p>
 
     <div class="linha" style="margin-bottom:6px">
@@ -361,7 +375,7 @@
         <input autocomplete="off" type="text" name="cliente" data-pad="1" required></div>
       <div class="campo"><label>CPF<span class="obrig">*</span></label>
         <input autocomplete="off" type="text" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required>
-        <span class="ajuda" id="cpfAviso" style="display:none;color:#8A2E17">CPF inválido — confira os números.</span></div>
+        <span class="ajuda" id="cpfAviso" role="alert" aria-live="assertive" style="display:none;color:#8A2E17">CPF inválido — confira os números.</span></div>
       <div class="campo"><label>Identidade</label><input type="text" name="identidade" data-pad="1"></div>
       <div class="campo"><label>Estado civil<span class="obrig">*</span></label>
         <select name="estadoCivil" onchange="verConjuge();montarAnexos();montarFluxo();">
@@ -626,7 +640,7 @@
     </div>
 
     <div class="secao">3. Composição do fluxo de pagamento</div>
-    <span class="ajuda" style="display:block;margin:-4px 0 8px;font-size:11.5px"><b>Pré-chaves:</b> parcelas pagas durante a obra · <b>pós-chaves:</b> parcelas depois da entrega · <b>balão:</b> parcela maior em data marcada · <b>entrada restante:</b> o que falta da entrada depois do sinal.</span>
+    <span class="ajuda" style="display:block;margin:-4px 0 8px;font-size:12px"><b>Pré-chaves:</b> parcelas pagas durante a obra · <b>pós-chaves:</b> parcelas depois da entrega · <b>balão:</b> parcela maior em data marcada · <b>entrada restante:</b> o que falta da entrada depois do sinal.</span>
     <div id="composicaoProp"><span class="ajuda">Preencha o financiamento para montar a composição.</span></div>
 
     <div class="secao">4. Prazo de parcelamento da entrada</div>
@@ -890,7 +904,7 @@
       <button type="submit" class="btn-primario" id="btEnviar">Enviar proposta</button>
     </div>
 
-    <div id="status" class="status" style="display:none"></div>
+    <div id="status" class="status" role="alert" aria-live="assertive" style="display:none"></div>
   </section>
 
   </form>
@@ -901,6 +915,8 @@
   </p>
 </main>
 
+<script src="acessibilidade.js"></script>
+<script src="rascunho.js"></script>
 <script src="base-offline.js?v=r97a"></script>
 <script src="regras-tela.js?v=t1101"></script>
 <script src="diluir-ui.js"></script>
@@ -1298,7 +1314,7 @@
     }
     function linha2(c1, c2, nota, est){
       est = est || '';
-      return '<tr><td style="' + TD + ';' + est + '">' + c1 + (nota ? '<br><span style="font-size:11px;color:#6B5A45;font-weight:400">' + nota + '</span>' : '') + '</td>' +
+      return '<tr><td style="' + TD + ';' + est + '">' + c1 + (nota ? '<br><span style="font-size:12px;color:#6B5A45;font-weight:400">' + nota + '</span>' : '') + '</td>' +
         '<td style="' + TD + ';text-align:right;white-space:nowrap;width:150px;' + est + '">' + c2 + '</td></tr>';
     }
     function grupo(t, v, cor){
@@ -1306,7 +1322,7 @@
         '<td style="' + TD + ';background:' + cor + ';color:#fff;font-weight:800;text-align:right;white-space:nowrap">' + v + '</td></tr>';
     }
     function titulo(t){ return '<h3 style="color:#7A4A16;font-size:14px;margin:18px 0 6px">' + t + '</h3>'; }
-    function selo(t, cor){ return ' <span style="display:inline-block;background:' + cor + ';color:#fff;border-radius:9px;padding:1px 7px;font-size:10px;font-weight:800">' + t + '</span>'; }
+    function selo(t, cor){ return ' <span style="display:inline-block;background:' + cor + ';color:#fff;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800">' + t + '</span>'; }
     function valorLinha(x){ var q = fpQtd_(x.quando); return (q > 1 ? q + ' × ' : '') + B(Number(x.valor)); }
   
     /* 1) COMPOSIÇÃO DO FLUXO DE PAGAMENTO */
@@ -2007,7 +2023,7 @@
       /* 31/10 — o cônjuge de um comprador tem TODOS os dados obrigatórios, com ou sem crédito aprovado */
       var obrigComp=(F().creditoAprovadoCaixa.value==='NAO' || conj)?'<span class="obrig">*</span>':'';
       var obrigConj=conj?'<span class="obrig">*</span>':'';
-      var lbl='font-size:11px;color:var(--marrom);font-weight:700';
+      var lbl='font-size:12px;color:var(--marrom);font-weight:700';
       /* 31/10 — erro no próprio card: casado sem o cônjuge na lista (limite) ou tentativa de passar do limite */
       var nCompT=atuais.slice(0, n).filter(function(x){ return x && x.tipo==='COMPRADOR'; }).length;
       var ordC=comp ? atuais.slice(0, i+1).filter(function(x){ return x && x.tipo==='COMPRADOR'; }).length : 0;
@@ -3147,12 +3163,15 @@
     var el=document.getElementById('status'); if(el) el.style.display='none';
     var t=document.getElementById('toast'); if(t) t.classList.remove('visivel');
     document.querySelectorAll('.faltando').forEach(function(x){ x.classList.remove('faltando'); });
+    document.querySelectorAll('[aria-invalid]').forEach(function(x){ x.removeAttribute('aria-invalid'); });
   }
   function erro(m, campo){
     mostrar('erro', m);
     if(campo){
       document.querySelectorAll('.faltando').forEach(function(x){ x.classList.remove('faltando'); });
+      document.querySelectorAll('[aria-invalid]').forEach(function(x){ x.removeAttribute('aria-invalid'); });
       campo.classList.add('faltando');
+      try{ marcarInvalido(campo); }catch(e){}
       try{ campo.scrollIntoView({block:'center',behavior:'smooth'}); campo.focus({preventScroll:true}); }catch(e){}
       campo.addEventListener('input', function limpa(){ campo.classList.remove('faltando'); campo.removeEventListener('input', limpa); });
     }
@@ -3167,7 +3186,7 @@
     if(el){ el.style.display='block'; el.className='status '+tipo; el.innerHTML=msg; }
     var t=document.getElementById('toast');
     t.className='toast '+tipo;
-    t.innerHTML=msg+'<span class="fecha" onclick="this.parentNode.classList.remove(\'visivel\')">×</span>';
+    t.innerHTML=msg+'<span class="fecha" role="button" tabindex="0" aria-label="Fechar aviso" onclick="this.parentNode.classList.remove(\'visivel\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}">×</span>';
     t.classList.add('visivel');
     clearTimeout(t._t);
     if(tipo!=='erro') t._t=setTimeout(function(){ t.classList.remove('visivel'); }, 6000);
@@ -3896,128 +3915,35 @@
 })();
 </script>
 <script>
-/* ===== Onda 2 (item 1) — RASCUNHO DA PROPOSTA neste aparelho ===========================
-   Guarda no localStorage os valores dos campos (nunca arquivos), por unidade, com data e
-   validade de 7 dias. Só restaura se a pessoa escolher "Continuar". Apaga ao enviar. */
+/* Onda 2 (item 1) — RASCUNHO DA PROPOSTA neste aparelho. Onda 3: a peça é a mesma do simulador (rascunho.js). */
 (function(){
-  var PFX='rascunhoProposta:', VALIDADE=7*864e5, timer=null, parado=false, enviado=false, un0='';
-  function ls(){ try{ return window.localStorage; }catch(e){ return null; } }
-  function unidadeSel(){ var f=F(); return (f && f.unidade) ? String(f.unidade.value||'') : ''; }
-  function campos(){
-    var f=F(), cont={}, out=[];
-    [].forEach.call(f.elements, function(el){
-      var t=String(el.type||'').toLowerCase(), nome=el.name||'';
-      if(!nome || nome==='unidade') return;
-      if(t==='file'||t==='button'||t==='submit'||t==='reset'||t==='password'||t==='image'||t==='hidden') return;
-      if(el.closest('#listaDependentes,#fluxo')) return;
-      var i=cont[nome]||0; cont[nome]=i+1;
-      out.push({k:nome+'#'+i, el:el, t:t});
-    });
-    return out;
-  }
-  function ler(un){
-    var s=ls(); if(!s||!un) return null;
-    try{
-      var d=JSON.parse(s.getItem(PFX+un)||'null');
-      if(!d || !d.ts || !d.v) return null;
-      if(Date.now()-d.ts>VALIDADE){ s.removeItem(PFX+un); return null; }
-      return d;
-    }catch(e){ return null; }
-  }
-  function apagar(un){ var s=ls(); try{ if(s&&un) s.removeItem(PFX+un); }catch(e){} }
-  function varrerVelhos(){
-    var s=ls(); if(!s) return;
-    try{
-      var ks=[]; for(var i=0;i<s.length;i++){ var k=s.key(i); if(k && k.indexOf(PFX)===0) ks.push(k); }
-      ks.forEach(function(k){ try{ var d=JSON.parse(s.getItem(k)||'null'); if(!d||!d.ts||Date.now()-d.ts>VALIDADE) s.removeItem(k); }catch(e){ s.removeItem(k); } });
-    }catch(e){}
-  }
-  function salvar(){
-    if(parado||enviado) return;
-    var s=ls(), un=unidadeSel(); if(!s||!un) return;
-    try{
-      var v={}, tem=false;
-      campos().forEach(function(c){
-        if(c.t==='checkbox'||c.t==='radio'){ if(c.el.checked){ v[c.k]=1; tem=true; } }
-        else if(String(c.el.value||'')!==''){ v[c.k]=c.el.value; tem=true; }
-      });
-      if(!tem) return;
-      var dil=null; try{ dil=DIL_PROP.slice(); }catch(e){}
-      s.setItem(PFX+un, JSON.stringify({ts:Date.now(), un:un, v:v, dil:dil}));
-    }catch(e){}
-  }
-  function agendar(e){
-    if(e && e.isTrusted===false) return;   // só mudança feita pela pessoa (não a do próprio código)
-    clearTimeout(timer); timer=setTimeout(salvar, 800);
-  }
-  function p2(n){ return (n<10?'0':'')+n; }
-  function restaurar(d, faixa){
-    parado=true;
-    function disp(el,ev){ try{ el.dispatchEvent(new Event(ev,{bubbles:true})); }catch(e){} }
-    function passada(){
-      campos().forEach(function(c){
-        var el=c.el, ch=(c.t==='checkbox'||c.t==='radio');
-        if(ch){
-          var q=!!d.v[c.k]; if(c.t==='radio' && !q) return;
-          if(el.checked===q) return; el.checked=q;
-        } else {
-          if(!(c.k in d.v) || el.value===d.v[c.k]) return;
-          el.value=d.v[c.k];
-          if(el.tagName==='SELECT' && el.value!==d.v[c.k]) return;
-        }
-        disp(el,'input'); disp(el,'change');
-      });
-    }
-    function fim(){
-      try{ if(d.dil && d.dil.length===2) DIL_PROP=[Number(d.dil[0])||0, Number(d.dil[1])||0]; }catch(e){}
+  var enviado=false;
+  var R=criarRascunho({
+    form:F, prefixo:'rascunhoProposta:', rotulo:'proposta', textoRestaurado:'Os documentos precisam ser anexados de novo.',
+    unidade:function(){ var f=F(); return (f && f.unidade) ? String(f.unidade.value||'') : ''; },
+    unidadeEl:function(){ var f=F(); return f && f.unidade; },
+    pronto:function(){ return !!UNIDADES.length; },
+    excluir:'#listaDependentes,#fluxo',
+    vindoDeFora:function(){ return param('daSimulacao')==='1'; },   // vindo da simulação, os dados dela valem
+    extra:function(){ return {dil:DIL_PROP.slice()}; },
+    aplicarExtra:function(x, d){
+      try{ var dil=x.dil||d.dil; if(dil && dil.length===2) DIL_PROP=[Number(dil[0])||0, Number(dil[1])||0]; }catch(e){}
       try{ if(d.v['valorEntrada#0']) ENTRADA_EDITADA_P=true; }catch(e){}
+    },
+    fim:function(d){
       ['somarRenda','verConjuge','verCredito','atualizarComissao','atualizarFiadorExigido','montarFluxo'].forEach(function(fn){
         try{ window[fn](); }catch(e){} });
-      try{ var fe=F().valorEntrada; if(fe && d.v['valorEntrada#0']){ fe.value=d.v['valorEntrada#0']; disp(fe,'input'); } }catch(e){}
-    }
-    passada();
-    setTimeout(function(){ passada(); fim(); }, 450);
-    setTimeout(function(){ passada(); parado=false; }, 1000);
-    faixa.innerHTML='<b>Rascunho restaurado.</b> Os documentos precisam ser anexados de novo.';
-  }
-  function oferecer(d){
-    var faixa=document.getElementById('faixaRascunho'); if(!faixa) return;
-    var dt=new Date(d.ts);
-    faixa.innerHTML='Você começou uma proposta da unidade <b>'+esc_(d.un)+'</b> em '+p2(dt.getDate())+'/'+p2(dt.getMonth()+1)+
-      ' às '+p2(dt.getHours())+':'+p2(dt.getMinutes())+'.<div class="acoes">'+
-      '<button type="button" class="btn-primario" id="btRascCont">Continuar de onde parou</button>'+
-      '<button type="button" class="btn-secundario" id="btRascZero">Começar do zero</button></div>';
-    faixa.style.display='block';
-    document.getElementById('btRascCont').onclick=function(){ restaurar(d, faixa); };
-    document.getElementById('btRascZero').onclick=function(){ apagar(d.un); faixa.style.display='none'; };
-  }
-  function iniciar(){
-    varrerVelhos();
-    var lk=document.getElementById('lnkApagarRascunho');
-    if(lk) lk.onclick=function(e){
-      e.preventDefault();
-      apagar(unidadeSel()); apagar(un0);
-      var fx=document.getElementById('faixaRascunho'); if(fx) fx.style.display='none';
-      mostrar('ok','Rascunho apagado deste aparelho.');
-    };
-    var f=F(); f.addEventListener('input', agendar); f.addEventListener('change', agendar);
-    /* vindo da simulação, os dados dela valem e o rascunho não é oferecido */
-    if(param('daSimulacao')==='1') return;
-    var t0=Date.now();
-    (function esperar(){
-      var un=unidadeSel();
-      if(un && UNIDADES.length){ un0=un; var d=ler(un); if(d) oferecer(d); return; }
-      if(Date.now()-t0<45000) setTimeout(esperar, 400);
-    })();
-  }
-  window.rascunhoPropostaEnviada=function(){ enviado=true; clearTimeout(timer); apagar(unidadeSel()); apagar(un0); };
+      try{ var fe=F().valorEntrada; if(fe && d.v['valorEntrada#0']){ fe.value=d.v['valorEntrada#0']; fe.dispatchEvent(new Event('input',{bubbles:true})); } }catch(e){}
+    },
+    faixaId:'faixaRascunho', apagarId:'lnkApagarRascunho', avisar:mostrar
+  });
+  window.rascunhoPropostaEnviada=function(){ enviado=true; R.enviado(); };
   /* aviso ao sair só quando há arquivo escolhido e ainda não enviado */
   window.addEventListener('beforeunload', function(e){
     if(enviado) return;
     var n=0; try{ n=arquivosAnexados().length; }catch(x){}
     if(n>0){ e.preventDefault(); e.returnValue=''; return ''; }
   });
-  iniciar();
 })();
 </script>
 <script>

@@ -71,6 +71,8 @@
     .spam{margin-left:18px;margin-right:18px;}
     .btn{width:100%;justify-content:center;}
   }
+  /* Onda 3 (item 5) — celular: toque de 44 px; tabelas do fluxo rolam dentro do próprio quadro */
+  @media(max-width:640px){ .btn{min-height:44px} }
 </style>
 </head>
 <body>
@@ -100,9 +102,10 @@
       marque como "não é spam" — assim os próximos chegam na caixa de entrada.</div>
     <div class="acoes">
       <a class="btn btn-primario" href="index.html">← Voltar ao mapa de vendas</a>
-      <a class="btn btn-secundario" id="btNovo" href="simulador.html">Fazer outra simulação</a>
+      <a class="btn btn-secundario" id="btOutraProp" href="index.html" style="display:none">Enviar outra proposta</a>
+      <a class="btn btn-secundario" id="btNovo" href="simulador.html">Simular outra unidade</a>
       <!-- 31/10 — leva os dados desta simulação para a proposta -->
-      <a class="btn btn-proposta" id="btProposta" href="#" style="display:none">📄 Transformar em proposta</a>
+      <a class="btn btn-proposta" id="btProposta" href="#" style="display:none">📄 Transformar esta simulação em proposta</a>
     </div>
   </div>
   <p class="rodape">Morais Engenharia e Construção · Condomínio Reserva dos Ipês</p>
@@ -129,11 +132,19 @@
   var TIPO = param('tipo') || (ENV && ENV.tipo) || 'simulacao';
   var ID   = param('id') || (ENV && ENV.id) || '';
   var NUM  = param('numero') || (ENV && ENV.numero) || '';
+  /* Onda 3 (item 4) — os avisos (documento que não subiu, e-mail que não saiu) ficam guardados pelo número
+     (ou pelo código da simulação) e voltam no F5; ao fechar a aba somem, como o resto da sessão. */
+  var CH_ENV = 'envioConcluido:' + (TIPO === 'proposta' ? NUM : ID);
+  try{
+    if(ENV){ if(NUM || ID) sessionStorage.setItem(CH_ENV, JSON.stringify(ENV)); }
+    else if(NUM || ID){ ENV = JSON.parse(sessionStorage.getItem(CH_ENV) || 'null'); }
+  }catch(e){}
 
   if(TIPO === 'proposta'){
     document.title = 'Proposta enviada – Reserva dos Ipês';
     $('hTitulo').textContent = 'Proposta de Compra';
     $('btNovo').style.display = 'none';
+    $('btOutraProp').style.display = '';
     if(NUM){ $('codigo').textContent = NUM; $('codigo').style.display = 'inline-block'; }
     var temAlerta = !!(ENV && ENV.alerta);
     estado(temAlerta ? 'erro' : 'ok',
@@ -151,9 +162,12 @@
     if(ID) acompanhar(ID);
     /* 31/10 — o simulador guardou os dados deste envio: o botão abre a proposta já preenchida */
     try{
-      var SP=JSON.parse(localStorage.getItem('simParaProposta')||'null');
+      var SP=JSON.parse(localStorage.getItem('simParaProposta')||'null'), INFO=null;
+      /* a proposta consome 'simParaProposta'; a cópia da última simulação garante que o botão volte a aparecer */
+      if(!(SP && SP.unidade)){ INFO=JSON.parse(localStorage.getItem('ultimaSimulacaoInfo')||'null'); if(INFO && INFO.dados && (!ID || INFO.id===ID)) SP=INFO.dados; else SP=null; }
       if(SP && SP.unidade && (!ID || !SP.simId || SP.simId===ID)){
         var bp=$('btProposta');
+        bp.onclick=function(){ try{ if(!localStorage.getItem('simParaProposta')) localStorage.setItem('simParaProposta', JSON.stringify(SP)); }catch(e){} };
         bp.href='proposta.html?tipo='+encodeURIComponent(SP.tipo||'')+'&unidade='+encodeURIComponent(SP.unidade)+'&daSimulacao=1';
         bp.style.display='';
       }
@@ -187,19 +201,19 @@
             /* r64 — SIOP fora do ar: saiu a PRELIMINAR (base offline) */
             viuOffline = true;
             var temPrelim = (s.resultados || []).length > 0;
-            estado('processando', temPrelim ? 'Simulação PRELIMINAR enviada' : 'Aguardando o sistema online',
-              temPrelim ? 'Simulação feita no <b>sistema offline</b>: os valores abaixo são <b>aproximados</b>. ' +
-                          'A simulação <b>definitiva</b> é feita sozinha quando o sistema online voltar e chega por e-mail.'
-                        : 'O sistema online está indisponível e este perfil não está no sistema offline. ' +
-                          'A simulação é feita sozinha quando o sistema online voltar e chega por e-mail.');
-            $('corpo').innerHTML = '<div class="bloco info"><b>PRELIMINAR — valores aproximados.</b> ' +
+            estado('processando', temPrelim ? 'Resultado preliminar enviado' : 'Aguardando o sistema da CAIXA',
+              temPrelim ? 'A CAIXA está fora do ar: os valores abaixo são <b>aproximados</b> (resultado preliminar). ' +
+                          'O <b>resultado definitivo</b> sai sozinho quando a CAIXA voltar e chega por e-mail.'
+                        : 'O sistema da CAIXA está fora do ar e ainda não há valores aproximados para este perfil. ' +
+                          'A simulação é feita sozinha quando a CAIXA voltar e o resultado chega por e-mail.');
+            $('corpo').innerHTML = '<div class="bloco info"><b>Resultado preliminar — valores aproximados.</b> ' +
               esc(s.mensagem || '') + '</div>' + listaResultados(s);
           } else if(s.status === 'concluido'){
             timer.parar();
-            estado('ok', viuOffline ? 'Simulação DEFINITIVA concluída' : 'Simulação concluída',
+            estado('ok', viuOffline ? 'Resultado definitivo concluído' : 'Simulação concluída',
               s.email_enviado ? 'O resultado foi enviado por e-mail.' : 'O e-mail com o resultado sai em instantes.');
             var html = listaResultados(s);
-            if(viuOffline) html = '<div class="bloco ok"><b>Definitiva, feita no sistema online.</b> Substitui a preliminar.</div>' + html;
+            if(viuOffline) html = '<div class="bloco ok"><b>Resultado definitivo, direto da CAIXA.</b> Substitui o preliminar.</div>' + html;
             $('corpo').innerHTML = html || '<div class="bloco ok">Simulação concluída.</div>';
           } else if(s.status === 'erro'){
             timer.parar();
