@@ -205,6 +205,7 @@ thead th:last-child{border-right:0}
 thead th:hover{background:var(--azul-esc)}
 #prop-tab thead th:not(.ord){cursor:default}   /* só "Criada" ordena */
 #prop-tab thead th:not(.ord):hover{background:var(--azul)}
+@media(max-width:600px){.sim-ad-bt{min-height:44px;min-width:44px}}
 .prop-maiscol{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text3);align-self:center;min-height:44px;cursor:pointer}
 thead th .arr{opacity:.55;font-size:10px;margin-left:3px;color:#fff}
 thead th.sortA .arr,thead th.sortD .arr{opacity:1}
@@ -1037,7 +1038,9 @@ function iniciar(){
          MESMA fila (uma requisição por vez), e a fila nunca alcançava. */
       if(window._simRodando) return;
       window._simRodando = true;
-      Promise.all([simCarregar(true), propCarregar(true), simCarregarUnidades(true)].map(p=>Promise.resolve(p).catch(()=>{})))
+      /* 20/11/2026 (ux): com campo da aba Unidades em foco ou gravação pendente, não relê as unidades agora
+         (redesenharia a tabela por cima da edição) — fica para a próxima volta */
+      Promise.all([simCarregar(true), propCarregar(true), simUnidadesOcupada() ? null : simCarregarUnidades(true)].map(p=>Promise.resolve(p).catch(()=>{})))
         .then(()=>{ window._simRodando = false; });
     }, POLL_SIM_MS, _pollSim);
   }catch(e){
@@ -2859,6 +2862,108 @@ const SIM_ALTERADAS = new Set();
 const SIM_TIMERS={}, SIM_VER={}, SIM_ESTADO={};
 let SIM_FILA=[], SIM_GRAVANDO=false, SIM_ULTIMO_OK="";
 
+/* 20/11/2026 (ux) — SITUAÇÃO (STATUS MAPA e DISPONIVEL) e VALOR DE VENDA não gravam na hora: a linha mostra
+   "Unidade N: antes → depois · Desfazer (10)" e grava ao fim dos 10 s ou em "Gravar agora".
+   Cada unidade tem uma pendência só (várias mudanças da mesma linha vão juntas). Os outros campos seguem como estavam. */
+const SIM_ADIADAS={}, SIM_STASH={};
+const SIM_ADIAR_S=10;
+let SIM_ADIAR_IV=0;
+function simPendenciaUnidades(){ return !!(Object.keys(SIM_ADIADAS).length || SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length); }
+/* a revalidação automática não redesenha a tabela com campo em foco ou gravação pendente */
+function simUnidadesOcupada(){
+  if(simPendenciaUnidades()) return true;
+  const a=document.activeElement;
+  return !!(a && a.closest && a.closest("#sim-tabUn"));
+}
+function simNumTxt(v){
+  const t=String(v||"").trim(), num=/,/.test(t) ? Number(t.replace(/\./g,"").replace(",",".")) : Number(t.replace(/\.(?=\d{3}(\D|$))/g,""));
+  return isNaN(num)?0:num;
+}
+function simAdiarRotulo(c,v){
+  if(c==="vendidaCru"){ v=String(v||"NAO").toUpperCase(); return v==="SIM"?"VENDIDA":(v==="RESERVADA"?"RESERVADA":"NÃO VENDIDA"); }
+  if(c==="disponivel") return String(v)==="true"?"SIM":"NÃO";
+  return simBRL(simNumTxt(v));
+}
+function simAdiarHtml(i){
+  const d=SIM_ADIADAS[i], u=UNS[i]||{};
+  const falta=Math.max(0,Math.ceil((d.fim-Date.now())/1000));
+  const pref={vendidaCru:"",disponivel:"Disponível ",valorVenda:"Valor de venda "};
+  const txt=Object.keys(d.mud).map(c=>pref[c]+simAdiarRotulo(c,d.mud[c].antes)+" → "+simAdiarRotulo(c,d.mud[c].depois)).join("; ");
+  return '<div style="white-space:normal;min-width:230px">Unidade '+esc(String(u.unidade||""))+': '+esc(txt)+' · '+
+    '<button type="button" class="bt ghost sim-ad-bt" style="padding:3px 8px;font-size:11px" onclick="simAdiarDesfazer('+i+')">Desfazer (<span id="sim-ad-n-'+i+'">'+falta+'</span>)</button> '+
+    '<button type="button" class="bt az sim-ad-bt" style="padding:3px 8px;font-size:11px" onclick="simAdiarGravar('+i+')">Gravar agora</button></div>';
+}
+function simAdiar(i,c){
+  const u=UNS[i]; const el=document.querySelector('.sim-edit[data-i="'+i+'"][data-c="'+c+'"]'); if(!u||!el) return;
+  let d=SIM_ADIADAS[i];
+  if(!d){ d=SIM_ADIADAS[i]={mud:{}, fim:0, eraAlterada:SIM_ALTERADAS.has(i), estadoAntes:SIM_ESTADO[i]}; }
+  if(!d.mud[c]){
+    const antes = c==="vendidaCru" ? (["NAO","RESERVADA","SIM"].includes(String(u.vendidaCru||"NAO").toUpperCase())?String(u.vendidaCru||"NAO").toUpperCase():"NAO")
+                : (c==="disponivel" ? String(!!u.disponivel) : String(u.valorVenda==null?"":u.valorVenda));
+    d.mud[c]={antes:antes, depois:el.value};
+  }
+  d.mud[c].depois=el.value;
+  const igual = c==="valorVenda" ? simNumTxt(d.mud[c].antes)===simNumTxt(el.value) : d.mud[c].antes===el.value;
+  if(igual) delete d.mud[c];                 // voltou ao valor de antes: nada a gravar
+  if(!Object.keys(d.mud).length){ simAdiarLimpar(i); return; }
+  d.fim=Date.now()+SIM_ADIAR_S*1000;
+  SIM_ALTERADAS.add(i); if(SIM_ESTADO[i]!=="salvando") SIM_ESTADO[i]="pendente";
+  simPintarLinha(i); simMarcarContador();
+  if(!SIM_ADIAR_IV) SIM_ADIAR_IV=setInterval(simAdiarTick,1000);
+}
+function simAdiarTick(){
+  const ks=Object.keys(SIM_ADIADAS);
+  if(!ks.length){ clearInterval(SIM_ADIAR_IV); SIM_ADIAR_IV=0; return; }
+  ks.forEach(k=>{
+    const d=SIM_ADIADAS[k]; if(!d) return;
+    const falta=Math.ceil((d.fim-Date.now())/1000);
+    if(falta<=0){ simAdiarGravar(+k); return; }
+    const s=document.getElementById("sim-ad-n-"+k); if(s) s.textContent=falta;
+  });
+}
+function simAdiarLimpar(i){
+  const d=SIM_ADIADAS[i]; delete SIM_ADIADAS[i];
+  if(d){
+    if(!d.eraAlterada && !SIM_TIMERS[i] && !SIM_FILA.includes(i) && SIM_ESTADO[i]!=="salvando" && SIM_ESTADO[i]!=="erro") SIM_ALTERADAS.delete(i);
+    if(SIM_ESTADO[i]==="pendente" && !SIM_TIMERS[i]) SIM_ESTADO[i]=d.estadoAntes;
+  }
+  simPintarLinha(i); simMarcarContador();
+}
+function simAdiarDesfazer(i){
+  const d=SIM_ADIADAS[i]; if(!d) return;
+  Object.keys(d.mud).forEach(c=>{
+    const el=document.querySelector('.sim-edit[data-i="'+i+'"][data-c="'+c+'"]'); if(el) el.value=d.mud[c].antes;
+    if(c==="vendidaCru") simEspelharStatusInterno(i);   // o status interno volta junto
+  });
+  simAdiarLimpar(i);
+  simAvisoUn("ok","Alteração desfeita: nada foi gravado.");
+}
+/* grava a pendência da unidade: guarda os campos agora (a linha pode sumir da tela por causa da busca) e enfileira */
+function simAdiarGravar(i){
+  const d=SIM_ADIADAS[i]; if(!d) return;
+  const u=UNS[i]; const campos={};
+  Object.keys(d.mud).forEach(c=>{
+    const el=document.querySelector('.sim-edit[data-i="'+i+'"][data-c="'+c+'"]');
+    simAplicarCampo(u,c,el?el.value:d.mud[c].depois,campos);
+  });
+  if(d.mud.vendidaCru){
+    const si=document.querySelector('.sim-edit[data-i="'+i+'"][data-c="statusInterno"]');
+    if(si) simAplicarCampo(u,"statusInterno",si.value,campos);
+  }
+  SIM_STASH[i]=Object.assign(SIM_STASH[i]||{}, campos);
+  delete SIM_ADIADAS[i];
+  simAoEditar(i,true);
+}
+function simAdiarGravarTodas(){ Object.keys(SIM_ADIADAS).forEach(k=>simAdiarGravar(+k)); }
+function simAdiarReaplicar(){   // depois de redesenhar a tabela: o que está pendente continua na tela
+  Object.keys(SIM_ADIADAS).forEach(k=>{
+    const d=SIM_ADIADAS[k];
+    Object.keys(d.mud).forEach(c=>{ const el=document.querySelector('.sim-edit[data-i="'+k+'"][data-c="'+c+'"]'); if(el) el.value=d.mud[c].depois; });
+    if(d.mud.vendidaCru) simEspelharStatusInterno(+k);
+    simPintarLinha(+k);
+  });
+}
+
 function simMarcarContador(){
   const el=document.getElementById("sim-alteradas");
   const bt=document.getElementById("sim-btSalvarTudo");
@@ -2866,26 +2971,32 @@ function simMarcarContador(){
   const falhas=[...SIM_ALTERADAS].filter(i=>SIM_ESTADO[i]==="erro").length;
   const salvando=SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length;
   if(el) el.textContent = falhas ? (qtd(falhas,"unidade não salvou","unidades não salvaram")+" — veja as linhas em vermelho")
-                        : (salvando ? "salvando no Notion…" : (SIM_ULTIMO_OK ? "tudo salvo · "+SIM_ULTIMO_OK : ""));
+                        : (Object.keys(SIM_ADIADAS).length ? "alteração aguardando: desfaça ou grave"
+                        : (salvando ? "salvando no Notion…" : (SIM_ULTIMO_OK ? "tudo salvo · "+SIM_ULTIMO_OK : "")));
   if(bt){ bt.style.display = falhas ? "" : "none"; bt.disabled = !falhas; }
 }
 
 /* Lê os campos de UMA linha (do DOM) de volta para o objeto em UNS e devolve
    o mapa {COLUNA_NOTION: valor} pronto para gravar. Centralizado porque tanto
    o salvar-um quanto o salvar-tudo precisam da mesma conversão de tipo. */
+function simAplicarCampo(u,c,v,campos){
+  if(c==="vendidaCru"){ u.vendidaCru=v; u.vendido=(v==="SIM"); u.reservado=(v==="RESERVADA");
+                        campos[SIM_NOME_NOTION[c]]=(v==="NAO"?"NÃO":v); }
+  else if(["decorado","disponivel"].includes(c)){ u[c]=(v==="true"); campos[SIM_NOME_NOTION[c]]= u[c]?"SIM":"NÃO"; }
+  else if(["valorVenda","avaliacao","tipo"].includes(c)){
+    /* 02/10 (item 4) — o campo virou texto (sem as setinhas): aceita 305000, 305.000 ou 305.000,00 */
+    u[c]=simNumTxt(v); campos[SIM_NOME_NOTION[c]]=u[c]; }
+  else { u[c]=v; campos[SIM_NOME_NOTION[c]]=v; }
+}
 function simColetarLinha(i){
   const u=UNS[i]; const campos={};
+  const d=SIM_ADIADAS[i];   // mudança ainda na janela dos 10 s: fica de fora (grava só ao fim dela)
   document.querySelectorAll(`.sim-edit[data-i="${i}"]`).forEach(el=>{
-    const c=el.dataset.c, v=el.value;
-    if(c==="vendidaCru"){ u.vendidaCru=v; u.vendido=(v==="SIM"); u.reservado=(v==="RESERVADA");
-                          campos[SIM_NOME_NOTION[c]]=(v==="NAO"?"NÃO":v); }
-    else if(["decorado","disponivel"].includes(c)){ u[c]=(v==="true"); campos[SIM_NOME_NOTION[c]]= u[c]?"SIM":"NÃO"; }
-    else if(["valorVenda","avaliacao","tipo"].includes(c)){
-      /* 02/10 (item 4) — o campo virou texto (sem as setinhas): aceita 305000, 305.000 ou 305.000,00 */
-      const t=String(v||"").trim(), num=/,/.test(t) ? Number(t.replace(/\./g,"").replace(",",".")) : Number(t.replace(/\.(?=\d{3}(\D|$))/g,""));
-      u[c]=isNaN(num)?0:num; campos[SIM_NOME_NOTION[c]]=u[c]; }
-    else { u[c]=v; campos[SIM_NOME_NOTION[c]]=v; }
+    const c=el.dataset.c;
+    if(d && (d.mud[c] || (c==="statusInterno" && d.mud.vendidaCru))) return;
+    simAplicarCampo(u,c,el.value,campos);
   });
+  if(SIM_STASH[i]){ Object.assign(campos,SIM_STASH[i]); delete SIM_STASH[i]; }
   return campos;
 }
 
@@ -2903,13 +3014,13 @@ function simRenderUnidades(){
       if(tipo==="ro") return `<td><b>${esc(String(v==null?"":v))}</b></td>`;
       if(tipo==="v3"){
         const atual=String(v||"NAO").toUpperCase();
-        return `<td><select class="sim-edit" data-i="${i}" data-c="${campo}" style="min-width:132px" onchange="simEspelharStatusInterno(${i});simAoEditar(${i},true)">
+        return `<td><select class="sim-edit" data-i="${i}" data-c="${campo}" style="min-width:132px" onchange="simEspelharStatusInterno(${i});simAdiar(${i},'vendidaCru')">
           <option value="NAO"${atual==="NAO"?" selected":""}>NÃO VENDIDA</option>
           <option value="RESERVADA"${atual==="RESERVADA"?" selected":""}>RESERVADA</option>
           <option value="SIM"${atual==="SIM"?" selected":""}>VENDIDA</option></select></td>`;
       }
       if(tipo==="area") return `<td><textarea class="sim-edit" rows="2" data-i="${i}" data-c="${campo}" oninput="simAoEditar(${i})" onblur="simSairDoCampo(${i})" style="width:100%;min-width:220px;resize:vertical;font-family:inherit;font-size:13px;line-height:1.4">${esc(String(v==null?"":v))}</textarea></td>`;
-      if(tipo==="sn") return `<td><select class="sim-edit" data-i="${i}" data-c="${campo}" onchange="simAoEditar(${i},true)">
+      if(tipo==="sn") return `<td><select class="sim-edit" data-i="${i}" data-c="${campo}" onchange="${campo==='disponivel'?`simAdiar(${i},'disponivel')`:`simAoEditar(${i},true)`}">
           <option value="true"${v?" selected":""}>SIM</option>
           <option value="false"${!v?" selected":""}>NÃO</option></select></td>`;
       if(tipo==="si"){   // 02/10 (item 6) — STATUS INTERNO
@@ -2928,6 +3039,8 @@ function simRenderUnidades(){
           (txt.trim() ? "📝 "+esc(txt.split("\n")[0].slice(0,40))+(txt.length>40||txt.indexOf("\n")>=0?"…":"") : '<span style="color:#9fb3bf">+ observação</span>')+`</button></td>`;
       }
       /* 02/10 (item 4) — números como texto: sem as setinhas de subir/descer o valor */
+      /* VALOR DE VENDA: só vira alteração ao confirmar o campo (sair ou Enter), com janela de desfazer */
+      if(campo==="valorVenda") return `<td><input class="sim-edit" type="text" inputmode="decimal" data-i="${i}" data-c="${campo}" value="${esc(String(v==null?"":v))}" onchange="simAdiar(${i},'valorVenda')"></td>`;
       return `<td><input class="sim-edit" type="text"${tipo==="num"?' inputmode="decimal"':''} data-i="${i}" data-c="${campo}" value="${esc(String(v==null?"":v))}" oninput="simAoEditar(${i})" onblur="simSairDoCampo(${i})"></td>`;
     }).join("");
     // linha alterada ganha um destaque suave para não perder a edição de vista
@@ -2937,7 +3050,10 @@ function simRenderUnidades(){
   }).join("");
   // +1 coluna (o marcador de "alterada") no cabeçalho
   const cab2 = cab.replace('<thead><tr>', '<thead><tr><th></th>').replace('<th></th></tr></thead>', '<th>Notion</th></tr></thead>');
+  /* pendência dos 10 s de uma unidade que a busca vai esconder: grava antes de redesenhar (os valores saem do DOM de agora) */
+  Object.keys(SIM_ADIADAS).forEach(k=>{ if(!vis.includes(UNS[k])) simAdiarGravar(+k); });
   document.getElementById("sim-tabUn").innerHTML=cab2+"<tbody>"+corpo+"</tbody>";
+  simAdiarReaplicar();
   simMarcarContador();
 }
 
@@ -2995,6 +3111,7 @@ function simCorStatusInterno(i){
   tr.dataset.si=k; if(!SIM_ALTERADAS.has(i) && SIM_ESTADO[i]!=="erro") tr.style.background=SIM_COR_SI[k]||"";
 }
 function simStatusHtml(i){
+  if(SIM_ADIADAS[i]) return simAdiarHtml(i);
   const e=SIM_ESTADO[i];
   if(e==="salvando") return '<span style="color:#7A6A2E">⏳ salvando…</span>';
   if(e==="pendente") return '<span style="color:#9a8a50">● alterado</span>';
@@ -3068,7 +3185,7 @@ async function simGravarAuto(i){
   simPintarLinha(i); simMarcarContador();
 }
 window.addEventListener("beforeunload", e=>{
-  if(SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length){ e.preventDefault(); e.returnValue=""; }
+  if(SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length || Object.keys(SIM_ADIADAS).length){ e.preventDefault(); e.returnValue=""; }
 });
 
 async function simSalvarUnidade(i){
@@ -3132,6 +3249,7 @@ async function simConferirGravacao(u, campos){
 async function simSalvarTudo(){
   /* 02/10 — com o salvar automático, este botão só aparece quando alguma
      linha falhou: manda de novo todas as que ainda estão pendentes. */
+  simAdiarGravarTodas();
   const ids=[...SIM_ALTERADAS];
   if(!ids.length){ simAvisoUn("ok","Nada pendente — tudo já está salvo."); return; }
   ids.forEach(i=>{ if(SIM_TIMERS[i]){ clearTimeout(SIM_TIMERS[i]); delete SIM_TIMERS[i]; } simEnfileirar(i); });
@@ -3243,7 +3361,7 @@ async function propVarrerContratosEnviados(){
     aoTerminar: async n=>{
       const mostrar=()=>{ if(msgs.length) propAviso(msgs.some(m=>m.indexOf("⚠")===0)?"err":"ok","<b>Vendas × mapa</b><br>"+msgs.join("<br>")); else propAviso("ok",""); };
       mostrar();
-      if(n){ await propCarregar(true); mostrar(); try{ UNS=[]; simCarregarUnidades(true); }catch(e){} }
+      if(n){ await propCarregar(true); mostrar(); try{ if(!simUnidadesOcupada()){ UNS=[]; simCarregarUnidades(true); } }catch(e){} }
     }});
 }
 /* 04/11/2026 (dono): o servidor põe VENDIDA = SIM na unidade quando a proposta vira VENDIDA; no mapa ela fica
@@ -3257,7 +3375,7 @@ async function propCorrigirMapaUnidade(un){
   const ids=r.linhas.filter(l=>so((l.v||{})["UNIDADE"]||(l.v||{})[r.titulo])===alvo).map(l=>l.id);
   if(!ids.length) return;
   await ContratoVendida.rodar(r.linhas, r.titulo, ids, { chamar: chamar, forcar: true,
-    aoTerminar: async n=>{ if(n){ try{ UNS=[]; simCarregarUnidades(true); }catch(e){} } } });
+    aoTerminar: async n=>{ if(n){ try{ if(!simUnidadesOcupada()){ UNS=[]; simCarregarUnidades(true); } }catch(e){} } } });
 }
 function propAviso(t,m){
   const a=document.getElementById("prop-aviso");
