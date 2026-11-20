@@ -267,7 +267,9 @@ test("gs: recusa pedido estranho; falha do Notion não vira ok", () => {
 test("a página está ligada: início, cache offline, gancho do Apps Script e atalho no Escritório", () => {
   const ler = a => readFileSync(new URL("../../" + a, import.meta.url), "utf8");
   assert.doesNotMatch(ler("index.html"), /boletos-financeiro\.html/);
-  assert.match(ler("index.html"), /chave:"ESCRITÓRIO DE ROBÔS",chaves:\["ESCRITÓRIO DE ROBÔS","BOLETOS E FINANCEIRO"\]/);
+  assert.doesNotMatch(ler("app.js"), /boletos-financeiro\.html/);
+  // a lista de sistemas mora no app.js (menu comum), não mais no index.html
+  assert.match(ler("app.js"), /chave:"ESCRITÓRIO DE ROBÔS",chaves:\["ESCRITÓRIO DE ROBÔS","BOLETOS E FINANCEIRO"\]/);
   const esc = ler("escritorio-robos.html");
   assert.match(esc, /if \(er === "SEM_PERMISSAO"\) \{ soBoletos\(\); return; \}/);
   assert.match(esc, /quadro\.contentWindow\.location\.reload\(\)/);

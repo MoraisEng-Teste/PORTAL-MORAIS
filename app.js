@@ -1580,3 +1580,377 @@ if("serviceWorker" in navigator){ window.addEventListener("load", ()=>navigator.
    para valer em todas as páginas que usam o app.js. */
 (function(){ try{ if(window.__temaEscuroOk||document.querySelector('script[src*="tema-escuro.js"]')) return;
   const s=document.createElement("script"); s.src="tema-escuro.js?v=1"; s.async=true; (document.head||document.documentElement).appendChild(s); }catch(e){} })();
+
+/* =======================================================================
+ * 20/11/26 — MENU COMUM, CAIXA DE PERGUNTA E FOCO (Onda 2 de usabilidade)
+ * -----------------------------------------------------------------------
+ * Tudo isto vive dentro de uma função para não colidir com nomes das telas.
+ * Expõe só:
+ *   window.MORAIS_SISTEMAS / MORAIS_GRUPOS_ORDEM — a lista de sistemas do portal
+ *       (era do index.html; o início e o menu lateral usam a MESMA fonte);
+ *   window.moraisSistemasLiberados(sessao) — itens que aquela sessão pode ver;
+ *   window.moraisPerguntar({titulo,texto,sim,nao,perigo}) — caixa de pergunta.
+ * Não age dentro de iframe, no início, no login nem com ?embutido=1.
+ * ===================================================================== */
+(function(){
+  if(typeof document==="undefined") return;
+  const SRC=(document.currentScript&&document.currentScript.src)||"";
+  const BASE=SRC.replace(/[?#].*$/,"").replace(/[^/]*$/,"");   // pasta do app.js
+
+/* "chave" tem que bater com o valor na coluna ACESSOS do banco LOGINS.
+   externo:true = mora em outro repositório/site; o card só abre o link, e o
+   controle de acesso do portal NÃO protege a página de destino (ver
+   CONFIGURAR.md, seção "RAS").
+   "grupo" decide em que bloco da barra lateral o botão cai — a ORDEM dos
+   blocos é fixa (ver GRUPOS_ORDEM), não a ordem aqui no array. */
+const SISTEMAS=[
+  /* "LIGAÇÕES" tem que ser IGUAL à opção da coluna ACESSOS no banco LOGINS —
+     com acento e em maiúsculas. Se não bater, o botão simplesmente não
+     aparece pra quem tem o acesso, e sem mensagem de erro nenhuma. */
+
+  /* Mesma regra da linha de cima: "PÓS OBRA" precisa existir, com acento e em
+     maiúsculas, como opção da coluna ACESSOS no banco LOGINS. Se não bater, o
+     botão simplesmente não aparece — e sem erro nenhum na tela. */
+
+  /* "ANÁLISES" precisa existir, com acento e em maiúsculas, como opção da
+     coluna ACESSOS no banco LOGINS — mesma regra dos outros setores. A
+     página (analise.html) mora no próprio portal e lê o Supabase do Orçado x
+     Realizado pelo Apps Script (ações analise*). Se a chave não bater, o
+     botão não aparece e não dá erro nenhum. */
+  /* "nome" e so o rotulo do card; "chave" continua ANÁLISES porque e a opcao
+     da coluna ACESSOS no Notion e a permissao no Code.gs — renomear ela
+     tiraria o acesso de todo mundo de uma vez. */
+  /* GESTÃO DE DOCUMENTOS (set/26). "DOCUMENTOS" precisa existir, com
+     maiúsculas, como opção da coluna ACESSOS no banco LOGINS — mesma regra
+     dos outros setores. Se não bater, o botão simplesmente não aparece, e
+     sem erro nenhum na tela. */
+
+  /* r38 — SIMULAÇÕES (Reserva do Ipês). Exige a opção "SIMULAÇÕES" na coluna
+     ACESSOS do banco LOGINS, como os demais setores (ADM/MASTER/TESTES passam
+     sempre). A tela é a simulacoes.html, no próprio portal. */
+
+  /* ORDEM DOS SETORES (set/26): Atividades, Obras, Vendas, Documentos,
+     Ligações, Pós Obra, Simulações. "embreve" = botão aparece apagado, sem
+     link, para todo mundo. */
+  {chave:"ATIVIDADES",nome:"Atividades",desc:"Suas atividades, checklists e equipe",ico:"T",link:"atividades.html",grupo:"SETORES",publico:true},
+  /* PROCESSOS E ARQUIVOS (25/09/26) — bloco próprio no menu; liberados para
+     todos os logados (combinado). Arquivos = página ARQUIVOS do Notion. */
+  {chave:"PROCESSOS",nome:"Processos",desc:"Regras, procedimentos e cultura da empresa",ico:"P",link:"processos.html",grupo:"PROCESSOS E ARQUIVOS",publico:true},
+  {chave:"ARQUIVOS",nome:"Arquivos",desc:"Documentos e modelos da empresa",ico:"A",link:"arquivos.html",grupo:"PROCESSOS E ARQUIVOS",publico:true},
+  /* OBRAS: exige a opção "OBRAS" na coluna ACESSOS do banco LOGINS. */
+  {chave:"OBRAS",nome:"Obras",desc:"Solicitação de obras, atividades e cronograma",ico:"O",link:"obras.html",grupo:"SETORES"},
+  {chave:"VENDAS",nome:"Gestão de Vendas",desc:"Atividades, alertas e planilhas de vendas",ico:"V",link:"vendas.html",conta:true,grupo:"SETORES"},
+  {chave:"DOCUMENTOS",nome:"Gestão de Documentos",desc:"Documentação da obra, alvará, habite-se e prazos",ico:"D",link:"documentos.html",conta:true,grupo:"SETORES"},
+  {chave:"LIGAÇÕES",nome:"Ligações de Água e Energia",desc:"Pedidos de ligação de água e energia, prazos e planilha",ico:"L",link:"ligacoes.html",conta:true,grupo:"SETORES"},
+  {chave:"PÓS OBRA",nome:"Pós Obra",desc:"Garantias, chamados e serviços de assistência",ico:"P",link:"pos-obra.html",conta:true,grupo:"SETORES"},
+  {chave:"SIMULAÇÕES",nome:"Reserva dos Ipês · vendas",desc:"Propostas, simulações, mapa e unidades do condomínio",ico:"S",link:"simulacoes.html",grupo:"SETORES"},
+  {chave:"ANÁLISES",nome:"Orçado × Realizado",desc:"Compara o que foi orçado com o que foi gasto, por obra",ico:"$",link:"analise.html",grupo:"ANÁLISES"},
+
+  /* ANÁLISE DE DADOS (set/26) — veio do repositório CONTROLES-INTERNOS.
+     Exige a opção "ANÁLISE DE DADOS" (com acento, maiúsculas) na coluna
+     ACESSOS do banco LOGINS. Chave PRÓPRIA de propósito, separada de
+     "ANÁLISES": aqui aparece fluxo de caixa e pagamento por fornecedor, que
+     não é para todo mundo que vê o Orçado × Realizado. */
+  {chave:"ANÁLISE DE DADOS",nome:"Análise de Dados",desc:"Painel de metas, prazos e números por setor",ico:"A",link:"analise-dados.html",grupo:"ANÁLISES"},
+  /* AUDITORIA FINANCEIRA (22/10/26) — classificação dos pagamentos contra o
+     manual do plano de contas, juros/atrasos, fiscalização e o manual
+     editável. Duas chaves na coluna ACESSOS do LOGINS: "FINANCEIRO" (vê tudo)
+     e "GFINANCEIRO" (vê + valida + edita o manual). "chaves" = qualquer uma
+     das duas mostra o botão; quem trava de verdade é o AuditoriaFin.gs. */
+  {chave:"FINANCEIRO",chaves:["FINANCEIRO","GFINANCEIRO"],nome:"Auditoria Financeira",desc:"Confere pagamentos, juros, atrasos e o plano de contas",ico:"F",link:"auditoria-financeira.html",grupo:"ANÁLISES"},
+
+  /* "MAPA DE VENDAS" é público: publico:true faz o botão aparecer pra
+     qualquer usuário logado, sem precisar de liberação na coluna ACESSOS
+     do banco LOGINS (diferente dos outros itens, que exigem a chave lá). */
+  {chave:"MAPA DE VENDAS",nome:"Mapa de Vendas",desc:"Disponibilidade das casas e lotes, em mapa",ico:"M",link:"https://devmoraiseng.github.io/SITE-DE-VENDAS/",externo:true,grupo:"MAPAS",publico:true},
+
+  /* público, igual ao Mapa de Vendas: aparece para qualquer usuário logado. */
+  /* 28/09/26 — MAPA DE OBRAS (repositório OBRAS-GERAL): status das obras por
+     lote, prazos 150/180 dias, medições da semana e calendários. Público como
+     o Mapa de Vendas; quem tem acesso a DOCUMENTOS preenche o status lá. */
+  {chave:"MAPA DE OBRAS",nome:"Mapa de Obras",desc:"Status das obras por lote, prazos e medições",ico:"M",link:"https://devmoraiseng.github.io/OBRAS-GERAL/",externo:true,grupo:"MAPAS",publico:true},
+  {chave:"MAPA RESERVA DOS IPÊS",nome:"Mapa Reserva dos Ipês",desc:"Mapa de vendas e simulador do empreendimento",ico:"M",link:"https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/",externo:true,grupo:"MAPAS",publico:true},
+
+  {chave:"RAS LÍDERES",nome:"RAS Líderes",desc:"Reunião de alinhamento — Líderes",ico:"R",link:"https://devmoraiseng.github.io/RAS-SEMANAL/",externo:true,grupo:"REUNIÕES"},
+  {chave:"RAS FINANCEIRO",nome:"RAS Financeiro",desc:"Reunião de alinhamento — Financeiro",ico:"R",link:"https://devmoraiseng.github.io/RAS-FINANCEIRO/",externo:true,grupo:"REUNIÕES"},
+  {chave:"RAS PROJETOS",nome:"RAS Projetos",desc:"Reunião de alinhamento — Projetos",ico:"R",link:"https://devmoraiseng.github.io/RAS-PROJETOS/",externo:true,grupo:"REUNIÕES"},
+  {chave:"RAS PÓS OBRAS",nome:"RAS Pós-Obra",desc:"Reunião de alinhamento — Pós-Obra",ico:"R",link:"https://devmoraiseng.github.io/RAS-POS-OBRAS/",externo:true,grupo:"REUNIÕES"},
+  {chave:"RAS COMPRAS",nome:"RAS Compras",desc:"Reunião de alinhamento — Compras",ico:"R",link:"https://devmoraiseng.github.io/RAS-COMPRAS/",externo:true,grupo:"REUNIÕES"},
+  /* RAS OBRAS (03/09/2026). "RAS OBRAS" precisa existir, com acento e em
+     maiúsculas, como opção da coluna ACESSOS no banco LOGINS — mesma regra
+     dos outros itens acima. Se não bater, o botão não aparece e não dá erro
+     nenhum na tela. */
+  {chave:"RAS OBRAS",nome:"RAS Obras",desc:"Reunião de alinhamento — Execução de obras",ico:"R",link:"https://devmoraiseng.github.io/RAS-OBRAS/",externo:true,grupo:"REUNIÕES"},
+
+  /* ---------- AUTOMAÇÕES ----------
+     Mesma regra dos RAS: cada automação mora no PRÓPRIO repositório e entra
+     aqui só como link (externo:true). O portal NÃO protege a página de
+     destino — quem precisa de acesso restrito tem que ter login próprio.
+     Lembrete que já custou caro uma vez: "chave" tem que ser IGUAL à opção da
+     coluna ACESSOS no banco LOGINS do Notion, com acento e em maiúsculas.
+     Se não bater, o botão não aparece e não dá erro nenhum.
+     21/10/26: as duas automações ficaram públicas (publico:true) — o botão
+     aparece para qualquer usuário logado, sem depender da coluna ACESSOS. */
+  {chave:"PRANCHA HUMANIZADA",nome:"Prancha Humanizada",desc:"Gera a prancha de venda a partir da planta do Revit",ico:"A",link:"https://devmoraiseng.github.io/AUT-PRANCHA-HUMANIZADA/",externo:true,grupo:"AUTOMAÇÕES",publico:true},
+  /* 28/09/26 — CONFERÊNCIA OC × NF (repositório CONFER-NCIA-COMPRAS), equipe
+     de Compras. Diferente da Prancha, a página de destino TEM trava própria:
+     ela usa a sessão deste portal e o Apps Script AUT-CONFERENCIA-NF recusa
+     quem não tem "CONFERÊNCIA DE NF" na coluna ACESSOS do LOGINS (ADM,
+     MASTER e TESTES passam sempre) — é ele que guarda a chave da OpenAI. */
+  {chave:"CONFERÊNCIA DE NF",nome:"Conferência OC × NF",desc:"Compara a ordem de compra com a nota fiscal",ico:"C",link:"https://devmoraiseng.github.io/CONFER-NCIA-COMPRAS/",externo:true,grupo:"AUTOMAÇÕES",publico:true},
+  /* 03/11/26 — ESCRITÓRIO DE ROBÔS: uma mesa por robô do servidor (horário,
+     o que faz e o relatório de cada rodada, o mesmo do e-mail). Os dados são
+     do bucket privado "analise" (servidor/escritorio_robos.py); o link
+     assinado sai do Apps Script (apps-script/EscritorioRobos.gs), que confere
+     a chave "ESCRITÓRIO DE ROBÔS" na coluna ACESSOS (ADM/MASTER veem sempre). */
+  {chave:"ESCRITÓRIO DE ROBÔS",chaves:["ESCRITÓRIO DE ROBÔS","BOLETOS E FINANCEIRO"],nome:"Escritório de Robôs",desc:"Horário, função e relatório de cada robô do servidor",ico:"R",link:"escritorio-robos.html",grupo:"AUTOMAÇÕES"},
+  /* 17/11/26 — ANALISTA DE PROJETOS: solta o PDF do projeto e a IA confere a
+     prancha contra as correções que Goiânia e Senador Canedo já devolveram
+     (regras separadas por prefeitura; a página identifica pelo carimbo). A
+     chave da OpenAI fica no Apps Script (apps-script/AnalistaProjetos.gs), que
+     confere "ANALISTA DE PROJETOS" na coluna ACESSOS (ADM/MASTER veem sempre). */
+  {chave:"ANALISTA DE PROJETOS",nome:"Analista de Projetos",desc:"Lê o PDF do projeto e aponta o que corrigir antes da prefeitura",ico:"P",link:"analista-projetos.html",grupo:"AUTOMAÇÕES"},
+
+  /* ---------- ENTRETENIMENTO (29/10/26) ----------
+     Morais Royale: o servidor do jogo roda no servidor da empresa; a página
+     entretenimento.html abre o jogo já logado com a sessão do portal.
+     Público (todo usuário logado vê). */
+  {chave:"ENTRETENIMENTO",nome:"Morais Royale",desc:"Jogo de tiro da obra, para a equipe (só na rede do escritório)",ico:"J",link:"entretenimento.html",grupo:"ENTRETENIMENTO",publico:true}
+];
+const GRUPOS_ORDEM=["SETORES","PROCESSOS E ARQUIVOS","ANÁLISES","MAPAS","REUNIÕES","AUTOMAÇÕES","ENTRETENIMENTO"]; // setores, análises, mapas, reuniões, automações e entretenimento — nessa ordem
+
+  window.MORAIS_SISTEMAS=SISTEMAS;
+  window.MORAIS_GRUPOS_ORDEM=GRUPOS_ORDEM;
+  window.moraisSistemasLiberados=function(s){
+    s=s||sessao();
+    return SISTEMAS.filter(x=>x.publico||podeAcessar(s,x.chave)||(x.chaves||[]).some(k=>podeAcessar(s,k)));
+  };
+
+  /* ---------- CSS comum (menu, caixa de pergunta, foco) ---------- */
+  const CSS=
+    "html.mp-trava{overflow:hidden}"+
+    /* caixa de pergunta */
+    ".mp-dlg-fundo{position:fixed;inset:0;z-index:100000;background:rgba(6,14,20,.6);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}"+
+    ".mp-dlg{box-sizing:border-box;width:100%;max-width:420px;max-height:100%;overflow-y:auto;background:#fff;color:#1a3347;border:1px solid #b8d0da;border-radius:14px;padding:20px;box-shadow:0 18px 48px rgba(0,0,0,.35);font-family:Inter,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;line-height:1.5}"+
+    ".mp-dlg:focus{outline:none}"+
+    ".mp-dlg h2{margin:0 0 8px;font-size:17px;line-height:1.3}"+
+    ".mp-dlg p{margin:0;white-space:pre-line;overflow-wrap:anywhere}"+
+    ".mp-dlg-bts{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}"+
+    ".mp-dlg-bts button{min-height:40px;padding:8px 16px;border-radius:9px;font:inherit;font-weight:700;cursor:pointer;border:1px solid #295778;background:transparent;color:#295778}"+
+    ".mp-dlg-bts button.mp-sim{background:#295778;color:#fff}"+
+    ".mp-dlg-bts button.mp-sim.mp-perigo{background:#c0392b;border-color:#c0392b}"+
+    "html[data-tema=\"escuro\"] .mp-dlg{background:#15222c;color:#e7eff5;border-color:#2d4757}"+
+    "html[data-tema=\"escuro\"] .mp-dlg-bts button{border-color:#79c8bf;color:#79c8bf}"+
+    "html[data-tema=\"escuro\"] .mp-dlg-bts button.mp-sim{background:#2f6e93;border-color:#2f6e93;color:#fff}"+
+    "html[data-tema=\"escuro\"] .mp-dlg-bts button.mp-sim.mp-perigo{background:#c0392b;border-color:#c0392b}"+
+    /* botão do cabeçalho e gaveta */
+    ".mp-bt{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;margin-right:4px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.45);color:#fff;border-radius:8px;padding:6px 11px;min-height:36px;font:inherit;font-size:13px;font-weight:700;line-height:1;cursor:pointer}"+
+    ".mp-bt:hover{background:rgba(255,255,255,.22)}"+
+    "@media(max-width:680px){.mp-bt{min-height:44px;min-width:44px;justify-content:center}}"+
+    ".mp-fundo{position:fixed;inset:0;z-index:99990;background:rgba(6,14,20,.55)}"+
+    ".mp-gaveta{position:fixed;top:0;left:0;bottom:0;z-index:99991;box-sizing:border-box;width:min(320px,88vw);height:100%;display:flex;flex-direction:column;background:linear-gradient(160deg,var(--azul-esc,#1e3f58),var(--azul,#295778));color:#fff;box-shadow:6px 0 24px rgba(0,0,0,.35);font-family:Inter,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;line-height:1.35}"+
+    "html[data-tema=\"escuro\"] .mp-gaveta{background:linear-gradient(160deg,#122430,#1b3a4f)}"+
+    ".mp-gaveta:focus{outline:none}"+
+    ".mp-topo{display:flex;align-items:center;gap:10px;padding:12px 8px 10px 16px;border-bottom:1px solid rgba(255,255,255,.18)}"+
+    ".mp-quem{flex:1;min-width:0}.mp-nome{font-weight:700;font-size:15px;overflow-wrap:anywhere}"+
+    ".mp-tipo{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--teal,#8FDCD2)}"+
+    ".mp-x{flex:0 0 auto;min-width:44px;min-height:44px;background:transparent;border:0;color:#fff;font-size:20px;line-height:1;border-radius:8px;cursor:pointer}"+
+    ".mp-x:hover{background:rgba(255,255,255,.14)}"+
+    ".mp-corpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:8px}"+
+    ".mp-grupo{padding:14px 16px 4px;font-size:11px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--teal,#8FDCD2)}"+
+    ".mp-item{display:block;box-sizing:border-box;min-height:44px;padding:9px 16px 9px 12px;border-left:4px solid transparent;color:#fff;text-decoration:none}"+
+    ".mp-item:hover{background:rgba(255,255,255,.1)}"+
+    ".mp-item[aria-current=\"page\"]{background:rgba(143,220,210,.18);border-left-color:var(--teal,#8FDCD2)}"+
+    ".mp-it-nome{display:block;font-weight:700;font-size:14px}"+
+    ".mp-it-desc{display:block;margin-top:2px;font-size:12px;color:rgba(255,255,255,.78)}"+
+    ".mp-aqui{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--teal,#8FDCD2);color:#122430;font-size:10.5px;font-weight:700;letter-spacing:.3px;vertical-align:1px}"+
+    ".mp-item.mp-breve{opacity:.5;cursor:default}.mp-item.mp-breve:hover{background:none}"+
+    ".mp-pe{padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.18)}"+
+    ".mp-sair{width:100%;min-height:44px;border-radius:9px;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.1);color:#fff;font:inherit;font-weight:700;cursor:pointer}"+
+    ".mp-sair:hover{background:rgba(255,255,255,.2)}"+
+    "@media(prefers-reduced-motion:no-preference){.mp-gaveta{animation:mpEntra .18s ease-out}.mp-fundo{animation:mpFade .18s ease-out}}"+
+    "@keyframes mpEntra{from{transform:translateX(-100%)}to{transform:none}}"+
+    "@keyframes mpFade{from{opacity:0}to{opacity:1}}";
+  let estiloPronto=false;
+  function estilo(){
+    if(estiloPronto||document.getElementById("mp-css")) return; estiloPronto=true;
+    const st=document.createElement("style"); st.id="mp-css"; st.textContent=CSS;
+    (document.head||document.documentElement).appendChild(st);
+  }
+
+  /* ---------- foco do teclado visível (todo o portal) ----------
+     :where() deixa a regra com especificidade mínima e ela entra no COMEÇO do
+     <head>: quem já define o próprio :focus-visible (classe ou :focus-visible
+     puro, mais adiante no CSS) continua mandando; onde não há nada, vale este. */
+  (function focoVisivel(){
+    if(document.getElementById("mp-foco")) return;
+    const st=document.createElement("style"); st.id="mp-foco";
+    st.textContent=":where(a,button,[role=button],summary,[tabindex]):focus-visible{outline:3px solid var(--teal,#8FDCD2);outline-offset:2px}";
+    const h=document.head||document.documentElement;
+    h.insertBefore(st,h.firstChild);
+  })();
+
+  /* ---------- instalar como aplicativo ---------- */
+  (function instalavel(){
+    const h=document.head; if(!h||!BASE) return;
+    if(!document.querySelector('link[rel="manifest"]')){
+      const l=document.createElement("link"); l.rel="manifest"; l.href=BASE+"manifest.json"; h.appendChild(l);
+    }
+    if(!document.querySelector('link[rel="apple-touch-icon"]')){
+      const l=document.createElement("link"); l.rel="apple-touch-icon"; l.href=BASE+"img/logo-192.png"; h.appendChild(l);
+    }
+  })();
+
+  /* ---------- foco preso dentro de uma caixa ---------- */
+  const FOCAVEIS='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  function focaveis(cx){ return Array.prototype.filter.call(cx.querySelectorAll(FOCAVEIS),e=>e.getClientRects().length>0); }
+  function prender(cx,ev){
+    if(ev.key!=="Tab") return;
+    const l=focaveis(cx);
+    if(!l.length){ ev.preventDefault(); cx.focus(); return; }
+    const a=l[0], z=l[l.length-1], at=document.activeElement;
+    if(ev.shiftKey && (at===a||!cx.contains(at))){ ev.preventDefault(); z.focus(); }
+    else if(!ev.shiftKey && (at===z||!cx.contains(at))){ ev.preventDefault(); a.focus(); }
+  }
+  let travas=0;
+  function travar(){ if(++travas===1) document.documentElement.classList.add("mp-trava"); }
+  function soltar(){ if(travas>0 && --travas===0) document.documentElement.classList.remove("mp-trava"); }
+  function el(tag,cls,txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; }
+
+  /* ---------- caixa de pergunta ----------
+   * moraisPerguntar({titulo, texto, sim, nao, perigo}) -> Promise<boolean>
+   *   titulo  (opcional) título da caixa;  texto  mensagem (\n vira quebra de linha);
+   *   sim     rótulo do botão que confirma (padrão "OK");
+   *   nao     rótulo do botão que recusa (padrão "Cancelar"); passe "" para uma caixa
+   *           de aviso com UM só botão — essa só fecha pelo botão (Esc e clique fora
+   *           não fecham) e resolve true;
+   *   perigo  true pinta o "sim" de vermelho e deixa o foco inicial no "nao".
+   * Resolve true no "sim"; false no "nao", no Esc e no clique fora. Foco preso
+   * dentro da caixa; ao fechar, o foco volta a quem o tinha. */
+  let seq=0;
+  window.moraisPerguntar=function(o){
+    o=o||{}; estilo();
+    return new Promise(resolve=>{
+      const antes=document.activeElement, n=++seq;
+      const um=(o.nao===""||o.nao===false);
+      const fundo=el("div","mp-dlg-fundo"), cx=el("div","mp-dlg");
+      cx.setAttribute("role","alertdialog"); cx.setAttribute("aria-modal","true"); cx.tabIndex=-1;
+      if(o.titulo){ const t=el("h2",null,o.titulo); t.id="mp-t"+n; cx.appendChild(t); cx.setAttribute("aria-labelledby",t.id); }
+      const p=el("p",null,o.texto||""); p.id="mp-x"+n; cx.appendChild(p); cx.setAttribute("aria-describedby",p.id);
+      const bts=el("div","mp-dlg-bts"); cx.appendChild(bts);
+      let bNao=null;
+      if(!um){ bNao=el("button",null,o.nao||"Cancelar"); bNao.type="button"; bts.appendChild(bNao); }
+      const bSim=el("button","mp-sim"+(o.perigo?" mp-perigo":""),o.sim||"OK"); bSim.type="button"; bts.appendChild(bSim);
+      fundo.appendChild(cx); document.body.appendChild(fundo); travar();
+      let aberta=true;
+      function fechar(v){
+        if(!aberta) return; aberta=false;
+        document.removeEventListener("keydown",tecla,true);
+        fundo.remove(); soltar();
+        try{ if(antes&&antes.focus&&document.contains(antes)) antes.focus(); }catch(e){}
+        resolve(v);
+      }
+      function tecla(ev){
+        if(ev.key==="Escape"){
+          ev.preventDefault(); ev.stopPropagation();
+          if(!um) fechar(false);
+        } else prender(cx,ev);
+      }
+      document.addEventListener("keydown",tecla,true);
+      bSim.onclick=()=>fechar(true);
+      if(bNao) bNao.onclick=()=>fechar(false);
+      fundo.addEventListener("mousedown",ev=>{ if(ev.target===fundo && !um) fechar(false); });
+      (o.perigo&&bNao?bNao:bSim).focus();
+    });
+  };
+
+  /* ---------- menu comum (gaveta lateral) ---------- */
+  (function menuPortal(){
+    try{ if(window.top!==window) return; }catch(e){ return; }      // dentro de iframe: sem menu
+    const arq=(location.pathname.split("/").pop()||"").toLowerCase();
+    if(arq===""||arq==="index.html"||arq==="login.html") return;   // início e login têm o próprio desenho
+    if(/[?&]embutido=1(&|$)/.test(location.search)) return;       // aberto dentro de outra tela
+    if(BASE && (location.origin+location.pathname).replace(/[^/]*$/,"")!==BASE) return; // só páginas ao lado do app.js
+    function ehAtual(link){ return String(link||"").split(/[?#]/)[0].toLowerCase()===arq; }
+
+    let gaveta=null, fundo=null, abrir=null, antes=null;
+    function item(x){
+      if(x.embreve){
+        const sp=el("span","mp-item mp-breve"); sp.appendChild(el("span","mp-it-nome",x.nome+" · em breve")); return sp;
+      }
+      const a=el("a","mp-item"); a.href=x.link;
+      if(x.externo){ a.target="_blank"; a.rel="noopener"; }
+      const nome=el("span","mp-it-nome",x.nome+(x.externo?" ↗":"")); a.appendChild(nome);
+      if(!x.externo && ehAtual(x.link)){
+        a.setAttribute("aria-current","page");
+        nome.appendChild(el("span","mp-aqui","você está aqui"));
+      }
+      if(x.desc) a.appendChild(el("span","mp-it-desc",x.desc));
+      return a;
+    }
+    function construir(){
+      const s=sessao()||{};
+      const g=el("aside","mp-gaveta"); g.id="mp-gaveta"; g.tabIndex=-1;
+      g.setAttribute("role","dialog"); g.setAttribute("aria-modal","true"); g.setAttribute("aria-label","Menu do portal");
+      const topo=el("div","mp-topo"), quem=el("div","mp-quem");
+      quem.appendChild(el("div","mp-nome",s.nome||s.login||"Usuário"));
+      if(s.tipo) quem.appendChild(el("span","mp-tipo",s.tipo));
+      const x=el("button","mp-x","✕"); x.type="button"; x.setAttribute("aria-label","Fechar o menu"); x.onclick=fechar;
+      topo.appendChild(quem); topo.appendChild(x); g.appendChild(topo);
+      const corpo=el("nav","mp-corpo"); corpo.setAttribute("aria-label","Sistemas do portal");
+      const ini=el("a","mp-item"); ini.href="index.html"; ini.appendChild(el("span","mp-it-nome","Início"));
+      ini.appendChild(el("span","mp-it-desc","Página inicial do portal")); corpo.appendChild(ini);
+      const vis=window.moraisSistemasLiberados(s);
+      GRUPOS_ORDEM.forEach(gr=>{
+        const doGrupo=vis.filter(y=>(y.grupo||"SETORES")===gr);
+        if(!doGrupo.length) return;
+        corpo.appendChild(el("div","mp-grupo",gr));
+        doGrupo.forEach(y=>corpo.appendChild(item(y)));
+      });
+      g.appendChild(corpo);
+      const pe=el("div","mp-pe"), sa=el("button","mp-sair","Sair"); sa.type="button";
+      sa.onclick=()=>{ if(typeof sair==="function") sair(); };
+      pe.appendChild(sa); g.appendChild(pe);
+      return g;
+    }
+    function tecla(ev){
+      if(document.querySelector(".mp-dlg-fundo")) return;          // uma pergunta está por cima
+      if(ev.key==="Escape"){ ev.preventDefault(); fechar(); }
+      else if(gaveta) prender(gaveta,ev);
+    }
+    function abrirMenu(){
+      if(gaveta) return; estilo();
+      antes=document.activeElement;
+      fundo=el("div","mp-fundo"); fundo.onclick=fechar;
+      gaveta=construir();
+      document.body.appendChild(fundo); document.body.appendChild(gaveta);
+      travar(); document.addEventListener("keydown",tecla,true);
+      if(abrir) abrir.setAttribute("aria-expanded","true");
+      const x=gaveta.querySelector(".mp-x"); (x||gaveta).focus();
+    }
+    function fechar(){
+      if(!gaveta) return;
+      document.removeEventListener("keydown",tecla,true);
+      gaveta.remove(); fundo.remove(); gaveta=fundo=null; soltar();
+      if(abrir) abrir.setAttribute("aria-expanded","false");
+      try{ const f=(antes&&document.contains(antes))?antes:abrir; if(f&&f.focus) f.focus(); }catch(e){}
+    }
+    function por(){
+      if(document.getElementById("mp-abrir")) return true;
+      const s=sessao(); if(!s||!s.token) return true;
+      let ancora=null;
+      ["header .hbar","header .pt-hbar","header .pt-bar","header",".hbar"].some(q=>(ancora=document.querySelector(q)));
+      if(!ancora) return false;
+      estilo();
+      const b=el("button","mp-bt"); b.type="button"; b.id="mp-abrir";
+      b.setAttribute("aria-haspopup","dialog"); b.setAttribute("aria-expanded","false"); b.setAttribute("aria-controls","mp-gaveta");
+      b.setAttribute("aria-label","Abrir o menu do portal");
+      const ic=el("span",null,"☰"); ic.setAttribute("aria-hidden","true"); b.appendChild(ic); b.appendChild(document.createTextNode(" Menu"));
+      b.onclick=abrirMenu; abrir=b;
+      ancora.insertBefore(b,ancora.firstChild);
+      return true;
+    }
+    function iniciar(){ if(!por()) window.addEventListener("load",por); }
+    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",iniciar); else iniciar();
+  })();
+})();
