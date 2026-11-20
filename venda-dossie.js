@@ -89,6 +89,12 @@
     return qtdFilhos === 1 && classesPrimeiroFilho === "vazio" && !!primeiroTemLoad;
   }
 
+  /* Onda 2 (ux): botão apagado sempre diz POR QUÊ, em texto visível ao lado (o title não aparece no toque).
+     Estilo único .dz-motivo (CSS no fim deste arquivo); texto vazio = nada. */
+  /* motivo comum de botão apagado na aba Contrato: perfil só de consulta ou outra ação em andamento */
+  function motivoTrava(u) { return u && u.testes ? "Perfil TESTES só consulta." : u && u.ocupadoContrato ? "Aguarde: outra ação está em andamento." : ""; }
+  function motivoHtml(texto) { return texto ? ' <span class="dz-motivo" role="note">' + esc(texto) + "</span>" : ""; }
+
   function html(e, ui) {
     var travado = !e.tipoCasa, ocupado = !!ui.ocupado, testes = !!ui.testes;
     var dis = function (cond) { return cond ? " disabled" : ""; };
@@ -167,7 +173,7 @@
     return '<div class="dz-linha dz-doc dz-doc-' + st + '"><span class="dz-rot"><i class="dz-st" aria-hidden="true"></i>' + esc(d.rotulo) +
       ' <small class="dz-st-txt' + (novo ? " dz-novo" : "") + '">' + txt + "</small>" +
       (ui.ocupado === d.id ? " <b>" + esc(ui.ocupadoTexto || "lendo…") + "</b>" : "") + "</span>" +
-      '<span class="dz-acoes">' + b + (extra || "") + "</span>" + lista + "</div>";
+      '<span class="dz-acoes">' + b + (extra || "") + "</span>" + motivoHtml(travado ? "Escolha o tipo de casa." : "") + lista + "</div>";
   }
   /* botão único da casa: lê comprador e imóvel juntos (uma chamada, uma escrita). Aparece no topo do
      dossiê e no fim dos documentos do imóvel; a mensagem sai junto do botão clicado (onde). */
@@ -176,7 +182,7 @@
     var h = '<div class="dz-linha dz-lote"><span class="dz-rot">' + (ui.ocupado === "lote" ? "<b>lendo " + n + (n === 1 ? " documento" : " documentos") + "… (até 3 minutos)</b>"
       : n ? n + (n === 1 ? " documento novo para ler" : " documentos novos para ler") : "Nenhum documento novo") + "</span>" +
       '<button type="button" class="bt bt-mini" data-acao="ler-todos" data-onde="' + esc(onde) + '"' + ((travado || ocupado || testes || !n) ? " disabled" : "") + ">Ler documentos" +
-      (n ? " (" + n + (n === 1 ? " novo" : " novos") + ")" : "") + "</button></div>";
+      (n ? " (" + n + (n === 1 ? " novo" : " novos") + ")" : "") + "</button>" + motivoHtml(travado ? "Escolha o tipo de casa." : "") + "</div>";
     if (ui.msgGrupo === "lote-" + onde) h += htmlMsgLote(ui);
     return h;
   }
@@ -317,7 +323,7 @@
       });
       var falta = conferirEscolhas(s);
       h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="soltar-confirmar"' + ((ocupado || testes || falta) ? " disabled" : "") +
-        ">Confirmar compradores e ler</button> " + (falta ? "<small>" + esc(falta) + "</small>" : "") + "</div>";
+        ">Confirmar compradores e ler</button>" + motivoHtml(falta) + "</div>";
     }
     return h;
   }
@@ -954,7 +960,8 @@
       if (velho) h += '<div class="dz-aviso">Os dados mudaram depois desta prévia do contrato — gere a prévia do contrato de novo.</div>';
       h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-aprovar"' + ((ocupado || testes || velho) ? " disabled" : "") +
         ">Conferi, está tudo certo — gerar contrato</button> " +
-        '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button></div>";
+        '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button>" +
+        motivoHtml(velho ? "Os dados mudaram: gere a prévia do contrato de novo antes de conferir." : (testes ? "Perfil TESTES só consulta." : ocupado ? "Aguarde: outra ação está em andamento." : "")) + "</div>";
       if (e.gerado) h += '<div class="dz-msg">Contrato anterior: ' + esc(e.nome) + " (será substituído ao conferir).</div>";
     } else if (etapa === "FINAL") {
       h += '<div class="dz-linha"><span class="dz-rot">Contrato gerado<span class="dz-arq-nome">: ' + esc(e.nome) + "</span></span>" +
@@ -1132,7 +1139,7 @@
         /* 04/11 (dono): PDF do fluxo salvo para mandar ao cliente, antes da prévia do contrato (o mesmo do quadro do cartão) */
         (typeof window !== "undefined" && typeof window.condPdfFluxo === "function"
           ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-pdf" title="PDF do fluxo para mandar ao cliente">📄 PDF do fluxo</button>' : "") +
-        (lancada ? "" : ' <button type="button" class="bt bt-mini" data-acao="c-fluxo-abrir"' + (dis || (f.trava ? " disabled" : "")) + ">Alterar fluxo</button>") + "</div>";
+        (lancada ? "" : ' <button type="button" class="bt bt-mini" data-acao="c-fluxo-abrir"' + (dis || (f.trava ? " disabled" : "")) + ">Alterar fluxo</button>" + (dis ? motivoHtml(motivoTrava(u)) : "")) + "</div>";
       if (f.trava && TRAVA_FLUXO[f.trava] && !lancada) h += '<div class="dz-msg">' + esc(MSG_CONTRATO[f.trava]) + "</div>";
       if (fluxoDepoisDoContrato(f, ec)) h += '<div class="dz-aviso">Fluxo alterado depois do contrato: gere o contrato de novo.</div>';
       return h;
@@ -1608,7 +1615,9 @@
       h += '<button type="button" class="bt bt-mini" data-acao="mc-anexar"' + d(ocupado) + ">Anexar contrato no Mais Controle</button> ";
     else if (/(^|\n)Contratos \(ZIP\): (n[ãa]o (enviado|gerado|guardado)|.*N[ÃA]O pedido)/i.test(linhasSit) || pedidoParado(linhasSit, "Contratos (ZIP)"))
       h += '<button type="button" class="bt bt-mini" data-acao="mc-anexar-zip"' + d(ocupado) + ">Enviar ZIP ao Mais Controle</button> ";
-    h += '<button type="button" class="bt ghost bt-mini" data-acao="mc-atualizar"' + (u.ocupado ? " disabled" : "") + ">Atualizar</button></div>";
+    h += '<button type="button" class="bt ghost bt-mini" data-acao="mc-atualizar"' + (u.ocupado ? " disabled" : "") + ">Atualizar</button>" +
+      /* Onda 2 (ux): "Lançar" apagado diz por quê, ao lado */
+      motivoHtml(e.vendaId ? "" : testes ? "Perfil TESTES só consulta." : ocupado ? "Aguarde: o Mais Controle está trabalhando." : !liberaLancar ? "Veja a prévia primeiro." : "") + "</div>";
     if (u.msg) h += '<div class="dz-msg">' + esc(u.msg) + "</div>";
     return h;
   }
@@ -1800,6 +1809,7 @@
   var CSS = "#dossie-wrap .dz-linha,.vb-blocos .dz-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}" +
     "#dossie-wrap .dz-rot,.vb-blocos .dz-rot{flex:1 1 200px}#dossie-wrap .on{outline:2px solid #4cd964}" +
     "#dossie-wrap .dz-aviso,.vb-blocos .dz-aviso{color:#E67E22;margin:6px 0}" +
+    ".dz-motivo{display:block;flex:1 1 100%;font-size:12px;font-weight:600;color:var(--text3,#5a6b78);margin:2px 0 0;overflow-wrap:anywhere}" +
     "#dossie-wrap .dz-msg,.vb-blocos .dz-msg{margin-top:8px;font-weight:600}" +
     "#dossie-wrap pre,.vb-blocos pre{white-space:pre-wrap;font:inherit;margin:4px 0}" +
     ".vb-blocos ul{margin:4px 0 4px 18px}.vb-blocos ul li{margin:2px 0}" +
@@ -1820,7 +1830,7 @@
     /* 04/11: Alterar fluxo guiado — translúcido serve no tema claro e no escuro; o texto usa as cores do tema */
     ".vb-blocos tr[data-fx-ajustada]{background:rgba(255,193,7,.14);transition:background .8s}.vb-blocos tr.vb-fx-pisca{background:rgba(255,193,7,.34)}" +
     ".vb-blocos .dz-nota.vb-fx-ok{color:var(--verde,#2a9d5c);font-weight:700}.vb-blocos .dz-nota.vb-fx-sug{font-style:italic}" +
-    emCada(">.dz-linha") + "{margin:6px 22px}" + emCada(">.dz-aviso") + "{margin:6px 22px}" +
+    emCada(">.dz-linha") + "{margin:6px 22px}" + emCada(">.dz-aviso") + "{margin:6px 22px}" + emCada(">.dz-motivo") + "{margin:2px 22px 6px}" +
     emCada(">.dz-msg") + "{margin:8px 22px 0}" + emCada(">pre") + "{margin:4px 22px}" +
     emCada(">ul") + "{margin:4px 22px;padding-left:18px}" +
     ".vb-mc .mc-sub{list-style:circle;margin-left:14px;color:var(--text3,#555)}" +

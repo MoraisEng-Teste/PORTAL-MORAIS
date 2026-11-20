@@ -101,6 +101,19 @@
     if (c.desatualizado && !ehTermo(c)) return false;   /* 03/11: fluxo/condições depois do contrato — gerar de novo antes */
     return !e.envelope || REENVIAVEL.indexOf(situacaoDe(e)) >= 0;
   }
+  /* Onda 2 (ux): por que o "Enviar para assinatura" está apagado — texto visível ao lado do botão (estilo .dz-motivo, no CSS do
+     venda-dossie.js). "" quando o botão está liberado. */
+  function motivoEnviar(c) {
+    var e = c.estado, termo = ehTermo(c);
+    if (!e || podeEnviar(c)) return "";
+    if (c.testes) return "Perfil TESTES só consulta.";
+    if (c.ocupado) return "Aguarde: outra ação está em andamento.";
+    if (!c.contratoGerado) return "Gere o " + (termo ? "termo de reserva" : "contrato") + " antes de enviar.";
+    if (c.desatualizado && !termo) return "Os dados mudaram depois do contrato: gere o contrato de novo antes de enviar.";
+    if (e.envelope) return "Já enviado: para enviar de novo, cancele o envio atual.";
+    return "";
+  }
+  function motivoHtml(texto) { return texto ? ' <span class="dz-motivo" role="note">' + esc(texto) + "</span>" : ""; }
   /* 03/11/2026 (dono): envelope do contrato ABERTO — rascunho, enviado ou aguardando (situação vazia). A aba Contrato fica
    * só leitura (venda-dossie.js htmlContratoLeitura); cancelado/recusado/expirado destrava; assinado tem a tela própria. */
   function envelopeAberto(c) {
@@ -503,7 +516,7 @@
       h += ' <button type="button" class="bt ghost bt-mini perigo" data-acao="' + x + 'descartar"' + (podeDescartar(c) ? "" : " disabled") + ">Descartar rascunho</button>";
     /* só leitura: o perfil TESTES também vê */
     if (podeVerAssinado(c)) h += ' <button type="button" class="bt bt-mini" data-acao="' + x + 'ver-assinado"' + (c.ocupado ? " disabled" : "") + ">Ver " + (termo ? "termo" : "contrato") + " assinado</button>";
-    h += "</div>";
+    h += motivoHtml(motivoEnviar(c)) + "</div>";
     if (c.msg) h += '<div class="dz-msg">' + esc(c.msg) + "</div>";
     return h;
   }
