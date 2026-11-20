@@ -920,6 +920,13 @@
       (p.registrada ? "" : '<button type="button" class="bt ghost bt-mini" data-acao="c-res-nao"' + dis + ">Ainda não — gerar</button> ") +
       '<button type="button" class="bt ghost bt-mini" data-acao="c-res-cancelar">Cancelar</button></div>';
   }
+  /* Onda 2 (ux), item 9: caixa dentro da página (VendaPergunta.caixa, vendas.html) no lugar de confirm()/prompt() nativos; sem ela
+     (outra tela, teste) cai no nativo. Devolve boolean (sem campo) ou texto/null (com campo). */
+  function caixaPagina(o) {
+    if (typeof window !== "undefined" && window.VendaPergunta && typeof window.VendaPergunta.caixa === "function") return window.VendaPergunta.caixa(o);
+    if (o.campo) return Promise.resolve(window.prompt(o.campo.rotulo, o.campo.valor || ""));
+    return Promise.resolve(window.confirm([o.titulo].concat(o.itens || []).join("\n")));
+  }
   /* Onda 2 (ux), item 5: a última lista de faltas que o servidor devolveu vai para o Resumo (vendas.html guarda em memória) */
   function avisarFaltas(pageId, lista) {
     try { window.dispatchEvent(new CustomEvent("venda:faltas-contrato", { detail: { pageId: pageId, faltas: lista || [] } })); } catch (e) {}
@@ -2124,7 +2131,8 @@
       return depoisDeGravar(pageId, r, nomeDossie + " marcado como conferido.", false, grupo);
     }
     if (acao === "devolver") {
-      var motivo = window.prompt("Motivo da devolução (o que falta ou está errado):");
+      var motivo = await caixaPagina({ titulo: "Devolver o " + (grupo === "imovel" ? "dossiê do imóvel" : "dossiê do comprador"), ok: "Devolver", cancelar: "Voltar",
+        campo: { rotulo: "Motivo da devolução (o que falta ou está errado)", tipo: "area", obrigatorio: true } });
       if (!motivo || !motivo.trim()) return;
       ui.ocupado = "devolver"; pintar();
       r = await chamarVenda({ action: "devolver", pageId: pageId, motivo: motivo, grupo: grupo });
@@ -3604,6 +3612,7 @@
         pageId: pageId,
         alvo: b ? b.getAttribute("data-sig") : "",   /* 03/11: Trocar e-mail */
         perguntar: function (t, v) { return window.prompt(t, v); },
+        caixa: caixaPagina,
         confirmar: function (t) { return window.confirm(t); },
         lerPrazo: function () { return prazoDaTela(b); },
         chamar: function (p) { return chamarVenda(p, ESPERA_ASSINATURA); },
@@ -3688,6 +3697,7 @@
           abrirPdf(w, { ok: true, base64: b64 }, ctxA, function () { return ""; });
         },
         perguntar: function (t, v) { return window.prompt(t, v); },
+        caixa: caixaPagina,
         mostrarPrevia: function (prev) { return window.RubricasVenda ? window.RubricasVenda.mostrarPrevia(prev, janelaPrevia) : null; },
         confirmar: function (t) { return window.confirm(t); },
         lerPrazo: function () { return prazoDaTela(b); },
@@ -4619,7 +4629,7 @@
        Carrega mesmo sem o painel da casa: o cartão do condomínio também usa. */
     /* 30/10: leitor das rubricas do comprador (pdf.js só carrega na hora de enviar) */
     var sr = document.createElement("script"); sr.src = "venda/RubricasVenda.js?v=9"; document.head.appendChild(sr);
-    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=32";
+    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=33";
     sa.onload = function () { [blocosCasa, blocosCond, blocosPR].forEach(function (b) { if (b) b.pintarAssinatura(); }); };
     document.head.appendChild(sa);
     var body = document.getElementById("pn-body"); if (!body) return;

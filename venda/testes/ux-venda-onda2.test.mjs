@@ -194,3 +194,48 @@ test("item 8: distrato do condomínio sem confirm() — 3 tópicos, campo com o 
   els["cd-dist-un"].value = "98"; f(); assert.equal(els["cd-dist-ok"].disabled, true);
   els["cd-dist-un"].value = " 99 "; f(); assert.equal(els["cd-dist-ok"].disabled, false);
 });
+
+/* ---- item 8/9: caixas dentro da página (deps.caixa) no lugar de confirm()/prompt() ---- */
+const PEND = { papel: "Testemunha 1", assinou: false, situacao: "pendente", data: "" };
+const ASS = (x = {}) => Object.assign({ estado: { situacao: "ENVIADO", envelope: true, signatarios: [PEND] }, contratoGerado: true, ocupado: null, testes: false, msg: "", faltas: null }, x);
+const COM_IDS = { situacao: "ENVIADO", envelope: true, signatarios: [
+  { id: "sig-2", papel: "Testemunha 1", nome: "Teste U.", email: "errado@teste.example", situacao: "pendente" }] };
+
+test("item 8: Cancelar envio para assinatura abre a caixa própria (Manter / Cancelar envio) e só chama o servidor se confirmar", async () => {
+  const caixas = [], chamadas = [];
+  const dep = (resp) => ({ pageId: "p", confirmar: () => { throw new Error("não devia usar confirm()"); },
+    caixa: async (o) => { caixas.push(o); return resp; },
+    chamar: async (x) => { chamadas.push(x); return { ok: true, situacao: "CANCELADO", envelope: true, signatarios: [PEND] }; } });
+  const c0 = ASS();
+  assert.equal(await A.executarAcaoAssinatura("a-cancelar", c0, dep(false)), c0);
+  assert.equal(chamadas.length, 0, "Manter não chama o servidor");
+  const ok = await A.executarAcaoAssinatura("a-cancelar", c0, dep(true));
+  assert.deepEqual(chamadas, [{ action: "assinaturaCancelar", pageId: "p" }]);
+  assert.equal(ok.estado.situacao, "CANCELADO");
+  assert.equal(caixas[0].ok, "Cancelar envio"); assert.equal(caixas[0].cancelar, "Manter"); assert.equal(caixas[0].perigo, true);
+  assert.ok(caixas[0].itens.some((i) => /assinaturas já feitas deixam de valer/.test(i)));
+});
+
+test("item 9: novo e-mail do assinante vem de um campo na tela (mostra o atual, valida) e manda o mesmo pedido ao servidor", async () => {
+  const caixas = [], chamadas = [];
+  const dep = (resp) => ({ pageId: "p", alvo: "sig-2", perguntar: () => { throw new Error("não devia usar prompt()"); }, confirmar: () => true,
+    caixa: async (o) => { caixas.push(o); return typeof resp === "function" ? resp(o) : resp; },
+    chamar: async (p) => { chamadas.push(p); return { ok: true, situacao: "ENVIADO", envelope: true, signatarios: COM_IDS.signatarios }; } });
+  const c0 = ASS({ estado: COM_IDS });
+  assert.equal(await A.executarAcaoAssinatura("a-trocar-email", c0, dep(null)), c0, "cancelar a caixa não faz nada");
+  await A.executarAcaoAssinatura("a-trocar-email", c0, dep(" Certo@Teste.example "));
+  assert.deepEqual(chamadas, [{ action: "assinaturaTrocarEmail", pageId: "p", signerId: "sig-2", email: "certo@teste.example" }]);
+  const campo = caixas[0].campo;
+  assert.equal(campo.tipo, "email"); assert.equal(campo.valor, "errado@teste.example");
+  assert.match(campo.nota, /E-mail atual: errado@teste\.example/);
+  assert.match(campo.validar("sem-arroba"), /não parece válido/);
+  assert.equal(campo.validar("ok@teste.example"), "");
+});
+
+test("item 8/9: venda-dossie liga deps.caixa e troca o prompt do motivo da devolução por campo na tela", () => {
+  assert.equal((dossie.match(/caixa: caixaPagina,/g) || []).length, 2, "termo de reserva e contrato");
+  assert.doesNotMatch(dossie, /window\.prompt\("Motivo da devolução/);
+  assert.match(dossie, /caixaPagina\(\{ titulo: "Devolver o "/);
+  assert.match(vendas, /caixa\(o\)\{/);
+  assert.match(vendas, /cd-perg-erro/);
+});

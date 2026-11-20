@@ -388,6 +388,10 @@ tr.setor-detalhe td{background:var(--bg2);padding:12px 16px}
 .cd-ov.cd-perg .cd-cardbox{max-width:420px;margin:0}
 .cd-perg p{margin:6px 0 14px;line-height:1.45}
 .cd-perg-bts{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.cd-perg-ul{margin:6px 0 12px 18px;padding:0;line-height:1.45}.cd-perg-lab{display:block;font-weight:700;font-size:13px;margin:4px 0}
+.cd-perg-nota{font-size:12.5px;color:var(--text3);margin-bottom:6px;overflow-wrap:anywhere}
+.cd-perg-in{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:8px 10px}
+.cd-perg-erro{color:var(--vermelho,#c0392b);font-size:12.5px;min-height:1.2em;margin:4px 0 8px}
 /* botões de perigo (Distrato, Cancelar envio para assinatura, Descartar rascunho): contorno vermelho, afastados dos vizinhos */
 .cd-bt.perigo,.bt.perigo{border:1.5px solid var(--vermelho);color:var(--vermelho);background:var(--sup);margin-inline-start:10px}
 html[data-tema="escuro"] .bt.ghost.perigo,html[data-tema="escuro"] .cd-bt.perigo{color:#ff8a7a;background:var(--sup)}
@@ -1364,7 +1368,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
 <script src="venda/FluxoLivre.js?v=24"></script><!-- 29/10: Alterar fluxo -->
 <script src="venda/quadro-fluxo.js?v=1"></script><!-- 31/10: quadro do pro soluto segue o fluxo alterado -->
 <script src="venda/Antecipacao.js?v=1"></script><!-- 31/10: Antecipação — a conta roda no navegador -->
-<script src="venda-dossie.js?v=89"></script>
+<script src="venda-dossie.js?v=90"></script>
 <script src="venda/contrato-vendida.js?v=4"></script>
 <script src="venda/atualizar-venda.js?v=1"></script><!-- 07/11: Atualizar venda pela proposta -->
 <script src="venda/reserva-prazo-ui.js?v=1"></script><!-- 12/11: faixa "a reserva cai amanhã" -->
@@ -2323,6 +2327,49 @@ window.VendaPergunta={
     });
     document.body.appendChild(ov);
     const f=ov.querySelector('[data-perg="ficar"]'); if(f) f.focus();
+  },
+  /* Onda 2 (ux): caixa dentro da página no lugar de confirm()/prompt() nativos.
+     o = { titulo, texto?, itens?:[], ok, cancelar, perigo?, campo?:{rotulo, tipo:"text"|"email"|"area", valor?, nota?, obrigatorio?, validar?(v)->msg} }
+     Sem campo: Promise<boolean>. Com campo: Promise<string|null> (null = cancelou). Esc, clique fora e o botão de cancelar valem como cancelar. */
+  caixa(o){
+    return new Promise(resolve=>{
+      const c=o.campo||null, vazio=c?null:false;
+      if(document.getElementById("cd-pergunta")){ resolve(vazio); return; }
+      const antes=document.activeElement;
+      const ov=document.createElement("div"); ov.id="cd-pergunta"; ov.className="cd-ov cd-perg";
+      ov.setAttribute("role","alertdialog"); ov.setAttribute("aria-modal","true"); ov.setAttribute("aria-labelledby","cd-perg-t");
+      const campo=!c?"":
+        '<label class="cd-perg-lab" for="cd-perg-campo">'+esc(c.rotulo||"")+'</label>'+
+        (c.nota?'<div class="cd-perg-nota">'+esc(c.nota)+'</div>':'')+
+        (c.tipo==="area"
+          ?'<textarea id="cd-perg-campo" rows="3" class="cd-perg-in"></textarea>'
+          :'<input id="cd-perg-campo" class="cd-perg-in" type="'+(c.tipo==="email"?"email":"text")+'" autocomplete="off"'+(c.tipo==="email"?' inputmode="email" autocapitalize="off"':'')+'>')+
+        '<div class="cd-perg-erro" id="cd-perg-erro" role="alert"></div>';
+      ov.innerHTML='<div class="cd-cardbox"><h3 id="cd-perg-t">'+esc(o.titulo||"")+'</h3>'+
+        (o.texto?'<p>'+esc(o.texto)+'</p>':'')+
+        ((o.itens&&o.itens.length)?'<ul class="cd-perg-ul">'+o.itens.map(i=>'<li>'+esc(i)+'</li>').join("")+'</ul>':'')+
+        campo+
+        '<div class="cd-perg-bts"><button type="button" class="cd-bt'+(o.perigo?' perigo':' pri')+'" data-perg="ok">'+esc(o.ok||"OK")+'</button>'+
+        '<button type="button" class="cd-bt" data-perg="ficar">'+esc(o.cancelar||"Cancelar")+'</button></div></div>';
+      const fechar=()=>{ ov.remove(); if(antes&&antes.focus&&document.contains(antes)) try{ antes.focus({preventScroll:true}); }catch(e){} };
+      const inp=()=>ov.querySelector("#cd-perg-campo");
+      if(c&&c.valor!=null) setTimeout(()=>{ const i=inp(); if(i) i.value=String(c.valor); },0);
+      const confirmar=()=>{
+        if(!c){ fechar(); resolve(true); return; }
+        const v=String((inp()||{}).value||"").trim(), er=ov.querySelector("#cd-perg-erro");
+        const msg=(c.obrigatorio&&!v)?"Preencha este campo para continuar.":(c.validar?c.validar(v):"");
+        if(msg){ er.textContent=msg; const i=inp(); if(i) i.focus(); return; }
+        fechar(); resolve(v);
+      };
+      ov.addEventListener("click",e=>{
+        const b=e.target.closest&&e.target.closest("[data-perg]");
+        if(b&&b.getAttribute("data-perg")==="ok") confirmar();
+        else if(b||e.target===ov){ fechar(); resolve(vazio); }
+      });
+      ov.addEventListener("keydown",e=>{ if(e.key==="Enter"&&c&&c.tipo!=="area"&&e.target===inp()){ e.preventDefault(); confirmar(); } });
+      document.body.appendChild(ov);
+      const f=c?inp():ov.querySelector('[data-perg="ficar"]'); if(f) f.focus();
+    });
   },
   aberta(){ return !!document.getElementById("cd-pergunta"); },
   cancelar(){ const ov=document.getElementById("cd-pergunta"); if(ov){ const b=ov.querySelector('[data-perg="ficar"]'); if(b) b.click(); } }
