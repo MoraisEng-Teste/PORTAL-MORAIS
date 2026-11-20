@@ -132,8 +132,20 @@
   .bt-cal{flex:0 0 46px;padding:0;background:#fff;border:1px solid var(--borda);border-radius:6px;font-size:18px;line-height:1;cursor:pointer;}
   input.data-invalida{border-color:#B0431F !important;box-shadow:0 0 0 3px rgba(176,67,31,.18) !important;}
   /* 31/10 — botão "Transformar em proposta" (verde, igual ao SUBIR PASTA do mapa) */
-  .btn-proposta{background:#2a9d5c;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer}
-  .btn-proposta:hover{background:#1a6b40}
+  /* Onda 2 (item 8): passo 3 com um só botão principal (Enviar simulação); "Transformar em proposta" é secundário (contorno) */
+  .btn-proposta{background:#fff;color:#1a6b40;border:2px solid #2a9d5c;border-radius:8px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer}
+  .btn-proposta:hover{background:#EEF8F1}
+  .btn-voltar-disc{background:none;border:0;color:var(--texto-suave);text-decoration:underline;font-weight:600;font-size:14px;padding:11px 8px;cursor:pointer}
+  .acoes3{display:flex;gap:14px;align-items:flex-start;justify-content:flex-end;flex-wrap:wrap}
+  .acoes3 .alt-proposta{display:flex;flex-direction:column;gap:4px;max-width:230px}
+  .acoes3 .alt-proposta small{font-size:11.5px;color:var(--texto-suave);line-height:1.35}
+  @media(max-width:640px){
+    .rodape3{flex-direction:column-reverse;align-items:stretch;gap:8px}
+    .acoes3{flex-direction:column;align-items:stretch}
+    .acoes3 .alt-proposta{max-width:none}
+    .acoes3 .btn-primario{order:-1}
+    .acoes3 button,.btn-voltar-disc{min-height:44px}
+  }
   .btn-proposta:disabled{opacity:.6;cursor:wait}
   /* comissão do corretor: escondida por padrão (o cliente pode estar olhando a tela); botão mostra/esconde */
   body:not(.com-ver) .com-info{display:none!important;}
@@ -415,11 +427,14 @@
           proposta para ela <b>só será analisada caso haja desistência</b> da reserva atual.
         </label>
       </div>
-      <div class="rodape">
-        <button type="button" class="btn-secundario" onclick="irPara(2)">Voltar</button>
-        <!-- 31/10 — leva tudo o que foi preenchido aqui para a proposta; lá só se completa o resto -->
-        <button type="button" class="btn-proposta" id="btTransformar" onclick="transformarEmProposta()">📄 Transformar em proposta</button>
-        <button type="submit" class="btn-primario">Enviar simulação</button>
+      <div class="rodape rodape3">
+        <button type="button" class="btn-voltar-disc" onclick="irPara(2)">‹ Voltar</button>
+        <div class="acoes3">
+          <!-- 31/10 — leva tudo o que foi preenchido aqui para a proposta; lá só se completa o resto -->
+          <div class="alt-proposta"><button type="button" class="btn-proposta" id="btTransformar" onclick="transformarEmProposta()">📄 Transformar em proposta</button>
+            <small>leva estes dados para a proposta, sem enviar a simulação</small></div>
+          <button type="submit" class="btn-primario">Enviar simulação</button>
+        </div>
       </div>
       <div id="statusEnvio" class="status" style="display:none;"></div>
     </section>
