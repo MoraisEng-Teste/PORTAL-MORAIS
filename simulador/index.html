@@ -55,6 +55,9 @@
   .btn-prop:hover{background:#1E8449;color:#fff;}
   /* 07/10/2026: na tabela os botões quebram linha em vez de sair do quadro */
   .acoes{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+  .pils{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle;}
+  .un-pil{padding:3px 9px;border-radius:999px;border:1px solid var(--amarelo);background:#FFFBF0;color:var(--marrom);font-weight:700;font-size:12px;cursor:pointer;}
+  .un-pil:hover{background:var(--amarelo);}
   .vazio{padding:16px;font-size:13px;color:var(--texto-suave);}
   #modal .uns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
   .layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;}
@@ -446,15 +449,37 @@
     }
     document.getElementById('tbody').innerHTML=linhas.map(function(v){
       var us=g[v].slice().sort(function(a,b){return (parseInt(a.unidade,10)||0)-(parseInt(b.unidade,10)||0);});
-      var nums=us.map(function(u){return u.unidade;});
+      /* cada número é um botão que abre o balão daquela unidade; os dois botões do grupo dizem a qual unidade se referem (a primeira) */
+      var pilulas=us.map(function(u){
+        return '<button type="button" class="un-pil" onclick="event.stopPropagation();abrirUnidade(\''+u.unidade+'\')" title="Ver a unidade '+u.unidade+' no mapa">'+u.unidade+'</button>';
+      }).join('');
       var p=us[0];
-      return '<tr><td>'+fmt(v)+'<div class="un">Unid.: '+nums.join(', ')+'</div></td>'+
+      return '<tr><td>'+fmt(v)+'<div class="un">Unid.: <span class="pils">'+pilulas+'</span></div></td>'+
              '<td class="tot">'+us.length+'</td>'+
              '<td><div class="acoes">'+
-               '<button class="btn-sim" onclick="simular(\''+p.tipo+'\',\''+p.unidade+'\')">Simular</button>'+
-               '<button class="btn-prop" onclick="proposta(\''+p.tipo+'\',\''+p.unidade+'\')">SUBIR PASTA</button>'+
+               '<button class="btn-sim" onclick="simular(\''+p.tipo+'\',\''+p.unidade+'\')">Simular a '+p.unidade+'</button>'+
+               '<button class="btn-prop" onclick="proposta(\''+p.tipo+'\',\''+p.unidade+'\')">Enviar proposta a '+p.unidade+'</button>'+
              '</div></td></tr>';
     }).join('');
+  }
+  /* Abre o balão de uma unidade a partir da lista por preço: rola o mapa até
+     ela e centraliza o balão sobre o mapa (o clique no lote usa o mouse). */
+  function abrirUnidade(num){
+    var u=UNIDADES.find(function(x){return String(x.unidade)===String(num);});
+    if(!u) return;
+    var wrap=document.getElementById('mapScroll'), box=wrap&&wrap.parentNode;
+    var pol=document.getElementById(String(u.unidade).padStart(2,'0'));
+    if(box){
+      var rb=box.getBoundingClientRect();
+      if(rb.top<0 || rb.bottom>window.innerHeight) box.scrollIntoView({block:'center'});
+    }
+    if(wrap && pol){
+      var rw=wrap.getBoundingClientRect(), rp=pol.getBoundingClientRect();
+      wrap.scrollLeft += (rp.left+rp.width/2) - (rw.left+rw.width/2);
+      wrap.scrollTop  += (rp.top+rp.height/2)  - (rw.top+rw.height/2);
+    }
+    var r=(wrap||document.body).getBoundingClientRect();
+    abrirPop(u,{clientX:r.left+r.width/2-12-115, clientY:Math.max(r.top,0)+Math.min(r.height,window.innerHeight)/2-12-120});
   }
   function simular(tipo,unidade){
     location.href='simulador.html?tipo='+encodeURIComponent(tipo)+'&unidade='+encodeURIComponent(unidade);
