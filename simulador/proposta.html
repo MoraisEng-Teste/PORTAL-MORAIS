@@ -3301,6 +3301,8 @@
       if(d.credito){
         val('subsidio', d.subsidio);
         val('parcelaFinanciamento', d.creditoParcela);
+        /* o valor do crédito aprovado informado na simulação também vem (só se o campo estiver vazio) */
+        if(f.creditoAprovado && !String(f.creditoAprovado.value||'').trim()) val('creditoAprovado', d.creditoValor);
       } else if(d.desejado){
         chk('desejadoProp', true); val('valorDesejado', d.valorDesejado);
       }
