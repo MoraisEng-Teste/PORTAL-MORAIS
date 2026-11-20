@@ -185,6 +185,7 @@
   <div class="cards" id="cards"><div class="tcard esqueleto"></div><div class="tcard esqueleto"></div><div class="tcard esqueleto"></div><div class="tcard esqueleto"></div><div class="tcard esqueleto"></div></div>
 
   <h2 class="sec">Mapa de unidades</h2>
+  <div id="stUnidades" role="status" aria-live="polite" style="font-size:12px;color:#7A5A3A;margin:-8px 0 10px"></div>
   <!-- 07/11/2026 (dono) — planilha do fluxo padrão de todas as unidades à venda -->
   <div class="bar-planilha"><b style="color:#4A2A0C">Tabela de disponibilidades:</b>
     <a class="bt-planilha" style="text-decoration:none;background:#7A4A16;border-color:#5C3810" href="tabela.html" target="_blank" rel="noopener">📋 Abrir tabela</a>
@@ -362,7 +363,18 @@
       .catch(function(e){ st.textContent='Não consegui gerar a planilha: '+((e&&e.message)||e); })
       .then(function(){ b.disabled=false; });
   }
-  var FALLBACK=(function(){var a=[];for(var n=1;n<=62;n++)a.push({unidade:n,tipo:'1',valorVenda:305000,avaliacao:306000,planta:'',informacoes:(n===1?'Decorado':''),decorado:(n===1),disponivel:true});return a;})();
+  /* Onda 2 (item 3) — sem lista reserva inventada (62 unidades a R$ 305.000): se nada responder, a tela avisa. */
+  function dizerUnidades(html){ var e=document.getElementById('stUnidades'); if(e) e.innerHTML=html; }
+  function hhmm(t){ var d=new Date(t||Date.now()); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+  var CACHE_UN='unidadesUltimaLista', VALIDADE_CACHE_UN=24*3600*1000, usouCacheUn=false;
+  function lerCacheUn(){
+    try{
+      var c=JSON.parse(localStorage.getItem(CACHE_UN)||'null');
+      if(c && c.ts && c.unidades && c.unidades.length && Date.now()-c.ts<VALIDADE_CACHE_UN) return c;
+    }catch(e){}
+    return null;
+  }
+  function gravarCacheUn(d){ try{ localStorage.setItem(CACHE_UN, JSON.stringify({ts:Date.now(), unidades:d})); }catch(e){} }
   function fmt(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
   function porNum(n){return UNIDADES.find(function(u){return String(u.unidade)===String(n);});}
   /* =====================================================================
@@ -819,7 +831,8 @@
        como disponível). */
     if(dadosAoVivo && !aoVivo) return;
     if(aoVivo) dadosAoVivo=true;
-    if(aoVivo){ progresso.dados=1; atualizarCarga(); }
+    if(aoVivo){ progresso.dados=1; atualizarCarga(); gravarCacheUn(d); dizerUnidades('Atualizado às '+hhmm()+'.'); }
+    else if(!usouCacheUn) dizerUnidades('');
     var hash=JSON.stringify(d);
     if(hash===ultimoHash && unidadesProntas) return;
     ultimoHash=hash; UNIDADES=d;
@@ -827,15 +840,20 @@
     unidadesProntas=true; if(svgPronto) pintarMapa();
     aquecerPlantas();
   }
+  function semUnidades(){
+    dizerUnidades('<b style="color:#8A2E17">Não foi possível carregar as unidades.</b> '+
+      '<a href="#" onclick="carregar(true);return false" style="color:inherit;text-decoration:underline;display:inline-block;padding:8px 0">Tente de novo</a>');
+  }
   function carregar(primeira){
     if(primeira){
+      if(!unidadesProntas && !usouCacheUn) dizerUnidades('Carregando as unidades…');
       /* O retrato do GitHub entra depois de 5 s se o Apps Script ainda não
          respondeu (antes eram 12 s de tela parada). Quando o ao vivo chega,
          ele substitui. Sem aviso na tela: o anel ao lado da logo só fecha
          em 100% quando o dado ao vivo chegou. */
       progresso.dados=0.1; atualizarCarga();
       var socorro=setTimeout(function(){
-        if(dadosAoVivo) return;
+        if(dadosAoVivo || usouCacheUn) return;   // a cópia de ontem é mais nova que o retrato do GitHub
         buscarLocal().then(function(d){ aplicar(d,false); progresso.dados=Math.max(progresso.dados,0.6); atualizarCarga(); })
           .catch(function(){});
       }, 5000);
@@ -847,10 +865,13 @@
             tentativas++;
             if(!unidadesProntas){
               buscarLocal().then(function(d){ aplicar(d,false); progresso.dados=Math.max(progresso.dados,0.6); atualizarCarga(); })
-                .catch(function(){ if(!unidadesProntas) aplicar(FALLBACK,false); });
+                .catch(function(){ if(!unidadesProntas) semUnidades(); });
             }
             if(tentativas<4) tentarDepois(vivo, 4000*tentativas);
-            else { progresso.dados=1; atualizarCarga(); }   // não prende o anel para sempre
+            else {
+              progresso.dados=1; atualizarCarga();   // não prende o anel para sempre
+              if(usouCacheUn && !dadosAoVivo) dizerUnidades('Sem resposta do servidor: mostrando a lista de '+hhmm((lerCacheUn()||{}).ts)+'. <a href="#" onclick="carregar(true);return false" style="color:inherit;text-decoration:underline">Tentar de novo</a>');
+            }
           });
       })();
     }else{
@@ -862,6 +883,8 @@
         || document.getElementById('modal').style.display==='flex';
   }
   carregarSVG();      // mapa já, sem esperar os dados
+  /* Onda 2 (item 3): pinta já com a última lista recebida (se tiver menos de 24 h) e atualiza quando o servidor responde */
+  (function(){ var cu=lerCacheUn(); if(!cu) return; usouCacheUn=true; aplicar(cu.unidades,false); dizerUnidades('Atualizando… (lista de '+hhmm(cu.ts)+')'); })();
   carregar(true);     // dados em paralelo
   // auto-atualiza a cada 60s (sem atrapalhar se um pop-up estiver aberto)
   pollSoVisivel(function(){ if(!ocupado()) carregar(false); }, 120000);   // 01/11 (cota): a cada 120 s e só com a aba visível

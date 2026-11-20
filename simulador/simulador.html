@@ -177,6 +177,7 @@
   <form id="formSimulacao" novalidate>
     <section class="card etapa" data-etapa="1">
       <h2>Unidade e perfil do proponente</h2>
+      <div id="avisoSemUnidades" class="status erro" style="display:none;margin-bottom:14px"><b>Não foi possível carregar as unidades.</b> <a href="#" id="lnkRecarregarUn" style="color:inherit;text-decoration:underline;display:inline-block;padding:8px 0">Tente de novo</a></div>
       <div class="linha">
         <div class="campo"><label>Tipo<span class="obrig">*</span></label><select id="tipo" required></select></div>
         <div class="campo"><label>Unidade<span class="obrig">*</span></label><select id="unidade" required></select></div>
@@ -452,7 +453,6 @@
   var COMISSAO = { '24':0.05, '36':0.0475, '48':0.045 };
 
   var UNIDADES=[];
-  var FALLBACK=(function(){var a=[];for(var n=1;n<=62;n++)a.push({unidade:n,tipo:'1',valorVenda:305000,avaliacao:306000,planta:'',informacoes:(n===1?'Decorado':''),decorado:(n===1)});return a;})();
 
   /* ===== PADRONIZAÇÃO DO QUE VAI PARA O NOTION (set/26) ==================
      Sem isto, "Felipe", "FELIPE" e "Felipe " viram TRÊS corretores diferentes
@@ -1297,9 +1297,15 @@
     if(t){ document.getElementById('tipo').value=t; preencherUnidades(); }
     if(u){ document.getElementById('unidade').value=u; aoTrocarUnidade(); }
   }
-  buscarLocal().then(function(d){aplicarUnidades(d);})
-    .catch(function(){aplicarUnidades(FALLBACK);})
-    .then(function(){ buscarAoVivo().then(function(d){aplicarUnidades(d);}).catch(function(){}); });
+  /* Onda 2 (item 3): sem lista reserva inventada — se nem o arquivo nem o servidor responderem, a tela avisa */
+  function carregarUnidades(){
+    var av=document.getElementById('avisoSemUnidades'); if(av) av.style.display='none';
+    buscarLocal().then(function(d){aplicarUnidades(d);}).catch(function(){})
+      .then(function(){ return buscarAoVivo().then(function(d){aplicarUnidades(d);}).catch(function(){}); })
+      .then(function(){ if(!UNIDADES.length && av) av.style.display='block'; });
+  }
+  (function(){ var l=document.getElementById('lnkRecarregarUn'); if(l) l.onclick=function(e){ e.preventDefault(); carregarUnidades(); }; })();
+  carregarUnidades();
   verificarServico(); pollSoVisivel(verificarServico,120000);   // 01/11 (cota): só com a aba visível
 
 </script>
