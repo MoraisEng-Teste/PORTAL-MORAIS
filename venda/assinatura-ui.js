@@ -379,7 +379,7 @@
     if (acao === "a-troca-gerar") {
       if (!c.troca.previa || !c.troca.previa.liberado) return c;
       if (!deps.confirmar("Gerar os termos de confissão novos com os fiadores de agora? O contrato não muda; nada vai para a Clicksign ainda.")) return c;
-      ocupar("gerando os termos novos… (até 1 minuto)");
+      ocupar("gerando os termos novos… (pode levar até 4 minutos)");
       var g = await chamarSeguro(deps, { action: "trocarFiadoresGerar", pageId: deps.pageId, carimbo: c.troca.previa.carimbo });
       if (!g.ok) return copia(c, { ocupado: null, msg: mensagemTroca(g) });
       var lt = await lerLinhasTermos(g, deps);
@@ -443,7 +443,7 @@
     if (assinado(c)) return montarDocumentosAssinados(c);   /* 01/11 (plano 23 A): só visualizar */
     var e = c.estado, sit = situacaoDe(e);
     if (c.troca && !termo) return h + htmlTroca(c) + (c.msg ? '<div class="dz-msg">' + esc(c.msg) + "</div>" : "");   /* 18/11: modo Trocar fiadores */
-    if (c.ocupado === "enviar") h += '<div class="dz-linha"><b>enviando… (até 1 minuto)</b></div>';
+    if (c.ocupado === "enviar") h += '<div class="dz-linha"><b>enviando… (pode levar até 4 minutos)</b></div>';
     if (c.ocupado === "atualizar") h += '<div class="dz-linha"><b>consultando…</b></div>';
     if (c.ocupado === "reenviar") h += '<div class="dz-linha"><b>reenviando…</b></div>';
     if (c.ocupado === "cancelar") h += '<div class="dz-linha"><b>cancelando o envelope na Clicksign…</b></div>';

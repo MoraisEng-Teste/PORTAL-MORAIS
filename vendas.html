@@ -2359,7 +2359,7 @@ function condQuadroHtml(l,fx){
     '<tr class="tot"><td colspan="3">TOTAL DO PRO SOLUTO</td><td class="r">'+cdBRL(fx.total)+'</td></tr></tbody></table>'+
     (falta.length?'<div class="cd-falta"><b>Para fechar o fluxo falta:</b> '+falta.join("; ")+'.</div>':'')+
     (fx.alterado
-      ?'<div class="cd-aviso"><b>Fluxo alterado no portal</b> (botão Alterar fluxo, na Tela de venda acima): é este fluxo que vai para o contrato e para o Mais Controle. Mudar a data de assinatura, o dia de pagamento ou a entrega aqui em cima <b>não</b> mexe nestas parcelas — ajuste pelo Alterar fluxo.</div>'
+      ?'<div class="cd-aviso"><b>Fluxo alterado no portal</b> (botão Alterar fluxo, na aba Contrato): é este fluxo que vai para o contrato e para o Mais Controle. Mudar a data de assinatura, o dia de pagamento ou a entrega aqui em cima <b>não</b> mexe nestas parcelas — ajuste pelo Alterar fluxo.</div>'
       :'<div class="cd-aviso"><b>Atenção:</b> As parcelas e os valores do fluxo podem sofrer alteração de acordo com a data de assinatura do contrato.</div>');
 }
 /* 31/10/2026 (dono): o dossiê avisa o que gravou (Alterar fluxo → FLUXO PERSONALIZADO, venda-dossie.js
@@ -2413,7 +2413,7 @@ function condAbrir(id){
       '<div class="cd-prog" id="cd-prog" style="display:none;flex-basis:100%"></div>'+
     '</div>'+
     '<details class="cd-dobra"><summary>Quadro do pro soluto (sinal, pré-chaves, balões, pós-chaves)</summary><div id="cd-quadro">'+condQuadroHtml(l,fx)+'</div>'+
-      '<div style="margin-top:10px"><button type="button" class="cd-bt" onclick="condPdfFluxo(COND_ABERTA)">📄 PDF do fluxo para o cliente</button></div></details>'+
+      '<div style="margin-top:10px"><button type="button" class="cd-bt" title="PDF do fluxo para mandar ao cliente" onclick="condPdfFluxo(COND_ABERTA)">📄 PDF do fluxo</button></div></details>'+
     '</div>'+
     '<div data-sec="andamento">'+condAndamentoHtml(l)+'</div>'+
     condTelaVendaHtml()+

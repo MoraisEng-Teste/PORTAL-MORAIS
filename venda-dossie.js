@@ -850,9 +850,9 @@
     var h = '<div class="grp">Contrato</div>';
     if (testes) h += '<div class="dz-aviso">Perfil TESTES só consulta.</div>';
     if (!e) return h + '<div class="vazio">' + esc(u.msg || "carregando…") + "</div>";
-    if (u.ocupadoContrato === "pre") h += '<div class="dz-linha"><b>gerando o pré-contrato… (até 1 minuto)</b></div>';
-    if (u.ocupadoContrato === "aprovar") h += '<div class="dz-linha"><b>gerando o contrato… (até 1 minuto)</b></div>';
-    if (u.ocupadoContrato === "salvar") h += '<div class="dz-linha"><b>salvando os dados e gerando o pré-contrato… (até 1 minuto)</b></div>';
+    if (u.ocupadoContrato === "pre") h += '<div class="dz-linha"><b>gerando o pré-contrato… (pode levar até 2 minutos)</b></div>';
+    if (u.ocupadoContrato === "aprovar") h += '<div class="dz-linha"><b>gerando o contrato… (pode levar até 2 minutos)</b></div>';
+    if (u.ocupadoContrato === "salvar") h += '<div class="dz-linha"><b>salvando os dados e gerando o pré-contrato… (pode levar até 2 minutos)</b></div>';
     if (u.ocupadoContrato === "fia") h += '<div class="dz-linha"><b>salvando na venda…</b></div>';
     /* entrega 12: o que o formulário cobre sai da lista (u.faltas = só as outras); 01/11: e o que o bloco Fiadores cobre */
     var faltasLista = u.faltas;
@@ -1007,7 +1007,7 @@
     var rasc = u.condRasc !== undefined && u.condRasc !== null ? u.condRasc : c.texto;
     var h = '<div class="dz-grupo"><b>Condições especiais desta venda</b> <span class="dz-nota">(item 16 do quadro-resumo — só este contrato; vazio sai "Não há.")</span></div>';
     if (!c.coluna) return h + '<div class="dz-aviso">Falta a coluna CONTRATO - CONDIÇÕES ESPECIAIS na base de vendas.</div>';
-    if (u.ocupadoContrato === "condesp-ia") h += '<div class="dz-linha"><b>a IA está redigindo… (até 1 minuto)</b></div>';
+    if (u.ocupadoContrato === "condesp-ia") h += '<div class="dz-linha"><b>a IA está redigindo… (pode levar até 2 minutos)</b></div>';
     if (u.ocupadoContrato === "condesp") h += '<div class="dz-linha"><b>salvando…</b></div>';
     h += '<div class="dz-linha"><input type="text" class="vb-condesp-pedido" maxlength="1000" style="width:100%;box-sizing:border-box" ' +
       'placeholder="O que mudar, em português comum (ex.: cliente quer 45 dias em vez de 30 para a vistoria)" value="' + esc(u.condPedido || "") + '"' + dis + '>' +
@@ -1061,7 +1061,7 @@
         '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-ver">Ver fluxo</button>' +
         /* 04/11 (dono): PDF do fluxo salvo para mandar ao cliente, antes do pré-contrato (o mesmo do quadro do cartão) */
         (typeof window !== "undefined" && typeof window.condPdfFluxo === "function"
-          ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-pdf">📄 PDF do fluxo para o cliente</button>' : "") +
+          ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-pdf" title="PDF do fluxo para mandar ao cliente">📄 PDF do fluxo</button>' : "") +
         (lancada ? "" : ' <button type="button" class="bt bt-mini" data-acao="c-fluxo-abrir"' + (dis || (f.trava ? " disabled" : "")) + ">Alterar fluxo</button>") + "</div>";
       if (f.trava && TRAVA_FLUXO[f.trava] && !lancada) h += '<div class="dz-msg">' + esc(MSG_CONTRATO[f.trava]) + "</div>";
       if (fluxoDepoisDoContrato(f, ec)) h += '<div class="dz-aviso">Fluxo alterado depois do contrato: gere o contrato de novo.</div>';
@@ -2600,7 +2600,7 @@
     var h = '<div class="grp">Conferência dos documentos</div>';
     if (!e) return h + '<div class="vazio">' + esc(u.msg || "carregando…") + "</div>";
     var trava = u.testes || !!u.ocupado, dis = trava ? " disabled" : "";
-    if (u.ocupado === "conferir") h += '<div class="dz-linha"><b>lendo os documentos pela IA… (até 1 minuto)</b></div>';
+    if (u.ocupado === "conferir") h += '<div class="dz-linha"><b>lendo os documentos pela IA… (pode levar até 2 minutos)</b></div>';
     if (!e.feito) {
       h += '<div class="dz-linha">Ainda não conferido.</div>';   /* 31/10/2026 (dono): sem texto explicativo */
     } else {
@@ -2666,7 +2666,7 @@
     var h = '<div class="grp">Termo de reserva</div>' +
       '<div class="dz-linha dz-rot">Sem contrato gerado até a data limite, a reserva cai sozinha no fim desse dia.</div>' +
       '<div class="dz-linha dz-pr-pag">' + camposPagPR(pg, dis) + "</div>";
-    if (u.ocupado === "rapido") h += '<div class="dz-linha"><b>salvando e gerando o termo… (até 1 minuto)</b></div>';
+    if (u.ocupado === "rapido") h += '<div class="dz-linha"><b>salvando e gerando o termo… (pode levar até 2 minutos)</b></div>';
     h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="pr-rapido-gerar"' + dis + ">Gerar termo</button> " +
       '<button type="button" class="bt ghost bt-mini" data-acao="pr-rapido-fechar"' + (u.ocupado ? " disabled" : "") + ">Agora não</button></div>";
     if (u.msg) h += '<div class="dz-msg">' + esc(u.msg) + "</div>";
@@ -2722,7 +2722,7 @@
           "</select>") + "</div>";
     if (c.forma) h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="pr-salvar-conta"' + dis + ">Salvar conta</button></div>";
     h += '<datalist id="pr-bancos">' + BANCOS_BR.map(function (b) { return '<option value="' + esc(b) + '">'; }).join("") + "</datalist>";
-    if (u.ocupado === "gerar") h += '<div class="dz-linha"><b>gerando o termo… (até 1 minuto)</b></div>';
+    if (u.ocupado === "gerar") h += '<div class="dz-linha"><b>gerando o termo… (pode levar até 2 minutos)</b></div>';
     if (u.ocupado === "ver") h += '<div class="dz-linha"><b>abrindo o termo…</b></div>';
     if (u.ocupado === "conta") h += '<div class="dz-linha"><b>salvando a conta…</b></div>';
     h += htmlConjugePR(e, dis);

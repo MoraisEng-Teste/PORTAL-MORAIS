@@ -178,11 +178,11 @@ test("contrato (b) pré-contrato desatualizado: aviso e Conferi travado; Gerar d
 
 test("contrato: gerando (pré-contrato ou final) avisa e desabilita todos os botões", () => {
   const h = D.htmlContrato({ gerado: true, nome: "Contrato.pdf", etapa: "FINAL" }, uic({ ocupadoContrato: "pre" }));
-  assert.match(h, /gerando o pré-contrato… \(até 1 minuto\)/);
+  assert.match(h, /gerando o pré-contrato… \((pode levar até 2 minutos)\)/);
   assert.match(botao(h, "c-pre"), /disabled/);
   assert.match(botao(h, "c-ver"), /disabled/);
   const a = D.htmlContrato(PRE(), uic({ ocupadoContrato: "aprovar" }));
-  assert.match(a, /gerando o contrato… \(até 1 minuto\)/);
+  assert.match(a, /gerando o contrato… \((pode levar até 2 minutos)\)/);
   assert.match(botao(a, "c-aprovar"), /disabled/);
   assert.match(botao(a, "c-pre"), /disabled/);
 });
