@@ -3646,8 +3646,11 @@
     function proximo(){
       if(i>=ordem.length){ return finalizar(); }
       var rot=ordem[i], lote=grupos[rot];
+      var nomes=lote.map(function(a){ return a.nome; }).join(', ');
+      /* Onda 2 (item 9): barra de progresso com n etapas e o nome do arquivo atual */
       mostrar('processando','<b>Proposta '+esc_(r.proposta)+' criada.</b><br>Enviando documentos '+
-        (i+1)+' de '+ordem.length+': '+esc_(rot)+'… <b>não feche a página.</b>');
+        (i+1)+' de '+ordem.length+': '+esc_(rot)+' <small>('+esc_(nomes)+')</small>… <b>não feche a página.</b>'+
+        '<progress max="'+ordem.length+'" value="'+i+'" style="display:block;width:100%;height:14px;margin-top:8px"></progress>');
       var tentar=function(n){
         return apiPost({acao:'anexarProposta', pageId:r.id, anexos:lote})
           .then(function(x){
@@ -3655,9 +3658,20 @@
                            (x.anexosNotion&&x.anexosNotion.falhas||[]).forEach(function(f){ falhas.push(f); }); }
             else throw new Error((x&&(x.mensagem||x.erro))||'falhou');
           })
-          .catch(function(e){ if(n<1) return tentar(n+1); falhas.push(rot+': '+(e.message||'sem resposta')); });
+          .catch(function(e){ if(n<1) return tentar(n+1); throw e; });
       };
-      tentar(0).then(function(){ i++; proximo(); });
+      tentar(0).then(function(){ i++; proximo(); }, function(e){
+        var msg=(e&&e.message)||'sem resposta';
+        mostrar('erro','<b>Não foi possível enviar este arquivo:</b> '+esc_(rot)+' <small>('+esc_(nomes)+')</small><br>'+esc_(msg)+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+          '<button type="button" class="btn-primario" style="min-height:44px" onclick="window.retentarAnexoProposta&&window.retentarAnexoProposta(true)">Tentar de novo este arquivo</button>'+
+          '<button type="button" class="btn-secundario" style="min-height:44px" onclick="window.retentarAnexoProposta&&window.retentarAnexoProposta(false)">Seguir sem este arquivo</button></div>');
+        window.retentarAnexoProposta=function(de_novo){
+          window.retentarAnexoProposta=null;
+          if(!de_novo){ falhas.push(rot+': '+msg); i++; }
+          proximo();
+        };
+      });
     }
     function finalizar(){
       mostrar('processando','<b>Documentos enviados.</b> Finalizando e disparando o e-mail…');
