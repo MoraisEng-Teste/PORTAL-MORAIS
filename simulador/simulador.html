@@ -1199,7 +1199,8 @@
       try{ window.lembrarCorretor && window.lembrarCorretor(); }catch(x){}   // Onda 2: lembra o corretor neste aparelho
       var dadosGuardados=null; try{ dadosGuardados=await guardarParaProposta(r.id); }catch(x){}
       /* Onda 3 (item 3) — o mapa mostra "Sua última simulação" (sem nome nem CPF na linha) e reabre com estes dados */
-      try{ if(dadosGuardados) localStorage.setItem('ultimaSimulacaoInfo', JSON.stringify({id:r.id, ts:Date.now(), unidade:u.unidade, tipo:u.tipo||'', dados:dadosGuardados})); }catch(x){}
+      try{ if(dadosGuardados){ var semDoc={}; Object.keys(dadosGuardados).forEach(function(k){ if(!/cpf|(^|[^a-z])rg([^a-z]|$)/i.test(k)) semDoc[k]=dadosGuardados[k]; }); /* CPF e RG não ficam na cópia de 30 dias */
+        localStorage.setItem('ultimaSimulacaoInfo', JSON.stringify({id:r.id, ts:Date.now(), unidade:u.unidade, tipo:u.tipo||'', dados:semDoc})); } }catch(x){}
       // 31/10 — para o botão "Transformar em proposta" do enviado.html
       /* r62 — a confirmação abre na página própria (enviado.html), que
          acompanha a simulação e tem o botão de voltar ao mapa. */

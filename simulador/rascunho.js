@@ -31,6 +31,8 @@
       [].forEach.call(f.elements, function(el){
         var t=String(el.type||'').toLowerCase(), nome=el.name||'';
         if(!nome || nome==='unidade') return;
+        /* CPF e RG nunca ficam guardados no aparelho: a pessoa digita de novo ao continuar */
+        if(/cpf|(^|[^a-z])rg([^a-z]|$)/i.test(nome)) return;
         if(t==='file'||t==='button'||t==='submit'||t==='reset'||t==='password'||t==='image'||t==='hidden') return;
         if(o.excluir && el.closest(o.excluir)) return;
         var i=cont[nome]||0; cont[nome]=i+1;
