@@ -4378,9 +4378,11 @@ function propVer(id){
     ${podeGravar?`
     <div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Decisão</b>
       <!-- 30/09: o botão do status atual fica em destaque e os outros apagados; o resultado aparece logo abaixo -->
-      <div class="prop-dec ${PROP_NORM(p.status)?'tem-status':''}" style="display:flex;gap:9px;margin-top:8px;flex-wrap:wrap">
-        <button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
-        <button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
+      <div class="prop-dec ${PROP_NORM(p.status)?'tem-status':''}" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:1 1 220px;min-width:0"><button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">Reservar: segura a unidade por ${PROP_RESERVA_DIAS} dias e manda ao corretor o link para completar os dados.</div></div>
+        <div style="flex:1 1 220px;min-width:0"><button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">Negar: libera a unidade agora.</div></div>
       </div>
       ${PROP_NORM(p.status)==='RESERVADA'?`<div style="margin-top:8px"><button class="bt" style="background:#7B4FA0;color:#fff" onclick="propPreReservaDaUnidade('${p.id}')">Termo de reserva</button></div>`:""}
       ${PROP_NORM(p.status)==='RESERVADA'&&window.AtualizarVendaUI?AtualizarVendaUI.botaoHtml(p.id,'prop','bt'):""}<!-- 07/11: Atualizar venda pela proposta (venda/atualizar-venda.js) -->
@@ -4389,14 +4391,14 @@ function propVer(id){
       <!-- 02/10 (item 10) -->
       <div style="margin-top:10px"><button class="bt" style="background:#B7791F;color:#fff" onclick="propAlerta('${p.id}')">📣 Enviar alerta de pendências ao corretor</button>
         <div id="prop-alertaInfo" class="sim-aviso" style="margin-top:6px"></div></div>
-      <div style="font-size:12px;color:var(--text3);margin-top:6px">
+      <details style="font-size:12px;color:var(--text3);margin-top:8px"><summary style="cursor:pointer;font-weight:700">Como funciona a reserva</summary><div style="margin-top:6px">
         <b>Reservar</b> marca a unidade ${esc(String(p.unidade||""))} como RESERVADA no mapa, cria a venda no
         lista de vendas do condomínio e manda ao corretor o link para completar os dados e documentos.
         A reserva vale <b>${PROP_RESERVA_DIAS} dias corridos</b> — com termo de reserva, até a <b>data limite do termo</b>: sem contrato gerado nesse prazo ela cai sozinha
         (a unidade volta a disponível e a venda vai para distratos). <b>Negar</b> faz o mesmo na hora.
         A proposta vira <b>VENDIDA</b> sozinha quando o contrato é gerado — e só então o corretor recebe o e-mail de venda.
         ${propReservaPrazoHtml(p)}
-      </div>
+      </div></details>
     </div>
     ${propSIBloco(p)}
 
