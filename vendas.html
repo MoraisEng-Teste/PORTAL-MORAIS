@@ -1893,7 +1893,7 @@ async function abrirCondNaCelula(id, col){
   abrirSetor(setor); abaSetor("condominio");
   for(let i=0;i<120 && !(COND&&COND.linhas);i++) await new Promise(r=>setTimeout(r,500));
   const tr=document.querySelector('#cd-wrap tr[data-id="'+CSS.escape(id)+'"]');
-  if(!tr){ alert("Não achei esta unidade na Planilha Casas Condomínio."); return; }
+  if(!tr){ toast("Não achei esta unidade na Planilha Casas Condomínio.",{tipo:"erro"}); return; }
   const td=[...tr.querySelectorAll("td[data-col]")].find(x=>cdNorm(x.dataset.col)===cdNorm(col||"Email"));
   tr.scrollIntoView({block:"center",inline:"nearest"});
   if(td){ td.scrollIntoView({block:"center",inline:"center"}); condEditar(td); }
@@ -2374,6 +2374,11 @@ window.VendaPergunta={
   aberta(){ return !!document.getElementById("cd-pergunta"); },
   cancelar(){ const ov=document.getElementById("cd-pergunta"); if(ov){ const b=ov.querySelector('[data-perg="ficar"]'); if(b) b.click(); } }
 };
+/* Onda 3 (ux): pergunta de sim/não com a caixa da página (VendaPergunta.caixa); sem ela cai no confirm() nativo. Sempre Promise<boolean>. */
+function caixaSimNao(o){
+  if(window.VendaPergunta&&typeof VendaPergunta.caixa==="function") return VendaPergunta.caixa(o);
+  return Promise.resolve(window.confirm([o.titulo].concat(o.itens||[]).join("\n")));
+}
 /* Esc fecha o cartão do condomínio (como o painel da rua), sem passar por cima de janelas abertas por cima dele */
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape"||e.defaultPrevented) return;
@@ -2839,7 +2844,7 @@ function condPdfFluxo(id){
   const g=n=>cdVal(l,n), fx=condFluxo(l);
   const corpo=document.createElement("div"); corpo.innerHTML=condQuadroHtml(l,fx);
   corpo.querySelectorAll(".cd-falta,.cd-aviso,.cd-abat").forEach(x=>x.remove());
-  const w=window.open("","_blank"); if(!w){ alert("O navegador bloqueou a janela — libere pop-ups para o portal e clique de novo."); return; }
+  const w=window.open("","_blank"); if(!w){ toast("O navegador bloqueou a janela — libere pop-ups para o portal e clique de novo.",{tipo:"erro"}); return; }
   /* 14/11/2026 (dono): "coloque nesse pdf que os valores sofrem correções de INCC na pré-chave e IPCA + 1% pós-chave" —
      os mesmos índices que o Alterar fluxo mostra em cada linha (FluxoLivre.TIPOS); a frase do pós só sai se houver pós-chaves */
   const temPos=/p[óo]s-chaves/i.test(corpo.textContent||"");
@@ -3493,7 +3498,8 @@ function renderLinksCasas(){
     const r=TC.rows.find(x=>x.id===td.dataset.id); if(!r) return;
     const campo=td.dataset.campo;
     if(ev.target.closest(".lc-limpar")){
-      if(confirm("Apagar o link desta casa? Ela volta a usar o automático.")) salvarLinkCasa(r,campo,"",td);
+      caixaSimNao({titulo:"Apagar o link desta casa?",ok:"Apagar link",cancelar:"Manter",perigo:true,itens:["Ela volta a usar o automático."]})
+        .then(sim=>{ if(sim) salvarLinkCasa(r,campo,"",td); });
       return;
     }
     if(!ev.target.closest(".lc-edit")) return;
@@ -4889,10 +4895,15 @@ function podeCriarOpcao(nome){
 async function aoTrocarSelect(pageId,prop,tipo,el){
   if(el.value!=="__novo__"){ el.dataset.anterior=el.value; editar(pageId,prop,tipo,el.value,el); return; }
   const anterior=el.dataset.anterior||"";
-  const nome=(window.prompt("Novo "+prop.trim().toLowerCase()+":")||"").trim();
+  const rotuloNovo="Novo "+prop.trim().toLowerCase();
+  const lido=(window.VendaPergunta&&VendaPergunta.caixa)
+    ? await VendaPergunta.caixa({titulo:rotuloNovo.charAt(0).toUpperCase()+rotuloNovo.slice(1),ok:"Continuar",cancelar:"Voltar",
+        campo:{rotulo:"Nome",tipo:"text",obrigatorio:true,validar:v=>v.indexOf(",")>=0?"Nome não pode ter vírgula.":""}})
+    : window.prompt(rotuloNovo+":");
+  const nome=(lido||"").trim();
   if(!nome){ el.value=anterior; return; }
   if(nome.indexOf(",")>=0){ toast("Nome não pode ter vírgula."); el.value=anterior; return; }
-  if(!window.confirm("Criar \""+nome+"\" em "+prop.trim()+"?\n\nEle passa a valer para todas as obras.")){ el.value=anterior; return; }
+  if(!(await caixaSimNao({titulo:"Criar \""+nome+"\" em "+prop.trim()+"?",ok:"Criar opção",cancelar:"Voltar",itens:["Ele passa a valer para todas as obras."]}))){ el.value=anterior; return; }
   el.disabled=true;
   /* base:"VENDAS" — o novaOpcao do Code.gs passou a servir dois setores
      (vendas e pós obra), então a base agora é explícita. Sem ela o backend
@@ -5389,7 +5400,7 @@ async function enviarArquivo(pageId,prop,input){
   }catch(e){ toast("Falha ao ler o arquivo"); }
 }
 async function excluirObra(pageId){
-  if(!confirm("Excluir esta obra do Notion? (arquiva a página)"))return;
+  if(!(await caixaSimNao({titulo:"Excluir esta obra?",ok:"Excluir obra",cancelar:"Manter",perigo:true,itens:["A página da obra é arquivada no Notion."]})))return;
   const r=await escrever({action:"excluirVenda",pageId:pageId},"Excluir obra");
   toast(r.ok?(r.enfileirado?"Na fila ✓":"Excluída ✓"):("Erro: "+erroTexto(r.erro)));
   if(r.ok&&!r.enfileirado){ fecharObra(); carregarPlanilha(document.getElementById("view-setor").style.display!=="none"?"set":"hub"); }

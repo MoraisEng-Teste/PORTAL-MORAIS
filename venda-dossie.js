@@ -2118,7 +2118,8 @@
       return depoisDeGravar(pageId, r, r.ok ? resumoLote(r) : "", false, "lote-" + onde);
     }
     if (acao === "copiar-comprovante") {
-      if (!window.confirm("Usar o mesmo comprovante de endereço do comprador 1 para o comprador 2? O endereço do comprador 1 é copiado e o arquivo dele vai para o espaço do comprador 2 (substitui o que estiver lá).")) return;
+      if (!(await caixaPagina({ titulo: "Usar o comprovante de endereço do comprador 1 no comprador 2?", ok: "Copiar comprovante", cancelar: "Voltar", perigo: true,
+        itens: ["O endereço do comprador 1 é copiado.", "O arquivo dele vai para o espaço do comprador 2.", "Substitui o que estiver lá."] }))) return;
       ui.ocupado = "C2_COMPROVANTE"; ui.ocupadoTexto = "copiando…"; ui.msg = ""; ui.msgGrupo = "comprador"; pintar();
       r = await chamarVenda({ action: "copiarComprovante", pageId: pageId }, 150000);
       return depoisDeGravar(pageId, r, "Comprovante e endereço do comprador 1 copiados para o comprador 2 — confira.", false, "comprador");
@@ -2269,7 +2270,8 @@
   }
   /* Anexar (soma) ou Trocar (o 1º arquivo substitui os do espaço, os outros somam): só guarda, não lê */
   async function anexarNoEspaco(pageId, espaco, trocar) {
-    if (trocar && !window.confirm("Trocar o documento? Os arquivos atuais deste espaço serão removidos. A leitura acontece em Ler documentos.")) return;
+    if (trocar && !(await caixaPagina({ titulo: "Trocar o documento?", ok: "Trocar documento", cancelar: "Voltar", perigo: true,
+      itens: ["Os arquivos atuais deste espaço serão removidos.", "A leitura acontece em Ler documentos."] }))) return;
     var grupoEsp = grupoDoEspaco(espaco);
     ui.ocupado = espaco; ui.ocupadoTexto = "escolha o arquivo…"; ui.msg = ""; ui.msgGrupo = grupoEsp; ui.resultados = null; pintar();
     var lista = await escolherArquivo(true);
@@ -3250,9 +3252,11 @@
       var lista = it.modo === "lista";
       if (lista && !valor && !(typeof it.falta === "number" && it.falta > 0)) { uiR.msg = mensagemRec({ erro: "VALOR_INVALIDO" }); pintarR(); return; }
       var quanto = lista ? (valor ? "R$ " + valor : moedaRec(it.falta)) + " " : "";
-      if (!window.confirm("Confirmar o recebimento de " + quanto + "do " + it.rotulo + " em " + dataRec(data) + "?" +
-                          (estadoR.emailConfigurado ? " Um e-mail de aviso será enviado." : "") +
-                          (it.baixaMC && estadoR.vendaLancada ? " A baixa é dada no Mais Controle." : ""))) return;
+      var itensRec = [];
+      if (estadoR.emailConfigurado) itensRec.push("Um e-mail de aviso será enviado.");
+      if (it.baixaMC && estadoR.vendaLancada) itensRec.push("A baixa é dada no Mais Controle.");
+      if (!(await caixaPagina({ titulo: "Confirmar o recebimento de " + quanto + "do " + it.rotulo + " em " + dataRec(data) + "?", ok: "Confirmar recebimento", cancelar: "Voltar",
+        itens: itensRec }))) return;
       uiR.ocupado = id; uiR.msg = ""; pintarR();
       var payload = { action: "recebimentoConfirmar", pageId: pageId, item: id, data: data };
       if (lista && valor) payload.valor = valor;
@@ -3269,7 +3273,8 @@
     async function removerRec(b) {
       if (uiR.ocupado || !estadoR) return;
       var id = b.getAttribute("data-item"), pag = b.getAttribute("data-pag"), it = itemR(id);
-      if (!it || !window.confirm("Tirar este pagamento do " + it.rotulo + "? (só do portal)")) return;
+      if (!it || !(await caixaPagina({ titulo: "Tirar este pagamento do " + it.rotulo + "?", ok: "Tirar pagamento", cancelar: "Manter", perigo: true,
+        itens: ["Só sai do portal."] }))) return;
       uiR.ocupado = id; uiR.msg = ""; pintarR();
       var r = await chamarVenda({ action: "recebimentoRemover", pageId: pageId, item: id, pagamento: pag });
       if (!vivo()) return;
@@ -3288,8 +3293,8 @@
       var id = b.getAttribute("data-item"), it = itemR(id), v = String(uiR.esperados[id] || "").trim();
       if (!it) return;
       if (!v) { uiR.msg = "Informe o novo valor esperado do " + it.rotulo + " (0 para zerar)."; pintarR(); return; }
-      if (!window.confirm("Mudar o valor esperado do " + it.rotulo + " para R$ " + v + "?" +
-                          (/^(SINAL|FINANCIAMENTO|FGTS)$/.test(id) && estadoR.vendaLancada ? " A parcela é acertada no Mais Controle." : ""))) return;
+      if (!(await caixaPagina({ titulo: "Mudar o valor esperado do " + it.rotulo + " para R$ " + v + "?", ok: "Mudar valor", cancelar: "Voltar",
+        itens: /^(SINAL|FINANCIAMENTO|FGTS)$/.test(id) && estadoR.vendaLancada ? ["A parcela é acertada no Mais Controle."] : [] }))) return;
       uiR.ocupado = id; uiR.msg = ""; pintarR();
       var r = await chamarVenda({ action: "recebimentoValor", pageId: pageId, item: id, valor: v, rotulo: it.outro ? it.rotulo : undefined });
       if (!vivo()) return;
@@ -3311,8 +3316,9 @@
       if (uiR.ocupado || !estadoR) return;
       var f = uiR.arquivos.FIN || null, n = (estadoR.contratoFin && estadoR.contratoFin.arquivos) || 0;
       if (!f && !n) { uiR.finMsg = mensagemRec({ erro: "SEM_ARQUIVO" }); pintarR(); return; }
-      if (!window.confirm((f ? "Guardar e ler o contrato de financiamento " + f.name : "Ler de novo o último contrato de financiamento guardado") +
-                          "? O valor financiado (e o FGTS e o subsídio, se o contrato mostrar) será trocado pelo do contrato.")) return;
+      if (!(await caixaPagina({ titulo: (f ? "Guardar e ler o contrato de financiamento " + f.name : "Ler de novo o último contrato de financiamento guardado") + "?",
+        ok: "Ler contrato", cancelar: "Voltar", perigo: true,
+        itens: ["O valor financiado (e o FGTS e o subsídio, se o contrato mostrar) será trocado pelo do contrato."] }))) return;
       uiR.ocupado = "FIN"; uiR.finMsg = ""; pintarR();
       var payload = { action: "recebimentoLerContratoFin", pageId: pageId };
       if (f) {
@@ -3432,7 +3438,8 @@
         pintarD();
         return;
       }
-      if (!window.confirm("Você abriu o documento e confere que está certo (" + l.pessoa + " · " + l.rotulo + ")?")) return;
+      if (!(await caixaPagina({ titulo: "Está certo? " + l.pessoa + " · " + l.rotulo, ok: "Confirmar conferência", cancelar: "Voltar",
+        itens: ["Você abriu o documento e confere que está certo."] }))) return;
       uiD.ocupado = "ok"; pintarD();
       var ro = await chamarVenda({ action: "confirmarConferencia", pageId: pageId, indice: i });
       if (!vivo()) return;
@@ -3588,7 +3595,8 @@
         return;
       }
       if (acao === "pr-gerar") {
-        if (estadoP.gerado && !window.confirm("Gerar o termo de novo? O termo anterior fica no histórico da coluna; envie o novo para assinatura.")) return;
+        if (estadoP.gerado && !(await caixaPagina({ titulo: "Gerar o termo de reserva de novo?", ok: "Gerar termo", cancelar: "Voltar",
+          itens: ["O termo anterior fica no histórico da coluna.", "Envie o novo para assinatura."] }))) return;
         uiP.ocupado = "gerar"; uiP.msg = ""; uiP.faltas = null; pintarP();
         var rg = await chamarVenda({ action: "gerarTermoPreReserva", pageId: pageId }, 150000);
         if (!vivo()) return;
@@ -3752,7 +3760,8 @@
         return;
       }
       var aplicar = acao === "mc-lancar";
-      if (aplicar && !window.confirm("Lançar esta venda no Mais Controle? Será criado o cliente (se não existir) e a venda com as parcelas da prévia.")) return;
+      if (aplicar && !(await caixaPagina({ titulo: "Lançar esta venda no Mais Controle?", ok: "Lançar no Mais Controle", cancelar: "Voltar", perigo: true,
+        itens: ["Será criado o cliente (se não existir).", "Será criada a venda com as parcelas da prévia."] }))) return;
       uiM.ocupado = acao; uiM.msg = ""; pintarM();
       var r = await chamarVenda({ action: "mcLancar", pageId: pageId, aplicar: aplicar });
       if (!vivo()) return;
@@ -3911,8 +3920,10 @@
       if (acao === "c-pre" || acao === "c-aprovar") {
         var aprovar = acao === "c-aprovar";
         if (!aprovar && etapaContrato(estadoC) === "FINAL" &&
-            !window.confirm("Gerar de novo? Primeiro sai uma prévia do contrato para conferir; o contrato atual só é substituído quando você conferir.")) return;
-        if (aprovar && !window.confirm("Você conferiu a prévia do contrato e está tudo certo? O contrato final será gerado (sem grifos).")) return;
+            !(await caixaPagina({ titulo: "Gerar o contrato de novo?", ok: "Gerar prévia", cancelar: "Voltar",
+              itens: ["Primeiro sai uma prévia do contrato para conferir.", "O contrato atual só é substituído quando você conferir."] }))) return;
+        if (aprovar && !(await caixaPagina({ titulo: "A prévia do contrato está certa?", ok: "Gerar contrato", cancelar: "Voltar",
+          itens: ["Você conferiu a prévia e está tudo certo.", "O contrato final será gerado (sem grifos)."] }))) return;
         uiC.ocupadoContrato = aprovar ? "aprovar" : "pre"; uiC.msg = ""; uiC.faltas = null; uiC.campos = null; uiC.link = null; pintar();
         seq = ++seqC;
         r = await chamarVenda({ action: aprovar ? "aprovarPreContrato" : "gerarPreContrato", pageId: pageId }, 150000);
@@ -3983,7 +3994,8 @@
         if (!valores) { uiC.msg = "Nada mudou — preencha ou corrija um campo antes de salvar."; pintar(); return; }
         pedido = { action: "salvarFiadores", pageId: pageId, valores: valores };
       } else {
-        if (!window.confirm(perguntaConjugeFiador2(b))) return;
+        if (!(await caixaPagina({ titulo: "Cônjuge do Fiador 1 como Fiador 2?", ok: "Trocar fiador", cancelar: "Voltar", perigo: true,
+          itens: [perguntaConjugeFiador2(b)] }))) return;
         pedido = { action: "conjugeEhFiador2", pageId: pageId };
       }
       if (troca) pedido.modoTroca = true;
@@ -4038,8 +4050,9 @@
       }
       var texto = String(uiC.condRasc || "");
       if (texto.trim() === c.texto.trim()) { uiC.msg = "Nada mudou nas condições especiais."; pintar(); return; }
-      if (!window.confirm(texto.trim() ? "Salvar estas condições especiais no contrato desta venda? A prévia do contrato precisa ser gerada de novo." :
-                                         "Apagar as condições especiais desta venda? O contrato volta a sair com \"Não há.\".")) return;
+      if (!(await caixaPagina(texto.trim()
+        ? { titulo: "Salvar estas condições especiais no contrato?", ok: "Salvar condições", cancelar: "Voltar", itens: ["A prévia do contrato precisa ser gerada de novo."] }
+        : { titulo: "Apagar as condições especiais desta venda?", ok: "Apagar condições", cancelar: "Manter", perigo: true, itens: ["O contrato volta a sair com \"Não há.\"."] }))) return;
       uiC.ocupadoContrato = "condesp"; pintar();
       var rs = await chamarVenda({ action: "salvarCondicoesEspeciais", pageId: pageId, texto: texto });
       if (!vivo()) return;
@@ -4233,8 +4246,10 @@
         pintar(); rolarAteBem();
         return;
       }
-      if (!window.confirm(voltar ? "Voltar ao fluxo da proposta (simulador)? A alteração fica guardada no histórico."
-                                 : "Salvar este fluxo? A prévia do contrato precisa ser gerada de novo e fica registrado quem alterou e o motivo.")) return;
+      if (!(await caixaPagina(voltar
+        ? { titulo: "Voltar ao fluxo da proposta (simulador)?", ok: "Voltar ao simulador", cancelar: "Manter", perigo: true, itens: ["A alteração fica guardada no histórico."] }
+        : { titulo: "Salvar este fluxo?", ok: "Salvar fluxo", cancelar: "Voltar", perigo: true,
+            itens: ["A prévia do contrato precisa ser gerada de novo.", "Fica registrado quem alterou e o motivo."] }))) return;
       uiC.ocupadoContrato = "fluxo-salvar"; pintar();
       var rs = await chamarVenda(voltar ? { action: "salvarFluxo", pageId: pageId, voltar: true, motivo: ed.motivo }
         : { action: "salvarFluxo", pageId: pageId, fluxo: ed.semComissao ? { valor: ed.valor, linhas: ed.linhas, semComissao: true } : { valor: ed.valor, linhas: ed.linhas },

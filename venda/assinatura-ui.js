@@ -88,6 +88,13 @@
     NADA_MUDOU: "Nenhum fiador mudou — corrija o fiador no bloco Fiadores e salve."
   };
 
+  /* Onda 3 (ux): UM confirmador para todos os pontos. Com deps.caixa (caixa na própria tela, assíncrona) mostra título, tópicos e o
+     botão com o verbo; sem ela (testes, tela antiga) cai no deps.confirmar de antes (síncrono ou não — o await serve aos dois). */
+  async function pergunta(deps, o, textoNativo) {
+    if (typeof deps.caixa === "function") return !!(await deps.caixa(o));
+    return !!(await deps.confirmar(textoNativo));
+  }
+
   function esc(s) {
     return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -391,7 +398,9 @@
     }
     if (acao === "a-troca-gerar") {
       if (!c.troca.previa || !c.troca.previa.liberado) return c;
-      if (!deps.confirmar("Gerar os termos de confissão novos com os fiadores de agora? O contrato não muda; nada vai para a Clicksign ainda.")) return c;
+      if (!(await pergunta(deps, { titulo: "Gerar os termos de confissão novos?", ok: "Gerar termos", cancelar: "Voltar",
+        itens: ["Usa os fiadores de agora.", "O contrato não muda.", "Nada vai para a Clicksign ainda."] },
+      "Gerar os termos de confissão novos com os fiadores de agora? O contrato não muda; nada vai para a Clicksign ainda."))) return c;
       ocupar("gerando os termos novos… (pode levar até 4 minutos)");
       var g = await chamarSeguro(deps, { action: "trocarFiadoresGerar", pageId: deps.pageId, carimbo: c.troca.previa.carimbo });
       if (!g.ok) return copia(c, { ocupado: null, msg: mensagemTroca(g) });
@@ -411,7 +420,10 @@
         ((pv.cancelar || []).map(function (x) { return x.nome; }).join("; ") || "nenhum termo em andamento") +
         ". Recebem os termos novos: " + (pv.assinam || []).map(function (s) { return s.nome ? s.nome + " (" + s.papel + ")" : s.papel; }).join("; ") +
         ". O contrato não muda e quem já assinou o contrato não assina de novo.";
-      if (!deps.confirmar(texto)) return c;
+      if (!(await pergunta(deps, { titulo: "Enviar os termos novos para assinatura até " + dataBr(prazo) + "?", ok: "Enviar termos", cancelar: "Voltar", perigo: true,
+        itens: ["Será cancelado: " + ((pv.cancelar || []).map(function (x) { return x.nome; }).join("; ") || "nenhum termo em andamento") + ".",
+                "Recebem os termos novos: " + (pv.assinam || []).map(function (s) { return s.nome ? s.nome + " (" + s.papel + ")" : s.papel; }).join("; ") + ".",
+                "O contrato não muda; quem já assinou o contrato não assina de novo."] }, texto))) return c;
       c = copia(c, { prazo: prazo });
       ocupar("cancelando os termos antigos e enviando os novos… (até 2 minutos)");
       var pedido = { action: "trocarFiadoresEnviar", pageId: deps.pageId, prazo: prazo };
@@ -439,8 +451,10 @@
       var okT = (base === "a-cancelar" && typeof deps.caixa === "function")
         ? await deps.caixa({ titulo: "Cancelar o envio para assinatura dos termos de confissão?", perigo: true, ok: "Cancelar envio", cancelar: "Manter",
             itens: ["O contrato não muda.", "Ninguém mais assina estes termos.", "As assinaturas já feitas deixam de valer."] })
-        : deps.confirmar(base === "a-cancelar" ? "Cancelar o envio para assinatura dos termos de confissão na Clicksign? O contrato não muda; ninguém mais assina estes termos."
-                                                : "Descartar o rascunho dos termos na Clicksign? Nada foi enviado aos assinantes.");
+        : base === "a-descartar"
+          ? await pergunta(deps, { titulo: "Descartar o rascunho dos termos de confissão?", perigo: true, ok: "Descartar rascunho", cancelar: "Manter",
+              itens: ["Nada foi enviado aos assinantes.", "Depois é só enviar de novo."] }, "Descartar o rascunho dos termos na Clicksign? Nada foi enviado aos assinantes.")
+          : await deps.confirmar("Cancelar o envio para assinatura dos termos de confissão na Clicksign? O contrato não muda; ninguém mais assina estes termos.");
       if (!okT) return c;
       if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "cancelar", msg: "" }));
       var r = await chamarSeguro(deps, { action: "assinaturaCancelar", pageId: deps.pageId, doc: "TERMOS", descartar: base === "a-descartar" ? true : undefined });
@@ -600,8 +614,11 @@
         return copia(c, { prazo: prazo, msg: "Escolha a data limite para assinar entre " + dataBr(lim.min) + " e " + dataBr(lim.max) + "." });
       c = copia(c, { prazo: prazo });
     }
-    if (enviar && !deps.confirmar("Enviar o " + (ehTermo(c) ? "termo de reserva" : "contrato") + " para assinatura até " + dataBr(prazo) +
-                                  "? Cada assinante recebe um e-mail da Clicksign para assinar; depois dessa data o envio para assinatura é cancelado.")) return c;
+    if (enviar && !(await pergunta(deps, { titulo: "Enviar o " + (ehTermo(c) ? "termo de reserva" : "contrato") + " para assinatura até " + dataBr(prazo) + "?",
+      ok: "Enviar para assinatura", cancelar: "Voltar",
+      itens: ["Cada assinante recebe um e-mail da Clicksign para assinar.", "Depois dessa data o envio para assinatura é cancelado."] },
+    "Enviar o " + (ehTermo(c) ? "termo de reserva" : "contrato") + " para assinatura até " + dataBr(prazo) +
+    "? Cada assinante recebe um e-mail da Clicksign para assinar; depois dessa data o envio para assinatura é cancelado."))) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: enviar ? "enviar" : "atualizar", msg: "", faltas: null, corrigir: null }));
     var r, pedido = comDoc(c, { action: enviar ? "assinaturaEnviar" : "assinaturaEstado", pageId: deps.pageId });
     if (enviar) pedido.prazo = prazo;
@@ -675,8 +692,9 @@
   async function reenviarLink(c, deps) {
     if (!podeReenviar(c)) return c;
     var n = pendentes(c.estado);
-    if (!deps.confirmar("Reenviar o link de assinatura? " + (n === 1 ? "A pessoa que ainda não assinou recebe" : "As " + n + " pessoas que ainda não assinaram recebem") +
-                        " de novo o e-mail da Clicksign.")) return c;
+    var quemRecebe = (n === 1 ? "A pessoa que ainda não assinou recebe" : "As " + n + " pessoas que ainda não assinaram recebem") + " de novo o e-mail da Clicksign.";
+    if (!(await pergunta(deps, { titulo: "Reenviar o link de assinatura?", ok: "Reenviar link", cancelar: "Voltar", itens: [quemRecebe] },
+      "Reenviar o link de assinatura? " + quemRecebe))) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "reenviar", msg: "" }));
     var r;
     try { r = await deps.chamar(comDoc(c, { action: "assinaturaReenviar", pageId: deps.pageId })); }
@@ -713,7 +731,9 @@
     novo = String(novo).trim().toLowerCase();
     if (!EMAIL_OK.test(novo)) return copia(c, { msg: MSG.EMAIL_INVALIDO });
     if (novo === String(s.email || "").toLowerCase()) return copia(c, { msg: MSG.EMAIL_IGUAL });
-    if (!deps.confirmar("Trocar o e-mail de " + quem + " para " + novo + "? A Clicksign manda o link de assinatura para o e-mail novo e o antigo deixa de valer. O envio para assinatura continua o mesmo (quem já assinou não assina de novo).")) return c;
+    if (!(await pergunta(deps, { titulo: "Trocar o e-mail de " + quem + " para " + novo + "?", ok: "Trocar e-mail", cancelar: "Voltar", perigo: true,
+      itens: ["A Clicksign manda o link de assinatura para o e-mail novo.", "O e-mail antigo deixa de valer.", "O envio para assinatura continua o mesmo (quem já assinou não assina de novo)."] },
+    "Trocar o e-mail de " + quem + " para " + novo + "? A Clicksign manda o link de assinatura para o e-mail novo e o antigo deixa de valer. O envio para assinatura continua o mesmo (quem já assinou não assina de novo)."))) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "trocar-email", msg: "" }));
     var r;
     try { r = await deps.chamar(comDoc(c, { action: "assinaturaTrocarEmail", pageId: deps.pageId, signerId: s.id, email: novo })); }
@@ -754,7 +774,10 @@
    * Se a Clicksign não respondeu, nada foi apagado: pede para tentar de novo. */
   async function descartarRascunho(c, deps) {
     if (!podeDescartar(c)) return c;
-    if (!deps.confirmar("Descartar o rascunho do " + (ehTermo(c) ? "termo de reserva" : "contrato") + " na Clicksign? Nada foi enviado aos assinantes; depois é só enviar de novo.")) return c;
+    var oqueDesc = ehTermo(c) ? "termo de reserva" : "contrato";
+    if (!(await pergunta(deps, { titulo: "Descartar o rascunho do " + oqueDesc + "?", perigo: true, ok: "Descartar rascunho", cancelar: "Manter",
+      itens: ["Nada foi enviado aos assinantes.", "Depois é só enviar de novo."] },
+    "Descartar o rascunho do " + oqueDesc + " na Clicksign? Nada foi enviado aos assinantes; depois é só enviar de novo."))) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "cancelar", msg: "" }));
     var r;
     try { r = await deps.chamar(comDoc(c, { action: "assinaturaCancelar", pageId: deps.pageId, descartar: true })); }
