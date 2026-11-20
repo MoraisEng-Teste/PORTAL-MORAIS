@@ -66,10 +66,10 @@
   input.lido{border-color:#8CC9A5 !important;background:#F3FAF6;}
   .estimativa{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 16px;}
   .estimativa .it{border:1px solid var(--borda);border-radius:8px;padding:9px 11px;background:#FFFDF7;}
-  .estimativa .it small{display:block;font-size:11px;color:var(--texto-suave);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+  .estimativa .it small{display:block;font-size:12px;color:var(--texto-suave);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
   .estimativa .it b{font-size:16px;color:var(--marrom);}
   .estimativa .it.destaque{background:#FBEEC8;border-color:#E7C56A;}
-  .estimativa .nota{grid-column:1/-1;font-size:11.5px;color:var(--texto-suave);}
+  .estimativa .nota{grid-column:1/-1;font-size:12px;color:var(--texto-suave);}
   #composicaoSim h3,#fluxoSim h3{display:none}
   .sinal-opts{flex-wrap:wrap;}
   .sinal-opts .prazo-opt{flex:1 1 130px;}
@@ -115,7 +115,7 @@
     .card h2{font-size:15px;margin-bottom:14px;}
     .passos{overflow-x:auto;gap:5px;margin-bottom:14px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
     .passos::-webkit-scrollbar{display:none;}
-    .passo{flex:1 0 auto;min-width:72px;max-width:150px;font-size:11.5px;padding:8px 6px;line-height:1.25;}
+    .passo{flex:1 0 auto;min-width:72px;max-width:150px;font-size:12px;padding:8px 6px;line-height:1.25;}
     input,select,textarea{font-size:16px;}
     input[type=file]{font-size:13px;max-width:100%;}
     .rodape{gap:10px;flex-wrap:wrap;}
@@ -143,7 +143,7 @@
   .btn-voltar-disc{background:none;border:0;color:var(--texto-suave);text-decoration:underline;font-weight:600;font-size:14px;padding:11px 8px;cursor:pointer}
   .acoes3{display:flex;gap:14px;align-items:flex-start;justify-content:flex-end;flex-wrap:wrap}
   .acoes3 .alt-proposta{display:flex;flex-direction:column;gap:4px;max-width:230px}
-  .acoes3 .alt-proposta small{font-size:11.5px;color:var(--texto-suave);line-height:1.35}
+  .acoes3 .alt-proposta small{font-size:12px;color:var(--texto-suave);line-height:1.35}
   @media(max-width:640px){
     .rodape3{flex-direction:column-reverse;align-items:stretch;gap:8px}
     .acoes3{flex-direction:column;align-items:stretch}
@@ -159,6 +159,16 @@
   /* celular: a faixa de passos corta no 3º; esta linha diz em que passo a pessoa está */
   .passo-mobile{display:none;font-size:13px;font-weight:800;color:var(--marrom);margin:0 0 6px;}
   @media(max-width:640px){.passo-mobile{display:block;}}
+  /* Onda 3 (item 5) — celular: toque de 44 px; tabelas do fluxo rolam dentro do próprio quadro */
+  #composicaoSim,#fluxoSim{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;}
+  @media(max-width:640px){
+    .check{min-height:44px;align-items:center;}
+    .check input[type=checkbox],.check input[type=radio]{width:22px;height:22px;flex:none;margin-top:0;}
+    button,.btn-voltar,.produto{min-height:44px;}
+    .btn-voltar{display:inline-flex;align-items:center;}
+    .passo{min-height:44px;display:flex;align-items:center;justify-content:center;}
+    #lnkApagarRascunho{display:inline-block;padding:12px 0;}
+  }
 </style>
 </head>
 <body>
@@ -326,7 +336,7 @@
         </div>
       </div>
       <div class="secao-sim">3. Composição do fluxo de pagamento</div>
-      <span class="ajuda" style="display:block;margin:-4px 0 8px;font-size:11.5px"><b>Pré-chaves:</b> parcelas pagas durante a obra · <b>pós-chaves:</b> parcelas depois da entrega · <b>balão:</b> parcela maior em data marcada · <b>entrada restante:</b> o que falta da entrada depois do sinal.</span>
+      <span class="ajuda" style="display:block;margin:-4px 0 8px;font-size:12px"><b>Pré-chaves:</b> parcelas pagas durante a obra · <b>pós-chaves:</b> parcelas depois da entrega · <b>balão:</b> parcela maior em data marcada · <b>entrada restante:</b> o que falta da entrada depois do sinal.</span>
       <div id="composicaoSim" style="margin-bottom:16px"><span class="ajuda">Aguardando o cálculo do financiamento…</span></div>
       <div class="secao-sim">4. Prazo de parcelamento da entrada</div>
       <div class="campo full" style="margin-bottom:16px;">
@@ -408,7 +418,7 @@
       </div>
       <!-- r38 — aviso legal e ciência expressa (caráter estimativo) -->
       <div style="margin:14px 0 4px;padding:12px 14px;border:1px solid #D8CDB5;border-left:4px solid var(--marrom);
-           border-radius:6px;background:#FFFDF7;font-size:11.5px;line-height:1.55;color:var(--texto-suave);">
+           border-radius:6px;background:#FFFDF7;font-size:12px;line-height:1.55;color:var(--texto-suave);">
         <b style="color:var(--marrom)">AVISO IMPORTANTE — CARÁTER ESTIMATIVO.</b>
         Esta simulação é <b>meramente estimativa</b>: usa só os dados informados aqui e o simulador da CAIXA na
         data de hoje. <b>Não é aprovação, pré-aprovação nem promessa de crédito</b>. Possibilidade de

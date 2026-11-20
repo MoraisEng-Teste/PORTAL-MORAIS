@@ -123,16 +123,16 @@
   .tabfluxo tr.lfalta td{background:#FDECEA;color:#8A2E17;}
   .tabfluxo tr.grupo td{background:var(--fundo);color:var(--marrom);font-weight:800;font-size:12px;letter-spacing:.3px;}
   .tag-obra{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#1F6FB2;color:#fff;
-    font-size:10px;font-weight:800;letter-spacing:.3px;vertical-align:middle;}
+    font-size:12px;font-weight:800;letter-spacing:.3px;vertical-align:middle;}
   .tag-pos{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#5B4A8A;color:#fff;
-    font-size:10px;font-weight:800;letter-spacing:.3px;vertical-align:middle;}
+    font-size:12px;font-weight:800;letter-spacing:.3px;vertical-align:middle;}
   .tag-sinal{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:var(--amarelo);color:var(--marrom);
-    font-size:10px;font-weight:800;vertical-align:middle;}
+    font-size:12px;font-weight:800;vertical-align:middle;}
   details.fluxo-det{margin-top:10px;} details.fluxo-det summary{cursor:pointer;font-weight:700;color:var(--marrom);font-size:13px;}
   .aviso-fluxo{margin:12px 0 4px;padding:10px 12px;border-radius:8px;background:#FBEEC8;
     border:1px solid #EFB700;color:#7A4A16;font-size:12.5px;line-height:1.5;}
   .aviso-legal{margin:16px 0 4px;padding:12px 14px;border:1px solid #D8CDB5;border-left:4px solid var(--marrom);
-    border-radius:6px;background:#FFFDF7;font-size:11.5px;line-height:1.55;color:var(--texto-suave);}
+    border-radius:6px;background:#FFFDF7;font-size:12px;line-height:1.55;color:var(--texto-suave);}
   .aviso-legal b{color:var(--marrom);}
   .anexo{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--borda);}
   .anexo label{flex:1;min-width:0;}
@@ -146,7 +146,7 @@
     .anexo.pedido{padding-left:8px;}
     .tag-doc{margin-left:0;margin-top:4px;display:inline-block;}
   }
-  .anexo label small{display:block;font-weight:400;font-size:11.5px;color:var(--texto-suave);margin-top:2px;}
+  .anexo label small{display:block;font-weight:400;font-size:12px;color:var(--texto-suave);margin-top:2px;}
   .anexo.pedido{background:#FFFBEF;border-left:3px solid var(--amarelo);padding-left:8px;}
   /* 07/10/2026: documento que já veio anexado fica verde e o campo de anexar apagado */
   .anexo.ja{background:#E3F5E8 !important;border-left:4px solid #27AE60 !important;padding-left:8px;}
@@ -166,7 +166,7 @@
     #listaDependentes input,#listaDependentes select{font-size:16px;padding:10px 11px;}
   }
   .tag-doc{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:10px;background:var(--amarelo);
-    color:var(--marrom);font-size:10px;font-weight:800;vertical-align:middle;}
+    color:var(--marrom);font-size:12px;font-weight:800;vertical-align:middle;}
   .anexo label{flex:1;font-size:13px;color:var(--texto);font-weight:600;margin:0;}
   .anexo input[type=file]{font-size:12px;max-width:290px;}
   /* r66 — leitura de documentos, prazo/comissão e CRECI */
@@ -213,7 +213,7 @@
     .card h2{font-size:15px;margin-bottom:14px;}
     .passos{overflow-x:auto;gap:5px;margin-bottom:14px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
     .passos::-webkit-scrollbar{display:none;}
-    .passo{flex:1 0 auto;min-width:72px;max-width:150px;font-size:11.5px;padding:8px 6px;line-height:1.25;}
+    .passo{flex:1 0 auto;min-width:72px;max-width:150px;font-size:12px;padding:8px 6px;line-height:1.25;}
     input,select,textarea{font-size:16px;}
     input[type=file]{font-size:13px;max-width:100%;}
     .rodape{gap:10px;flex-wrap:wrap;}
@@ -241,6 +241,16 @@
   /* celular: a faixa de passos corta no 3º; esta linha diz em que passo a pessoa está */
   .passo-mobile{display:none;font-size:13px;font-weight:800;color:var(--marrom);margin:0 0 6px;}
   @media(max-width:640px){.passo-mobile{display:block;}}
+  /* Onda 3 (item 5) — celular: toque de 44 px; tabelas do fluxo rolam dentro do próprio quadro */
+  #composicaoProp,#resumoEntrada,#fluxo{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;}
+  @media(max-width:640px){
+    .check{min-height:44px;align-items:center;}
+    .check input[type=checkbox],.check input[type=radio]{width:22px;height:22px;flex:none;margin-top:0;}
+    button,.btn-voltar,.produto{min-height:44px;}
+    .btn-voltar{display:inline-flex;align-items:center;}
+    .passo{min-height:44px;display:flex;align-items:center;justify-content:center;}
+    #lnkApagarRascunho{display:inline-block;padding:12px 0;}
+  }
 </style>
 </head>
 <body>
@@ -630,7 +640,7 @@
     </div>
 
     <div class="secao">3. Composição do fluxo de pagamento</div>
-    <span class="ajuda" style="display:block;margin:-4px 0 8px;font-size:11.5px"><b>Pré-chaves:</b> parcelas pagas durante a obra · <b>pós-chaves:</b> parcelas depois da entrega · <b>balão:</b> parcela maior em data marcada · <b>entrada restante:</b> o que falta da entrada depois do sinal.</span>
+    <span class="ajuda" style="display:block;margin:-4px 0 8px;font-size:12px"><b>Pré-chaves:</b> parcelas pagas durante a obra · <b>pós-chaves:</b> parcelas depois da entrega · <b>balão:</b> parcela maior em data marcada · <b>entrada restante:</b> o que falta da entrada depois do sinal.</span>
     <div id="composicaoProp"><span class="ajuda">Preencha o financiamento para montar a composição.</span></div>
 
     <div class="secao">4. Prazo de parcelamento da entrada</div>
@@ -1304,7 +1314,7 @@
     }
     function linha2(c1, c2, nota, est){
       est = est || '';
-      return '<tr><td style="' + TD + ';' + est + '">' + c1 + (nota ? '<br><span style="font-size:11px;color:#6B5A45;font-weight:400">' + nota + '</span>' : '') + '</td>' +
+      return '<tr><td style="' + TD + ';' + est + '">' + c1 + (nota ? '<br><span style="font-size:12px;color:#6B5A45;font-weight:400">' + nota + '</span>' : '') + '</td>' +
         '<td style="' + TD + ';text-align:right;white-space:nowrap;width:150px;' + est + '">' + c2 + '</td></tr>';
     }
     function grupo(t, v, cor){
@@ -1312,7 +1322,7 @@
         '<td style="' + TD + ';background:' + cor + ';color:#fff;font-weight:800;text-align:right;white-space:nowrap">' + v + '</td></tr>';
     }
     function titulo(t){ return '<h3 style="color:#7A4A16;font-size:14px;margin:18px 0 6px">' + t + '</h3>'; }
-    function selo(t, cor){ return ' <span style="display:inline-block;background:' + cor + ';color:#fff;border-radius:9px;padding:1px 7px;font-size:10px;font-weight:800">' + t + '</span>'; }
+    function selo(t, cor){ return ' <span style="display:inline-block;background:' + cor + ';color:#fff;border-radius:9px;padding:1px 7px;font-size:12px;font-weight:800">' + t + '</span>'; }
     function valorLinha(x){ var q = fpQtd_(x.quando); return (q > 1 ? q + ' × ' : '') + B(Number(x.valor)); }
   
     /* 1) COMPOSIÇÃO DO FLUXO DE PAGAMENTO */
@@ -2013,7 +2023,7 @@
       /* 31/10 — o cônjuge de um comprador tem TODOS os dados obrigatórios, com ou sem crédito aprovado */
       var obrigComp=(F().creditoAprovadoCaixa.value==='NAO' || conj)?'<span class="obrig">*</span>':'';
       var obrigConj=conj?'<span class="obrig">*</span>':'';
-      var lbl='font-size:11px;color:var(--marrom);font-weight:700';
+      var lbl='font-size:12px;color:var(--marrom);font-weight:700';
       /* 31/10 — erro no próprio card: casado sem o cônjuge na lista (limite) ou tentativa de passar do limite */
       var nCompT=atuais.slice(0, n).filter(function(x){ return x && x.tipo==='COMPRADOR'; }).length;
       var ordC=comp ? atuais.slice(0, i+1).filter(function(x){ return x && x.tipo==='COMPRADOR'; }).length : 0;
