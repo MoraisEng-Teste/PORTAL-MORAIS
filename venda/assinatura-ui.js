@@ -296,10 +296,10 @@
     if (sit === "ENVIADO") {
       h += '<div class="dz-linha">';
       if (pend) h += '<button type="button" class="bt ghost bt-mini" data-acao="a-t-reenviar"' + (ocup ? " disabled" : "") + ">Reenviar link dos termos</button> ";
-      h += '<button type="button" class="bt ghost bt-mini" data-acao="a-t-cancelar"' + (ocup ? " disabled" : "") + ">Cancelar envio para assinatura dos termos</button></div>";
+      h += '<button type="button" class="bt ghost bt-mini perigo" data-acao="a-t-cancelar"' + (ocup ? " disabled" : "") + ">Cancelar envio para assinatura dos termos</button></div>";
     }
     if (sit === "RASCUNHO" && !c.testes)
-      h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini" data-acao="a-t-descartar"' + (ocup ? " disabled" : "") + ">Descartar rascunho dos termos</button></div>";
+      h += '<div class="dz-linha"><button type="button" class="bt ghost bt-mini perigo" data-acao="a-t-descartar"' + (ocup ? " disabled" : "") + ">Descartar rascunho dos termos</button></div>";
     return h;
   }
   /* Trocar fiadores: quem já pode enviar o contrato (o TESTES não), com o contrato enviado e não assinado por todos */
@@ -496,11 +496,11 @@
     if (e.envelope && situacaoDe(e) === "ENVIADO" && pendentes(e))
       h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'reenviar"' + (podeReenviar(c) ? "" : " disabled") + ">Reenviar link de assinatura</button>";
     if (e.envelope && situacaoDe(e) === "ENVIADO" && !e.contratoAssinado)
-      h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'cancelar"' + (podeCancelar(c) ? "" : " disabled") + ">Cancelar envio para assinatura</button>";
+      h += ' <button type="button" class="bt ghost bt-mini perigo" data-acao="' + x + 'cancelar"' + (podeCancelar(c) ? "" : " disabled") + ">Cancelar envio para assinatura</button>";
     if (!termo && c.podeTrocarFiadores && e.envelope && sit === "ENVIADO" && !c.testes)
       h += ' <button type="button" class="bt ghost bt-mini" data-acao="a-troca-abrir"' + (podeTrocarFiadores(c) ? "" : " disabled") + ">Trocar fiadores</button>";
     if (e.envelope && situacaoDe(e) === "RASCUNHO" && !c.testes)
-      h += ' <button type="button" class="bt ghost bt-mini" data-acao="' + x + 'descartar"' + (podeDescartar(c) ? "" : " disabled") + ">Descartar rascunho</button>";
+      h += ' <button type="button" class="bt ghost bt-mini perigo" data-acao="' + x + 'descartar"' + (podeDescartar(c) ? "" : " disabled") + ">Descartar rascunho</button>";
     /* só leitura: o perfil TESTES também vê */
     if (podeVerAssinado(c)) h += ' <button type="button" class="bt bt-mini" data-acao="' + x + 'ver-assinado"' + (c.ocupado ? " disabled" : "") + ">Ver " + (termo ? "termo" : "contrato") + " assinado</button>";
     h += "</div>";

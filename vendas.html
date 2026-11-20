@@ -381,7 +381,10 @@ tr.setor-detalhe td{background:var(--bg2);padding:12px 16px}
 .cd-ov.cd-perg .cd-cardbox{max-width:420px;margin:0}
 .cd-perg p{margin:6px 0 14px;line-height:1.45}
 .cd-perg-bts{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-.cd-bt.perigo,.bt.perigo{border-color:var(--vermelho);color:var(--vermelho)}
+/* botões de perigo (Distrato, Cancelar envio para assinatura, Descartar rascunho): contorno vermelho, afastados dos vizinhos */
+.cd-bt.perigo,.bt.perigo{border:1.5px solid var(--vermelho);color:var(--vermelho);background:var(--sup);margin-inline-start:10px}
+html[data-tema="escuro"] .bt.ghost.perigo,html[data-tema="escuro"] .cd-bt.perigo{color:#ff8a7a;background:var(--sup)}
+.cd-bt.perigo:hover,.bt.perigo:hover{background:rgba(192,57,43,.1)}
 @media (max-width:700px){.cd-perg-bts .cd-bt{min-height:44px;flex:1 1 140px}}
 .cd-cardbox{background:var(--sup);border-radius:14px;max-width:880px;margin:0 auto;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 .cd-cardbox h3{margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--azul)}
@@ -2516,7 +2519,7 @@ function condDistratoHtml(l){
   if(!condPodeDistrato(l)) return '<div class="cd-dica" style="margin-top:10px">Distrato: esta venda não tem proposta ligada (ID PROPOSTA) — faça pela proposta em Simulações.</div>';
   const un=esc(String(cdVal(l,COND&&COND.titulo||"UNIDADE")||cdVal(l,"UNIDADE")||""));
   return '<div class="cd-dist" style="margin-top:14px">'+
-    '<button type="button" class="cd-bt" style="background:#6B5A45;border-color:#6B5A45;color:#fff" onclick="condDistratoAbrir()">Distrato</button>'+
+    '<button type="button" class="cd-bt perigo" onclick="condDistratoAbrir()">Distrato</button>'+
     '<div id="cd-dist-box" style="display:none;margin-top:8px;border:1.5px solid #E7B3A6;background:#FDF1EE;border-radius:10px;padding:12px">'+
       '<b style="color:#8A2E17">Distrato da unidade '+un+'</b>'+
       '<div style="font-size:12px;margin:4px 0 8px">A venda é copiada (com os arquivos) para os <b>distratos</b>, sai da lista de vendas do condomínio e a unidade volta a <b>DISPONÍVEL</b>. A proposta fica como DISTRATO.</div>'+
