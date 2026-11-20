@@ -1712,7 +1712,7 @@ function repintarSensiveis(){
 async function preencherCpfAuto(){
   const bt=document.getElementById("bt-autocpf");
   const msg=document.getElementById("autocpf-msg");
-  if(!window.confirm("Preencher o CPF/CNPJ das obras que estão sem ele, usando o CPF/CNPJ-AUTO?\n\nNada que já esteja preenchido é alterado.")) return;
+  if(!await moraisConfirmar("Preencher CPF/CNPJ", "Preencher o CPF/CNPJ das obras que estão sem ele, usando o CPF/CNPJ-AUTO?\n\nNada que já esteja preenchido é alterado.", "Preencher")) return;
   bt.disabled=true; msg.textContent="Preenchendo…";
   try{
     let total=0, voltas=0, r;
@@ -1883,7 +1883,7 @@ async function aoTrocarSelect(pageId,prop,tipo,el){
   const nome=(window.prompt("Novo "+prop.trim().toLowerCase()+":")||"").trim();
   if(!nome){ el.value=anterior; return; }
   if(nome.indexOf(",")>=0){ toast("Nome não pode ter vírgula."); el.value=anterior; return; }
-  if(!window.confirm("Criar \""+nome+"\" em "+prop.trim()+"?\n\nEle passa a valer para todas as obras.")){ el.value=anterior; return; }
+  if(!await moraisConfirmar("Criar nova opção", "Criar \""+nome+"\" em "+prop.trim()+"?\n\nEle passa a valer para todas as obras.", "Criar")){ el.value=anterior; return; }
   el.disabled=true;
   const r=await chamar({action:"novaOpcao", base:"DOCUMENTOS", prop:prop, valor:nome});
   el.disabled=false;
@@ -2341,7 +2341,7 @@ async function enviarArquivo(pageId,prop,input){
   }catch(e){ toast("Falha ao ler o arquivo"); }
 }
 async function excluirObra(pageId){
-  if(!confirm("Arquivar esta obra no Notion? Dá para restaurar pela lixeira em até 30 dias.")) return;
+  if(!await moraisConfirmar("Arquivar a obra", "Arquivar esta obra? Dá para restaurar pela lixeira do Notion em até 30 dias.", "Arquivar obra", true)) return;
   const r=await escrever({action:"docExcluir",pageId:pageId},"Arquivar obra");
   if(r.ok){ OBRAS=OBRAS.filter(o=>o.id!==pageId); fecharObra(); aplicarFiltros("hub"); if(SETOR_ATUAL) repintarSetor(); }
   toast(r.ok?"Arquivada ✓":("Não deu certo: "+erroTexto(r.erro)));
