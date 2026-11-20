@@ -337,19 +337,8 @@
       var p=localPlanta(u,480); if(!p || vistos[p]) return;
       vistos[p]=1; var im=new Image(); im.decoding='async'; im.src=p;
     });
-    /* as de 1400 px só com a página ociosa e fora do modo economia */
-    try{
-      var c=navigator.connection||{};
-      if(c.saveData || /(^|-)2g$/.test(String(c.effectiveType||''))) return;
-    }catch(e){}
-    var soltar=window.requestIdleCallback || function(f){ setTimeout(f,1500); };
-    soltar(function(){
-      var v2={};
-      (UNIDADES||[]).forEach(function(u){
-        var p=localPlanta(u,1400); if(!p || v2[p]) return;
-        v2[p]=1; var im=new Image(); im.decoding='async'; im.src=p;
-      });
-    });
+    /* Onda 2 (item 4): as de 1400 px (~1,4 MB) NÃO são mais baixadas sem ninguém pedir;
+       carregam quando o balão/modal da unidade abre (mostrarPlantaModal). */
   }
 
   var UNIDADES=[];
