@@ -614,7 +614,9 @@
           }).join("") + "</select>";
         } else {
           var tipo = c.tipo === "email" ? "email" : c.tipo === "inteiro" ? "number" : "text";
-          inp = '<input type="' + tipo + '"' + (tipo === "number" ? ' min="1" step="1"' : ' maxlength="300"') + attr + ' value="' + esc(v) + '">';
+          /* UX: CPF (ou CPF/CNPJ) do cadastro que falta — máscara e dígito verificador no navegador */
+          var ehDoc = tipo === "text" && /CPF/i.test(c.coluna) ? (/CNPJ/i.test(c.coluna) ? "doc" : "cpf") : "";
+          inp = '<input type="' + tipo + '"' + (tipo === "number" ? ' min="1" step="1"' : ' maxlength="300"') + (ehDoc ? ' inputmode="numeric" data-doc="' + ehDoc + '"' : "") + attr + ' value="' + esc(v) + '">';
         }
         h += '<div class="dz-linha"><label class="dz-rot">' + esc(c.rotulo) + "</label>" + inp + "</div>";
       });
@@ -760,7 +762,7 @@
           return '<option value="' + esc(o) + '"' + (o === v ? " selected" : "") + ">" + esc(o) + "</option>";
         }).join("") + "</select>";
       } else {
-        inp = '<input type="' + (c.tipo === "email" ? "email" : "text") + '" maxlength="300"' + (c.tipo === "cpf" ? ' inputmode="numeric"' : "") +
+        inp = '<input type="' + (c.tipo === "email" ? "email" : "text") + '" maxlength="300"' + (c.tipo === "cpf" ? ' inputmode="numeric" data-doc="cpf"' : "") +
           attr + ' value="' + esc(v) + '"' + dis + ">";
       }
       return '<label data-rot="' + esc(c.rotulo) + '"><span>' + esc(c.rotulo) + "</span>" + inp + "</label>";
@@ -784,6 +786,74 @@
   function mexido(x) {
     var v = String(x.valor === null || x.valor === undefined ? "" : x.valor).trim();
     return x.orig === undefined || x.orig === null ? true : v !== String(x.orig).trim();
+  }
+  /* UX onda 1: máscara e dígito verificador do CPF (e do CNPJ, onde o campo aceita os dois) conferidos no navegador antes
+     de mandar ao servidor — o servidor continua conferindo do jeito dele. data-doc="cpf" (só CPF) ou "doc" (CPF ou CNPJ). */
+  function soDigitos(v) { return String(v === null || v === undefined ? "" : v).replace(/\D/g, ""); }
+  function docMascara(v, tipo) {
+    var d = soDigitos(v).slice(0, tipo === "doc" ? 14 : 11);
+    if (d.length <= 11) return d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+    return d.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3/$4").replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
+  }
+  function digitoVerif(d, pesos) {
+    var s = 0, i;
+    for (i = 0; i < pesos.length; i++) s += Number(d.charAt(i)) * pesos[i];
+    var r = s % 11;
+    return r < 2 ? 0 : 11 - r;
+  }
+  function cpfValido(v) {
+    var d = soDigitos(v);
+    if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+    return digitoVerif(d, [10, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(d.charAt(9)) && digitoVerif(d, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(d.charAt(10));
+  }
+  function cnpjValido(v) {
+    var d = soDigitos(v);
+    if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+    return digitoVerif(d, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(d.charAt(12)) && digitoVerif(d, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(d.charAt(13));
+  }
+  /* null = vazio ou ainda sendo digitado; true/false = completo e conferido */
+  function docConfere(v, tipo) {
+    var d = soDigitos(v);
+    if (!d.length) return null;
+    if (d.length === 11) return cpfValido(d);
+    if (tipo === "doc" && d.length === 14) return cnpjValido(d);
+    return false;
+  }
+  function MSG_DOC_RUIM(tipo) { return (tipo === "doc" ? "CPF/CNPJ inválido" : "CPF inválido") + " — confira os números."; }
+  function docMensagem(alvo, texto) {
+    var m = alvo.nextElementSibling;
+    if (!m || !m.classList || !m.classList.contains("dz-cpf-msg")) {
+      if (!texto) return;
+      m = document.createElement("span"); m.className = "dz-cpf-msg"; m.setAttribute("role", "alert");
+      alvo.parentNode.insertBefore(m, alvo.nextSibling);
+    }
+    m.textContent = texto || "";
+    if (!texto && m.parentNode) m.parentNode.removeChild(m);
+  }
+  function docAoDigitar(alvo) {
+    var tipo = alvo.getAttribute && alvo.getAttribute("data-doc");
+    if (!tipo) return;
+    var m = docMascara(alvo.value, tipo);
+    if (m !== alvo.value) alvo.value = m;
+    var ok = docConfere(alvo.value, tipo), d = soDigitos(alvo.value);
+    docMensagem(alvo, (ok === false && (d.length === 11 || d.length === 14)) ? MSG_DOC_RUIM(tipo) : "");
+  }
+  function docAoSair(alvo) {
+    var tipo = alvo.getAttribute && alvo.getAttribute("data-doc");
+    if (!tipo) return;
+    docMensagem(alvo, docConfere(alvo.value, tipo) === false ? MSG_DOC_RUIM(tipo) : "");
+  }
+  /* antes de salvar: algum CPF digitado (e mexido, no bloco dos fiadores) não confere? Mostra ao lado do campo e para. */
+  function docInvalidoNaTela(raizEl, seletor, soMexidos) {
+    var ruim = null;
+    if (!raizEl || !raizEl.querySelectorAll) return false;
+    raizEl.querySelectorAll(seletor + "[data-doc]").forEach(function (x) {
+      if (x.disabled) return;
+      if (soMexidos && !mexido({ valor: x.value, orig: x.getAttribute("data-fia-orig") })) return;
+      if (docConfere(x.value, x.getAttribute("data-doc")) === false) { docMensagem(x, MSG_DOC_RUIM(x.getAttribute("data-doc"))); if (!ruim) ruim = x; }
+    });
+    if (ruim) { try { ruim.focus(); } catch (e) { /* sem foco */ } }
+    return !!ruim;
   }
   function rascunhoFia(rasc, entradas) {
     Object.keys(rasc).forEach(function (k) { if (/^fia\|/.test(k)) delete rasc[k]; });
@@ -1739,6 +1809,7 @@
     /* entrega 13: espaço anexado e ainda não lido; resultado da leitura em lote */
     "#dossie-wrap .dz-novo{color:#B45309;font-weight:700}#dossie-wrap .dz-lote{margin-top:10px}" +
     "#dossie-wrap .dz-res li.dz-erro{color:#C0392B}" +
+    ".vb-blocos .dz-cpf-msg,#dossie-wrap .dz-cpf-msg{display:block;flex:1 1 100%;color:var(--vermelho,#C0392B);font-size:12px;font-weight:600;margin-top:2px}" +
     "#dossie-wrap .dz-soltar{margin:8px 22px;padding:14px;border:2px dashed var(--border,#b8c4cb);border-radius:10px;text-align:center}" +
     "#dossie-wrap .dz-soltar.dz-off{opacity:.6}#dossie-wrap select{max-width:100%}" +
     /* entrega 12: formulário dos cadastros e conta de recebimento */
@@ -3792,6 +3863,7 @@
       if (acao === "c-salvar-campos") {
         /* entrega 12: grava no cadastro o que foi digitado (e a conta digitada, se houver) e gera a prévia do contrato */
         guardarRascunho();
+        if (docInvalidoNaTela(raiz, "[data-campo]", false)) return;   /* UX: CPF que não confere, antes de mandar */
         var entradas = [];
         raiz.querySelectorAll("[data-campo]").forEach(function (x) { entradas.push({ chave: x.getAttribute("data-campo"), valor: x.value }); });
         var contaTela = contaDigitando(estadoC && estadoC.conta, uiC) ? contaDigitadaNaTela() : null;
@@ -3846,6 +3918,7 @@
       if (!b) return;
       guardarRascunho();
       var pedido;
+      if (acao === "c-fia-salvar" && docInvalidoNaTela(raiz, "[data-fia-col]", true)) return;   /* UX: CPF que não confere, antes de mandar */
       if (acao === "c-fia-salvar") {
         var valores = valoresFiadores(caixasFia(), b);
         if (!valores) { uiC.msg = "Nada mudou — preencha ou corrija um campo antes de salvar."; pintar(); return; }
@@ -4310,12 +4383,17 @@
         /* 29/10: o que se digita nas condições especiais sobrevive a um redesenho do bloco */
         el.addEventListener("input", function (ev) {
           if (raiz !== el || el.__vbLigado !== eu || !ev.target.classList) return;
+          docAoDigitar(ev.target);
           marcarSujo(ev.target);
           if (ev.target.hasAttribute("data-an")) { aoDigitarAnt(ev.target); return; }
           if (ev.target.hasAttribute("data-fxb")) { aoDigitarBem(ev.target); return; }   /* 03/11: formulário do bem */
           if (ev.target.hasAttribute("data-fx")) { aoDigitarFluxo(ev.target); return; }
           if (ev.target.classList.contains("vb-condesp")) uiC.condRasc = ev.target.value;
           else if (ev.target.classList.contains("vb-condesp-pedido")) uiC.condPedido = ev.target.value;
+        });
+        el.addEventListener("focusout", function (ev) {
+          if (raiz !== el || el.__vbLigado !== eu || !ev.target || !ev.target.getAttribute) return;
+          docAoSair(ev.target);
         });
         /* revisão 04/11: o simulador não mexe no campo com foco (o cursor); ao sair dele, mostra o valor da conta */
         el.addEventListener("focusout", function (ev) {
