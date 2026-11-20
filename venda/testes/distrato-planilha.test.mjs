@@ -36,9 +36,9 @@ test("o cartão chama o distrato na aba Resumo", () => {
 
 test("botão só com proposta ligada e para quem grava", () => {
   const ctx = ctxNovo();
-  assert.match(ctx.condDistratoHtml(linha({ "ID PROPOSTA": "abc" })), /Confirmar distrato/);
+  assert.match(ctx.condDistratoHtml(linha({ "ID PROPOSTA": "abc" })), /Distratar unidade 99/);
   assert.match(ctx.condDistratoHtml(linha({ "ID PROPOSTA": "abc" })), /Distrato da unidade 99/);
-  assert.doesNotMatch(ctx.condDistratoHtml(linha({})), /Confirmar distrato/, "sem proposta: só o aviso");
+  assert.doesNotMatch(ctx.condDistratoHtml(linha({})), /Distratar unidade/, "sem proposta: só o aviso");
   assert.match(ctx.condDistratoHtml(linha({})), /não tem proposta ligada/);
   ctx.SO_LEITURA = true;
   assert.equal(ctx.condDistratoHtml(linha({ "ID PROPOSTA": "abc" })), "", "só leitura não vê");

@@ -178,3 +178,19 @@ test("item 7: Mais Controle confere sozinho — decisões, texto e limites", () 
   assert.doesNotMatch(dossie, /em 1 a 3 minutos clique em Atualizar/);
   assert.equal((dossie.match(/function conferirSozinhoMC/g) || []).length, 1, "uma conferência por vez: um único laço");
 });
+
+test("item 8: distrato do condomínio sem confirm() — 3 tópicos, campo com o número e botão que só habilita quando bate", () => {
+  const i = vendas.indexOf("function condDistratoHtml(l)"), j = vendas.indexOf("function condAtualizarVendaHtml");
+  const bloco = vendas.slice(i, j);
+  assert.doesNotMatch(bloco, /confirm\(/, "nada de confirm() nativo no distrato do condomínio");
+  assert.equal((bloco.match(/<li>/g) || []).length, 3);
+  assert.match(bloco, /Digite o número da unidade para confirmar/);
+  assert.match(bloco, /id="cd-dist-ok" disabled/);
+  assert.match(bloco, /font-size:16px/, "input com 16 px (iPhone não dá zoom)");
+  const k = bloco.indexOf("function condDistratoConferir");
+  const els = { "cd-dist-un": { value: "", getAttribute: () => "99" }, "cd-dist-ok": { disabled: true } };
+  const f = new Function("document", bloco.slice(k, bloco.indexOf("\n}", k) + 2) + "\nreturn condDistratoConferir;")({ getElementById: (id) => els[id] });
+  f(); assert.equal(els["cd-dist-ok"].disabled, true);
+  els["cd-dist-un"].value = "98"; f(); assert.equal(els["cd-dist-ok"].disabled, true);
+  els["cd-dist-un"].value = " 99 "; f(); assert.equal(els["cd-dist-ok"].disabled, false);
+});

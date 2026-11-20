@@ -2716,9 +2716,15 @@ function condDistratoHtml(l){
     '<button type="button" class="cd-bt perigo" onclick="condDistratoAbrir()">Distrato</button>'+
     '<div id="cd-dist-box" style="display:none;margin-top:8px;border:1.5px solid #E7B3A6;background:#FDF1EE;border-radius:10px;padding:12px">'+
       '<b style="color:#8A2E17">Distrato da unidade '+un+'</b>'+
-      '<div style="font-size:12px;margin:4px 0 8px">A venda é copiada (com os arquivos) para os <b>distratos</b>, sai da lista de vendas do condomínio e a unidade volta a <b>DISPONÍVEL</b>. A proposta fica como DISTRATO.</div>'+
+      '<div style="font-size:12px;margin:4px 0 2px">O que vai acontecer:</div>'+
+      '<ul style="font-size:12px;margin:0 0 8px 18px;padding:0">'+
+        '<li>A venda é copiada, com os arquivos, para os <b>distratos</b>.</li>'+
+        '<li>A venda sai da lista de vendas do condomínio.</li>'+
+        '<li>A unidade volta a <b>DISPONÍVEL</b> e a proposta fica como DISTRATO.</li></ul>'+
       '<textarea id="cd-dist-motivo" rows="3" placeholder="Motivo do distrato (obrigatório)" style="width:100%;box-sizing:border-box;font:inherit;font-size:13px"></textarea>'+
-      '<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="cd-bt" id="cd-dist-ok" onclick="condDistrato(COND_ABERTA)">Confirmar distrato</button>'+
+      '<label for="cd-dist-un" style="display:block;font-size:12px;font-weight:700;margin-top:8px">Digite o número da unidade para confirmar</label>'+
+      '<input type="text" id="cd-dist-un" autocomplete="off" data-un="'+un+'" oninput="condDistratoConferir()" style="width:9em;max-width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:6px 8px">'+
+      '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button type="button" class="cd-bt" id="cd-dist-ok" disabled onclick="condDistrato(COND_ABERTA)">Distratar unidade '+un+'</button>'+
       '<button type="button" class="cd-bt" onclick="condDistratoAbrir(false)">Cancelar</button></div>'+
     '</div>'+
     '<div id="cd-dist-aviso" style="font-size:13px;margin-top:8px"></div>'+
@@ -2727,7 +2733,13 @@ function condDistratoHtml(l){
 function condDistratoAbrir(abrir){
   const b=document.getElementById("cd-dist-box"); if(!b) return;
   b.style.display=(abrir===false)?"none":"block";
+  const u=document.getElementById("cd-dist-un"); if(u){ u.value=""; condDistratoConferir(); }
   const t=document.getElementById("cd-dist-motivo"); if(t&&abrir!==false) setTimeout(()=>t.focus(),50);
+}
+/* Onda 2 (ux): "Distratar unidade N" só habilita quando o número digitado bate com a unidade (no lugar da caixa nativa de confirmação) */
+function condDistratoConferir(){
+  const u=document.getElementById("cd-dist-un"), ok=document.getElementById("cd-dist-ok"); if(!u||!ok) return;
+  ok.disabled=String(u.value).trim().toLowerCase()!==String(u.getAttribute("data-un")||"").trim().toLowerCase()||!String(u.value).trim();
 }
 async function condDistrato(id){
   const l=COND&&COND.linhas.find(x=>x.id===id); if(!l) return;
@@ -2737,7 +2749,8 @@ async function condDistrato(id){
   const motivo=((document.getElementById("cd-dist-motivo")||{}).value||"").trim();
   if(!pid){ av.style.color="var(--vermelho)"; av.textContent="Esta venda não tem proposta ligada (ID PROPOSTA)."; return; }
   if(!motivo){ av.style.color="var(--vermelho)"; av.textContent="Escreva o motivo do distrato."; return; }
-  if(!confirm("Confirmar o DISTRATO da unidade "+un+"?\n\nA venda sai da lista de vendas do condomínio (fica guardada nos distratos) e a unidade volta a DISPONÍVEL.")) return;
+  const campoUn=document.getElementById("cd-dist-un");
+  if(campoUn && String(campoUn.value).trim().toLowerCase()!==un.trim().toLowerCase()){ av.style.color="var(--vermelho)"; av.textContent="Digite o número da unidade ("+un+") para confirmar."; return; }
   const ok=document.getElementById("cd-dist-ok"); if(ok) ok.disabled=true;
   const t0=Date.now();
   const pintar=()=>{ av.style.color=""; av.innerHTML='<span class="load"></span> Copiando a venda e os arquivos para os distratos, tirando a linha da lista de vendas e liberando a unidade… '+Math.round((Date.now()-t0)/1000)+' s'; };
