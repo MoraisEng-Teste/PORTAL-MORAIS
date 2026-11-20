@@ -20,7 +20,8 @@
  * 10/11/2026 (dono): cores da logo do Reserva dos Ipês e a logo (assets/logo-ipes-arvore.jpg) no topo.
  * ------------------------------------------------------------------- */
 (function(){
-  var BASE = 'https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/';
+  /* pasta da própria página (serve no teste e na produção); o endereço do script, quando existe, tem prioridade */
+  var BASE = new URL('.', location.href).href;
   try{ if(document.currentScript && document.currentScript.src) BASE = document.currentScript.src.replace(/[^\/]*$/, ''); }catch(e){}
 
   function carregar(src){
