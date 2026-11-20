@@ -1191,6 +1191,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
             <option value="INCOMPLETO">Cadastro incompleto</option>
             <option value="COMPLETO">Cadastro completo</option>
           </select>
+          <label class="cd-chk"><input type="checkbox" id="cd-proc" onchange="try{localStorage.setItem('cd_proc',this.checked?'1':'0')}catch(e){};condRender()"> Colunas do processo</label>
           <label class="cd-chk"><input type="checkbox" id="cd-todas" onchange="try{localStorage.setItem('cd_todas',this.checked?'1':'0')}catch(e){};condRender()"> Todas as colunas<span id="cd-todas-n"></span></label>
           <button class="cd-bt" onclick="condCarregar(true)">↻ Atualizar</button>
           <span class="count" id="cd-count"></span>
@@ -2147,6 +2148,7 @@ let COND=null, COND_ABERTA=null, COND_CARREGANDO=false;
 /* 31/10/2026: aba aberta no cartão do condomínio — fica a mesma ao redesenhar e ao abrir outra unidade */
 let COND_ABA="resumo";
 const CD_ABAS=[["resumo","Resumo"],["prereserva","Reserva"],["documentos","Documentos"],["contrato","Contrato"],["financeiro","Financeiro"],["andamento","Andamento"]];
+const CD_CURTA=["ETAPA","PROPONENTE","CORRETOR","IMOBILIÁRIA","CORRESPONDENTE","DATA DA VENDA","VALOR DE VENDA","DATA DE ASSINATURA DO CONTRATO","STATUS DO CADASTRO","PENDÊNCIAS"];
 const CD_PADRAO=["UNIDADE","CONDOMÍNIO","PROPONENTE","CORRETOR","CPF CORRETOR","STATUS DO CADASTRO","DATA DA VENDA","VALOR DE VENDA","COMISSÃO",
   "VALOR DO CRÉDITO","VALOR DA PARCELA","DATA DE ASSINATURA DO CONTRATO","DIA PAGAMENTO PARCELAS","DATA DA ENTREGA",
   "DATA SINAL 30 DIAS","DATA SINAL 60 DIAS","DATA SINAL 90 DIAS",
@@ -2205,6 +2207,7 @@ async function condCarregar(forcar){
 function condOpcoesCond(){
   const sel=document.getElementById("cd-cond"); if(!sel||!COND) return;
   try{ const t=localStorage.getItem("cd_todas"); const ck=document.getElementById("cd-todas"); if(ck&&t!==null) ck.checked=(t==="1"); }catch(e){}
+  try{ const t=localStorage.getItem("cd_proc"); const ck=document.getElementById("cd-proc"); if(ck&&t!==null) ck.checked=(t==="1"); }catch(e){}
   let guardado=""; try{ guardado=localStorage.getItem("cd_cond")||""; }catch(e){}
   const atual=sel.value||guardado;
   const nomes=[...new Set(COND.linhas.map(l=>String(cdVal(l,"CONDOMÍNIO")||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
@@ -2244,6 +2247,13 @@ function condColunas(){
   const todas=document.getElementById("cd-todas").checked;
   const mapa={}; COND.colunas.forEach(c=>{ mapa[cdNorm(c.nome)]=c; });
   const tit=COND.titulo, usados=new Set([tit]), out=[mapa[cdNorm(tit)]];
+  /* 20/11/2026 (usabilidade): sem nenhuma caixa marcada a planilha abre com a lista curta (medido: a lista
+     "do processo" tinha 94 colunas e 15.619 px). "Colunas do processo" traz a de antes; "Todas" traz tudo. */
+  const proc=(document.getElementById("cd-proc")||{}).checked;
+  if(!todas&&!proc){
+    CD_CURTA.forEach(n=>{ const c=mapa[cdNorm(n)]; if(c&&!usados.has(c.nome)){ usados.add(c.nome); out.push(c); } });
+    return out.filter(c=>c);
+  }
   cdOrdemRua().forEach(n=>{ const c=cdAchaColuna(n,usados); if(c){ usados.add(c.nome); out.push(c); } });
   CD_PADRAO.forEach(n=>{ const c=mapa[cdNorm(n)]; if(c&&!usados.has(c.nome)){ usados.add(c.nome); out.push(c); } });
   if(todas) COND.colunas.forEach(c=>{ if(c.tipo!=="files"&&!usados.has(c.nome)){ usados.add(c.nome); out.push(c); } });
@@ -3019,7 +3029,8 @@ function condEtapaContar(d){
   });
   const concl=dec>0&&falta===0;
   d.dataset.concl=concl?"1":"";
-  const t=d.querySelector(".cd-et-n"); if(t) t.textContent=n+" de "+total;
+  /* etapa concluída com caixa opcional desmarcada mostrava "4 de 6 · concluída": quando concluída, some a contagem */
+  const t=d.querySelector(".cd-et-n"); if(t) t.textContent=(concl&&n<total)?"":n+" de "+total;
   const ok=d.querySelector(".cd-et-ok"); if(ok) ok.hidden=!concl;
 }
 function condEtapasRotulo(){
@@ -5258,7 +5269,7 @@ function pnEtapasHtml(grupos,gradeDe,V,pageId,sensPendente){
     grupos.map((g,i)=>{
       const k=chave(g), r=res[i];
       return `<details class="pn-etapa" data-etapa="${esc(k)}"${PN_ET.abertas[k]?" open":""}><summary class="grp"><span class="pn-et-t">${esc(g.titulo)}</span>`+
-        `<span class="pn-et-n">${r.preenchidos} de ${r.total}</span>${r.concluida?'<span class="chip ok">concluída</span>':""}</summary>${gradeDe(g.campos)}</details>`;
+        `<span class="pn-et-n">${(r.concluida&&r.preenchidos<r.total)?"":r.preenchidos+" de "+r.total}</span>${r.concluida?'<span class="chip ok">concluída</span>':""}</summary>${gradeDe(g.campos)}</details>`;
     }).join("");
 }
 /* 04/11/2026 (dono): o que falta para gerar o contrato da casa vira a caixa do campo dentro da aba Contrato

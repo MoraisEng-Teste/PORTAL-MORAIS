@@ -55,7 +55,8 @@ test("ao abrir ficam abertas a primeira não concluída e a seguinte; OUTROS fec
   const html = ctx.pnEtapasHtml(GRUPOS(), grade, V, "pg1", false);
   const abertas = [...html.matchAll(/<details class="pn-etapa" data-etapa="([^"]+)"( open)?>/g)].map((m) => [m[1], !!m[2]]);
   assert.deepEqual(abertas, [["A", false], ["B", true], ["C", true], ["OUTROS CAMPOS", false]]);
-  assert.match(html, /2 de 3/);
+  /* etapa concluída com caixa opcional vazia não mostra "2 de 3" ao lado de "concluída" (confundia na tela) */
+  assert.doesNotMatch(html, /2 de 3/);
   assert.match(html, /<span class="chip ok">concluída<\/span>/);
   assert.match(html, /id="pn-et-todas"[^>]*>Fechar todas</);
 });
