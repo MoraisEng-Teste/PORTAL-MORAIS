@@ -226,6 +226,10 @@
     opacity:0;pointer-events:none;padding:0;border:0;}
   .bt-cal{flex:0 0 46px;padding:0;background:#fff;border:1px solid var(--borda);border-radius:6px;font-size:18px;line-height:1;cursor:pointer;}
   input.data-invalida{border-color:#B0431F !important;box-shadow:0 0 0 3px rgba(176,67,31,.18) !important;}
+  /* comissão do corretor: escondida por padrão (o cliente pode estar olhando a tela); botão mostra/esconde */
+  body:not(.com-ver) .com-info{display:none!important;}
+  .bt-com{background:none;border:1px dashed var(--marrom2,#7A4A16);color:var(--marrom,#4A2A0C);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;}
+  @media(max-width:640px){.bt-com{min-height:44px;font-size:14px;}}
 </style>
 </head>
 <body>
@@ -615,11 +619,15 @@
       <div class="campo full" style="margin-bottom:16px;">
         <label>Prazo de parcelamento da entrada<span class="obrig">*</span></label>
         <div class="prazo-opts" id="prazoOpts">
-          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="24" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="24">24 meses</b><small>comissão 5,00%</small></label>
-          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="36" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="36">36 meses</b><small>comissão 4,75%</small></label>
-          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="48" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="48">48 meses</b><small>comissão 4,50%</small></label>
+          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="24" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="24">24 meses</b><small class="com-info">comissão 5,00%</small></label>
+          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="36" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="36">36 meses</b><small class="com-info">comissão 4,75%</small></label>
+          <label class="prazo-opt"><input type="radio" name="prazoEntrada" value="48" onchange="atualizarComissao();montarFluxo();atualizarFiadorExigido()"><b class="prazo-n" data-base="48">48 meses</b><small class="com-info">comissão 4,50%</small></label>
         </div>
-        <div class="comissao-box"><span>Comissão do corretor</span><b id="comissaoTxt">Escolha o prazo</b></div>
+        <button type="button" class="bt-com" id="btCom" aria-pressed="false">Ver minha comissão</button>
+        <script>(function(){var b=document.getElementById('btCom');if(!b)return;var v=false;try{v=sessionStorage.getItem('ux_comissao')==='1';}catch(e){}
+          function ap(){document.body.classList.toggle('com-ver',v);b.textContent=v?'Esconder comissão':'Ver minha comissão';b.setAttribute('aria-pressed',v?'true':'false');}
+          ap();b.onclick=function(){v=!v;ap();try{sessionStorage.setItem('ux_comissao',v?'1':'0');}catch(e){}};})();</script>
+        <div class="comissao-box com-info"><span>Comissão do corretor</span><b id="comissaoTxt">Escolha o prazo</b></div>
       </div>
       <!-- r97f (31/10/26, dono): mês da 1ª parcela pré-chaves -->
       <div class="campo full" style="margin-bottom:16px;">
@@ -3019,7 +3027,7 @@
          moeda(f.rendaAprovadaConjuge.value) && !f.origemRendaConjuge.value.trim())
         return erro('Escolha a <b>origem da renda do cônjuge</b>.', f.origemRendaConjuge);
       if(!prazoEscolhido())
-        return erro('Escolha o <b>prazo total da entrada</b> — é ele que define a comissão do corretor.', document.getElementById('prazoOpts'));
+        return erro('Escolha o <b>prazo total da entrada</b>.', document.getElementById('prazoOpts'));
       if(ULTIMO_CALCULO && ULTIMO_CALCULO.erroPrazo) return erro(ULTIMO_CALCULO.erroPrazo + '.', document.getElementById('primeiraOpts'));
       /* r96d — valor para a entrada: no mínimo o sinal desta unidade */
       montarFluxo();
