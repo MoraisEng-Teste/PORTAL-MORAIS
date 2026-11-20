@@ -1992,3 +1992,39 @@ const GRUPOS_ORDEM=["SETORES","PROCESSOS E ARQUIVOS","ANÁLISES","MAPAS","REUNI�
     if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",iniciar); else iniciar();
   })();
 })();
+
+/* 20/11/26 — TECLADO NOS CLICÁVEIS (Onda 3 de usabilidade)
+   Todo elemento com onclick="..." que não seja link, botão, campo, label ou
+   summary (div, span, td, tr…) vira "botão" para o teclado: role=button,
+   tabindex=0 e Enter/Espaço fazem o clique. Vale também para o que a tela
+   criar depois (mesmo observador de sempre). Pula o fundo de janela (o que
+   fecha ao clicar fora: onclick com "event.target===this") e quem está dentro
+   de um link ou botão. Não mexe em role/tabindex que a tela já definiu. */
+(function tecladoNosClicaveis(){
+  if(typeof document==="undefined") return;
+  const PULAR=/^(A|BUTTON|INPUT|SELECT|TEXTAREA|LABEL|SUMMARY|OPTION|BODY|HTML)$/;
+  const FUNDO=/\b(?:event|ev|e)\.target\s*===?\s*this\b/;
+  function aplicar(raiz){
+    (raiz||document).querySelectorAll("[onclick]:not([data-mp-kb])").forEach(el=>{
+      if(PULAR.test(el.tagName)) return;
+      el.setAttribute("data-mp-kb","0");
+      if(FUNDO.test(el.getAttribute("onclick")||"")) return;
+      if(el.closest("a,button,summary,label")) return;
+      if(!el.hasAttribute("role")) el.setAttribute("role","button");
+      if(!el.hasAttribute("tabindex")) el.setAttribute("tabindex","0");
+      el.setAttribute("data-mp-kb","1");
+    });
+  }
+  document.addEventListener("keydown",ev=>{
+    if(ev.defaultPrevented||ev.altKey||ev.ctrlKey||ev.metaKey) return;
+    if(ev.key!=="Enter"&&ev.key!==" "&&ev.key!=="Spacebar") return;
+    const el=ev.target;
+    if(!el||!el.getAttribute||el.getAttribute("data-mp-kb")!=="1") return;
+    ev.preventDefault();
+    el.click();
+  });
+  let agendado=false;
+  const obs=new MutationObserver(()=>{ if(agendado) return; agendado=true; requestAnimationFrame(()=>{ agendado=false; aplicar(); }); });
+  function iniciar(){ aplicar(); obs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["onclick"]}); }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",iniciar); else iniciar();
+})();
