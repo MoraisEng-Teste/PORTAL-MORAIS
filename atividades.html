@@ -1037,7 +1037,7 @@ async function ckMarcar(id,i,f){
 }
 async function ckExcluir(id){
   const c=CKS.checklists.find(x=>x.id===id); if(!c) return;
-  if(!c.concluido&&!confirm(`Apagar o checklist "${c.nome}"?`)) return;
+  if(!c.concluido&&!await moraisConfirmar("Apagar o checklist", `Apagar o checklist "${c.nome}"?`, "Apagar checklist", true)) return;
   const antes=CKS.checklists.slice(); CKS.checklists=CKS.checklists.filter(x=>x!==c); pintarLado(); ckGuardar();
   if(String(id).indexOf("tmp")===0) return;
   let r=null; try{ r=await chamar({action:"ckExcluir",id},45000,true); }catch(e){}
@@ -1226,8 +1226,8 @@ function pintarCampos(a){
   </div>`;
 }
 function porResp(id,pid){ const a=acha(id); if(!a||!pid) return; gravar(id,"resp",(a.resp||[]).map(u=>u.id).concat([pid])); }
-function tirarResp(id,pid){ const a=acha(id); if(!a) return; const l=(a.resp||[]).map(u=>u.id).filter(x=>x!==pid);
-  if(!l.length&&!confirm("Deixar a atividade sem responsável?")) return; gravar(id,"resp",l); }
+async function tirarResp(id,pid){ const a=acha(id); if(!a) return; const l=(a.resp||[]).map(u=>u.id).filter(x=>x!==pid);
+  if(!l.length&&!await moraisConfirmar("Sem responsável", "Deixar a atividade sem responsável?", "Deixar sem responsável")) return; gravar(id,"resp",l); }
 
 /* ---------- comentários ----------
  * 29/09 — SEMPRE COM AS MENSAGENS NOVAS
@@ -1382,12 +1382,12 @@ async function excluirComentario(cid){
   const id=ABERTA; if(!id||!cid) return;
   const m=(_coms||[]).find(x=>x.id===cid);
   const prev=m&&m.texto?`\n\n"${String(m.texto).replace(/@\[([^|\]]+)\|[^\]]+\]/g,"@$1").slice(0,120)}${String(m.texto).length>120?"…":""}"`:"";
-  if(!confirm("Excluir este comentário? Não dá para desfazer."+prev)) return;
+  if(!await moraisConfirmar("Excluir o comentário", "Excluir este comentário? Não dá para desfazer."+prev, "Excluir comentário", true)) return;
   const el=document.querySelector(`#pa-chat .msg[data-cid="${CSS.escape(cid)}"]`); if(el) el.style.opacity=".4";
   let r=null; try{ r=await chamar({action:"atvComentarioExcluir",pageId:id,comentarioId:cid},30000,true); }catch(e){ r=null; }
   if(!(r&&r.ok)){
     if(el) el.style.opacity="";
-    alert("Não consegui excluir: "+((r&&r.mensagem)||msgErro(r)));
+    await moraisAviso("Não excluiu", "Não consegui excluir: "+((r&&r.mensagem)||msgErro(r)));
     return;
   }
   if(ABERTA!==id) return;
@@ -1499,7 +1499,7 @@ async function retomarPendentes(){
   for(const m of l) await mandar(m.id);
 }
 function reenviarComentario(tid){ if(_PEND[tid]) mandar(tid); }
-function descartarComentario(tid){ if(!confirm("Descartar esta mensagem? Ela não foi enviada.")) return; pendTirar(tid); pintarChat(); }
+async function descartarComentario(tid){ if(!await moraisConfirmar("Descartar a mensagem", "Descartar esta mensagem? Ela não foi enviada.", "Descartar", true)) return; pendTirar(tid); pintarChat(); }
 /* fechar no meio do envio: a mensagem fica guardada e continua quando a aba Atividades abrir de novo */
 
 /* ---------- formulários (v3 — 25/09 noite) ----------
@@ -1792,7 +1792,7 @@ async function salvarModelo(id){
   tmp.id=r.id||tmp.id; delete tmp._salvando; delete tmp._p; cacheSet("atv_modelos",MOD); pintarLado(); toast("Checklist pronto salvo.");
 }
 async function excluirModelo(id){
-  if(!confirm("Excluir este checklist pronto? (As atividades já geradas continuam.)")) return;
+  if(!await moraisConfirmar("Excluir o checklist pronto", "Excluir este checklist pronto? (As atividades já geradas continuam.)", "Excluir checklist", true)) return;
   const r=await chamar({action:"atvModeloExcluir",id},45000,true).catch(()=>null);
   if(r&&r.ok){ MOD.modelos=MOD.modelos.filter(m=>m.id!==id); cacheSet("atv_modelos",MOD); fecharForm(); pintarLado(); }
   else toast("Não excluiu: "+msgErro(r));
