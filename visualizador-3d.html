@@ -269,6 +269,11 @@ body.drone #drone-pad{display:grid}
   .hsub,#gerado{display:none}
   .bt kbd{display:none}
 }
+/* 20/11/26 — celular: alvo de toque de 44 px e campos de 16 px (abaixo disso o iOS dá zoom ao focar) */
+@media(max-width:680px){
+  input,select,textarea{font-size:16px}
+  .bt,.hbtn,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){min-height:44px}
+}
 </style>
 </head>
 <body>

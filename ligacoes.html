@@ -379,8 +379,8 @@ th.ord.on .seta{opacity:1}
   /* 16px nos campos: abaixo disso o iOS dá zoom sozinho ao focar e não volta */
   input,select,textarea{font-size:16px}
   .wrap{padding:0 12px}
-  /* nada de alvo de toque menor que ~40px */
-  .bt,button.tab,.btn-voltar,.sair,.btn-sync{min-height:40px}
+  /* alvo de toque de 44 px (20/11/26) */
+  .bt,.bt-mini,button.tab,.tg,.btema,.btn-voltar,.sair,.btn-sync,select:not(.ce),input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not(.ce){min-height:44px}
 
   /* cabeçalho: cabia em uma linha no computador, no celular virava meia tela */
   .hbar{gap:9px;padding:10px 0;flex-wrap:nowrap}

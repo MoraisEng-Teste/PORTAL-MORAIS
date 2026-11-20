@@ -634,8 +634,8 @@ body{display:flex;flex-direction:column;min-height:100vh}
   /* toque: nada de alvo menor que ~40px, e fonte 16px nos inputs (abaixo
      disso o iOS dá zoom sozinho ao focar o campo) */
   input,select,textarea{font-size:16px}
-  .bt,.bt-mini,button{min-height:40px}
-  .bt-mini{min-height:34px}
+  /* 20/11/26: 44 px, como pede a regra de toque */
+  .bt,.bt-mini,button,select:not(.ce),input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not(.ce){min-height:44px}
 
   /* cabeçalho */
   .topo,.hdr{flex-wrap:wrap;gap:8px;padding:10px 12px}

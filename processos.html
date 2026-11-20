@@ -263,7 +263,9 @@ html[data-tema="escuro"] .atv.atr .nm{color:#f3a29a}
 }
 @media(max-width:900px){ .hupd{display:none} .resumo{grid-template-columns:1fr 1fr} }
 @media(max-width:680px){
-  input,select{font-size:16px}
+  input,select,textarea{font-size:16px}
+  /* 20/11/26: alvo de toque de 44 px */
+  .bt,.bt-mini,.tab,.tg,.sair,.btema,.btn-voltar,.btn-sync,select:not(.ce),input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not(.ce){min-height:44px}
   main{padding:16px 10px 60px}
   .tab{padding:10px 14px;font-size:13px}
   .tabs-outer{justify-content:flex-start}

@@ -261,6 +261,11 @@ tbody tr.clicavel:hover td{background:var(--bg3)}
    respiro em cima também, pra separar do bloco anterior. */
 section > .sec{margin-top:26px}
 section > .sec:first-child{margin-top:0}
+/* 20/11/26 — celular: alvo de toque de 44 px e campos de 16 px (abaixo disso o iOS dá zoom ao focar) */
+@media(max-width:680px){
+  input,select,textarea{font-size:16px}
+  .tab,.seg-bt,.bt,.sair,.btema,.btn-voltar,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){min-height:44px}
+}
 </style>
 </head>
 <body>

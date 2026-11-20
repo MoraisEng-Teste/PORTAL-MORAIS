@@ -299,6 +299,11 @@ iframe.pdf{display:block;width:100%;height:min(72vh,720px);border:0;background:#
 .ag-x{border-style:dashed}
 @media (max-width:520px){.ag-l{grid-template-columns:1fr}}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--azul-esc);color:#fff;font-weight:600;font-size:13px;padding:10px 16px;border-radius:10px;box-shadow:0 10px 26px rgba(0,0,0,.3);z-index:60;max-width:calc(100% - 32px)}
+/* 20/11/26 — celular: alvo de toque de 44 px e campos de 16 px (abaixo disso o iOS dá zoom ao focar) */
+@media(max-width:680px){
+  input,select,textarea{font-size:16px}
+  .bt,.hbtn,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){min-height:44px}
+}
 </style>
 </head>
 <body>

@@ -104,6 +104,17 @@ button:disabled{opacity:.6;cursor:wait}
 details.tab summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--ma)}
 .dica{position:fixed;pointer-events:none;background:var(--azul-esc);color:#fff;font-size:12.5px;border-radius:7px;padding:6px 9px;white-space:nowrap;transform:translate(-50%,-120%);z-index:8;display:none}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--azul-esc);color:#fff;padding:10px 16px;border-radius:9px;max-width:90vw;z-index:9}
+/* 20/11/26 — celular: alvo de toque de 44 px, campos de 16 px e tabelas rolando dentro do próprio quadro */
+@media(max-width:680px){
+  main{padding:14px 10px 40px}
+  input,select,textarea,.filtros.analise select,.filtros.analise input[type=month]{font-size:16px}
+  button,.hbtn,.chip,.num,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){min-height:44px}
+  .quadro,.bloco{min-width:0}
+  .rola{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .rola table{min-width:560px}
+  .hbar{padding:10px 12px}
+  .htitle{font-size:19px}
+}
 </style>
 </head>
 <body>

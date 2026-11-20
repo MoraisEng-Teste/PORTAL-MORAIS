@@ -291,6 +291,11 @@ html[data-tema="escuro"] .tag.gen{color:#E3AE4B}html[data-tema="escuro"] .tag.de
 .lista-ed input{padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--sup);font-size:12.5px}
 @media print{header,.crumb,.tabs-outer,.gfil{display:none}}
 .anxs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.anx{display:inline-block;font:700 11px 'Barlow',sans-serif;padding:2px 8px;border-radius:12px;border:1px solid rgba(41,87,120,.35);background:rgba(41,87,120,.07);color:var(--azul,#295778);text-decoration:none;white-space:nowrap}a.anx:hover{background:var(--azul,#295778);color:#fff}.anx.venc{opacity:.55;cursor:help}.anx0{color:#b9770e;margin-top:4px}.anx.mc{border-color:rgba(42,157,92,.45);background:rgba(42,157,92,.08);color:#1f7a46}a.anx.mc:hover{background:#2a9d5c;color:#fff}html[data-tema="escuro"] .anx{color:#8fdcd2;border-color:rgba(143,220,210,.4);background:rgba(143,220,210,.08)}
+/* 20/11/26 — celular: alvo de toque de 44 px e campos de 16 px (abaixo disso o iOS dá zoom ao focar) */
+@media(max-width:680px){
+  input,select,textarea{font-size:16px}
+  .bt,.tab,.seg-bt,.vbt,.btn-voltar,.sair,.btema,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){min-height:44px}
+}
 </style>
 </head>
 <body>

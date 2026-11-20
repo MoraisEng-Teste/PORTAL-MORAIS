@@ -699,6 +699,11 @@ button.cfg-ir.bt:hover{background:rgba(41,87,120,.1)}
 .svg-ch svg text{fill:var(--text3);font-size:11px;font-family:'Barlow',sans-serif}
 .leg-l{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 8px;font-size:12px;color:var(--text)}
 .leg-l i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+/* 20/11/26 — celular: alvo de toque de 44 px e campos de 16 px (abaixo disso o iOS dá zoom ao focar) */
+@media(max-width:680px){
+  input,select,textarea{font-size:16px}
+  .pt-tab,.nav-btn,.btn-volta-dash,.sub-tab,.cfg-btn,.pt-bt,.pt-ghost,.pt-voltar,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){min-height:44px}
+}
 </style>
 </head>
 <body>

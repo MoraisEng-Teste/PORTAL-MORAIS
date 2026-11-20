@@ -126,6 +126,11 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
 .regra code{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--text4)}
 .resumo{padding:12px 14px;margin:0;border-top:1px solid var(--border2)}
 .rodape{font-size:11px;color:var(--text4);text-align:right}
+/* 20/11/26 — celular: alvo de toque de 44 px e campos de 16 px (abaixo disso o iOS dá zoom ao focar) */
+@media(max-width:680px){
+  input,select,textarea{font-size:16px}
+  .btn,.hbtn,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){min-height:44px}
+}
 </style>
 </head>
 <body>
