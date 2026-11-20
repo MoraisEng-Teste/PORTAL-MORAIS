@@ -438,6 +438,9 @@
   var TRAVADOS = { tipoPessoa:'Fisica', tipoImovel:'Residencial',
     categoriaImovel:'Aquisição de Imóvel Novo', uf:'GO', municipio:'SENADOR CANEDO',
     };
+  /* identifica este envio: as 3 tentativas de rede levam o mesmo id (o servidor pode usar para não duplicar) */
+  var ID_ENVIO = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+               : ('E'+Date.now()+'-'+Math.random().toString(36).slice(2));
   var COMISSAO = { '24':0.05, '36':0.0475, '48':0.045 };
 
   var UNIDADES=[];
@@ -1093,6 +1096,7 @@
       e.target.emailDestino.focus(); return;
     }
     if(!document.getElementById('aceite').checked){ mostrarStatus('erro','Marque a <b>autorização de uso dos dados</b> para enviar.'); return; }
+    if(!document.getElementById('ciencia').checked){ mostrarStatus('erro','Marque a <b>declaração de ciência</b> de que a simulação é uma estimativa.'); document.getElementById('ciencia').focus(); return; }
     var f=e.target,botao=f.querySelector('button[type="submit"]'),textoBotao=botao.textContent;
     var prazo=(document.querySelector('[name="prazoEntrada"]:checked')||{}).value||'48';
     var dados=Object.assign({},TRAVADOS,{
@@ -1137,6 +1141,7 @@
       nomeCliente:padrao(f.nomeCliente.value), cpfCliente:padraoCpf(f.cpfCliente.value),
       emailDestino:padraoEmail(f.emailDestino.value), emailCopia:EMAIL_COPIA,
       /* r62 — a unidade estava reservada no envio (o servidor confere) */
+      idEnvio:ID_ENVIO,
       unidadeReservada:ehReservada(u) });
     botao.disabled=true; mostrarStatus('processando','Enviando sua solicitação...');
     try{
