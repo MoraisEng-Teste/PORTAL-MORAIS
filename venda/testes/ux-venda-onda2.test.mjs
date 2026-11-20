@@ -161,3 +161,20 @@ test("item 6: abrir a página com #setor/<slug>/<aba> reabre setor e aba, nunca 
   const m = navegador(); m.navIniciar(); m.abrirSetor("Secretaria de Vendas"); m.abrirObra("0123456789abcdef0123456789abcdef");
   assert.ok(m.pilha.every((p) => !/[0-9a-f]{32}/.test(p.url)), "nenhum endereço tem o id");
 });
+
+test("item 7: Mais Controle confere sozinho — decisões, texto e limites", () => {
+  assert.equal(D.MC_CONFERE_MS, 20000);
+  assert.equal(D.MC_CONFERE_MAX_MS, 240000);
+  assert.equal(D.decidirConferenciaMC("PROCESSANDO [t=1]", "PROCESSANDO [t=1]", 20000), "continuar");
+  assert.equal(D.decidirConferenciaMC("PROCESSANDO [t=1]", "PROCESSANDO [t=99]", 40000), "continuar", "o carimbo não conta como mudança");
+  assert.equal(D.decidirConferenciaMC("PROCESSANDO", "PRÉVIA OK", 40000), "mudou");
+  assert.equal(D.decidirConferenciaMC("PROCESSANDO", "PROCESSANDO", 240000), "prazo");
+  assert.equal(D.decidirConferenciaMC("PROCESSANDO", "PROCESSANDO", 239999), "continuar");
+  assert.match(D.textoConferindoMC(new Date(2026, 10, 20, 9, 5).getTime()), /^Pedido feito às 09:05 · conferindo sozinho…$/);
+  const h = D.htmlMC({ situacao: "ainda não lançada", vendaId: "" }, { conferindo: new Date(2026, 10, 20, 14, 30).getTime() });
+  assert.match(tudo(h), /Pedido feito às 14:30 · conferindo sozinho…/);
+  assert.match(h, /data-acao="mc-atualizar"/, "o botão Atualizar continua lá");
+  assert.doesNotMatch(tudo(D.htmlMC({ situacao: "", vendaId: "" }, {})), /conferindo sozinho/);
+  assert.doesNotMatch(dossie, /em 1 a 3 minutos clique em Atualizar/);
+  assert.equal((dossie.match(/function conferirSozinhoMC/g) || []).length, 1, "uma conferência por vez: um único laço");
+});

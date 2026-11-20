@@ -1593,6 +1593,17 @@
     if (quando > hoje) quando.setFullYear(quando.getFullYear() - 1);   /* virada de ano */
     return hoje - quando > 10 * 60 * 1000;
   }
+  /* Onda 2 (ux), item 7: depois de pedir algo ao Mais Controle a tela confere sozinha (mesma leitura do botão Atualizar) a cada
+     20 s, por até 4 min, e para quando o estado mudar, o cartão fechar ou o prazo acabar. Aqui só as decisões (testáveis). */
+  var MC_CONFERE_MS = 20000, MC_CONFERE_MAX_MS = 4 * 60 * 1000;
+  function situacaoSemCarimbo(s) { return String(s || "").replace(/\s*\[t=\d+\]/g, "").trim(); }
+  /* "continuar" | "mudou" (o estado é outro: para) | "prazo" (4 min sem mudar: para e mostra o Atualizar) */
+  function decidirConferenciaMC(base, atual, decorridoMs) {
+    if (situacaoSemCarimbo(atual) !== situacaoSemCarimbo(base)) return "mudou";
+    return decorridoMs >= MC_CONFERE_MAX_MS ? "prazo" : "continuar";
+  }
+  function horaCurta(ms) { var d = new Date(ms), p = function (n) { return (n < 10 ? "0" : "") + n; }; return p(d.getHours()) + ":" + p(d.getMinutes()); }
+  function textoConferindoMC(inicioMs) { return "Pedido feito às " + horaCurta(inicioMs) + " · conferindo sozinho…"; }
   function htmlMC(e, u) {
     /* PROCESSANDO com mais de 15 min (carimbo [t=ms]) = o robô não respondeu: libera pedir de novo */
     var tProc = e && /\[t=(\d+)\]/.exec(e.situacao || "");
@@ -1617,6 +1628,7 @@
         '" target="_blank" rel="noopener noreferrer">Abrir no Mais Controle</a></div>';
     }
     if (processando) h += '<div class="dz-linha"><b>o Mais Controle está trabalhando… (1 a 3 minutos)</b></div>';
+    if (u.conferindo) h += '<div class="dz-linha" role="status"><span class="dz-rot">' + esc(textoConferindoMC(u.conferindo)) + "</span></div>";
     var liberaLancar = /^PR[ÉE]VIA OK/i.test(sit) && !e.vendaId;
     var d = function (x) { return (x || testes) ? " disabled" : ""; };
     h += '<div class="dz-linha">';
@@ -1805,7 +1817,7 @@
                    htmlSoltar: htmlSoltar, pessoasDoEnvio: pessoasDoEnvio, conferirEscolhas: conferirEscolhas,
                    destinosDoEnvio: destinosDoEnvio, resultadoPorEspaco: resultadoPorEspaco,
                    resumo: resumo, escala: escala, tipoAceito: tipoAceito, painelCarregando: painelCarregando,
-                   htmlContrato: htmlContrato, htmlContratoLeitura: htmlContratoLeitura, MSG_SO_LEITURA: MSG_SO_LEITURA, htmlReservaContrato: htmlReservaContrato, MSG_RESERVA_VENCIDA: MSG_RESERVA_VENCIDA, etapaContrato: etapaContrato, estadoContrato: estadoContrato, mensagemContrato: mensagemContrato, htmlMC: htmlMC, pedidoParado: pedidoParado, mensagemMC: mensagemMC,
+                   htmlContrato: htmlContrato, htmlContratoLeitura: htmlContratoLeitura, MSG_SO_LEITURA: MSG_SO_LEITURA, htmlReservaContrato: htmlReservaContrato, MSG_RESERVA_VENCIDA: MSG_RESERVA_VENCIDA, etapaContrato: etapaContrato, estadoContrato: estadoContrato, mensagemContrato: mensagemContrato, htmlMC: htmlMC, decidirConferenciaMC: decidirConferenciaMC, textoConferindoMC: textoConferindoMC, MC_CONFERE_MS: MC_CONFERE_MS, MC_CONFERE_MAX_MS: MC_CONFERE_MAX_MS, pedidoParado: pedidoParado, mensagemMC: mensagemMC,
                    topicosMC: topicosMC, MC_URL_VENDA: MC_URL_VENDA, htmlTestemunhas: htmlTestemunhas, htmlConjugePR: htmlConjugePR,
                    htmlCampos: htmlCampos, htmlConta: htmlConta, htmlFluxo: htmlFluxo, htmlFluxoVivo: htmlFluxoVivo, htmlFluxoDesconto: htmlFluxoDesconto, htmlFluxoBem: htmlFluxoBem, aplicarCrlv: aplicarCrlv, permutaSemBem: permutaSemBem, guiarEditor: guiarEditor, fxMexeu: fxMexeu, travarLinha: travarLinha, aplicarSugestao: aplicarSugestao, limparGuia: limparGuia, travasAoApagar: travasAoApagar, faltasDoBem: faltasDoBem, campoBem: campoBem, lerNumBR: lerNumBR, contaDoEstado: contaDoEstado, pedidoCampos: pedidoCampos,
                    contaDasEntradas: contaDasEntradas, faltasDaResposta: faltasDaResposta, detalheFluxoGravado: detalheFluxoGravado,
@@ -2277,7 +2289,7 @@
    * resposta de um conjunto que saiu da tela é descartada. Ao abrir, os três estados são
    * pedidos em paralelo, uma vez só: redesenhar a tela (anexar de novo) não pede outra vez. */
   function novoUiC() { return { ocupadoContrato: null, faltas: null, campos: null, rascunho: {}, msg: "", testes: perfilTestes() }; }
-  function novoUiM() { return { ocupado: null, msg: "", testes: perfilTestes() }; }
+  function novoUiM() { return { ocupado: null, msg: "", conferindo: null, testes: perfilTestes() }; }
   /* ---- 27/10/2026: Termo de Pré-Reserva (só no condomínio, antes do contrato) ----
    * e = { conta, gerado, nome, valor, dataLimite } (preReservaEstado); u = { msg, faltas, ocupado, testes }.
    * Comandos: pr-salvar-conta (grava a conta para devolução na linha), pr-gerar, pr-ver (PDF pelo portal). */
@@ -3699,25 +3711,34 @@
       pintarM();
       return r;
     }
-    function acompanharMC(voltas) {
+    /* uma conferência por vez (o pedido novo troca a anterior); sem laço sem fim: 20 s × até 4 min */
+    function conferirSozinhoMC(inicio, base) {
       if (esperaM) clearTimeout(esperaM);
+      uiM.conferindo = inicio; pintarM();
       esperaM = setTimeout(async function () {
         esperaM = null;
         if (!vivo()) return;
         var r = await carregarMC();
-        if (r && r.ok && /^PROCESSANDO/.test(r.situacao || "") && voltas > 1) acompanharMC(voltas - 1);
-      }, 10000);
+        if (!vivo()) return;
+        var d = decidirConferenciaMC(base, r && r.ok ? r.situacao : base, Date.now() - inicio);
+        if (d === "continuar") { conferirSozinhoMC(inicio, base); return; }
+        uiM.conferindo = null;
+        if (d === "prazo") uiM.msg = "O Mais Controle ainda não respondeu. Clique em Atualizar para conferir de novo.";
+        pintarM();
+      }, MC_CONFERE_MS);
     }
     async function aoClicarMC(acao) {
       if (uiM.ocupado) return;
-      if (acao === "mc-atualizar") { uiM.msg = ""; await carregarMC(); return; }
+      if (acao === "mc-atualizar") { uiM.msg = ""; await carregarMC(); return; }   /* o laço automático, se estiver rodando, segue sozinho */
       if (acao === "mc-anexar" || acao === "mc-anexar-zip") {   /* 03/11: AnexosMC.gs */
         uiM.ocupado = acao; uiM.msg = ""; pintarM();
         var ra = await chamarVenda({ action: "mcAnexar", pageId: pageId, zip: acao === "mc-anexar-zip" });
         if (!vivo()) return;
         uiM.ocupado = null;
-        uiM.msg = ra.ok ? "Pedido ao Mais Controle — em 1 a 3 minutos clique em Atualizar." : mensagemMC(ra);
+        uiM.msg = ra.ok ? "Pedido ao Mais Controle feito." : mensagemMC(ra);
+        var inicioA = Date.now();
         await carregarMC();
+        if (ra.ok && vivo() && estadoM) conferirSozinhoMC(inicioA, estadoM.situacao);
         return;
       }
       var aplicar = acao === "mc-lancar";
@@ -3727,8 +3748,9 @@
       if (!vivo()) return;
       uiM.ocupado = null;
       uiM.msg = r.ok ? (aplicar ? "Lançamento pedido ao Mais Controle." : "Prévia pedida ao Mais Controle.") : mensagemMC(r);
+      var inicioL = Date.now();
       await carregarMC();
-      if (r.ok) acompanharMC(24);
+      if (r.ok && vivo() && estadoM) conferirSozinhoMC(inicioL, estadoM.situacao);
     }
 
     /* Contrato. seqC: sobe a cada ação; resposta com seq diferente do capturado é descartada.
