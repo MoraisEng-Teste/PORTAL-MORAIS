@@ -747,7 +747,7 @@ function aplicar(r){
   D.atividades=r.atividades||[]; D.pessoas=r.pessoas||D.pessoas; D.opcoes=r.opcoes||D.opcoes;
   aplicarPendentes(D.atividades);                     // 28/09: o que ainda não foi confirmado vence o servidor
   if(r.me) ME=r.me;
-  if(r.aviso==="SEU_LOGIN_SEM_PESSOA") toast("Seu login não tem PESSOA no LOGINS do Notion — peça a um ADM para ligar.");
+  if(r.aviso==="SEU_LOGIN_SEM_PESSOA") toast("Seu login ainda não está ligado a uma pessoa. Peça a um ADM para acertar o cadastro.");
   document.getElementById("updated").textContent="Atualizado: "+new Date(r.lidoEm||Date.now()).toLocaleTimeString("pt-BR");
   pintar();
   if(ABERTA){ const a=acha(ABERTA); if(a) pintarCampos(a); }

@@ -1488,7 +1488,7 @@ async function boot(){
     ATIVIDADES=ATV_VIVO; atualizarBadges(); if(SETOR_ATUAL) repintarSetor();
   }).catch(()=>{});
   lerEstaticoJa("docs.json","docs", r=>{
-    if(!r || !r.ok){ mostrarOffline(r); if(!CARREGOU) document.getElementById("hub-wrap").innerHTML='<div class="vazio">Ainda não há dados publicados. Rode o build (fetch_documentos.py) uma vez.</div>'; return; }
+    if(!r || !r.ok){ mostrarOffline(r); if(!CARREGOU) document.getElementById("hub-wrap").innerHTML='<div class="vazio">Ainda não há dados para mostrar aqui. Avise um ADM.<details><summary>Detalhe técnico</summary>Ainda não há dados publicados. Rode o build (fetch_documentos.py) uma vez.</details></div>'; return; }
     CAMPOS=r.campos||[]; OBRAS=r.obras||[]; ATIVIDADES=ATV_VIVO||r.atividades||[];
     OCULTAS=r.ocultas||[]; COLSIM=r.colunasSim||[]; UPDATED=r.updated_at||"";
     aplicarOpcoesLocais();      // setores criados aqui valem já no 1º desenho

@@ -1411,7 +1411,7 @@ function afManualStats(){
 }
 function afRenderManual(){
   const el=document.getElementById("tab-man");
-  if(!AF_MANUAL){ el.innerHTML=`<div class="vazio">O manual ainda não foi carregado. Rode o robô uma vez (ele semeia o manual de ago/2026 no Supabase).</div>`; return; }
+  if(!AF_MANUAL){ el.innerHTML=`<div class="vazio">O manual ainda não foi carregado. Avise um ADM. <details><summary>Detalhe técnico</summary>Rode o robô uma vez (ele semeia o manual de ago/2026 no Supabase).</details></div>`; return; }
   const g=AF_PERM.gerir, sts=afManualStats(), ex=AF_D.exemplos||{};
   const secoes=[...(AF_MANUAL.secoes||[])].sort((a,b)=>(a.ordem||0)-(b.ordem||0));
   const cats=AF_MANUAL.categorias||[];
@@ -1677,7 +1677,7 @@ async function afCarregar(manual){
     let r;
     try{ r=await chamar({action:"afBoot"},60000); }
     catch(e){ let v="?"; try{ const pg=await chamar({action:"afVersao"},15000); v=(pg&&pg.versao)||"sem AuditoriaFin.gs"; }catch(_){}
-      throw new Error("O Apps Script não respondeu para afBoot ("+e.message+"). Versão da auditoria no ar: "+v+" — confira se o AuditoriaFin.gs foi colado e publicado como Nova versão."); }
+      throw new Error("O Apps Script não respondeu para afBoot ("+e.message+"). Versão da auditoria no ar: "+v+" — avise um ADM. (Detalhe técnico: confira se o AuditoriaFin.gs foi colado e publicado como Nova versão.)"); }
     if(!r||!r.ok){
       if(r&&r.erro==="NAO_AUTORIZADO"){ sair(); return; }
       if(r&&r.erro==="SEM_PERMISSAO"){ document.getElementById("sem-acesso").classList.remove("hide"); document.getElementById("carregando").classList.add("hide"); document.getElementById("conteudo").classList.add("hide"); return; }
@@ -1685,7 +1685,7 @@ async function afCarregar(manual){
     }
     AF_BOOT=r; AF_PERM=r.perm||{gerir:false};
     AF_VAL=new Map((r.validacoes||[]).map(v=>[v.chave,v])); AF_EXC=r.excecoes||[];
-    if(!r.url){ throw new Error("O robô da auditoria ainda não gerou o arquivo. Rode Actions › Auditoria Financeira › Run workflow no GitHub (e confira os secrets MC_API_USUARIO / MC_API_SENHA)."); }
+    if(!r.url){ throw new Error("Os dados da auditoria ainda não foram gerados. Avise um ADM. (Detalhe técnico: rode Actions › Auditoria Financeira › Run workflow no GitHub e confira os secrets MC_API_USUARIO / MC_API_SENHA.)"); }
     let dados=null; const marca=r.gerado||"";
     const cache=await afIdbGet("auditoria");
     if(cache&&cache.marca&&cache.marca===marca) dados=cache.dados;

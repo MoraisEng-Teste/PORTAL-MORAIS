@@ -1749,7 +1749,7 @@ function forcarAtualizacao(){
       fim(r.build
         ? "Dados atualizados. A publicação para as outras pessoas sai em 1-2 minutos."
         : "Dados atualizados aqui. A publicação para as outras pessoas ainda não foi disparada"+
-          (r.buildMotivo === "SEM_GITHUB_TOKEN" ? " (falta o GITHUB_TOKEN no Apps Script)." : "."), 7);
+          (r.buildMotivo === "SEM_GITHUB_TOKEN" ? " Avise um ADM. (Detalhe técnico: falta o GITHUB_TOKEN no Apps Script.)" : "."), 7);
     });
   }).catch(()=> fim("Sem conexão — tenta de novo."));
 }
@@ -1775,10 +1775,10 @@ function conferirBackend(versao){
   if (noAr === null || esperada === null) return;
   if (noAr >= esperada) return;              // em dia (ou a frente): silencio
   const cx = document.getElementById("aviso-gs");
-  cx.innerHTML = "<b>O Apps Script publicado esta atrasado.</b> No ar: " +
+  cx.innerHTML = "<b>Esta tela está esperando uma atualização do servidor.</b> Avise um ADM.<details><summary>Detalhe técnico</summary>Apps Script publicado atrasado. No ar: " +
     esc(versao || "versao anterior") + " \u00B7 esta tela espera: " + esc(GS_ESPERADO) +
     ".<br>Para publicar: Implantar \u2192 Gerenciar implanta\u00E7\u00F5es \u2192 l\u00E1pis da implanta\u00E7\u00E3o Ativa \u2192 " +
-    "Vers\u00E3o: Nova vers\u00E3o \u2192 Implantar.";
+    "Vers\u00E3o: Nova vers\u00E3o \u2192 Implantar.</details>";
   cx.style.display = "block";
 }
 

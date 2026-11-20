@@ -925,7 +925,7 @@ async function carregar(){
     pintar();
     carregarContas();          // já deixa a lista de contas pronta para o formulário
   }catch(e){
-    document.getElementById("view").innerHTML=`<div class="vazio">Não consegui ler os dados das obras (${esc(e.message)}). O arquivo é gerado no build do GitHub — step "Buscar dados das Obras".</div>`;
+    document.getElementById("view").innerHTML=`<div class="vazio">Não consegui ler os dados das obras .<details><summary>Detalhe técnico</summary>${esc(e.message)}. O arquivo é gerado no build do GitHub — step "Buscar dados das Obras".</details></div>`;
   }
 }
 
@@ -1323,7 +1323,7 @@ function pintarAlertas(){
         <span class="acoes"><button class="bt bt-mini az" onclick="abrirObra('${o.id}')">Abrir obra</button></span></div>`).join("")
       :`<div class="vazio">Nenhum problema do robô na criação/conferência das obras.</div>`}
     <div class="sec"><span class="cond">Obras que não estão no Mais Controle</span><span class="qtd">${mc.length}</span></div>
-    ${!leuMc?`<div class="vazio">Não foi possível ler a lista de obras do Mais Controle neste build.</div>`:
+    ${!leuMc?`<div class="vazio">Não foi possível ler a lista de obras do Mais Controle agora. Ela volta na próxima atualização automática.</div>`:
       mc.length?mc.map(o=>`<div class="al"><span class="end" onclick="abrirObra('${o.id}')">${esc(o.titulo)}</span>
         <span class="txt">Não encontrada no Mais Controle. Criar lá?</span>
         <span class="acoes"><button class="bt bt-mini" onclick="decidirMc('${o.id}','Criar')">Criar</button>
@@ -2419,7 +2419,7 @@ async function executarAcao(atvId,acao,bt){
     _IDXv=null;
     D.atividades.push({id:r.id,titulo:r.titulo,tipo:cfg.cria.tipo,status:"Não começou",resp:[],obra_id:r.obraId,
       data_criacao:r.dataInicio,data_inicio:r.dataInicio,data_final:r.dataFinal});
-    toast(r.titulo+" criada. O responsável aparece no próximo build.");
+    toast(r.titulo+" criada. O responsável aparece na próxima atualização automática.");
     if(OBRA) pintarObraPainel();
   }else toast("Não criou: "+(r?errMsg(r):"sem resposta do servidor — confira a lista antes de tentar de novo"));
 }

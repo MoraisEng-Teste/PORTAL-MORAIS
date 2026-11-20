@@ -1002,7 +1002,7 @@ function aviso(txt) {
 const ERROS_RODAR = {
   APENAS_ADM: "Só ADM e MASTER podem mandar rodar de novo.",
   TAREFA_INVALIDA: "Essa tarefa não pode ser disparada pelo portal.",
-  FILA_NAO_CONFIGURADA: "Falta a Propriedade DB_FILA_ROBO no Apps Script (PORTAL-LEITURA) — veja o EscritorioRobos.gs.",
+  FILA_NAO_CONFIGURADA: "O pedido não pôde ser enviado. Avise um ADM. (Detalhe técnico: falta a Propriedade DB_FILA_ROBO no Apps Script PORTAL-LEITURA — veja o EscritorioRobos.gs.)",
   FILA_FALHOU: "Não consegui pôr o pedido na fila do Notion. Tente de novo em instantes."
 };
 async function pedirRodar(r, botao) {
@@ -1018,7 +1018,7 @@ async function pedirRodar(r, botao) {
   if (!res || !res.ok) {
     const er = String((res && res.erro) || "");
     if (er === "NAO_AUTORIZADO") { sair(); return; }
-    aviso(/ACAO_DESCONHECIDA/.test(er) ? "Falta atualizar o EscritorioRobos.gs no Apps Script (versão e2)." : (ERROS_RODAR[er] || "Não deu para pedir: " + er));
+    aviso(/ACAO_DESCONHECIDA/.test(er) ? "Esta função ainda não está disponível. Avise um ADM. (Detalhe técnico: falta atualizar o EscritorioRobos.gs no Apps Script, versão e2.)" : (ERROS_RODAR[er] || "Não deu para pedir: " + er));
     if (botao && botao.isConnected) { botao.disabled = false; botao.dataset.confirmar = ""; botao.textContent = "▶ Rodar de novo"; }
     return;
   }
@@ -1162,7 +1162,7 @@ async function mostrarPdf(box, auto) {
     box.dataset.carregado = "";
     if (bt) { bt.disabled = false; bt.textContent = "Mostrar o PDF aqui"; }
     const er = String((r && r.erro) || "");
-    if (!auto) aviso(/ACAO_DESCONHECIDA|PDF_INVALIDO/.test(er) && !/PDF_NAO/.test(er) ? "Falta publicar a versão e3 do EscritorioRobos.gs no Apps Script." : er === "PDF_NAO_ACHADO" ? "O PDF ainda não está no portal." : "Não consegui abrir o PDF: " + er);
+    if (!auto) aviso(/ACAO_DESCONHECIDA|PDF_INVALIDO/.test(er) && !/PDF_NAO/.test(er) ? "Esta função ainda não está disponível. Avise um ADM. (Detalhe técnico: falta publicar a versão e3 do EscritorioRobos.gs no Apps Script.)" : er === "PDF_NAO_ACHADO" ? "O PDF ainda não está no portal." : "Não consegui abrir o PDF: " + er);
     return;
   }
   if (bt) bt.remove();
@@ -1325,17 +1325,17 @@ async function carregar(manual) {
   try {
     let r;
     try { r = await chamar({ action: "escritorioBoot" }, 45000); }
-    catch (e) { return erroTela(`<b>O Apps Script não respondeu.</b> ${esc(e.message || e)}`); }
+    catch (e) { return erroTela(`<b>O servidor não respondeu.</b> Tente de novo em instantes.<details><summary>Detalhe técnico</summary>Apps Script: ${esc(e.message || e)}</details>`); }
     if (!r || !r.ok) {
       const er = String((r && r.erro) || "");
       if (er === "NAO_AUTORIZADO") { sair(); return; }
       if (er === "SEM_PERMISSAO") { soBoletos(); return; }
-      if (er === "SEM_PERMISSAO") return erroTela(`<b>Sem acesso ao Escritório de Robôs.</b> Peça ao ADM a opção <b>ESCRITÓRIO DE ROBÔS</b> na coluna ACESSOS do LOGINS.`);
-      if (/ACAO_DESCONHECIDA/.test(er)) return erroTela(`<b>Falta instalar o EscritorioRobos.gs no Apps Script</b> (projeto PORTAL-LEITURA) e o gancho de uma linha no Melhorias.gs — o passo a passo está no começo do arquivo apps-script/EscritorioRobos.gs.`);
+      if (er === "SEM_PERMISSAO") return erroTela(`<b>Sem acesso ao Escritório de Robôs.</b> Peça a um ADM para liberar o seu acesso.`);
+      if (/ACAO_DESCONHECIDA/.test(er)) return erroTela(`<b>Esta tela ainda não foi instalada no servidor.</b> Avise um ADM.<details><summary>Detalhe técnico</summary>Falta instalar o EscritorioRobos.gs no Apps Script (projeto PORTAL-LEITURA) e o gancho de uma linha no Melhorias.gs — o passo a passo está no começo do arquivo apps-script/EscritorioRobos.gs.</details>`);
       return erroTela(`<b>Não consegui ler o escritório.</b> ${esc(er || "sem resposta do servidor")}`);
     }
     $("rodape").textContent = "Apps Script " + String(r.versao || "?").split(" ").pop() + " · atualiza sozinho a cada 3 min";
-    if (!r.url) return erroTela(`<b>${esc(r.aviso || "O servidor ainda não publicou o escritório.")}</b> Ele publica depois da próxima rodada de qualquer robô, ou rode no servidor: <code>python servidor\\escritorio_robos.py</code>.`);
+    if (!r.url) return erroTela(`<b>${esc(r.aviso || "O servidor ainda não publicou o escritório.")}</b> Ele aparece depois da próxima rodada de qualquer robô. Se demorar, avise um ADM.<details><summary>Detalhe técnico</summary>Ou rode no servidor: <code>python servidor\\escritorio_robos.py</code>.</details>`);
     const resp = await fetch(r.url, { cache: "no-store" });
     if (!resp.ok) return erroTela(`<b>Supabase respondeu HTTP ${resp.status}</b> ao baixar o arquivo do escritório.`);
     DADOS = await resp.json();

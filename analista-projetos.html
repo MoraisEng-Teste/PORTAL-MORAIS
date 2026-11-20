@@ -594,16 +594,16 @@ function contas(p, n){
 
 /* ============================ IA (Apps Script) ============================ */
 const MSG = {
-  SEM_PERMISSAO: 'Seu login não tem o acesso "'+CHAVE_ACESSO+'". Peça ao ADM para liberar no banco LOGINS.',
-  SEM_CHAVE_OPENAI: "O Apps Script do portal está sem a chave da OpenAI (propriedade OPENAI_API_KEY).",
+  SEM_PERMISSAO: 'Seu login não tem o acesso "'+CHAVE_ACESSO+'". Peça a um ADM para liberar o seu acesso.',
+  SEM_CHAVE_OPENAI: "A análise por IA não está configurada. Avise um ADM. (Detalhe técnico: o Apps Script do portal está sem a chave da OpenAI, propriedade OPENAI_API_KEY.)",
   LIMITE_ATINGIDO: "Limite de leituras das últimas 6 horas atingido para o seu login.",
-  CHAVE_OPENAI_INVALIDA: "A chave da OpenAI foi recusada (revogada ou digitada errada no Apps Script).",
+  CHAVE_OPENAI_INVALIDA: "A análise por IA foi recusada pelo serviço. Avise um ADM. (Detalhe técnico: a chave da OpenAI foi recusada, revogada ou digitada errada no Apps Script.)",
   OPENAI_SEM_CREDITO: "A conta da OpenAI está sem crédito.",
   OPENAI_OCUPADA: "A OpenAI está sobrecarregada agora. Tente de novo em um minuto.",
   MODELO_INVALIDO: "O modelo configurado em ANALISTA_MODELO não existe para essa chave.",
   RESPOSTA_CORTADA: "A prancha é grande demais para uma leitura. Use a profundidade Rápida ou divida o PDF.",
   RESPOSTA_ILEGIVEL: "A IA respondeu fora do formato. Rode de novo.",
-  ACAO_DESCONHECIDA: "O Apps Script do portal ainda não tem o módulo AnalistaProjetos (falta instalar e implantar nova versão).",
+  ACAO_DESCONHECIDA: "Esta tela ainda não está disponível no servidor. Avise um ADM. (Detalhe técnico: falta instalar o módulo AnalistaProjetos no Apps Script e implantar nova versão.)",
   PARADO: "Análise interrompida."
 };
 const b64De = blob => new Promise((ok,er)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(",")[1]); r.onerror=er; r.readAsDataURL(blob); });
@@ -612,7 +612,7 @@ async function ia(action, prompt, blobs, tempo){
   const imagens = blobs ? await Promise.all(blobs.map(b64De)) : [];
   let j;
   try{ j = await chamar({action, prompt, imagens}, tempo||175000); }
-  catch(e){ const x=new Error("Sem resposta do Apps Script ("+(e&&e.message||"rede")+")."); x.codigo="SEM_RESPOSTA"; throw x; }
+  catch(e){ const x=new Error("O servidor não respondeu. Tente de novo. (Detalhe técnico: Apps Script — "+(e&&e.message||"rede")+".)"); x.codigo="SEM_RESPOSTA"; throw x; }
   if (!j || !j.ok){
     const cod = String((j&&j.erro)||"ERRO").split(":")[0];
     if (cod==="SESSAO_INVALIDA"||cod==="NAO_AUTORIZADO"){ sair(); }

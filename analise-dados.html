@@ -1537,8 +1537,8 @@ async function carregarAnaliseDados(){
        versão antiga. O ping diz qual versão está no ar. */
     let v="?";
     try{ const pg=await chamar({action:"ping"}, 15000); v=(pg&&pg.versao)||"?"; }catch(_){}
-    throw new Error("O Apps Script não respondeu JSON para analiseDados. Versão no ar: "+v+
-                    " — esta tela precisa da r39 ou mais nova (Implantar > Gerenciar implantações > lápis > Nova versão).");
+    throw new Error("Não consegui carregar os dados desta tela. Avise um ADM. (Detalhe técnico: o Apps Script não respondeu JSON para analiseDados. Versão no ar: "+v+
+                    " — esta tela precisa da r39 ou mais nova: Implantar > Gerenciar implantações > lápis > Nova versão.)");
   }
   if(!r||!r.ok){
     if(r&&r.erro==="NAO_AUTORIZADO"){ sair(); return null; }
@@ -5540,7 +5540,7 @@ async function cfgSalvar(chave){
     CFG[chave]=JSON.parse(JSON.stringify(cfgEd()[chave]||{})); CFG_META[chave]={por:r.por,em:r.em}; CFG_SUJO[chave]=false;
     aplicarConfig(); buildDash();
     st.textContent='Salvo por '+r.por+' às '+new Date(r.em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'. Todas as telas já usam a regra nova.';
-  }catch(e){ b.disabled=false; st.textContent='Não salvou: '+e.message+(String(e.message).includes('ACAO_DESCONHECIDA')?' — falta a Nova versão do Apps Script.':''); }
+  }catch(e){ b.disabled=false; st.textContent='Não salvou: '+e.message+(String(e.message).includes('ACAO_DESCONHECIDA')?' — avise um ADM (falta a Nova versão do Apps Script).':''); }
 }
 function cfgMetaTxt(chave){ const m=CFG_META[chave]; return m&&m.em?`Última alteração: ${esc(m.por||'?')} em ${new Date(m.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}`:'Usando só a regra automática.'; }
 function cfgRodape(chave){ return `<div class="cfg-bar" style="margin:10px 0 0"><button class="cfg-btn" id="cfg-salvar-${chave}" onclick="cfgSalvar('${chave}')" disabled>Salvar</button><span class="cfg-auto" id="cfg-st-${chave}">${cfgMetaTxt(chave)}</span></div>`; }
@@ -5604,7 +5604,7 @@ function renderConfig(){
   const cliL=Object.values(clis); const gm=cliL.filter(c=>grupoCli(c.nome)==='MORAIS').length;
   el.innerHTML=`
   <div class="cfg-aviso ${CFG_OK?'ok':''}">${CFG_OK?(CFG_PODE?'Você pode editar. Cada bloco tem o próprio <b>Salvar</b>; o que você não mexer segue a regra automática (marcada "(auto)").':'Seu login só vê as configurações. Quem edita é GFINANCEIRO ou ADM.')
-    :'As configurações salvas não puderam ser lidas ('+esc(CFG_ERRO)+'). A tela está usando só a regra automática. Se o erro for ACAO_DESCONHECIDA, falta a Nova versão do Apps Script.'}</div>
+    :'As configurações salvas não puderam ser lidas ('+esc(CFG_ERRO)+'). A tela está usando só a regra automática. Avise um ADM. (Detalhe técnico: se o erro for ACAO_DESCONHECIDA, falta a Nova versão do Apps Script.)'}</div>
   <div class="cfg-aviso">Aporte de capital, distribuição de lucros e cota capital <b>não contam como gasto nem como receita ou lucro</b> em nenhuma tela. Eles entram só na <b>exposição de caixa</b> (coluna "Sócios" no Fluxo de Caixa e no Desempenho).</div>
   <div class="cfg-res">
     <div><b>${gm}</b>clientes do Grupo Morais</div><div><b>${cliL.length-gm}</b>investidores</div>

@@ -140,7 +140,7 @@ const PEDIDOS = {};
 const ERROS = {
   APENAS_ADM: "Só ADM e MASTER podem segurar ou soltar.",
   PEDIDO_INVALIDO: "Esse pedido não é válido.",
-  FILA_NAO_CONFIGURADA: "Falta a Propriedade DB_FILA_ROBO no Apps Script.",
+  FILA_NAO_CONFIGURADA: "O pedido não pôde ser enviado. Avise um ADM. (Detalhe técnico: falta a Propriedade DB_FILA_ROBO no Apps Script.)",
   FILA_FALHOU: "Não consegui enviar o pedido. Tente de novo em instantes."
 };
 function aviso(txt) { const d = document.createElement("div"); d.className = "toast"; d.textContent = txt; document.body.appendChild(d); setTimeout(() => d.remove(), 5200); }
@@ -158,12 +158,12 @@ async function carregar() {
   try {
     let r;
     try { r = await chamar({ action: "bfBoot" }, 45000); }
-    catch (e) { return erroTela("O Apps Script não respondeu. " + BF.esc(e.message || e)); }
+    catch (e) { return erroTela("O servidor não respondeu. Tente de novo em instantes. (Detalhe técnico: Apps Script — " + BF.esc(e.message || e) + ")"); }
     if (!r || !r.ok) {
       const er = String((r && r.erro) || "");
       if (er === "NAO_AUTORIZADO") { sair(); return; }
-      if (er === "SEM_PERMISSAO") return erroTela("Sem acesso a esta página. Peça ao ADM a opção <b>BOLETOS E FINANCEIRO</b> na coluna ACESSOS da planilha de logins.");
-      if (/ACAO_DESCONHECIDA/.test(er)) return erroTela("Falta instalar o BoletosFinanceiro.gs no Apps Script.");
+      if (er === "SEM_PERMISSAO") return erroTela("Sem acesso a esta página. Peça a um ADM para liberar o seu acesso.");
+      if (/ACAO_DESCONHECIDA/.test(er)) return erroTela("Esta tela ainda não está disponível. Avise um ADM. (Detalhe técnico: falta instalar o BoletosFinanceiro.gs no Apps Script.)");
       return erroTela("Não consegui ler os dados. " + BF.esc(er || "Sem resposta do servidor."));
     }
     PODE = !!r.podeSegurar;

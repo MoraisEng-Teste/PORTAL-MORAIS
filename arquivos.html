@@ -391,7 +391,7 @@ async function carregar(fresco){
     const er=String((r&&r.erro)||"");
     const semFonte=/SEM_FONTE_ACESSIVEL|data sources accessible|Could not find/i.test(er);
     document.getElementById("view").innerHTML=`<div class="vazio">Não consegui carregar os ${TXT.uns}${semFonte
-      ?`: a integração SITES MORAIS não consegue ler a fonte de dados deste banco no Notion.<br><small style="display:block;margin-top:6px;color:var(--text4)">Para o suporte: rode <b>rfDiagnosticoArquivos</b> no Apps Script (projeto ESCRITA) e envie o log. Detalhe: ${esc(er.slice(0,400))}</small>`
+      ?`: o portal não conseguiu ler esta lista. Avise um ADM.<details style="margin-top:6px"><summary>Detalhe técnico</summary>A integração SITES MORAIS não consegue ler a fonte de dados deste banco no Notion. Para o suporte: rode <b>rfDiagnosticoArquivos</b> no Apps Script (projeto ESCRITA) e envie o log. Detalhe: ${esc(er.slice(0,400))}</details>`
       :` (${esc(erroTexto(er))})`}. <a href="#" onclick="carregar(true);return false">Tentar de novo</a></div>`;
   }
 }
