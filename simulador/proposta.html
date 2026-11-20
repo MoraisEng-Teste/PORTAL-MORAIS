@@ -626,6 +626,7 @@
     </div>
 
     <div class="secao">3. Composição do fluxo de pagamento</div>
+    <span class="ajuda" style="display:block;margin:-4px 0 8px;font-size:11.5px"><b>Pré-chaves:</b> parcelas pagas durante a obra · <b>pós-chaves:</b> parcelas depois da entrega · <b>balão:</b> parcela maior em data marcada · <b>entrada restante:</b> o que falta da entrada depois do sinal.</span>
     <div id="composicaoProp"><span class="ajuda">Preencha o financiamento para montar a composição.</span></div>
 
     <div class="secao">4. Prazo de parcelamento da entrada</div>
@@ -1608,7 +1609,7 @@
     }).join('');
     document.getElementById('produtosAjuda').innerHTML =
       (comImovel ? 'Cliente <b>com</b> imóvel: a linha simulada é o <b>SBPE</b>.'
-                 : 'Cliente <b>sem</b> imóvel: a linha simulada é o <b>NPMCMV</b>.') +
+                 : 'Cliente <b>sem</b> imóvel: a linha simulada é o <b>NPMCMV</b> (linha de financiamento da CAIXA, Minha Casa Minha Vida).') +
       ' A linha é definida automaticamente.';
   }
   function alternarProduto(el){
