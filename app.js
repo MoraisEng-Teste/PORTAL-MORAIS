@@ -1889,6 +1889,18 @@ const GRUPOS_ORDEM=["SETORES","PROCESSOS E ARQUIVOS","ANÁLISES","MAPAS","REUNI�
       (o.perigo&&bNao?bNao:bSim).focus();
     });
   };
+  /* Atalhos para as telas trocarem confirm()/alert() nativos (Onda 3):
+   *   await moraisConfirmar(titulo, texto, verboDoBotao, perigo) -> boolean
+   *   await moraisAviso(titulo, texto) -> true (uma caixa de um botão só)
+   * Se moraisPerguntar não existir, cai no confirm()/alert() do navegador. */
+  window.moraisConfirmar=function(titulo,texto,sim,perigo){
+    if(typeof window.moraisPerguntar==="function") return window.moraisPerguntar({titulo:titulo,texto:texto,sim:sim||"OK",nao:"Cancelar",perigo:!!perigo});
+    return Promise.resolve(window.confirm(texto));
+  };
+  window.moraisAviso=function(titulo,texto){
+    if(typeof window.moraisPerguntar==="function") return window.moraisPerguntar({titulo:titulo,texto:texto,sim:"OK",nao:""});
+    window.alert(texto); return Promise.resolve(true);
+  };
 
   /* ---------- menu comum (gaveta lateral) ---------- */
   (function menuPortal(){

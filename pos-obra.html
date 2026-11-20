@@ -2147,7 +2147,7 @@ function arrastarSobre(ev, cel){
 }
 function arrastarSai(cel){ cel.classList.remove("alvo"); }
 
-function arrastarSolta(ev, cel, iso){
+async function arrastarSolta(ev, cel, iso){
   ev.preventDefault();
   cel.classList.remove("alvo");
   const alvo = ARRASTANDO;
@@ -2163,8 +2163,8 @@ function arrastarSolta(ev, cel, iso){
   const hora = temHora(m.data) ? String(m.data).slice(11,16) : "";
   const novo = comHora && hora ? valorData(iso+"T"+hora, true) : iso;
 
-  if(!confirm("Mover para "+dbr(iso)+(hora?" às "+hora:"")+"?\n\n"+
-              m.nome+"\n"+rotuloColuna(alvo.coluna)+": "+dbr(diaAtual)+(hora?" às "+hora:"")))
+  if(!await moraisConfirmar("Mover a data", "Mover para "+dbr(iso)+(hora?" às "+hora:"")+"?\n\n"+
+              m.nome+"\n"+rotuloColuna(alvo.coluna)+": "+dbr(diaAtual)+(hora?" às "+hora:""), "Mover"))
     return;
 
   escrever({action:"posObraAtvUpdate", pageId:alvo.atividadeId, prop:alvo.coluna, valor:novo}, alvo.coluna)
@@ -2576,7 +2576,7 @@ function campoDataCard(){
     '<button class="bt az peq" id="mc-dt-bt" onclick="salvarDataCard()">Salvar</button>'+
     '</div><div class="mc-dica">'+(comHora?"data e hora":"data")+' · altera <b>'+esc(CARD.coluna)+'</b> no chamado</div>';
 }
-function salvarDataCard(){
+async function salvarDataCard(){
   if(!CARD || soLeitura()) return;
   const inp = document.getElementById("mc-dt"), bt = document.getElementById("mc-dt-bt");
   if(!inp) return;
@@ -2585,7 +2585,7 @@ function salvarDataCard(){
   if(novo === (comHora ? String(CARD.dataISO||"").slice(0,16)+":00-03:00" : soData(CARD.dataISO))){
     toast("A data não mudou."); return;
   }
-  if(!novo && !window.confirm("Apagar a data de "+CARD.coluna+"?\n\nO serviço sai do calendário até receber uma data nova.")) return;
+  if(!novo && !await moraisConfirmar("Apagar a data", "Apagar a data de "+CARD.coluna+"?\n\nO serviço sai do calendário até receber uma data nova.", "Apagar data", true)) return;
 
   bt.disabled = inp.disabled = true;
   escrever({action:"posObraAtvUpdate", pageId:CARD.atividadeId, prop:CARD.coluna, valor:novo}, CARD.coluna)
@@ -2951,7 +2951,7 @@ async function salvarEnderecoObra(){
   const antTit = OBRA.titulo;
   const novoTit = end + (casa === null ? "" : " CS " + casa);
   if(normN(end) === normN(OBRA.endereco||"") && String(casa) === String(OBRA.casa==null?null:OBRA.casa)){ pintarObra(); return; }
-  if(!confirm("Trocar \""+antTit+"\" por \""+novoTit+"\"?\n\nOs chamados desta obra serão renomeados junto.")) return;
+  if(!await moraisConfirmar("Trocar o endereço", "Trocar \""+antTit+"\" por \""+novoTit+"\"?\n\nOs chamados desta obra serão renomeados junto.", "Trocar endereço")) return;
 
   if(bt) bt.disabled = true;
   aviso("Gravando…", false);
@@ -3010,7 +3010,7 @@ function editarAssinatura(bt){
   const inp = document.getElementById("assin-inp");
   if(inp){ inp.focus(); try{ inp.showPicker && inp.showPicker(); }catch(e){} }
 }
-function salvarAssinatura(){
+async function salvarAssinatura(){
   if(soLeitura()){ toast("Modo teste: nada é gravado.", 3); return; }
   if(!OBRA) return;
   const inp = document.getElementById("assin-inp");
@@ -3020,9 +3020,9 @@ function salvarAssinatura(){
   if(novo === atual){ pintarObra(); return; }           // não mudou: não gasta chamada
   if(novo && !/^\d{4}-\d{2}-\d{2}$/.test(novo)){ toast("Data inválida.", 4); return; }
   if(novo && novo > hojeISO() &&
-     !confirm("A data "+dbr(novo)+" está no futuro. Gravar assim mesmo?")) return;
+     !await moraisConfirmar("Data no futuro", "A data "+dbr(novo)+" está no futuro. Gravar assim mesmo?", "Gravar assim mesmo")) return;
   if(!novo && !ehAdmTela()){ toast("Escolha uma data.", 3); return; }
-  if(!novo && !confirm("Apagar a data de assinatura?\n\nIsso apaga também na VENDA e as garantias deixam de ser calculadas.")) return;
+  if(!novo && !await moraisConfirmar("Apagar a data de assinatura", "Apagar a data de assinatura?\n\nIsso apaga também na VENDA e as garantias deixam de ser calculadas.", "Apagar data", true)) return;
 
   inp.disabled = true;
   escrever({action:"posObraUpdate", pageId:OBRA.id, prop:COL_ASSIN, valor:novo}, "Assinatura do contrato").then(r=>{
@@ -3073,8 +3073,8 @@ function abrirLinksAgenda(){
 }
 function fecharLinksAgenda(){ document.getElementById("ag-overlay").classList.remove("on"); }
 
-function gerarLinkAgenda(resp, regerar){
-  const bt = event && event.target;
+function gerarLinkAgenda(resp, regerar, btArg){
+  const bt = btArg || (event && event.target);
   const cx = bt ? bt.parentElement.querySelector(".ag-saida") : null;
   if(bt) bt.disabled = true;
   chamar({action:"agendaLink", resp:resp, regerar: regerar?1:0}).then(r=>{
@@ -3089,7 +3089,7 @@ function gerarLinkAgenda(resp, regerar){
       '<div class="ag-bts">'+
         '<button class="bt vd peq" onclick="copiarTexto(\''+esc(url)+'\')">📋 Copiar</button>'+
         '<a class="bt ghost peq" href="https://wa.me/?text='+encodeURIComponent("Seus serviços de hoje e amanhã:\n"+url)+'" target="_blank" rel="noopener">Enviar no WhatsApp</a>'+
-        '<button class="bt ghost peq" onclick="if(confirm(\'Gerar um link novo?\\n\\nO link atual para de funcionar na hora.\'))gerarLinkAgenda(\''+esc(resp).replace(/'/g,"&#39;")+'\',1)">Gerar outro</button>'+
+        '<button class="bt ghost peq" onclick="var b=this;moraisConfirmar(\'Gerar outro link\',\'O link atual para de funcionar na hora.\',\'Gerar link novo\',true).then(function(ok){if(ok)gerarLinkAgenda(\''+esc(resp).replace(/'/g,"&#39;")+'\',1,b)})">Gerar outro</button>'+
       '</div>'+
       (r.regerado ? '<div class="mc-dica">Link novo. O anterior parou de funcionar.</div>'
        : (r.novo ? '' : '<div class="mc-dica">Este é o link que já existia — é o mesmo que ele tem.</div>'));
@@ -3918,13 +3918,13 @@ function ehAdmTela(){ return S && String(S.tipo||"").toUpperCase() === "ADM"; }
    Só ADM, e o servidor confere de novo (posObraRetornoExcluir_). Duas
    confirmações de propósito: é a única ação do pós obra que destrói
    histórico, e não tem desfazer. */
-function excluirRetorno(nivel){
+async function excluirRetorno(nivel){
   if(!CHAMADO || !ehAdmTela() || soLeitura()) return;
   const rot = rotuloRetorno(nivel);
-  if(!confirm("Apagar o "+rot+" deste chamado?\n\n"+CHAMADO.nome+
+  if(!await moraisConfirmar("Apagar o "+rot, "Apagar o "+rot+" deste chamado?\n\n"+CHAMADO.nome+
               "\n\nData, informações, andamento e fotos DESTE retorno serão apagados no Notion. "+
-              "Os outros retornos não são tocados.\n\nNão tem como desfazer.")) return;
-  if(!confirm("Confirma mesmo apagar o "+rot+"?")) return;
+              "Os outros retornos não são tocados.\n\nNão tem como desfazer.", "Apagar retorno", true)) return;
+  if(!await moraisConfirmar("Confirmar", "Confirma mesmo apagar o "+rot+"?", "Sim, apagar", true)) return;
 
   escrever({action:"posObraRetornoExcluir", pageId:CHAMADO.id, nivel:nivel}, "excluir "+rot).then(r=>{
     if(!r.ok){ toast("Não excluí: "+erroTexto(r.erro), 5); return; }
@@ -3948,14 +3948,14 @@ function excluirRetorno(nivel){
  * Quem recusa de verdade é o servidor (posObraAtvExcluir_ exige ADM). Esta
  * checagem aqui é só para não mostrar um botão que vai falhar.
  */
-function excluirServico(){
+async function excluirServico(){
   if(!CHAMADO || !ehAdmTela() || soLeitura()) return;
   const nome = CHAMADO.nome || "este serviço";
-  if(!confirm("Apagar o serviço inteiro?\n\n"+nome+
+  if(!await moraisConfirmar("Apagar o serviço inteiro", "Apagar o serviço inteiro?\n\n"+nome+
               "\n\nO chamado sai da base de PÓS OBRA com todos os campos, datas e "+
-              "retornos. No Notion ele vai para a lixeira e pode ser restaurado por 30 dias."))
+              "retornos. No Notion ele vai para a lixeira e pode ser restaurado por 30 dias.", "Apagar serviço", true))
     return;
-  if(!confirm("Confirma mesmo apagar \""+nome+"\"?")) return;
+  if(!await moraisConfirmar("Confirmar", "Confirma mesmo apagar \""+nome+"\"?", "Sim, apagar", true)) return;
 
   const id = CHAMADO.id;
   escrever({action:"posObraAtvExcluir", pageId:id}, "excluir serviço pós obra").then(r=>{
@@ -4885,7 +4885,7 @@ async function decidirValidacao(id, decisao){
       : (x.tipo==="responsavel"
         ? "Recusar o responsável \""+x.nome+"\"?\n\nEle sai da lista de responsáveis"+(n?" e de "+n+" chamado"+(n>1?"s":"")+" (os chamados continuam, sem responsável)":"")+"."
         : "Recusar o serviço \""+x.nome+"\"?\n\nEle sai da lista de serviços"+(n?" e de "+n+" chamado"+(n>1?"s":"")+" (os chamados continuam, sem esse serviço)":"")+".");
-    if(!confirm(msg)) return;
+    if(!await moraisConfirmar("Recusar", msg, "Recusar", true)) return;
   }
   const box = document.getElementById("val-"+id);
   if(box) box.querySelectorAll("button").forEach(b=>b.disabled=true);
@@ -4905,7 +4905,7 @@ async function decidirValidacao(id, decisao){
       const campo=(SCHEMA && SCHEMA.campos||[]).find(c=>normN(c.nome)===normN(x.tipo==="responsavel"?"RESPONSÁVEL":"SERVIÇO"));
       if(campo && campo.opcoes) campo.opcoes = campo.opcoes.filter(o=>normN(o)!==normN(x.nome));
     }
-    if(feito.avisos && feito.avisos.length) alert("Recusado, com aviso:\n\n"+feito.avisos.join("\n"));
+    if(feito.avisos && feito.avisos.length) await moraisAviso("Recusado, com aviso", "Recusado, com aviso:\n\n"+feito.avisos.join("\n"));
     toast(x.tipo==="obra" ? "Obra recusada e enviada para a lixeira." : (x.tipo==="responsavel"?"Responsável":"Serviço")+" recusado e removido"+(feito.chamados?" de "+feito.chamados+" chamado(s)":"")+".", 5);
   } else toast("Validado ✓", 3);
   pintarFaixaValidacoes();
