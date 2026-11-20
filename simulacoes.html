@@ -4494,31 +4494,76 @@ function propResumoValores(p){
   /* 20/10/26: entrada total (antes de FGTS e subsídio) + pago pelo cliente + prazo */
   return entResumoHtml(entDaProposta(p));
 }
+/* 20/11/2026 (onda 3) — FICHA DA PROPOSTA EM ABAS. Resumo · Fluxo · Documentos · Conversas. As abas só mostram e
+   escondem os painéis (nada é recriado: o e-mail digitado e o que chega depois — documentos, conversas — ficam onde
+   estão, com os mesmos ids). A aba aberta fica lembrada enquanto a ficha estiver aberta. */
+const PROP_FICHA_ABAS=[["resumo","Resumo"],["fluxo","Fluxo"],["documentos","Documentos"],["conversas","Conversas"]];
+let PROP_FICHA={id:null, aba:"resumo"};
+function propFichaAba(a, foco){
+  if(!document.getElementById("fic-p-"+a)) return;
+  PROP_FICHA.aba=a;
+  document.querySelectorAll("#sim-modalCx .fic-painel").forEach(x=>x.classList.toggle("on", x.dataset.fic===a));
+  document.querySelectorAll("#sim-modalCx .fic-abas .tab").forEach(b=>{
+    const on=b.dataset.fic===a; b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); b.tabIndex=on?0:-1;
+    if(on && foco) b.focus();
+  });
+  const cx=document.getElementById("sim-modalCx"); if(cx) cx.scrollTop=0;
+}
+function propFichaTecla(e){
+  const k=e.key; if(k!=="ArrowRight" && k!=="ArrowLeft" && k!=="Home" && k!=="End") return;
+  const bs=[...document.querySelectorAll("#sim-modalCx .fic-abas .tab")]; if(!bs.length) return;
+  let i=bs.findIndex(b=>b.dataset.fic===PROP_FICHA.aba);
+  if(k==="ArrowRight") i=(i+1)%bs.length; else if(k==="ArrowLeft") i=(i-1+bs.length)%bs.length; else if(k==="Home") i=0; else i=bs.length-1;
+  e.preventDefault(); propFichaAba(bs[i].dataset.fic, true);
+}
+/* contador pequeno nas abas: Documentos = itens que faltam; Conversas = e-mails novos desta proposta */
+function propFichaContadores(){
+  if(!PROP_FICHA.id) return;
+  const p=(PROPS||[]).find(x=>x.id===PROP_FICHA.id); if(!p) return;
+  const poe=(k,n,rot)=>{ const e=document.getElementById("fic-n-"+k); if(!e) return;
+    e.textContent=n>0?String(n):""; e.classList.toggle("hide",!(n>0));
+    if(n>0) e.setAttribute("aria-label",n+" "+rot); else e.removeAttribute("aria-label"); };
+  const d=document.getElementById("prop-detalhe"), m=d && /Faltam (\d+) item/.exec(d.textContent||"");
+  poe("documentos", m?Number(m[1]):0, "pendência(s)");
+  const num=String(p.proposta||"").toUpperCase();
+  poe("conversas", ["p","c"].filter(t=>propEmailNovo(num,t)).length, "e-mail(s) novo(s)");
+}
 function propVer(id){
   const p=PROPS.find(x=>x.id===id); if(!p) return;
+  { const m0=document.getElementById("sim-modal");
+    if(!(m0 && !m0.classList.contains("hide") && PROP_FICHA.id===id)) PROP_FICHA={id:id, aba:"resumo"}; }
   const it=(r,v)=>`<div class="sim-item"><small>${r}</small><b>${v||"—"}</b></div>`;
   const podeGravar=!ehSomenteLeitura(S);
   const h=propHorasReservada(p);
   propEstiloEditor();
 
   document.getElementById("sim-modalCx").innerHTML=`
+    <div class="fic-cab">
     <div class="modal-topo"><div class="modal-tit">${esc(p.cliente||"—")} · Un. ${esc(String(p.unidade||"—"))}</div>
       <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
     <div class="modal-sub">${esc(p.proposta||"")} · CPF ${esc(cpfFmt(p.cpf)||"—")} · ${simData(p.criadoEm)} · ${propTag(p.status)}
       ${h!==null?` · reservada há ${Math.floor(h)} h`:""}</div>
+    ${podeGravar?`<div class="fic-dec">
+      <!-- 30/09: o botão do status atual fica em destaque e os outros apagados; o resultado aparece logo abaixo -->
+      <div class="prop-dec ${PROP_NORM(p.status)?'tem-status':''}">
+        <button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
+        <button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
+      </div>
+      ${PROP_NORM(p.status)==='RESERVADA'?`<button class="bt" style="background:#7B4FA0;color:#fff" onclick="propPreReservaDaUnidade('${p.id}')">Termo de reserva</button>`:""}
+      ${window.ReservaPrazoUI?ReservaPrazoUI.botoesProposta(p):""}<!-- 12/11: Adiar reserva / Reabrir reserva que caiu (venda/reserva-prazo-ui.js) -->
+    </div>
+    <div id="prop-detAviso" class="sim-aviso" style="margin-top:6px"></div>`:""}
+    <!-- 20/11/2026 (onda 3): a ficha em abas — as abas só mostram/escondem, nada é recriado (o e-mail digitado não se perde) -->
+    <div class="cd-abas fic-abas"><div class="tabs" role="tablist" aria-label="Partes da ficha" onkeydown="propFichaTecla(event)">
+      ${PROP_FICHA_ABAS.filter(a=>podeGravar||a[0]!=="conversas").map(a=>'<button type="button" role="tab" class="tab'+(a[0]===PROP_FICHA.aba?" on":"")+'" id="fic-tab-'+a[0]+'" aria-selected="'+(a[0]===PROP_FICHA.aba)+'" aria-controls="fic-p-'+a[0]+'" tabindex="'+(a[0]===PROP_FICHA.aba?"0":"-1")+'" data-fic="'+a[0]+'" onclick="propFichaAba(this.dataset.fic)">'+a[1]+'<span class="fic-n hide" id="fic-n-'+a[0]+'"></span></button>').join("")}
+    </div></div>
+    </div>
+
+    <div class="fic-painel${PROP_FICHA.aba==="resumo"?" on":""}" id="fic-p-resumo" role="tabpanel" aria-labelledby="fic-tab-resumo" data-fic="resumo">
     ${chegouReservada(p,true)?`<div class="aviso-res"><b>Unidade já reservada no envio.</b>
       Esta proposta chegou quando a unidade ${esc(String(p.unidade||""))} já estava reservada —
       ela só é analisada caso haja desistência da reserva atual.</div>`:""}
-    <!-- 07/11/2026 — alterar unidade / valor financiado e PDF do fluxo: logo no topo do card -->
-    <div class="alt-acoes">
-      ${podeGravar?`<button class="bt verde" onclick="altPropAbrir('${p.id}')">✎ Alterar unidade / valor financiado</button>`:""}
-      <button class="bt az" onclick="fluxoPdf('prop','${p.id}')">📄 Gerar PDF do fluxo</button>
-      <button class="bt ghost" onclick="fluxoPersonalizadoAbrir('${p.id}')" title="Abre o simulador de outro fluxo já com a unidade e os valores desta proposta. Não muda a proposta: nada é gravado.">✎ Simular outro fluxo</button>
-    </div>
-    <div id="fxp-prop"></div>
-    <div id="alt-prop"></div>
     ${propResumoValores(p)}
-    ${propQuadroFluxo(p)}
     <b class="sim-grupo" style="display:block;margin-top:14px;font-size:13px;color:var(--azul)">Corretor</b>
     <div class="sim-grade" style="margin-top:6px">
       ${it("Corretor",esc(p.vendedor||""))}${it("CRECI",esc(p.creci||""))}${it("Imobiliária",esc(p.imobiliaria||""))}
@@ -4540,43 +4585,13 @@ function propVer(id){
     <div class="sim-grade" style="margin-top:6px;grid-template-columns:minmax(0,1fr)">
       ${it("Observações",esc(p.observacoes||""))}
     </div>
-
-    ${podeGravar?`<div style="margin:10px 0 4px">
-      <button class="bt az" onclick="propGerarLink('${p.id}')">🔗 Gerar link para o corretor completar</button>
-      <span id="prop-linkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
-      <div style="font-size:12px;color:var(--text3);margin-top:5px">O corretor abre o link, completa o que falta
-        e anexa os documentos — cai direto no cadastro desta proposta.</div>
-    </div>
-    <div style="margin:10px 0 4px">
-      <button class="bt" onclick="propGerarLinkVenda('${p.id}')">🧾 Link para completar as informações da venda</button>
-      <span id="prop-vendaLinkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
-      <div style="font-size:12px;color:var(--text3);margin-top:5px">Para a venda fechada: o cliente ou o corretor completa
-        os dados e documentos que faltam (inclusive o comprovante de endereço) — cai na lista de vendas do condomínio.</div>
-    </div>`:""}
-
-    <!-- r51 — as pendências aparecem na hora (dados da lista) e são
-         atualizadas aqui mesmo quando o Notion responde. -->
-    <div id="prop-detalhe" style="margin-top:16px">
-      ${propPendenciasHtml(p)}
-      <div class="sim-aviso ok"><span class="load"></span> Carregando os documentos e a conversa de e-mail…</div>
-    </div>
-
-    ${podeGravar?`
-    <div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Decisão</b>
-      <!-- 30/09: o botão do status atual fica em destaque e os outros apagados; o resultado aparece logo abaixo -->
-      <div class="prop-dec ${PROP_NORM(p.status)?'tem-status':''}" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;align-items:flex-start">
-        <div style="flex:1 1 220px;min-width:0"><button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">Reservar: segura a unidade por ${PROP_RESERVA_DIAS} dias e manda ao corretor o link para completar os dados.</div></div>
-        <div style="flex:1 1 220px;min-width:0"><button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">Negar: libera a unidade agora.</div></div>
+    ${podeGravar?`<div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Decisão</b>
+      <div style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:1 1 220px;min-width:0;font-size:12px;color:var(--text3)"><b>Reservar</b>: segura a unidade por ${PROP_RESERVA_DIAS} dias e manda ao corretor o link para completar os dados.</div>
+        <div style="flex:1 1 220px;min-width:0;font-size:12px;color:var(--text3)"><b>Negar</b>: libera a unidade agora.</div>
       </div>
-      ${PROP_NORM(p.status)==='RESERVADA'?`<div style="margin-top:8px"><button class="bt" style="background:#7B4FA0;color:#fff" onclick="propPreReservaDaUnidade('${p.id}')">Termo de reserva</button></div>`:""}
+      ${PROP_NORM(p.status)==='RESERVADA'?`<div style="font-size:12px;color:var(--text3);margin-top:6px"><b>Termo de reserva</b>: gera o documento da reserva.</div>`:""}
       ${PROP_NORM(p.status)==='RESERVADA'&&window.AtualizarVendaUI?AtualizarVendaUI.botaoHtml(p.id,'prop','bt'):""}<!-- 07/11: Atualizar venda pela proposta (venda/atualizar-venda.js) -->
-      ${window.ReservaPrazoUI?ReservaPrazoUI.botoesProposta(p):""}<!-- 12/11: Adiar reserva / Reabrir reserva que caiu (venda/reserva-prazo-ui.js) -->
-      <div id="prop-detAviso" class="sim-aviso" style="margin-top:8px"></div>
-      <!-- 02/10 (item 10) -->
-      <div style="margin-top:10px"><button class="bt" style="background:#B7791F;color:#fff" onclick="propAlerta('${p.id}')">📣 Enviar alerta de pendências ao corretor</button>
-        <div id="prop-alertaInfo" class="sim-aviso" style="margin-top:6px"></div></div>
       <details style="font-size:12px;color:var(--text3);margin-top:8px"><summary style="cursor:pointer;font-weight:700">Como funciona a reserva</summary><div style="margin-top:6px">
         <b>Reservar</b> marca a unidade ${esc(String(p.unidade||""))} como RESERVADA no mapa, cria a venda no
         lista de vendas do condomínio e manda ao corretor o link para completar os dados e documentos.
@@ -4585,7 +4600,7 @@ function propVer(id){
         A proposta vira <b>VENDIDA</b> sozinha quando o contrato é gerado — e só então o corretor recebe o e-mail de venda.
         ${propReservaPrazoHtml(p)}
       </div></details>
-    </div>
+    </div>`:""}
     ${propSIBloco(p)}
 
     <div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Documento da proposta</b>
@@ -4598,7 +4613,45 @@ function propVer(id){
         na coluna PDF do Notion.
       </div>
     </div>
+    </div>
 
+    <div class="fic-painel${PROP_FICHA.aba==="fluxo"?" on":""}" id="fic-p-fluxo" role="tabpanel" aria-labelledby="fic-tab-fluxo" data-fic="fluxo">
+    <!-- 07/11/2026 — alterar unidade / valor financiado e PDF do fluxo: logo no topo do card -->
+    <div class="alt-acoes">
+      ${podeGravar?`<button class="bt verde" onclick="altPropAbrir('${p.id}')">✎ Alterar unidade / valor financiado</button>`:""}
+      <button class="bt az" onclick="fluxoPdf('prop','${p.id}')">📄 Gerar PDF do fluxo</button>
+      <button class="bt ghost" onclick="fluxoPersonalizadoAbrir('${p.id}')" title="Abre o simulador de outro fluxo já com a unidade e os valores desta proposta. Não muda a proposta: nada é gravado.">✎ Simular outro fluxo</button>
+    </div>
+    <div id="fxp-prop"></div>
+    <div id="alt-prop"></div>
+    ${propQuadroFluxo(p)}
+    </div>
+
+    <div class="fic-painel${PROP_FICHA.aba==="documentos"?" on":""}" id="fic-p-documentos" role="tabpanel" aria-labelledby="fic-tab-documentos" data-fic="documentos">
+    <!-- r51 — as pendências aparecem na hora (dados da lista) e são
+         atualizadas aqui mesmo quando o Notion responde. -->
+    <div id="prop-detalhe" style="margin-top:16px">
+      ${propPendenciasHtml(p)}
+      <div class="sim-aviso ok"><span class="load"></span> Carregando os documentos e a conversa de e-mail…</div>
+    </div>
+    ${podeGravar?`<div style="margin:10px 0 4px">
+      <button class="bt az" onclick="propGerarLink('${p.id}')">🔗 Gerar link para o corretor completar</button>
+      <span id="prop-linkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
+      <div style="font-size:12px;color:var(--text3);margin-top:5px">O corretor abre o link, completa o que falta
+        e anexa os documentos — cai direto no cadastro desta proposta.</div>
+    </div>
+    <div style="margin:10px 0 4px">
+      <button class="bt" onclick="propGerarLinkVenda('${p.id}')">🧾 Link para completar as informações da venda</button>
+      <span id="prop-vendaLinkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
+      <div style="font-size:12px;color:var(--text3);margin-top:5px">Para a venda fechada: o cliente ou o corretor completa
+        os dados e documentos que faltam (inclusive o comprovante de endereço) — cai na lista de vendas do condomínio.</div>
+    </div>`:""}
+    ${podeGravar?`<!-- 02/10 (item 10) -->
+      <div style="margin-top:10px"><button class="bt" style="background:#B7791F;color:#fff" onclick="propAlerta('${p.id}')"><span aria-hidden="true">📣</span> Enviar alerta de pendências ao corretor</button>
+        <div id="prop-alertaInfo" class="sim-aviso" style="margin-top:6px"></div></div>`:""}
+    </div>
+
+    ${podeGravar?`<div class="fic-painel${PROP_FICHA.aba==="conversas"?" on":""}" id="fic-p-conversas" role="tabpanel" aria-labelledby="fic-tab-conversas" data-fic="conversas">
     <!-- r47 (item 1) — documentação para o correspondente -->
     <div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Enviar documentação ao correspondente</b>
       <div id="prop-corresp" style="display:flex;gap:9px;margin-top:8px;flex-wrap:wrap;align-items:center">
@@ -4613,7 +4666,6 @@ function propVer(id){
       <!-- r96q (28/10) — conversa com o correspondente, numa caixa só dela -->
       <div id="prop-histCorr"><div class="sim-aviso" style="margin-top:10px"><span class="load"></span> Carregando a conversa com o correspondente…</div></div>
     </div>
-
     <!-- ITEM 5 — quadro do e-mail: assunto, barra de formatação (negrito,
          itálico, sublinhado, tópicos, lista numerada, cor, link), área de
          texto com moldura e anexos. -->
@@ -4653,7 +4705,8 @@ function propVer(id){
       </div>
     </div>
     <!-- r53 — a conversa fica logo abaixo do campo de resposta -->
-    <div id="prop-hist"><div class="sim-aviso" style="margin-top:12px"><span class="load"></span> Carregando a conversa de e-mail…</div></div>`:""}
+    <div id="prop-hist"><div class="sim-aviso" style="margin-top:12px"><span class="load"></span> Carregando a conversa de e-mail…</div></div>
+    </div>`:""}
     <div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simPedirFechar()">Fechar</button></div>
     ${podeGravar?'':'<div id="prop-detAviso" class="sim-aviso" style="margin-top:10px"></div>'}`;
   document.getElementById("sim-modal").classList.remove("hide");
@@ -4667,6 +4720,7 @@ function propVer(id){
     ed.addEventListener("input",()=>{ if(!ed.textContent.trim() && !ed.querySelector("li,img")) ed.innerHTML=""; });
   }
   propCarregarDetalhe(p.id);
+  propFichaContadores();
   /* 07/11: a venda já existe e a proposta mudou? (venda/atualizar-venda.js) */
   if(podeGravar && PROP_NORM(p.status)==='RESERVADA' && window.AtualizarVendaUI){
     window.__avAoAplicar=()=>{ setTimeout(()=>{ try{ AtualizarVendaUI.aviso("av-aviso-prop", p.id); }catch(e){} }, 300); };
@@ -4888,6 +4942,7 @@ function propPintarDetalhe(id, r){
   /* r96q — conversa com o correspondente (caixa separada, na parte do correspondente) */
   const cxHC = document.getElementById("prop-histCorr");
   if(cxHC) cxHC.innerHTML = propHistCorrHtml(id, r);
+  propFichaContadores();
 }
 /* =====================================================================
  * r96q (28/10/2026) — CONVERSA COM O CORRESPONDENTE + AVISO DE E-MAIL NOVO
@@ -4959,6 +5014,7 @@ const PROP_TITULO_BASE=document.title.replace(/^\(\d+\)\s*/,"");
 function propEmailsPintar(){
   const l=propEmailsLista();
   try{ propRender(); propAlerta24(); }catch(e){}
+  try{ propFichaContadores(); }catch(e){}
   document.title=(l.length?"("+l.length+") ":"")+PROP_TITULO_BASE;
 }
 function propEmailsToast(itens){
@@ -5736,6 +5792,27 @@ function propEstiloEditor(){
       border-radius:4px;padding:4px 8px;font-size:13px;color:var(--text);line-height:1.2;}
     .prop-barra button:hover{background:var(--sup);border-color:var(--border);}
     .prop-barra .sep{width:1px;height:18px;background:var(--border);margin:0 4px;}
+    /* 20/11/2026 (onda 3) — ficha em abas: cabeçalho fixo (título, status, Fechar, Decisão, abas) e painéis que só mostram/escondem.
+       As abas usam o mesmo componente .tabs/.tab do cartão do condomínio (vendas.html, .cd-abas). */
+    .fic-cab{position:sticky;top:0;z-index:3;background:var(--sup);margin:-20px -22px 10px;padding:12px 22px 2px;border-bottom:1px solid var(--border2)}
+    .fic-cab .modal-topo{position:static;margin:0;padding:0 0 4px}
+    .fic-cab .modal-sub{margin:2px 0 8px}
+    .fic-dec{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .fic-dec .prop-dec{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .fic-dec>div{margin-top:0!important}
+    .fic-dec .bt{min-height:40px}
+    .cd-abas.fic-abas{display:flex;justify-content:center;margin:8px 0 6px;overflow-x:auto}
+    .fic-abas .tabs{padding:4px;gap:4px;border-width:2px}
+    .fic-abas .tab{padding:7px 14px;font-size:13.5px;letter-spacing:.06em;min-height:40px}
+    .fic-n{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#C0392B;color:#fff;font-size:12px;line-height:18px;letter-spacing:0;text-align:center}
+    .fic-painel{display:none}
+    .fic-painel.on{display:block}
+    @media (max-width:600px){
+      .fic-cab{margin:-16px -14px 10px;padding:10px 14px 2px}
+      .fic-abas .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));width:100%}
+      .fic-abas .tab{padding:8px 2px;font-size:12px;letter-spacing:0;text-align:center;min-height:44px}
+      .fic-dec .bt{min-height:44px}
+    }
     .prop-linkbox{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);border-bottom:none;padding:6px 7px;background:var(--bg2);}
     .prop-linkbox input{flex:1 1 220px;min-width:0;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font:inherit;font-size:16px;background:var(--sup);color:var(--text);}
     .prop-editor{min-height:170px;max-height:340px;overflow:auto;border:1px solid var(--border);
