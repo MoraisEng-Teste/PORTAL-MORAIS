@@ -46,7 +46,7 @@ header::after{content:"";display:block;height:4px;background:linear-gradient(90d
 .mesbar{display:flex;align-items:center;gap:10px;margin:6px 0 4px}
 .mesbar button{border:2px solid var(--border);background:var(--sup);color:var(--azul);
   border-radius:12px;width:52px;min-height:48px;font:inherit;font-size:22px;font-weight:800;cursor:pointer}
-.mesbar .m{flex:1;text-align:center;font-family:'Barlow Condensed',Inter,sans-serif;
+.mesbar .m{flex:1;min-width:0;overflow-wrap:anywhere;line-height:1.1;text-align:center;font-family:'Barlow Condensed',Inter,sans-serif;
   font-size:26px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--azul-esc)}
 
 .sec{margin:24px 0 12px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -64,7 +64,14 @@ header::after{content:"";display:block;height:4px;background:linear-gradient(90d
 .dia .full{font-size:16px;font-weight:700;color:var(--text3);letter-spacing:0;
   font-family:Inter,sans-serif;margin-left:9px;text-transform:capitalize;display:inline-block}
 .dia .full b{color:var(--azul);font-weight:800}
-.end{font-family:'Barlow Condensed',Inter,sans-serif;font-size:23px;font-weight:700;
+@media(max-width:400px){
+  body{font-size:16px}
+  .wrap{padding-left:12px;padding-right:12px}
+  .dia{font-size:30px}.dia .full{margin-left:0;display:block;margin-top:4px}
+  .sec .t,.mesbar .m{font-size:23px}
+  .mesbar button{width:48px}
+}
+.end{overflow-wrap:anywhere;font-family:'Barlow Condensed',Inter,sans-serif;font-size:23px;font-weight:700;
   text-transform:uppercase;line-height:1.15;margin:10px 0 10px;color:var(--text)}
 .ln{display:flex;gap:11px;align-items:flex-start;margin-bottom:8px;font-size:17px}
 .ln .ic{font-size:21px;line-height:1.25;flex:0 0 28px;text-align:center}
@@ -181,12 +188,15 @@ function erro(msg){
 async function carregar(){
   if(!CHAVE){ erro("Este link está incompleto. Peça o link certo no escritório."); return; }
   document.getElementById("tela").innerHTML='<div class="carregando">Carregando…</div>';
+  /* 20/11/26 — tempo-limite de 45 s: sem isto, rede ruim deixava "Carregando…" para sempre */
+  const ctl=new AbortController(), timer=setTimeout(()=>ctl.abort(),45000);
   try{
     /* text/plain evita o pedido de permissão (preflight) que o Apps Script
        recusa — mesmo motivo do app.js. */
-    const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+    const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},signal:ctl.signal,
       body:JSON.stringify({action:"docsDemandas", chave:CHAVE, mes:MES})});
     const d=await r.json();
+    clearTimeout(timer);
     if(!d.ok){
       erro(d.erro==="CHAVE_INVALIDA"
         ? "Este link não vale mais. Peça um link novo no escritório."
@@ -196,6 +206,8 @@ async function carregar(){
     try{ localStorage.setItem(CACHE_KEY, JSON.stringify(d)); }catch(e){}
     pintar(d);
   }catch(e){
+    clearTimeout(timer);
+    if(e && e.name==="AbortError"){ erro("Demorou demais. Tentar de novo?"); return; }
     /* Sem internet: mostra a última lista que deu certo, avisando o mês.
        Melhor uma lista salva, sinalizada, do que tela em branco na rua. */
     let c=null;

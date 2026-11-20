@@ -69,19 +69,19 @@ header::after{content:"";display:block;height:4px;background:linear-gradient(90d
 .tagrm{display:inline-block;background:var(--amarelo);color:#fff;border-radius:6px;
   padding:2px 9px;font-size:13px;font-weight:800;vertical-align:6px;margin-left:8px}
 
-.end{font-family:'Barlow Condensed',Inter,sans-serif;font-size:24px;font-weight:700;
+.end{overflow-wrap:anywhere;font-family:'Barlow Condensed',Inter,sans-serif;font-size:24px;font-weight:700;
   text-transform:uppercase;line-height:1.15;margin:10px 0 12px;color:var(--text)}
 
 /* cada linha: ícone fixo à esquerda, sempre na mesma coluna */
 /* setor e cidade logo abaixo do endereço (item 2) */
-.local{font-size:17px;font-weight:600;color:var(--text3);margin:-6px 0 12px}
+.local{overflow-wrap:anywhere;font-size:17px;font-weight:600;color:var(--text3);margin:-6px 0 12px}
 .ln{display:flex;gap:11px;align-items:flex-start;margin-bottom:9px;font-size:18px}
 .ln .ic{font-size:22px;line-height:1.25;flex:0 0 28px;text-align:center}
 .ln .tx{flex:1;overflow-wrap:anywhere}
 .ln b{font-weight:800}
 
 .acoes{display:flex;gap:10px;margin-top:14px}
-.acoes a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
+.acoes a{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;
   min-height:54px;border-radius:12px;text-decoration:none;font-size:18px;font-weight:800;
   font-family:'Barlow Condensed',Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px}
 .acoes .lig{background:var(--verde);color:#fff}
@@ -101,6 +101,14 @@ header::after{content:"";display:block;height:4px;background:linear-gradient(90d
   background:var(--sup);color:var(--azul);border-radius:12px;font:inherit;font-size:18px;font-weight:800;
   font-family:'Barlow Condensed',Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;cursor:pointer}
 .rodape{text-align:center;color:var(--text4);font-size:13px;margin-top:16px}
+/* celular estreito (360 px): nada pode esticar a página de lado */
+@media(max-width:400px){
+  body{font-size:16px}
+  .wrap{padding-left:12px;padding-right:12px}
+  .hora{font-size:36px}
+  .sec .t{font-size:24px}
+  .end{font-size:22px}
+}
 </style>
 </head>
 <body>
@@ -230,14 +238,17 @@ function erro(msg){
 async function carregar(){
   if(!CHAVE){ erro("Este link está incompleto. Peça o link certo no escritório."); return; }
   document.getElementById("tela").innerHTML = '<div class="carregando">Carregando seus serviços…</div>';
+  /* 20/11/26 — tempo-limite de 45 s: sem isto, rede ruim deixava "Carregando…" para sempre */
+  const ctl = new AbortController(), timer = setTimeout(()=>ctl.abort(), 45000);
   try{
     /* text/plain evita o pedido de permissão (preflight) que o Apps Script
        recusa — mesmo motivo do app.js. */
     const r = await fetch(API, {
-      method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, signal: ctl.signal,
       body: JSON.stringify({action:"agendaDia", chave:CHAVE})
     });
     const d = await r.json();
+    clearTimeout(timer);
     if(!d.ok){
       erro(d.erro === "CHAVE_INVALIDA"
         ? "Este link não vale mais. Peça um link novo no escritório."
@@ -247,6 +258,8 @@ async function carregar(){
     try{ localStorage.setItem(CACHE_KEY, JSON.stringify(d)); }catch(e){}
     pintar(d);
   }catch(e){
+    clearTimeout(timer);
+    if(e && e.name === "AbortError"){ erro("Demorou demais. Tentar de novo?"); return; }
     /* Sem internet: mostra a última lista que deu certo, avisando a data.
        Melhor uma lista de ontem, sinalizada, do que uma tela em branco no
        meio da rua. */
