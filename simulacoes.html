@@ -316,6 +316,12 @@ html[data-tema="escuro"] .alt-tit{color:var(--teal)}
   letter-spacing:.4px;color:var(--azul-esc)}
 html[data-tema="escuro"] .modal-tit{color:var(--teal)}
 .modal-sub{font-size:12px;color:var(--text3);margin:2px 0 14px}
+/* cabeçalho fixo da ficha: título + ✕ Fechar sempre à vista ao rolar */
+.modal-topo{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--sup);margin:-20px -22px 6px;padding:12px 22px 8px}
+.modal-topo .modal-tit{min-width:0;overflow-wrap:anywhere}
+.modal-topo .modal-x{flex:none;padding:6px 12px;min-height:36px}
+@media (max-width:600px){.modal-topo .modal-x{min-height:44px;min-width:44px}}
 /* nome do insumo clicavel */
 td.insumo.link{cursor:pointer;color:var(--azul);text-decoration:underline;text-decoration-style:dotted;
   text-underline-offset:3px}
@@ -820,7 +826,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
     </div>
   </main>
 
-  <div class="modal-ov hide" id="sim-modal" onclick="if(event.target===this)simFecharDet()">
+  <div class="modal-ov hide" id="sim-modal" onclick="if(event.target===this)simPedirFechar()">
     <div class="modal-cx" id="sim-modalCx"></div>
   </div>
 
@@ -1629,7 +1635,7 @@ function anDetalhe(un){
     </div>${propQuadroFluxo(p)}
     <div style="margin-top:10px"><button class="bt az" onclick="simFecharDet();trocarTab('propostas');setTimeout(function(){propVer('${p.id}')},250)">Abrir a proposta</button></div>`;
   }
-  html+='<div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simFecharDet()">Fechar</button></div>';
+  html+='<div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simPedirFechar()">Fechar</button></div>';
   cx.innerHTML=html;
 }
 
@@ -1998,7 +2004,8 @@ function simVerDet(id){
     </div>` : "";
 
   document.getElementById("sim-modalCx").innerHTML=`
-    <div class="modal-tit">${esc(s.cliente||"—")}</div>
+    <div class="modal-topo"><div class="modal-tit">${esc(s.cliente||"—")}</div>
+      <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
     <div class="modal-sub">CPF ${esc(s.cpf||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <!-- 07/11/2026 — alterar unidade / valor e PDF do fluxo: logo no topo -->
     <div class="alt-acoes">
@@ -2025,7 +2032,7 @@ function simVerDet(id){
       ${simSt(s)==="ERRO" && !ehSomenteLeitura(S)
         ? `<button class="bt az" onclick="simRefazer('${s.id}')">↻ Tentar de novo</button>` : ""}
       <button class="bt" style="background:#2a9d5c;color:#fff;border-color:#2a9d5c" onclick="simParaProposta('${s.id}')">📄 Transformar em proposta</button>
-      <button class="bt" onclick="simFecharDet()">Fechar</button>
+      <button class="bt" onclick="simPedirFechar()">Fechar</button>
     </div>
     <div id="sim-detAviso" class="sim-aviso" style="margin-top:10px"></div>
     <div id="sim-detAviso" class="sim-aviso" style="margin-top:10px"></div>`;
@@ -2060,6 +2067,36 @@ function simParaProposta(id){
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
 function simFecharDet(){ document.getElementById("sim-modal").classList.add("hide"); }
+/* e-mail da ficha com texto digitado e não enviado (assunto alterado ou mensagem preenchida) */
+function simEmailPendente(){
+  const ed=document.getElementById("prop-msg"), as=document.getElementById("prop-assunto");
+  if(!ed) return false;
+  if(ed.textContent.trim() || ed.querySelector("img,li")) return true;
+  return !!(as && as.dataset.orig!==undefined && as.value!==as.dataset.orig);
+}
+/* fecha a ficha; se há e-mail não enviado, pergunta antes (pergunta Sim/Não da tela, não o confirm do navegador) */
+let _simFechando=false;
+async function simPedirFechar(){
+  if(_simFechando) return;
+  _simFechando=true;
+  try{
+    if(simEmailPendente() && !(await propSimNao("Há um e-mail escrito e ainda não enviado. Fechar a ficha mesmo assim?"))) return;
+    simFecharDet();
+  } finally { _simFechando=false; }
+}
+/* Esc fecha a ficha, a menos que haja outra janela por cima dela */
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Escape") return;
+  const m=document.getElementById("sim-modal"); if(!m||m.classList.contains("hide")) return;
+  if(document.querySelector(".sn-fundo, #novo-form:not(.hide), #novo-un:not(.hide)")) return;
+  const acima=Array.from(document.body.children).some(el=>{
+    if(el===m||el.classList.contains("hide")) return false;
+    const cs=getComputedStyle(el);
+    return cs.position==="fixed" && cs.display!=="none" && (parseInt(cs.zIndex,10)||0)>60 && el.offsetWidth>=window.innerWidth*0.9;
+  });
+  if(acima) return;
+  simPedirFechar();
+});
 
 /* =====================================================================
  * 07/11/2026 (dono) — NOVA SIMULAÇÃO / SUBIR PASTA PELO PORTAL
@@ -4217,7 +4254,8 @@ function propVer(id){
   propEstiloEditor();
 
   document.getElementById("sim-modalCx").innerHTML=`
-    <div class="modal-tit">${esc(p.cliente||"—")} · Un. ${esc(String(p.unidade||"—"))}</div>
+    <div class="modal-topo"><div class="modal-tit">${esc(p.cliente||"—")} · Un. ${esc(String(p.unidade||"—"))}</div>
+      <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
     <div class="modal-sub">${esc(p.proposta||"")} · CPF ${esc(p.cpf||"—")} · ${simData(p.criadoEm)} · ${propTag(p.status)}
       ${h!==null?` · reservada há ${Math.floor(h)} h`:""}</div>
     ${chegouReservada(p,true)?`<div class="aviso-res"><b>Unidade já reservada no envio.</b>
@@ -4354,9 +4392,10 @@ function propVer(id){
     </div>
     <!-- r53 — a conversa fica logo abaixo do campo de resposta -->
     <div id="prop-hist"><div class="sim-aviso" style="margin-top:12px"><span class="load"></span> Carregando a conversa de e-mail…</div></div>`:""}
-    <div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simFecharDet()">Fechar</button></div>
+    <div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simPedirFechar()">Fechar</button></div>
     ${podeGravar?'':'<div id="prop-detAviso" class="sim-aviso" style="margin-top:10px"></div>'}`;
   document.getElementById("sim-modal").classList.remove("hide");
+  const asu=document.getElementById("prop-assunto"); if(asu) asu.dataset.orig=asu.value;
   const ed=document.getElementById("prop-msg");
   if(ed){
     /* sem isto, alguns navegadores criam <div> soltos em vez de parágrafos
