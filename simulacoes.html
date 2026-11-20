@@ -4344,14 +4344,25 @@ function propVer(id){
     <div id="alt-prop"></div>
     ${propResumoValores(p)}
     ${propQuadroFluxo(p)}
-    <div class="sim-grade" style="margin-top:14px">
+    <b class="sim-grupo" style="display:block;margin-top:14px;font-size:13px;color:var(--azul)">Corretor</b>
+    <div class="sim-grade" style="margin-top:6px">
       ${it("Corretor",esc(p.vendedor||""))}${it("CRECI",esc(p.creci||""))}${it("Imobiliária",esc(p.imobiliaria||""))}
       ${it("E-mail",esc(p.email||""))}${it("Celular do corretor",p.celularCorretor?simLinkTel(p.celularCorretor):"—")}${it("CPF do corretor",esc(p.cpfCorretor||"—"))}
+    </div>
+    <b class="sim-grupo" style="display:block;margin-top:6px;font-size:13px;color:var(--azul)">Crédito e renda</b>
+    <div class="sim-grade" style="margin-top:6px">
       ${it("Preço da unidade",simBRL(p.preco))}${it("Crédito aprovado",simBRL(p.creditoAprovado))}
       ${it("Valor financiado",simBRL(p.valorFinanciado))}${it("Parcela",p.parcelaFinanciamento?simBRL(p.parcelaFinanciamento):"não apurada")}
       ${it("Renda aprovada",simBRL(p.rendaAprovada))}${it("Renda total",simBRL(p.rendaTotal))}
-      ${it("FGTS",simBRL(p.fgts))}${it("Subsídio",simBRL(p.subsidio))}${it("Valor para entrada",simBRL(p.valorEntrada))}
+      ${it("FGTS",simBRL(p.fgts))}${it("Subsídio",simBRL(p.subsidio))}
+    </div>
+    <b class="sim-grupo" style="display:block;margin-top:6px;font-size:13px;color:var(--azul)">Entrada</b>
+    <div class="sim-grade" style="margin-top:6px">
+      ${it("Valor para entrada",simBRL(p.valorEntrada))}
       ${it("Prazo da entrada",p.prazoEntrada?p.prazoEntrada+" meses":"não informado")}${it("Fiadores",propFiadorDispensado((p.dados||{}).prazoEntrada, p.comissaoPct, p.prazoEntrada)?"não necessário (24x, sem pós-chaves)":"obrigatórios (2)")}${it("Comissão do corretor",p.comissaoValor?simBRL(p.comissaoValor)+" ("+((Number(p.comissaoPct)||0)*100).toLocaleString("pt-BR",{minimumFractionDigits:2})+"%)":"não informada")}
+    </div>
+    <b class="sim-grupo" style="display:block;margin-top:6px;font-size:13px;color:var(--azul)">Observações</b>
+    <div class="sim-grade" style="margin-top:6px;grid-template-columns:minmax(0,1fr)">
       ${it("Observações",esc(p.observacoes||""))}
     </div>
 
@@ -4660,7 +4671,7 @@ function propPintarDetalhe(id, r){
   const campos = r.campos || {};
   const linhas = Object.keys(campos).sort().map(k=>
     `<tr><td style="color:var(--text3);width:38%">${esc(k)}</td><td>${esc(campos[k])}</td></tr>`).join("");
-  const cxCampos = '<details style="margin-top:14px"><summary style="cursor:pointer;font-size:13px;'+
+  const cxCampos = String((S&&S.tipo)||"").toUpperCase()!=="ADM" ? "" : '<details style="margin-top:14px"><summary style="cursor:pointer;font-size:13px;'+
     'font-weight:700;color:var(--azul)">Todos os campos gravados ('+Object.keys(campos).length+')</summary>'+
     '<div class="tbl-wrap" style="max-height:320px;margin-top:6px"><table><tbody>'+linhas+
     '</tbody></table></div></details>';
