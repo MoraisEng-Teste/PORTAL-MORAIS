@@ -433,8 +433,9 @@
     h += htmlObservacao(im.observacao);
     h += htmlLoteamento(ui.loteamento);
     if (ui.msg && ui.msgGrupo === "imovel") h += '<div class="dz-msg">' + esc(ui.msg) + "</div>";
-    /* 04/11: o segundo "Ler documentos" (fim do imóvel) só aparece quando há o que ler; o do topo fica sempre */
-    return h + (pendentesDe(e).length || ui.msgGrupo === "lote-imovel" ? htmlLerTodos(e, ui, "imovel") : "");
+    /* Onda 3 (ux): o "Ler documentos" do fim do imóvel saiu — fazia exatamente a mesma leitura do botão do topo (a ação ler-todos lê
+       comprador e imóvel juntos, só pelo pageId; data-onde só mudava onde a mensagem aparecia). Fica UM só, o do topo do dossiê. */
+    return h;
   }
   /* entrega 13: depois de gravar no Notion, o painel da casa (vendas.html) recarrega os campos ao ouvir
      window "venda:dados-gravados" com detail { pageId, gravados? } (gravados: { coluna: valor } quando há) */
