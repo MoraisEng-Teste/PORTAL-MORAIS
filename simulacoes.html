@@ -582,7 +582,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
         <button class="tab" data-tab="propostas" onclick="trocarTab('propostas')">Propostas</button>
         <button class="tab" data-tab="analise" onclick="trocarTab('analise')">Análise de vendas</button>
         <button class="tab" data-tab="unidades" onclick="trocarTab('unidades')">Unidades</button>
-        <button class="tab" data-tab="servidores" onclick="trocarTab('servidores')">Servidores</button>
+        <button class="tab hide" id="tab-bt-servidores" data-tab="servidores" onclick="trocarTab('servidores')">Servidores</button><!-- só para ADM (simPintarUsuario) -->
       </div></div>
 
       <!-- ==================== PAINEL ==================== -->
@@ -947,6 +947,7 @@ function simPintarUsuario(){
   const tipo=String((S&&S.tipo)||"").toUpperCase();
   const b=document.getElementById("u-tipo"); b.textContent=tipo||"—";
   if(tipo==="ADM") b.classList.add("adm");
+  const bs=document.getElementById("tab-bt-servidores"); if(bs) bs.classList.toggle("hide", tipo!=="ADM");   /* aba Servidores só para ADM */
 }
 function simFalhou(msg){
   document.getElementById("falhou-msg").textContent = msg;
