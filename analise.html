@@ -92,7 +92,10 @@ html[data-tema="escuro"] .card h3{color:var(--teal)}
    colunas de dados cada, sobrava ~300px por tabela e TUDO espremia: o nome do
    insumo quebrava em 4 linhas, os numeros colavam. Uma tabela por linha, na
    largura toda, e o que resolve — a pagina fica mais alta, mas legivel. */
-.grid2{display:grid;grid-template-columns:1fr;gap:20px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+/* 20/11/2026: no celular o cartão com tabela larga esticava a página (medido 805 px em 375): item de grade precisa de min-width:0 */
+.grid2>*,.card{min-width:0}
+.card{max-width:100%;box-sizing:border-box}
 
 /* tabela */
 /* #2/#7: a rolagem interna cortava as linhas no meio e o scrollbar aparecia

@@ -416,7 +416,8 @@ html[data-tema="escuro"] .pchip{background:var(--bg3);color:var(--text)}
 @media(max-width:760px){ .li{grid-template-columns:1fr 1fr} .li .t{grid-column:1/-1} .af{grid-template-columns:1fr 1fr} .kb{grid-template-columns:repeat(4,240px)} }
 
 /* v2 — filtros com destaque e cartões clicáveis */
-.flts{display:inline-flex;align-items:center;gap:5px;background:var(--sup);border:1.5px solid var(--border);border-radius:12px;padding:4px 6px}
+/* 20/11/2026: a faixa de filtros não quebrava e esticava a página no celular (medido 648 px em 375) */
+.flts{display:inline-flex;flex-wrap:wrap;max-width:100%;box-sizing:border-box;align-items:center;gap:5px;background:var(--sup);border:1.5px solid var(--border);border-radius:12px;padding:4px 6px}
 .flt-l{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:0 4px}
 .flt{border:2px solid transparent;background:var(--bg3);color:var(--azul-esc);border-radius:9px;padding:7px 14px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
 .flt:hover{border-color:var(--azul)}
