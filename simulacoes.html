@@ -549,6 +549,60 @@ html[data-tema="escuro"] .ent-eq b,html[data-tema="escuro"] .ent-bloco .v,html[d
   .sn-fundo>[role=dialog]{margin:auto 0;max-height:calc(100dvh - 16px);overflow-y:auto}
   .sn-fundo button{min-height:44px;flex:1}
 }
+[role=button][tabindex]:not(button):focus-visible{outline:3px solid var(--azul);outline-offset:2px}
+/* 20/11/2026 (onda 3, celular) — fora das janelas: cabeçalho em uma linha, abas rolando de lado, cartões em 1/2 colunas,
+   tabelas de Propostas e de Simulações Recebidas viram lista de cartões (data-rot em cada célula, como o vendas.html),
+   alvo de toque de 44 px, input de 16 px e nenhum texto abaixo de 12 px. Desktop não muda. */
+@media(max-width:600px){
+  .wrap{padding:0 12px}
+  .hbar{flex-wrap:nowrap;gap:8px;padding:8px 0}
+  .logo{padding:3px 6px;flex:none}.logo img{height:26px}
+  .htit-cx{min-width:0;flex:1}
+  .htitle{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ht-l,.hsub,.hupd,.hspace,.user>div,.net.on{display:none}
+  .user{flex:none;gap:6px}
+  .sair,.btema{min-height:44px;min-width:44px}
+  .net,.badge{font-size:12px}
+  .bt-tx{display:none}
+  main{padding:12px 0 40px}
+  .crumb{gap:8px}
+  .crumb .bt,.btn-voltar{min-height:44px}
+  .tabs-outer{text-align:left;padding:8px}
+  .tabs{padding:4px}
+  .tab{min-height:44px;padding:8px 14px;font-size:14px}
+  .kpis,.kpis.k5,.kpis.an-top{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .kpi{min-width:0;padding:12px}
+  .kpi .val,.kpis.an-top .kpi .val{font-size:24px;overflow-wrap:anywhere}
+  .kpis.an-top .kpi.hero .val{font-size:30px}
+  .bt,.seg-bt,.an-per button,.an-filtros .limpar,.leg-bt{min-height:44px}
+  .seg-bt{padding:8px 16px}
+  main input:not([type=checkbox]):not([type=radio]),main select,main textarea{font-size:16px!important}
+  .an-filtros select,.an-filtros input{min-height:44px}
+  /* nenhum texto abaixo de 12 px */
+  .hsub,.net,.hupd,.badge,.kpi .lab,.kpi .sub,.an-filtros .lb,.kpis.k5 .cred-lin span,.sim-col .q,.fluxo .dia b,.fluxo .dia span,
+  .hist-email .hist-cab span,thead th,thead th .arr,.pill,.fcampo label,.un-op .st,.bl-un,.corresp-bt small,.corresp-bt .corresp-ok,
+  .chip-extr,.sim-item small,.dil-rot small,.dil-ja,.prop-resumo small,.ent-passo,.ent-eq small,.ent-qd,.ent-st{font-size:12px}
+  [style*="font-size:9px"],[style*="font-size:10px"],[style*="font-size:10.5px"],[style*="font-size:11px"],[style*="font-size:11.5px"]{font-size:12px!important}
+  /* tabelas de Propostas e de Simulações Recebidas: um cartão por linha (o cartão inteiro é clicável, como a linha) */
+  .tbl-wrap.alta:has(>#prop-tab),.tbl-wrap.alta:has(>#sim-tabRec){max-height:none;overflow:visible;border:0;border-radius:0}
+  #prop-tab,#sim-tabRec,#prop-tab tbody,#sim-tabRec tbody{display:block;width:100%}
+  #prop-tab thead,#sim-tabRec thead{display:none}
+  #prop-tab tr,#sim-tabRec tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;margin:0 0 10px;padding:10px 12px;
+    border:1px solid var(--border2);border-radius:12px;background:var(--sup);cursor:pointer}
+  #prop-tab tr[style],#sim-tabRec tr[style]{border-color:var(--border)}
+  #prop-tab td,#sim-tabRec td{display:flex;justify-content:space-between;align-items:baseline;gap:10px;grid-column:1/-1;min-width:0!important;max-width:none!important;
+    width:auto!important;padding:3px 0;border:0;white-space:normal;text-align:right;overflow-wrap:anywhere}
+  #prop-tab td[data-rot]::before,#sim-tabRec td[data-rot]::before{content:attr(data-rot);flex:none;font-size:12px;font-weight:700;color:var(--text3);text-align:left}
+  #prop-tab td[data-rot="Cliente"],#sim-tabRec td[data-rot="Cliente"]{grid-column:1;grid-row:1;justify-content:flex-start;text-align:left;font-size:15px;font-weight:800}
+  #prop-tab td[data-rot="Unidade"],#sim-tabRec td[data-rot="Unidade"]{grid-column:1;grid-row:2;justify-content:flex-start;text-align:left;font-weight:700}
+  #prop-tab td[data-rot="Status"],#sim-tabRec td[data-rot="Status"]{grid-column:2;grid-row:1 / span 2;justify-content:flex-end;align-items:flex-start}
+  #prop-tab td[data-rot="Cliente"]::before,#prop-tab td[data-rot="Unidade"]::before,#prop-tab td[data-rot="Status"]::before,
+  #sim-tabRec td[data-rot="Cliente"]::before,#sim-tabRec td[data-rot="Unidade"]::before,#sim-tabRec td[data-rot="Status"]::before{display:none}
+  #prop-tab td[colspan],#sim-tabRec td[colspan]{justify-content:center}
+  #sim-tabRec td select,#sim-tabRec td input{min-height:44px;font-size:16px!important}
+  #sim-tabRec td[data-rot="Observações"]{min-height:44px}
+}
+@media(max-width:480px){.kpis,.kpis.k5,.kpis.an-top{grid-template-columns:minmax(0,1fr)}}
 /* linha de total nas mini-tabelas do modal (fluxo de pagamento), no mesmo
    azul do cabeçalho das tabelas grandes — para lembrar o e-mail enviado */
 .sim-tot td{background:var(--azul);color:#fff;font-weight:800;border-color:rgba(255,255,255,.22)!important}
@@ -559,13 +613,13 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
   <header>
     <div class="wrap hbar">
       <span class="logo"><img src="img/logo.png" alt="Morais" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><b style="display:none;font-family:'Barlow Condensed';font-weight:800;font-size:16px;color:var(--azul-esc);padding:0 4px">MORAIS</b></span>
-      <div><div class="htitle">Simulações · Reserva dos Ipês</div><div class="hsub">Morais Engenharia</div></div>
+      <div class="htit-cx"><div class="htitle"><span class="ht-l">Simulações · </span>Reserva dos Ipês</div><div class="hsub">Morais Engenharia</div></div>
       <div class="hspace"></div>
       <span class="net on" id="net-status">online</span>
       <span class="hupd" id="updated"></span>
       <div class="user">
         <div style="text-align:right"><div class="nome" id="u-nome">—</div><span class="badge" id="u-tipo">—</span></div>
-        <button class="btema" id="btema" onclick="trocarTema()" title="Alternar claro/escuro" aria-label="Alternar claro/escuro">🌙</button>
+        <button class="btema" id="btema" onclick="trocarTema()" title="Alternar claro/escuro" aria-label="Alternar claro/escuro"><span aria-hidden="true">🌙</span><span class="bt-tx"> Tema</span></button>
         <button class="sair" onclick="sair()">Sair</button>
       </div>
     </div>
@@ -575,7 +629,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
     <div class="crumb">
       <a class="btn-voltar" href="index.html">← Início</a>
       <span style="flex:1"></span>
-      <button class="bt az" onclick="simAtualizarTudo(this)" title="Ignora os caches e busca no Notion agora">↻ Atualizar dados agora</button>
+      <button class="bt az" onclick="simAtualizarTudo(this)" title="Ignora os caches e busca no Notion agora"><span aria-hidden="true">↻</span> Atualizar dados agora</button>
       <span class="carga-portal" id="carga-portal"><i></i><b id="carga-pct">carregando…</b></span>
       <span class="chip-extr" id="data-extr"></span>
     </div>
@@ -690,9 +744,9 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           <div class="filtros">
             <div class="fcampo"><label>Buscar</label>
               <input type="search" id="sim-busca" placeholder="Cliente, CPF ou corretor…" oninput="simRenderRecebidas()"></div>
-            <button class="bt ghost" onclick="simCarregar(true,this)" title="Ignora o cache e busca no Notion agora">↻ Atualizar agora</button>
+            <button class="bt ghost" onclick="simCarregar(true,this)" title="Ignora o cache e busca no Notion agora"><span aria-hidden="true">↻</span> Atualizar agora</button>
             <button class="bt az" id="sim-btRefazerErros" onclick="simRefazerErros()"
-                    title="Devolve para a fila TODAS as simulações com erro">↻ Rodar de novo as com erro <span id="sim-qtdErros"></span></button>
+                    title="Devolve para a fila TODAS as simulações com erro"><span aria-hidden="true">↻</span> Rodar de novo as com erro <span id="sim-qtdErros"></span></button>
             <span style="font-size:12px;color:var(--text3);align-self:center">
               <span class="leg-res"></span>
               linha azul = simulação feita com a unidade já <b>reservada</b> (proposta só é analisada se houver desistência)
@@ -738,7 +792,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
         <div class="sec"><span class="cond">PCs que rodam o sistema online · revezamento</span></div>
         <div class="card">
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-            <button class="bt ghost" onclick="srvCarregar(this)">↻ Atualizar agora</button>
+            <button class="bt ghost" onclick="srvCarregar(this)"><span aria-hidden="true">↻</span> Atualizar agora</button>
             <span id="srv-hora" style="font-size:12px;color:var(--text3)"></span>
           </div>
           <div id="srv-resumo"></div>
@@ -775,10 +829,10 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
             <button class="bt mp-sim" onclick="novoEscolherUn('sim')">＋ Simular</button>
             <button class="bt mp-prop" onclick="novoEscolherUn('prop')">＋ Enviar proposta (subir pasta)</button>
             <a class="bt az" style="text-decoration:none" href="https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/tabela.html" target="_blank" rel="noopener" title="Abre a tabela numa aba nova: Simular e Enviar proposta de cada unidade abrem em outra aba">📋 Abrir tabela de disponibilidades</a>
-            <button class="bt az" id="bt-planilhaFluxo-pdf" onclick="planilhaFluxoPortal('pdf')" title="Valor, avaliação, financiamento (80% da avaliação) e o fluxo padrão de cada unidade à venda">⬇ Tabela de disponibilidades PDF</button>
-            <button class="bt az" id="bt-planilhaFluxo-xlsx" onclick="planilhaFluxoPortal('xlsx')" title="Valor, avaliação, financiamento (80% da avaliação) e o fluxo padrão de cada unidade à venda">⬇ Tabela de disponibilidades Excel</button>
+            <button class="bt az" id="bt-planilhaFluxo-pdf" onclick="planilhaFluxoPortal('pdf')" title="Valor, avaliação, financiamento (80% da avaliação) e o fluxo padrão de cada unidade à venda"><span aria-hidden="true">⬇</span> Tabela de disponibilidades PDF</button>
+            <button class="bt az" id="bt-planilhaFluxo-xlsx" onclick="planilhaFluxoPortal('xlsx')" title="Valor, avaliação, financiamento (80% da avaliação) e o fluxo padrão de cada unidade à venda"><span aria-hidden="true">⬇</span> Tabela de disponibilidades Excel</button>
             <!-- 14/11/2026 (dono) — fluxo personalizado sem proposta e sem dado de cliente; só no portal (venda/fluxo-personalizado.js) -->
-            <button class="bt verde" id="bt-fxp" onclick="fluxoPersonalizadoAbrir('')" title="Monta um fluxo de pagamento para mostrar ao cliente, sem enviar proposta e sem dados dele. Nada é gravado.">✎ Simular outro fluxo</button>
+            <button class="bt verde" id="bt-fxp" onclick="fluxoPersonalizadoAbrir('')" title="Monta um fluxo de pagamento para mostrar ao cliente, sem enviar proposta e sem dados dele. Nada é gravado."><span aria-hidden="true">✎</span> Simular outro fluxo</button>
           </div>
         </div>
         <div id="fxp-caixa"></div>
@@ -791,12 +845,12 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
             <!-- 06/11/26 — filtro do correspondente -->
             <div class="fcampo"><label>Correspondente</label>
               <select id="prop-corr-f" onchange="propRender()"><option value="">Todos</option></select></div>
-            <button class="bt ghost" onclick="propCarregar(true,this)">↻ Atualizar agora</button>
+            <button class="bt ghost" onclick="propCarregar(true,this)"><span aria-hidden="true">↻</span> Atualizar agora</button>
             <label class="prop-maiscol"><input type="checkbox" id="prop-maiscol" onchange="try{localStorage.setItem('prop_maiscol',this.checked?'1':'0')}catch(e){};propRender()"> Mais colunas</label>
             <div class="fcampo"><label>Ordem</label>
               <div class="seg" id="seg-ordem">
-                <button class="seg-bt on" data-po="asc" onclick="propOrdenar('asc')" title="Padrão: a que chegou primeiro fica no topo">↑ Mais antigas primeiro</button>
-                <button class="seg-bt" data-po="desc" onclick="propOrdenar('desc')">↓ Mais novas primeiro</button>
+                <button class="seg-bt on" data-po="asc" onclick="propOrdenar('asc')" title="Padrão: a que chegou primeiro fica no topo"><span aria-hidden="true">↑</span> Mais antigas primeiro</button>
+                <button class="seg-bt" data-po="desc" onclick="propOrdenar('desc')"><span aria-hidden="true">↓</span> Mais novas primeiro</button>
               </div></div>
             <span style="font-size:12px;color:var(--text3);align-self:center">
               <span class="leg-res"></span>
@@ -828,8 +882,8 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           <div class="filtros">
             <div class="fcampo"><label>Buscar</label>
               <input type="search" id="sim-buscaUn" placeholder="Unidade ou tipo…" oninput="simRenderUnidades()"></div>
-            <button class="bt ghost" onclick="simCarregarUnidades(true,this)" title="Busca no Notion ao vivo, ignorando o arquivo publicado">↻ Atualizar agora</button>
-            <button class="bt verde" id="sim-btSalvarTudo" onclick="simSalvarTudo()" title="Tenta de novo as unidades que não conseguiram salvar" style="display:none">↻ Tentar salvar de novo</button>
+            <button class="bt ghost" onclick="simCarregarUnidades(true,this)" title="Busca no Notion ao vivo, ignorando o arquivo publicado"><span aria-hidden="true">↻</span> Atualizar agora</button>
+            <button class="bt verde" id="sim-btSalvarTudo" onclick="simSalvarTudo()" title="Tenta de novo as unidades que não conseguiram salvar" style="display:none"><span aria-hidden="true">↻</span> Tentar salvar de novo</button>
             <span id="sim-alteradas" style="font-size:12px;color:var(--text3);align-self:center"></span>
           </div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin:4px 0 6px">
@@ -859,7 +913,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
     <div class="modal-cx">
       <div style="display:flex;align-items:center;gap:10px">
         <div class="modal-tit" id="novo-unTit" style="flex:1"></div>
-        <button class="bt ghost" onclick="novoFecharUn()">✕</button>
+        <button class="bt ghost" onclick="novoFecharUn()"><span aria-hidden="true">✕</span> Fechar</button>
       </div>
       <div class="modal-sub" id="novo-unSub"></div>
       <div class="filtros" style="margin:0">
@@ -873,8 +927,8 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
     <div class="form-cx">
       <div class="form-topo">
         <div class="modal-tit" id="novo-formTit"></div>
-        <button class="bt ghost" onclick="novoNovaAba()" title="Abre o mesmo formulário numa aba separada do navegador">↗ Abrir em nova aba</button>
-        <button class="bt az" onclick="novoFecharForm()">✕ Fechar</button>
+        <button class="bt ghost" onclick="novoNovaAba()" title="Abre o mesmo formulário numa aba separada do navegador"><span aria-hidden="true">↗</span> Abrir em nova aba</button>
+        <button class="bt az" onclick="novoFecharForm()"><span aria-hidden="true">✕</span> Fechar</button>
       </div>
       <iframe id="novo-formFr" title="Formulário do simulador" allow="camera; clipboard-write"></iframe>
     </div>
@@ -929,11 +983,37 @@ let ordSim = {col:"criadoEm", dir:-1};   // ordenação da tabela "Simulações 
    sobra é o do processamento (pendente / concluído / erro). */
 let simFiltroSt = "";                    // filtro por status do worker em Recebidas
 
+/* 20/11/2026 (onda 3) — elemento clicável que não é botão (linha de tabela, cartão, célula, texto com onclick) vira
+   botão para o teclado e o leitor de tela: role="button", tabindex="0" e Enter/Espaço fazem o clique. Uma função só,
+   aplicada a tudo o que a tela desenha (observa a página; as listas e a ficha são redesenhadas o tempo todo). */
+function simA11yClicaveis(raiz){
+  const lista=(raiz||document).querySelectorAll("[onclick]:not([role]):not(button):not(a):not(input):not(select):not(textarea):not(summary):not(label)");
+  lista.forEach(el=>{
+    const oc=el.getAttribute("onclick")||"";
+    if(/^\s*event\.stopPropagation\(\)\s*;?\s*$/.test(oc)) return;   // só barra o clique da linha (célula com campo)
+    if(oc.indexOf("event.target===")>=0) return;                       // fundo de janela: clique fora fecha, não é botão
+    el.setAttribute("role","button");
+    if(!el.hasAttribute("tabindex")) el.tabIndex=0;
+  });
+}
+(function(){
+  let agendado=false;
+  const rodar=()=>{ agendado=false; try{ simA11yClicaveis(document); }catch(e){} };
+  const agendar=()=>{ if(agendado) return; agendado=true; (window.requestAnimationFrame||setTimeout)(rodar); };
+  try{ new MutationObserver(agendar).observe(document.documentElement,{childList:true,subtree:true}); }catch(e){}
+  document.addEventListener("DOMContentLoaded",agendar);
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="Enter" && e.key!==" ") return;
+    const el=e.target; if(!el || el.getAttribute?.("role")!=="button" || !el.hasAttribute("onclick")) return;
+    if(/^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY)$/.test(el.tagName)) return;
+    e.preventDefault(); el.click();
+  });
+})();
 function trocarTema(){
   const novo = document.documentElement.dataset.tema === "escuro" ? "claro" : "escuro";
   document.documentElement.dataset.tema = novo;
   try{ localStorage.setItem("morais_tema", novo); }catch(e){}
-  document.getElementById("btema").textContent = novo === "escuro" ? "☀️" : "🌙";
+  document.getElementById("btema").innerHTML = '<span aria-hidden="true">'+(novo === "escuro" ? "☀️" : "🌙")+'</span><span class="bt-tx"> Tema</span>';
 }
 
 const simBRL = v => (Number(v)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -992,7 +1072,7 @@ function simAbaInicial(){
 function trocarTab(nome, semHist, inicial){
   try{ localStorage.setItem(SIM_ABA_KEY, nome); }catch(e){}
   simHistAba(nome, semHist, inicial);
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.tab===nome));
+  document.querySelectorAll(".tabs-outer .tab").forEach(t=>{ t.classList.toggle("on", t.dataset.tab===nome); if(t.dataset.tab===nome){ try{ t.scrollIntoView({inline:"center",block:"nearest"}); }catch(e){} } });   /* 20/11: só as abas principais (a ficha tem as dela); no celular a faixa rola e a aba ativa fica à vista */
   /* set/26 r5 — a aba "Nova proposta" saiu: o preenchimento é pelo mapa
      (proposta.html), do mesmo jeito que a simulação. Aqui o portal só
      DECIDE sobre proposta que já chegou. */
@@ -1022,8 +1102,8 @@ function iniciar(){
   try{
     simPintarUsuario();
     simNet(navigator.onLine);
-    document.getElementById("btema").textContent =
-      document.documentElement.dataset.tema==="escuro" ? "☀️":"🌙";
+    document.getElementById("btema").innerHTML =
+      '<span aria-hidden="true">'+(document.documentElement.dataset.tema==="escuro" ? "☀️":"🌙")+'</span><span class="bt-tx"> Tema</span>';
 
     if(!podeAcessar(S,"SIMULAÇÕES")){
       document.getElementById("sem-acesso").classList.remove("hide");
@@ -1633,7 +1713,7 @@ function analiseRender(){
 /* o que a base UNIDADES diz diferente da planilha — o mapa já segue a planilha; a lista diz o que acertar */
 function anDivergencias(){
   const el=document.getElementById("an-diverg"); if(!el) return;
-  if(AN_PLAN_ERRO){ el.innerHTML='<div class="sim-aviso err">Não consegui ler a Planilha Casas Condomínio ('+esc(AN_PLAN_ERRO)+'): o mapa está só com a base Unidades. <button class="bt" onclick="AN_PLAN_ERRO=\'\';anCarregarPlanilha(true)">↻ Tentar de novo</button></div>'; return; }
+  if(AN_PLAN_ERRO){ el.innerHTML='<div class="sim-aviso err">Não consegui ler a Planilha Casas Condomínio ('+esc(AN_PLAN_ERRO)+'): o mapa está só com a base Unidades. <button class="bt" onclick="AN_PLAN_ERRO=\'\';anCarregarPlanilha(true)"><span aria-hidden="true">↻</span> Tentar de novo</button></div>'; return; }
   if(!AN_PLAN){ el.innerHTML='<div class="sim-aviso"><span class="load"></span> Lendo a Planilha Casas Condomínio…</div>'; return; }
   if(!UNS.length){ el.innerHTML=""; return; }
   const nome={vendida:"vendida", reservada:"reservada", preferencia:"reserva paga", disponivel:"disponível", indisponivel:"em breve"};
@@ -1938,18 +2018,18 @@ function simRenderRecebidas(){
     return;
   }
   const corpo=vis.map(s=>`<tr class="clicavel${chegouReservada(s,false)?' linha-res':''}"${chegouReservada(s,false)?' title="Simulação feita com a unidade já reservada"':''}${simNova(s)?' style="background:#FFF3C4"':''} onclick="simVerDet('${s.id}')">
-    <td>${esc(s.cliente||"—")}</td><td class="col-un">${esc(cpfFmt(s.cpf)||"—")}</td>
-    <td>${esc(s.corretor||"—")}${s.celularCorretor?`<div style="font-size:11px;color:var(--text3)">📱 ${esc(simFmtTel(s.celularCorretor))}</div>`:""}</td><td>${esc(s.imobiliaria||"—")}</td>
-    <td>Un. ${esc(String(s.unidade||"—"))} <span style="color:var(--text3)">(T${esc(String(s.tipo||"—"))})</span></td>
-    <td class="num">${s.renda?simBRL(s.renda):"—"}</td>
-    <td class="num">${s.financiado?simBRL(s.financiado):"—"}</td>
-    <td class="num">${s.entradaInformada?simBRL(s.entradaInformada):"—"}</td>
-    <td class="num">${s.entrada?simBRL(s.entrada):"—"}</td>
-    <td class="num">${s.parcela?simBRL(s.parcela):"—"}</td>
-    <td>${simData(s.criadoEm)}</td>
+    <td data-rot="Cliente">${esc(s.cliente||"—")}</td><td class="col-un" data-rot="CPF">${esc(cpfFmt(s.cpf)||"—")}</td>
+    <td data-rot="Corretor">${esc(s.corretor||"—")}${s.celularCorretor?`<div style="font-size:11px;color:var(--text3)">📱 ${esc(simFmtTel(s.celularCorretor))}</div>`:""}</td><td data-rot="Imobiliária">${esc(s.imobiliaria||"—")}</td>
+    <td data-rot="Unidade">Un. ${esc(String(s.unidade||"—"))} <span style="color:var(--text3)">(T${esc(String(s.tipo||"—"))})</span></td>
+    <td class="num" data-rot="Renda">${s.renda?simBRL(s.renda):"—"}</td>
+    <td class="num" data-rot="Financiado">${s.financiado?simBRL(s.financiado):"—"}</td>
+    <td class="num" data-rot="Valor p/ sinal">${s.entradaInformada?simBRL(s.entradaInformada):"—"}</td>
+    <td class="num" data-rot="Entrada a pagar">${s.entrada?simBRL(s.entrada):"—"}</td>
+    <td class="num" data-rot="Parcela">${s.parcela?simBRL(s.parcela):"—"}</td>
+    <td data-rot="Data">${simData(s.criadoEm)}</td>
     ${simContatoCells(s)}
-    <td>${simTagSt(s.status)}</td>
-    <td style="min-width:220px;max-width:300px;white-space:normal;font-size:12px;line-height:1.35;color:var(--text3)"
+    <td data-rot="Status">${simTagSt(s.status)}</td>
+    <td data-rot="Motivo" style="min-width:220px;max-width:300px;white-space:normal;font-size:12px;line-height:1.35;color:var(--text3)"
         title="${esc(s.mensagem||"")}">${esc(String(s.mensagem||"—").slice(0,120))}${String(s.mensagem||"").length>120?"…":""}</td></tr>`).join("");
   document.getElementById("sim-tabRec").innerHTML=cab+"<tbody>"+corpo+"</tbody>";
 }
@@ -1963,10 +2043,10 @@ function simContatoCells(s){
   const dis=ro?"disabled":"";
   const cor = c==="SIM" ? "background:#E6F4EA;border-color:#9BD3AE" : (c==="NÃO" ? "background:#FDECEA;border-color:#E2A493" : "");
   const obs=String(s.obsContato||"");
-  return `<td onclick="event.stopPropagation()" style="width:1%"><select id="sc-c-${s.id}" ${dis} style="width:74px;padding:4px 4px;border-radius:6px;border:1px solid var(--border2);font-size:12px;${cor}" onchange="simContato('${s.id}','contato',this)">
+  return `<td data-rot="Contato" onclick="event.stopPropagation()" style="width:1%"><select id="sc-c-${s.id}" ${dis} style="width:74px;padding:4px 4px;border-radius:6px;border:1px solid var(--border2);font-size:12px;${cor}" onchange="simContato('${s.id}','contato',this)">
       <option value=""${!c?" selected":""}>—</option><option${c==="SIM"?" selected":""}>SIM</option><option${c==="NÃO"?" selected":""}>NÃO</option></select></td>
-    <td onclick="event.stopPropagation()" style="width:1%"><input type="date" id="sc-d-${s.id}" value="${esc(s.dataContato||"")}" ${dis} style="width:128px;padding:3px 4px;border-radius:6px;border:1px solid var(--border2);font-size:12px" onchange="simContato('${s.id}','dataContato',this)"></td>
-    <td onclick="event.stopPropagation();${ro?"":`simRecObsAbrir('${s.id}')`}" id="sc-o-${s.id}" title="${esc(obs||"Clique para escrever o que aconteceu")}"
+    <td data-rot="Data do contato" onclick="event.stopPropagation()" style="width:1%"><input type="date" id="sc-d-${s.id}" value="${esc(s.dataContato||"")}" ${dis} style="width:128px;padding:3px 4px;border-radius:6px;border:1px solid var(--border2);font-size:12px" onchange="simContato('${s.id}','dataContato',this)"></td>
+    <td data-rot="Observações" onclick="event.stopPropagation();${ro?"":`simRecObsAbrir('${s.id}')`}" id="sc-o-${s.id}" title="${esc(obs||"Clique para escrever o que aconteceu")}"
         style="min-width:150px;max-width:220px;white-space:normal;cursor:${ro?"default":"pointer"};font-size:12px;line-height:1.3">${simObsResumo(obs)}</td>`;
 }
 function simObsResumo(obs){
@@ -2075,9 +2155,9 @@ function simVerAbaixo(id){
   cx.innerHTML=`
     <div class="sec" style="margin-top:0"><span class="cond">Simulação de ${esc(s.cliente||"—")}</span>
       <span style="flex:1"></span>
-      <button class="bt" style="background:#2a9d5c;color:#fff;border-color:#2a9d5c;margin-right:8px" onclick="simParaProposta('${s.id}')">📄 Transformar em proposta</button>
-      ${!ehSomenteLeitura(S)?`<button class="bt verde" style="margin-right:8px" onclick="simVerDet('${s.id}');setTimeout(function(){altSimAbrir('${s.id}')},60)">✎ Alterar unidade / valor</button>`:""}
-      <button class="bt" style="margin-right:8px" onclick="fluxoPdf('sim','${s.id}')">📄 PDF do fluxo</button>
+      <button class="bt" style="background:#2a9d5c;color:#fff;border-color:#2a9d5c;margin-right:8px" onclick="simParaProposta('${s.id}')"><span aria-hidden="true">📄</span> Transformar em proposta</button>
+      ${!ehSomenteLeitura(S)?`<button class="bt verde" style="margin-right:8px" onclick="simVerDet('${s.id}');setTimeout(function(){altSimAbrir('${s.id}')},60)"><span aria-hidden="true">✎</span> Alterar unidade / valor</button>`:""}
+      <button class="bt" style="margin-right:8px" onclick="fluxoPdf('sim','${s.id}')"><span aria-hidden="true">📄</span> PDF do fluxo</button>
       <button class="bt ghost" onclick="document.getElementById('sim-detBaixo').style.display='none'">Fechar</button></div>
     <div class="modal-sub" style="margin-bottom:10px">CPF ${esc(cpfFmt(s.cpf)||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <div class="sim-grade">
@@ -2100,7 +2180,7 @@ function simVerAbaixo(id){
     ${s.mensagem?`<div class="sim-aviso ${simSt(s)==="ERRO"?"err":"ok"}" style="margin-top:12px">
       <b>Mensagem do processamento</b><br><span style="white-space:pre-line">${esc(s.mensagem)}</span></div>`:""}
     ${simSt(s)==="ERRO" && !ehSomenteLeitura(S)
-      ? `<div style="margin-top:12px"><button class="bt az" onclick="simRefazer('${s.id}')">↻ Tentar de novo</button></div>`:""}`;
+      ? `<div style="margin-top:12px"><button class="bt az" onclick="simRefazer('${s.id}')"><span aria-hidden="true">↻</span> Tentar de novo</button></div>`:""}`;
   cx.scrollIntoView({behavior:"smooth", block:"nearest"});
 }
 
@@ -2120,12 +2200,12 @@ function simVerDet(id){
 
   document.getElementById("sim-modalCx").innerHTML=`
     <div class="modal-topo"><div class="modal-tit">${esc(s.cliente||"—")}</div>
-      <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
+      <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar"><span aria-hidden="true">✕</span> Fechar</button></div>
     <div class="modal-sub">CPF ${esc(cpfFmt(s.cpf)||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <!-- 07/11/2026 — alterar unidade / valor e PDF do fluxo: logo no topo -->
     <div class="alt-acoes">
-      ${!ehSomenteLeitura(S)?`<button class="bt verde" onclick="altSimAbrir('${s.id}')">✎ Alterar unidade / valor</button>`:""}
-      <button class="bt az" onclick="fluxoPdf('sim','${s.id}')">📄 Gerar PDF do fluxo</button>
+      ${!ehSomenteLeitura(S)?`<button class="bt verde" onclick="altSimAbrir('${s.id}')"><span aria-hidden="true">✎</span> Alterar unidade / valor</button>`:""}
+      <button class="bt az" onclick="fluxoPdf('sim','${s.id}')"><span aria-hidden="true">📄</span> Gerar PDF do fluxo</button>
     </div>
     <div id="alt-sim-${s.id}"></div>
     <div class="sim-grade">
@@ -2145,8 +2225,8 @@ function simVerDet(id){
       <b>Mensagem do processamento</b><br><span style="white-space:pre-line">${esc(s.mensagem)}</span></div>`:""}
     <div style="display:flex;gap:9px;margin-top:16px;flex-wrap:wrap">
       ${simSt(s)==="ERRO" && !ehSomenteLeitura(S)
-        ? `<button class="bt az" onclick="simRefazer('${s.id}')">↻ Tentar de novo</button>` : ""}
-      <button class="bt" style="background:#2a9d5c;color:#fff;border-color:#2a9d5c" onclick="simParaProposta('${s.id}')">📄 Transformar em proposta</button>
+        ? `<button class="bt az" onclick="simRefazer('${s.id}')"><span aria-hidden="true">↻</span> Tentar de novo</button>` : ""}
+      <button class="bt" style="background:#2a9d5c;color:#fff;border-color:#2a9d5c" onclick="simParaProposta('${s.id}')"><span aria-hidden="true">📄</span> Transformar em proposta</button>
       <button class="bt" onclick="simPedirFechar()">Fechar</button>
     </div>
     <div id="sim-detAviso" class="sim-aviso" style="margin-top:10px"></div>`;
@@ -2176,7 +2256,7 @@ function simParaProposta(id){
     cpfCorretor:String(s.cpfCorretor||""),
     nomeCliente:String(s.cliente||""), cpfCliente:String(s.cpf||""), emailCorretor:String(s.email||"") };
   try{ localStorage.setItem("simParaProposta", JSON.stringify(d)); }
-  catch(e){ alert("Não consegui guardar os dados da simulação neste navegador."); return; }
+  catch(e){ propAviso("Não consegui guardar os dados da simulação neste navegador.","Não foi possível abrir a proposta"); return; }
   window.open("https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/proposta.html?tipo="+encodeURIComponent(d.tipo)+
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
@@ -2293,11 +2373,11 @@ function novoNovaAba(){
   try{ const l = document.getElementById("novo-formFr").contentWindow.location.href; if(l && l!=="about:blank") url = l; }catch(e){}
   window.open(url, "_blank");
 }
-function novoFecharForm(){
+async function novoFecharForm(){
   const fr = document.getElementById("novo-formFr");
   let enviado = false;
   try{ enviado = /enviado\.html/i.test(fr.contentWindow.location.pathname); }catch(e){}
-  if(!enviado && !confirm("Fechar o formulário? O que ainda não foi enviado se perde.")) return;
+  if(!enviado && !(await propPerguntar({titulo:"Fechar o formulário?", texto:"• O que ainda não foi enviado se perde.", sim:"Fechar formulário", nao:"Continuar preenchendo", perigo:true}))) return;
   document.getElementById("novo-form").classList.add("hide");
   document.body.style.overflow = "";
   fr.src = "about:blank";
@@ -2448,7 +2528,7 @@ async function altPropSalvar(){
   const mudouUn=!!k.novo, mudouFin=!A.cred && Math.abs(k.fin-(Number(p.valorFinanciado)||0))>0.5, mudouInf=Math.abs(inf-(Number(p.valorEntrada)||0))>0.005;
   const av=document.getElementById("alt-aviso"), bt=document.getElementById("alt-bt");
   if(!mudouUn && !mudouFin && !mudouInf){ av.className="sim-aviso err"; av.textContent="Nada mudou: escolha outra unidade ou altere um valor."; return; }
-  if(mudouUn && !confirm("Trocar a proposta da unidade "+p.unidade+" para a unidade "+k.novo+"?")) return;
+  if(mudouUn && !(await propPerguntar({titulo:"Trocar de unidade?", texto:"• A proposta sai da unidade "+p.unidade+".\n• Ela passa para a unidade "+k.novo+".", sim:"Trocar para a unidade "+k.novo, nao:"Voltar"}))) return;
   const venda={valorEntrada:inf, saldoFgts:k.fgtsP, saldoFgtsConjuge:k.fgtsC, subsidio:k.sub, prazoEntrada:k.o.prazoEntrada,
     sinalParcelas:k.o.nSinal, diluicao:dil, esquema:altEsquema(g.fluxo), esquemaOriginal:(dil[0]||dil[1]) ? altEsquema(g.fluxoOriginal||[]) : "",
     financiado:k.fin, entradaTotal:g.total, sinal:g.sinaisTotal, devolucao:g.devolucao};
@@ -2514,7 +2594,7 @@ async function planilhaFluxoPortal(formato){
     const n=await planilhaFluxoPadrao(UNS, formato);
     b.textContent="✓ Baixado ("+n+" unidades)";
     setTimeout(()=>{ b.textContent=txt; }, 4000);
-  }catch(e){ alert("Não consegui gerar a planilha: "+((e&&e.message)||e)); b.textContent=txt; }
+  }catch(e){ propAviso("Não consegui gerar a planilha: "+((e&&e.message)||e),"Planilha não gerada"); b.textContent=txt; }
   finally{ b.disabled=false; }
 }
 
@@ -2584,7 +2664,7 @@ function fluxoPdf(tipo, id){
   if(tipo==="prop"){
     const p=PROPS.find(x=>x.id===id); if(!p) return;
     const fluxo=propParseEsquema(p.esquema);
-    if(!fluxo.length){ alert("Esta proposta ainda não tem fluxo gravado."); return; }
+    if(!fluxo.length){ propAviso("Esta proposta ainda não tem fluxo gravado.","Sem fluxo para o PDF"); return; }
     let mud=new Set();
     try{ const dil=propDilAplicar(p, fluxo); mud=new Set([...dil.mudou].map(ix=>fluxo[ix]&&fluxo[ix].i)); }catch(e){}
     const c=entDaProposta(p, fluxo);
@@ -2594,7 +2674,7 @@ function fluxoPdf(tipo, id){
     nome="Fluxo "+(p.proposta||("proposta un "+(p.unidade||"")));
   } else {
     const s=SIMS.find(x=>x.id===id); if(!s) return;
-    if(!propParseEsquema(s.esquema).length){ alert("Esta simulação ainda não tem fluxo (pode estar na fila)."); return; }
+    if(!propParseEsquema(s.esquema).length){ propAviso("Esta simulação ainda não tem fluxo (pode estar na fila).","Sem fluxo para o PDF"); return; }
     corpo=simFluxoHtml(s);
     tit="Fluxo de pagamento da simulação";
     sub=(s.cliente||"")+" · Unidade "+(s.unidade||"")+(s.tipo?" (Tipo "+s.tipo+")":"")+" · "+simData(s.criadoEm);
@@ -2604,7 +2684,7 @@ function fluxoPdf(tipo, id){
   const estilos=[...document.querySelectorAll("style")].map(x=>x.outerHTML).join("\n");
   const hoje=new Date().toLocaleDateString("pt-BR");
   const w=window.open("", "_blank");
-  if(!w){ alert("O navegador bloqueou a janela do PDF. Libere pop-ups para o portal e tente de novo."); return; }
+  if(!w){ propAviso("O navegador bloqueou a janela do PDF.\n• Libere os pop-ups para o portal.\n• Depois tente de novo.","PDF bloqueado"); return; }
   w.document.open();
   w.document.write(`<!doctype html><html lang="pt-BR" data-tema="claro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(nome.replace(/\.pdf$/,""))}</title>
@@ -2626,7 +2706,7 @@ function fluxoPdf(tipo, id){
   @media print{.pdf-bar{display:none}#pdf{padding:0}}
 </style></head><body>
 <div class="pdf-bar"><span id="pdf-st">Gerando o PDF…</span><span style="flex:1"></span>
-  <button class="b1" onclick="baixar()">⬇ Baixar PDF</button><button class="b2" onclick="print()">🖨 Imprimir</button></div>
+  <button class="b1" onclick="baixar()"><span aria-hidden="true">⬇</span> Baixar PDF</button><button class="b2" onclick="print()"><span aria-hidden="true">🖨</span> Imprimir</button></div>
 <div id="pdf">
   <div class="pdf-cab"><div><h1>${esc(tit)}</h1><div class="s">${esc(sub)}</div></div>
     <div class="m">Condomínio Reserva dos Ipês<br>Morais Engenharia e Construção<br>${esc(hoje)}</div></div>
@@ -2678,7 +2758,7 @@ async function simRefazerErros(){
   const av=document.getElementById("sim-avisoErros");
   const bt=document.getElementById("sim-btRefazerErros");
   if(!erros.length){ av.className="sim-aviso ok"; av.textContent="Nenhuma simulação com erro."; return; }
-  if(!confirm("Devolver "+qtd(erros.length,"simulação com erro","simulações com erro")+" para a fila?")) return;
+  if(!(await propPerguntar({titulo:"Devolver para a fila?", texto:"• "+qtd(erros.length,"simulação com erro","simulações com erro")+" volta para a fila.\n• Cada uma tenta de novo desde o começo.", sim:"Devolver para a fila", nao:"Voltar"}))) return;
   bt.disabled=true;
   let ok=0, falha=[];
   for(let i=0;i<erros.length;i++){
@@ -2710,7 +2790,7 @@ async function propGerarLink(id){
   if(r && !r.ok && /ACAO_DESCONHECIDA/.test(String(r.erro||""))){
     try{ r=await chamar({action:"simsPropostaLink", pageId:id}, 60000, true); }catch(e){ r=null; }
   }
-  if(!r){ if(cx) cx.innerHTML='não consegui gerar agora. <button class="bt ghost" style="padding:4px 10px" onclick="propGerarLink(\''+id+'\')">↻ Tentar de novo</button>'; return; }
+  if(!r){ if(cx) cx.innerHTML='não consegui gerar agora. <button class="bt ghost" style="padding:4px 10px" onclick="propGerarLink(\''+id+'\')"><span aria-hidden="true">↻</span> Tentar de novo</button>'; return; }
   if(!r || !r.ok){
     const erro=String((r&&r.erro)||"falhou");
     /* r55 — o "Can't edit block that is archived" do Notion quer dizer que a
@@ -2725,7 +2805,7 @@ async function propGerarLink(id){
        : esc(r.mensagem || erro))+
       (r.pagina ? '<br><span style="font-size:11px;color:var(--text3)">página '+esc(r.pagina)+
                   (r.base?' · base '+esc(String(r.base).slice(-6)):'')+'</span>' : '')+
-      '</span>'+(arquivada?'':' <button class="bt ghost" style="padding:4px 10px" onclick="propGerarLink(\''+id+'\')">↻ Tentar de novo</button>');
+      '</span>'+(arquivada?'':' <button class="bt ghost" style="padding:4px 10px" onclick="propGerarLink(\''+id+'\')"><span aria-hidden="true">↻</span> Tentar de novo</button>');
     return;
   }
   const cxDet=document.getElementById("prop-detalhe");
@@ -2743,7 +2823,7 @@ async function propGerarLink(id){
     '<button class="bt az" onclick="propCopiar(\'prop-linkUrl\',this)">Copiar o link</button>'+
     '<button class="bt" onclick="propCopiar(\'prop-linkMsg\',this)">Copiar a mensagem</button>'+
     /* r52 (item 4) — manda direto por e-mail, na mesma conversa da proposta */
-    '<button class="bt verde" onclick="propEnviarLink(\''+id+'\',this)">✉ Enviar por e-mail ao corretor</button>'+
+    '<button class="bt verde" onclick="propEnviarLink(\''+id+'\',this)"><span aria-hidden="true">✉</span> Enviar por e-mail ao corretor</button>'+
     '<a class="bt ghost" target="_blank" rel="noopener" href="'+esc(r.url)+'" style="text-decoration:none">Abrir</a>'+
     '</div><div id="prop-linkEnvio" style="font-size:12px;margin-top:8px"></div>';
   if(cx){ cx.textContent=""; cx.parentElement.appendChild(bloco); }
@@ -3686,23 +3766,23 @@ function propRender(){
     const nova = !venc && PROP_NORM(p.status)==="RECEBIDA";      // 02/10 (item 6) — novas em destaque
     const estilo = venc ? ' style="background:#F6D6D2"' : (nova ? ' style="background:#FFF3C4"' : '');
     return `<tr class="clicavel${res?' linha-res':''}"${estilo}${res?' title="Enviada com a unidade já reservada — só é analisada se houver desistência"':''} onclick="propVer('${p.id}')">
-      <td><b>${esc(p.proposta||"—")}</b>${propEmailSelos(p)}</td>
-      <td>Un. ${esc(String(p.unidade||"—"))}${propSeloInterno(p.unidade, p)}</td>
-      <td>${esc(p.cliente||"—")}</td>
-      ${M(`<td class="col-un">${esc(cpfFmt(p.cpf)||"—")}</td>`)}
-      <td>${p.comCredito
+      <td data-rot="Proposta"><b>${esc(p.proposta||"—")}</b>${propEmailSelos(p)}</td>
+      <td data-rot="Unidade">Un. ${esc(String(p.unidade||"—"))}${propSeloInterno(p.unidade, p)}</td>
+      <td data-rot="Cliente">${esc(p.cliente||"—")}</td>
+      ${M(`<td class="col-un" data-rot="CPF">${esc(cpfFmt(p.cpf)||"—")}</td>`)}
+      <td data-rot="Crédito Caixa">${p.comCredito
             ? '<span class="pill bom">APROVADO</span>'
             : '<span class="pill ruim">SEM CARTA</span>'+propCorrCelula(p)}</td>
-      <td>${propPillSinais(p)}</td>
-      ${M(`<td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>`)}
-      <td>${esc(p.vendedor||"—")}</td>
-      ${M(`<td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
-      <td class="num">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
-      <td class="num">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
-      <td>${esc(p.imobiliaria||"—")}</td>
-      <td class="prop-obs-td" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>`)}
-      <td>${simData(p.criadoEm)}</td>
-      <td>${propTag(p.status)}${venc?' <span style="color:#C0392B;font-weight:700">vence &lt;24h</span>':''}</td></tr>`;
+      <td data-rot="Sinal">${propPillSinais(p)}</td>
+      ${M(`<td data-rot="Correspondente">${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>`)}
+      <td data-rot="Corretor">${esc(p.vendedor||"—")}</td>
+      ${M(`<td class="num" data-rot="Crédito aprovado">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
+      <td class="num" data-rot="Entrada">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
+      <td class="num" data-rot="Renda">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
+      <td data-rot="Imobiliária">${esc(p.imobiliaria||"—")}</td>
+      <td class="prop-obs-td" data-rot="Observações" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>`)}
+      <td data-rot="Criada">${simData(p.criadoEm)}</td>
+      <td data-rot="Status">${propTag(p.status)}${venc?' <span style="color:#C0392B;font-weight:700">vence &lt;24h</span>':''}</td></tr>`;
   }).join("");
   document.getElementById("prop-tab").innerHTML=cab+"<tbody>"+corpo+"</tbody>";
 }
@@ -4065,13 +4145,25 @@ function propDilEsquemaNovo(txt, fluxo){
   }).filter(seg=>seg!==null).join(";");
 }
 /* barra de andamento com % (estimado pelo tempo típico) + etapas + segundos */
+/* 20/11/2026 (onda 3) — PROGRESSO VERDADEIRO. As etapas avançam por tempo estimado (o servidor não avisa), então a ÚLTIMA
+   nunca vira "✓ concluída" antes de a resposta chegar: fica "⏳ ... terminando… (N s)"; passou de 30 s, aparece o aviso
+   de que está demorando e para não fechar a tela. Só quem chama com fim=true (resposta chegou) marca tudo como feito.
+   kBruto = em que etapa o relógio estimaria estar (pode passar do total); passo = segundos estimados por etapa. */
+function propEtapasHtml(etapas, kBruto, seg, passo, fim){
+  const n=etapas.length, k=fim?n:Math.min(n-1,kBruto);
+  const term=!fim && kBruto>=n-1 && (n>1 || seg>=passo);
+  const sg=Math.round(seg);
+  return etapas.map((e,i)=>'<div style="opacity:'+(i<k?'.55':(i===k?'1':'.35'))+'">'+(i<k?'✓ ':(i===k?'⏳ ':'• '))+esc(e)+
+      (term && i===k?' — terminando… ('+sg+' s)':'')+'</div>').join("")+
+    (term && seg>30?'<div style="margin-top:4px"><b>Está demorando mais que o normal. Não feche a tela.</b></div>':'');
+}
 function propDilProg(av, etapas, estimSeg){
   const t0=Date.now(); let fim=null;
   const pintar=()=>{
     const seg=(Date.now()-t0)/1000;
     const pct = fim ? 100 : Math.min(95, Math.round(seg/estimSeg*100));
-    const k = fim ? etapas.length : Math.min(etapas.length-1, Math.floor(seg/(estimSeg/etapas.length)));
-    av.innerHTML = etapas.map((e,i)=>'<div style="opacity:'+(i<k?'.55':(i===k?'1':'.35'))+'">'+(i<k?'✓ ':(i===k?'⏳ ':'• '))+esc(e)+'</div>').join("")+
+    const passo=estimSeg/etapas.length;
+    av.innerHTML = propEtapasHtml(etapas, Math.floor(seg/passo), seg, passo, !!fim)+
       '<div class="dil-barra"><i style="width:'+pct+'%"></i></div>'+
       '<div style="font-size:11px;color:var(--text3);margin-top:3px">'+pct+'% · '+Math.round(seg)+' s'+(fim?'':' (leva uns '+estimSeg+' s)')+'</div>';
   };
@@ -4126,7 +4218,7 @@ async function propDilValidar(id){
   const fx=propParseEsquema(p.esquema); propDilAplicar(p,fx);
   const novo=propDilEsquemaNovo(p.esquema, fx);
   if(novo===p.esquema){ st.msg="Nada mudou no fluxo."; propDilRepintar(id); return; }
-  if(!confirm("Gravar este novo fluxo na proposta?\n\nEle passa a ser o fluxo oficial (é o que vai para a venda). O fluxo anterior fica guardado num comentário da proposta no Notion.")) return;
+  if(!(await propPerguntar({titulo:"Salvar novo fluxo?", texto:"• Ele passa a ser o fluxo oficial, o que vai para a venda.\n• O fluxo anterior fica guardado num comentário da proposta.", sim:"Salvar novo fluxo", nao:"Voltar"}))) return;
   st.gravando=true; st.msg="Gravando…"; propDilRepintar(id);
   const av=document.getElementById("prop-dil-av-"+id);
   const parar=av ? propDilProg(av, ["Lendo a proposta no Notion…","Gravando o novo fluxo (ESQUEMA ENTRADA e DADOS)…","Guardando o fluxo anterior num comentário…"], 12) : ()=>{};
@@ -4494,31 +4586,76 @@ function propResumoValores(p){
   /* 20/10/26: entrada total (antes de FGTS e subsídio) + pago pelo cliente + prazo */
   return entResumoHtml(entDaProposta(p));
 }
+/* 20/11/2026 (onda 3) — FICHA DA PROPOSTA EM ABAS. Resumo · Fluxo · Documentos · Conversas. As abas só mostram e
+   escondem os painéis (nada é recriado: o e-mail digitado e o que chega depois — documentos, conversas — ficam onde
+   estão, com os mesmos ids). A aba aberta fica lembrada enquanto a ficha estiver aberta. */
+const PROP_FICHA_ABAS=[["resumo","Resumo"],["fluxo","Fluxo"],["documentos","Documentos"],["conversas","Conversas"]];
+let PROP_FICHA={id:null, aba:"resumo"};
+function propFichaAba(a, foco){
+  if(!document.getElementById("fic-p-"+a)) return;
+  PROP_FICHA.aba=a;
+  document.querySelectorAll("#sim-modalCx .fic-painel").forEach(x=>x.classList.toggle("on", x.dataset.fic===a));
+  document.querySelectorAll("#sim-modalCx .fic-abas .tab").forEach(b=>{
+    const on=b.dataset.fic===a; b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); b.tabIndex=on?0:-1;
+    if(on && foco) b.focus();
+  });
+  const cx=document.getElementById("sim-modalCx"); if(cx) cx.scrollTop=0;
+}
+function propFichaTecla(e){
+  const k=e.key; if(k!=="ArrowRight" && k!=="ArrowLeft" && k!=="Home" && k!=="End") return;
+  const bs=[...document.querySelectorAll("#sim-modalCx .fic-abas .tab")]; if(!bs.length) return;
+  let i=bs.findIndex(b=>b.dataset.fic===PROP_FICHA.aba);
+  if(k==="ArrowRight") i=(i+1)%bs.length; else if(k==="ArrowLeft") i=(i-1+bs.length)%bs.length; else if(k==="Home") i=0; else i=bs.length-1;
+  e.preventDefault(); propFichaAba(bs[i].dataset.fic, true);
+}
+/* contador pequeno nas abas: Documentos = itens que faltam; Conversas = e-mails novos desta proposta */
+function propFichaContadores(){
+  if(!PROP_FICHA.id) return;
+  const p=(PROPS||[]).find(x=>x.id===PROP_FICHA.id); if(!p) return;
+  const poe=(k,n,rot)=>{ const e=document.getElementById("fic-n-"+k); if(!e) return;
+    e.textContent=n>0?String(n):""; e.classList.toggle("hide",!(n>0));
+    if(n>0) e.setAttribute("aria-label",n+" "+rot); else e.removeAttribute("aria-label"); };
+  const d=document.getElementById("prop-detalhe"), m=d && /Faltam (\d+) item/.exec(d.textContent||"");
+  poe("documentos", m?Number(m[1]):0, "pendência(s)");
+  const num=String(p.proposta||"").toUpperCase();
+  poe("conversas", ["p","c"].filter(t=>propEmailNovo(num,t)).length, "e-mail(s) novo(s)");
+}
 function propVer(id){
   const p=PROPS.find(x=>x.id===id); if(!p) return;
+  { const m0=document.getElementById("sim-modal");
+    if(!(m0 && !m0.classList.contains("hide") && PROP_FICHA.id===id)) PROP_FICHA={id:id, aba:"resumo"}; }
   const it=(r,v)=>`<div class="sim-item"><small>${r}</small><b>${v||"—"}</b></div>`;
   const podeGravar=!ehSomenteLeitura(S);
   const h=propHorasReservada(p);
   propEstiloEditor();
 
   document.getElementById("sim-modalCx").innerHTML=`
+    <div class="fic-cab">
     <div class="modal-topo"><div class="modal-tit">${esc(p.cliente||"—")} · Un. ${esc(String(p.unidade||"—"))}</div>
-      <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
+      <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar"><span aria-hidden="true">✕</span> Fechar</button></div>
     <div class="modal-sub">${esc(p.proposta||"")} · CPF ${esc(cpfFmt(p.cpf)||"—")} · ${simData(p.criadoEm)} · ${propTag(p.status)}
       ${h!==null?` · reservada há ${Math.floor(h)} h`:""}</div>
+    ${podeGravar?`<div class="fic-dec">
+      <!-- 30/09: o botão do status atual fica em destaque e os outros apagados; o resultado aparece logo abaixo -->
+      <div class="prop-dec ${PROP_NORM(p.status)?'tem-status':''}">
+        <button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
+        <button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
+      </div>
+      ${PROP_NORM(p.status)==='RESERVADA'?`<button class="bt" style="background:#7B4FA0;color:#fff" onclick="propPreReservaDaUnidade('${p.id}')">Termo de reserva</button>`:""}
+      ${window.ReservaPrazoUI?ReservaPrazoUI.botoesProposta(p):""}<!-- 12/11: Adiar reserva / Reabrir reserva que caiu (venda/reserva-prazo-ui.js) -->
+    </div>
+    <div id="prop-detAviso" class="sim-aviso" style="margin-top:6px"></div>`:""}
+    <!-- 20/11/2026 (onda 3): a ficha em abas — as abas só mostram/escondem, nada é recriado (o e-mail digitado não se perde) -->
+    <div class="cd-abas fic-abas"><div class="tabs" role="tablist" aria-label="Partes da ficha" onkeydown="propFichaTecla(event)">
+      ${PROP_FICHA_ABAS.filter(a=>podeGravar||a[0]!=="conversas").map(a=>'<button type="button" role="tab" class="tab'+(a[0]===PROP_FICHA.aba?" on":"")+'" id="fic-tab-'+a[0]+'" aria-selected="'+(a[0]===PROP_FICHA.aba)+'" aria-controls="fic-p-'+a[0]+'" tabindex="'+(a[0]===PROP_FICHA.aba?"0":"-1")+'" data-fic="'+a[0]+'" onclick="propFichaAba(this.dataset.fic)">'+a[1]+'<span class="fic-n hide" id="fic-n-'+a[0]+'"></span></button>').join("")}
+    </div></div>
+    </div>
+
+    <div class="fic-painel${PROP_FICHA.aba==="resumo"?" on":""}" id="fic-p-resumo" role="tabpanel" aria-labelledby="fic-tab-resumo" data-fic="resumo">
     ${chegouReservada(p,true)?`<div class="aviso-res"><b>Unidade já reservada no envio.</b>
       Esta proposta chegou quando a unidade ${esc(String(p.unidade||""))} já estava reservada —
       ela só é analisada caso haja desistência da reserva atual.</div>`:""}
-    <!-- 07/11/2026 — alterar unidade / valor financiado e PDF do fluxo: logo no topo do card -->
-    <div class="alt-acoes">
-      ${podeGravar?`<button class="bt verde" onclick="altPropAbrir('${p.id}')">✎ Alterar unidade / valor financiado</button>`:""}
-      <button class="bt az" onclick="fluxoPdf('prop','${p.id}')">📄 Gerar PDF do fluxo</button>
-      <button class="bt ghost" onclick="fluxoPersonalizadoAbrir('${p.id}')" title="Abre o simulador de outro fluxo já com a unidade e os valores desta proposta. Não muda a proposta: nada é gravado.">✎ Simular outro fluxo</button>
-    </div>
-    <div id="fxp-prop"></div>
-    <div id="alt-prop"></div>
     ${propResumoValores(p)}
-    ${propQuadroFluxo(p)}
     <b class="sim-grupo" style="display:block;margin-top:14px;font-size:13px;color:var(--azul)">Corretor</b>
     <div class="sim-grade" style="margin-top:6px">
       ${it("Corretor",esc(p.vendedor||""))}${it("CRECI",esc(p.creci||""))}${it("Imobiliária",esc(p.imobiliaria||""))}
@@ -4540,43 +4677,13 @@ function propVer(id){
     <div class="sim-grade" style="margin-top:6px;grid-template-columns:minmax(0,1fr)">
       ${it("Observações",esc(p.observacoes||""))}
     </div>
-
-    ${podeGravar?`<div style="margin:10px 0 4px">
-      <button class="bt az" onclick="propGerarLink('${p.id}')">🔗 Gerar link para o corretor completar</button>
-      <span id="prop-linkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
-      <div style="font-size:12px;color:var(--text3);margin-top:5px">O corretor abre o link, completa o que falta
-        e anexa os documentos — cai direto no cadastro desta proposta.</div>
-    </div>
-    <div style="margin:10px 0 4px">
-      <button class="bt" onclick="propGerarLinkVenda('${p.id}')">🧾 Link para completar as informações da venda</button>
-      <span id="prop-vendaLinkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
-      <div style="font-size:12px;color:var(--text3);margin-top:5px">Para a venda fechada: o cliente ou o corretor completa
-        os dados e documentos que faltam (inclusive o comprovante de endereço) — cai na lista de vendas do condomínio.</div>
-    </div>`:""}
-
-    <!-- r51 — as pendências aparecem na hora (dados da lista) e são
-         atualizadas aqui mesmo quando o Notion responde. -->
-    <div id="prop-detalhe" style="margin-top:16px">
-      ${propPendenciasHtml(p)}
-      <div class="sim-aviso ok"><span class="load"></span> Carregando os documentos e a conversa de e-mail…</div>
-    </div>
-
-    ${podeGravar?`
-    <div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Decisão</b>
-      <!-- 30/09: o botão do status atual fica em destaque e os outros apagados; o resultado aparece logo abaixo -->
-      <div class="prop-dec ${PROP_NORM(p.status)?'tem-status':''}" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;align-items:flex-start">
-        <div style="flex:1 1 220px;min-width:0"><button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">Reservar: segura a unidade por ${PROP_RESERVA_DIAS} dias e manda ao corretor o link para completar os dados.</div></div>
-        <div style="flex:1 1 220px;min-width:0"><button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">Negar: libera a unidade agora.</div></div>
+    ${podeGravar?`<div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Decisão</b>
+      <div style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:1 1 220px;min-width:0;font-size:12px;color:var(--text3)"><b>Reservar</b>: segura a unidade por ${PROP_RESERVA_DIAS} dias e manda ao corretor o link para completar os dados.</div>
+        <div style="flex:1 1 220px;min-width:0;font-size:12px;color:var(--text3)"><b>Negar</b>: libera a unidade agora.</div>
       </div>
-      ${PROP_NORM(p.status)==='RESERVADA'?`<div style="margin-top:8px"><button class="bt" style="background:#7B4FA0;color:#fff" onclick="propPreReservaDaUnidade('${p.id}')">Termo de reserva</button></div>`:""}
+      ${PROP_NORM(p.status)==='RESERVADA'?`<div style="font-size:12px;color:var(--text3);margin-top:6px"><b>Termo de reserva</b>: gera o documento da reserva.</div>`:""}
       ${PROP_NORM(p.status)==='RESERVADA'&&window.AtualizarVendaUI?AtualizarVendaUI.botaoHtml(p.id,'prop','bt'):""}<!-- 07/11: Atualizar venda pela proposta (venda/atualizar-venda.js) -->
-      ${window.ReservaPrazoUI?ReservaPrazoUI.botoesProposta(p):""}<!-- 12/11: Adiar reserva / Reabrir reserva que caiu (venda/reserva-prazo-ui.js) -->
-      <div id="prop-detAviso" class="sim-aviso" style="margin-top:8px"></div>
-      <!-- 02/10 (item 10) -->
-      <div style="margin-top:10px"><button class="bt" style="background:#B7791F;color:#fff" onclick="propAlerta('${p.id}')">📣 Enviar alerta de pendências ao corretor</button>
-        <div id="prop-alertaInfo" class="sim-aviso" style="margin-top:6px"></div></div>
       <details style="font-size:12px;color:var(--text3);margin-top:8px"><summary style="cursor:pointer;font-weight:700">Como funciona a reserva</summary><div style="margin-top:6px">
         <b>Reservar</b> marca a unidade ${esc(String(p.unidade||""))} como RESERVADA no mapa, cria a venda no
         lista de vendas do condomínio e manda ao corretor o link para completar os dados e documentos.
@@ -4585,12 +4692,12 @@ function propVer(id){
         A proposta vira <b>VENDIDA</b> sozinha quando o contrato é gerado — e só então o corretor recebe o e-mail de venda.
         ${propReservaPrazoHtml(p)}
       </div></details>
-    </div>
+    </div>`:""}
     ${propSIBloco(p)}
 
     <div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Documento da proposta</b>
       <div style="display:flex;gap:9px;margin-top:8px;flex-wrap:wrap;align-items:center">
-        <button class="bt" id="prop-btPdf" onclick="propPdf('${p.id}')">📄 Gerar PDF da proposta</button>
+        <button class="bt" id="prop-btPdf" onclick="propPdf('${p.id}')"><span aria-hidden="true">📄</span> Gerar PDF da proposta</button>
         <span id="prop-pdfInfo" style="font-size:12px;color:var(--text3)"></span>
       </div>
       <div style="font-size:12px;color:var(--text3);margin-top:6px">
@@ -4598,7 +4705,45 @@ function propVer(id){
         na coluna PDF do Notion.
       </div>
     </div>
+    </div>
 
+    <div class="fic-painel${PROP_FICHA.aba==="fluxo"?" on":""}" id="fic-p-fluxo" role="tabpanel" aria-labelledby="fic-tab-fluxo" data-fic="fluxo">
+    <!-- 07/11/2026 — alterar unidade / valor financiado e PDF do fluxo: logo no topo do card -->
+    <div class="alt-acoes">
+      ${podeGravar?`<button class="bt verde" onclick="altPropAbrir('${p.id}')"><span aria-hidden="true">✎</span> Alterar unidade / valor financiado</button>`:""}
+      <button class="bt az" onclick="fluxoPdf('prop','${p.id}')"><span aria-hidden="true">📄</span> Gerar PDF do fluxo</button>
+      <button class="bt ghost" onclick="fluxoPersonalizadoAbrir('${p.id}')" title="Abre o simulador de outro fluxo já com a unidade e os valores desta proposta. Não muda a proposta: nada é gravado."><span aria-hidden="true">✎</span> Simular outro fluxo</button>
+    </div>
+    <div id="fxp-prop"></div>
+    <div id="alt-prop"></div>
+    ${propQuadroFluxo(p)}
+    </div>
+
+    <div class="fic-painel${PROP_FICHA.aba==="documentos"?" on":""}" id="fic-p-documentos" role="tabpanel" aria-labelledby="fic-tab-documentos" data-fic="documentos">
+    <!-- r51 — as pendências aparecem na hora (dados da lista) e são
+         atualizadas aqui mesmo quando o Notion responde. -->
+    <div id="prop-detalhe" style="margin-top:16px">
+      ${propPendenciasHtml(p)}
+      <div class="sim-aviso ok"><span class="load"></span> Carregando os documentos e a conversa de e-mail…</div>
+    </div>
+    ${podeGravar?`<div style="margin:10px 0 4px">
+      <button class="bt az" onclick="propGerarLink('${p.id}')"><span aria-hidden="true">🔗</span> Gerar link para o corretor completar</button>
+      <span id="prop-linkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
+      <div style="font-size:12px;color:var(--text3);margin-top:5px">O corretor abre o link, completa o que falta
+        e anexa os documentos — cai direto no cadastro desta proposta.</div>
+    </div>
+    <div style="margin:10px 0 4px">
+      <button class="bt" onclick="propGerarLinkVenda('${p.id}')"><span aria-hidden="true">🧾</span> Link para completar as informações da venda</button>
+      <span id="prop-vendaLinkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
+      <div style="font-size:12px;color:var(--text3);margin-top:5px">Para a venda fechada: o cliente ou o corretor completa
+        os dados e documentos que faltam (inclusive o comprovante de endereço) — cai na lista de vendas do condomínio.</div>
+    </div>`:""}
+    ${podeGravar?`<!-- 02/10 (item 10) -->
+      <div style="margin-top:10px"><button class="bt" style="background:#B7791F;color:#fff" onclick="propAlerta('${p.id}')"><span aria-hidden="true">📣</span> Enviar alerta de pendências ao corretor</button>
+        <div id="prop-alertaInfo" class="sim-aviso" style="margin-top:6px"></div></div>`:""}
+    </div>
+
+    ${podeGravar?`<div class="fic-painel${PROP_FICHA.aba==="conversas"?" on":""}" id="fic-p-conversas" role="tabpanel" aria-labelledby="fic-tab-conversas" data-fic="conversas">
     <!-- r47 (item 1) — documentação para o correspondente -->
     <div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Enviar documentação ao correspondente</b>
       <div id="prop-corresp" style="display:flex;gap:9px;margin-top:8px;flex-wrap:wrap;align-items:center">
@@ -4613,7 +4758,6 @@ function propVer(id){
       <!-- r96q (28/10) — conversa com o correspondente, numa caixa só dela -->
       <div id="prop-histCorr"><div class="sim-aviso" style="margin-top:10px"><span class="load"></span> Carregando a conversa com o correspondente…</div></div>
     </div>
-
     <!-- ITEM 5 — quadro do e-mail: assunto, barra de formatação (negrito,
          itálico, sublinhado, tópicos, lista numerada, cor, link), área de
          texto com moldura e anexos. -->
@@ -4637,13 +4781,13 @@ function propVer(id){
         <button type="button" title="Verde" onmousedown="event.preventDefault()" onclick="propCor('#1D7A45')"><span style="color:#1D7A45;font-weight:800">A</span></button>
         <button type="button" title="Cor normal" onmousedown="event.preventDefault()" onclick="propCor('#2A2118')"><span style="font-weight:800">A</span></button>
         <span class="sep"></span>
-        <button type="button" title="Inserir link" onmousedown="event.preventDefault()" onclick="propLink()">🔗 Link</button>
+        <button type="button" title="Inserir link" onmousedown="event.preventDefault()" onclick="propLink()"><span aria-hidden="true">🔗</span> Link</button>
         <button type="button" title="Limpar formatação" onmousedown="event.preventDefault()" onclick="propFmt('removeFormat')">⌫ Limpar</button>
       </div>
       <div id="prop-msg" class="prop-editor" contenteditable="true"
            data-vazio="Escreva a mensagem…"></div>
       <label class="prop-rot">Anexos</label>
-      <label class="prop-anexo-bt">📎 Escolher arquivos
+      <label class="prop-anexo-bt"><span aria-hidden="true">📎</span> Escolher arquivos
         <input id="prop-anexos" type="file" multiple onchange="propResumoAnexos()" style="display:none">
       </label>
       <span id="prop-anexoInfo" class="prop-anexo-info"></span>
@@ -4653,7 +4797,8 @@ function propVer(id){
       </div>
     </div>
     <!-- r53 — a conversa fica logo abaixo do campo de resposta -->
-    <div id="prop-hist"><div class="sim-aviso" style="margin-top:12px"><span class="load"></span> Carregando a conversa de e-mail…</div></div>`:""}
+    <div id="prop-hist"><div class="sim-aviso" style="margin-top:12px"><span class="load"></span> Carregando a conversa de e-mail…</div></div>
+    </div>`:""}
     <div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simPedirFechar()">Fechar</button></div>
     ${podeGravar?'':'<div id="prop-detAviso" class="sim-aviso" style="margin-top:10px"></div>'}`;
   document.getElementById("sim-modal").classList.remove("hide");
@@ -4667,6 +4812,7 @@ function propVer(id){
     ed.addEventListener("input",()=>{ if(!ed.textContent.trim() && !ed.querySelector("li,img")) ed.innerHTML=""; });
   }
   propCarregarDetalhe(p.id);
+  propFichaContadores();
   /* 07/11: a venda já existe e a proposta mudou? (venda/atualizar-venda.js) */
   if(podeGravar && PROP_NORM(p.status)==='RESERVADA' && window.AtualizarVendaUI){
     window.__avAoAplicar=()=>{ setTimeout(()=>{ try{ AtualizarVendaUI.aviso("av-aviso-prop", p.id); }catch(e){} }, 300); };
@@ -4715,9 +4861,9 @@ async function propCarregarDetalhe(id, tentativa){
     propHistErro(id);                                      // 05/10 (item 6): a conversa nunca fica em branco
     if(guardado){ propMarcaCopia(false, true, id); return; }   // fica com a cópia, avisando que é cópia
     alvo.innerHTML = r ? '<div class="sim-aviso err">'+propErro(r&&r.erro)+
-        ' <button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)">↻ Tentar de novo</button></div>'
+        ' <button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)"><span aria-hidden="true">↻</span> Tentar de novo</button></div>'
       : '<div class="sim-aviso err">Não consegui carregar os documentos. '+
-        '<button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)">↻ Tentar de novo</button></div>';
+        '<button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)"><span aria-hidden="true">↻</span> Tentar de novo</button></div>';
     return;
   }
   const histGuardada = guardado && guardado.historicoEmail && guardado.historicoEmail.motivo!=="ADIADO" ? guardado.historicoEmail : null;
@@ -4735,7 +4881,7 @@ async function propCarregarDetalhe(id, tentativa){
     let c=null; try{ c = await simDireto({action:"simsPropostaDetalhe", pageId:id}, 90000); }catch(e){}
     if(c && c.ok){ propDetGuardar(id, c); if(document.getElementById("prop-detalhe")) propPintarDetalhe(id, c); }
     else { const cxH=document.getElementById("prop-hist"); if(cxH) cxH.innerHTML='<div class="sim-aviso" style="margin-top:12px">Não consegui carregar a conversa de e-mail agora. '+
-      '<button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)">↻ Tentar de novo</button></div>'; }
+      '<button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)"><span aria-hidden="true">↻</span> Tentar de novo</button></div>'; }
   }
 }
 function propMarcaCopia(ligar, falhou, id){
@@ -4744,14 +4890,14 @@ function propMarcaCopia(ligar, falhou, id){
   if(!ligar && !falhou){ if(m) m.remove(); return; }
   if(!m){ m=document.createElement("div"); m.id="prop-copiaAviso"; m.className="sim-aviso"; m.style.marginBottom="8px"; a.parentNode.insertBefore(m, a); }
   m.innerHTML = falhou
-    ? '<b>Mostrando a última cópia</b> — não consegui buscar a versão atual agora. <button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)">↻ Tentar de novo</button>'
+    ? '<b>Mostrando a última cópia</b> — não consegui buscar a versão atual agora. <button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)"><span aria-hidden="true">↻</span> Tentar de novo</button>'
     : '<span class="load"></span> Conferindo documentos e dados atualizados no Notion…';
 }
 function propHistErro(id){
   const cxH=document.getElementById("prop-hist"); if(!cxH) return;
   if(cxH.querySelector("details.hist-email")) return;
   cxH.innerHTML='<div class="sim-aviso" style="margin-top:12px">Não consegui carregar a conversa de e-mail agora. '+
-    '<button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)">↻ Tentar de novo</button></div>';
+    '<button class="bt ghost" style="margin-left:8px;padding:4px 10px" onclick="propCarregarDetalhe(\''+id+'\',1)"><span aria-hidden="true">↻</span> Tentar de novo</button></div>';
 }
 function propPintarDetalhe(id, r){
   const alvo = document.getElementById("prop-detalhe");
@@ -4799,7 +4945,7 @@ function propPintarDetalhe(id, r){
               detTec('A conversa está em outra conta Google. Confira a propriedade <b>SIM_SEGREDO</b> no Apps Script do portal.')
             : 'Não consegui carregar a conversa de e-mail agora.'))+
       ' <button class="bt ghost" style="margin-left:8px;padding:4px 10px" '+
-      'onclick="propCarregarDetalhe(\''+id+'\')">↻ Tentar de novo</button></div>';
+      'onclick="propCarregarDetalhe(\''+id+'\')"><span aria-hidden="true">↻</span> Tentar de novo</button></div>';
 
   /* r51 (item 4) — a tabela separa o que É PEDIDO para este cliente do que
      está na lista geral. Antes, um CLT via "pró-labore não enviado" e
@@ -4814,7 +4960,7 @@ function propPintarDetalhe(id, r){
       ? a.arquivos.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener"
            style="color:var(--azul);text-decoration:underline">${esc(f.nome)}</a>`).join(' · ')
       : '<span style="color:#C0392B">não enviado</span>';
-    const anexar = a.coluna ? `<label class="bt" style="padding:3px 9px;font-size:11.5px;cursor:pointer;white-space:nowrap">📎 Anexar`+
+    const anexar = a.coluna ? `<label class="bt" style="padding:3px 9px;font-size:11.5px;cursor:pointer;white-space:nowrap"><span aria-hidden="true">📎</span> Anexar`+
       `<input type="file" multiple style="display:none" onchange="propAnexarDoc('${id}','${esc(a.coluna)}',this)"></label>` : '';
     return `<tr><td>${tem?'✅':'⬜'} ${esc(propDonoDoc(a.rotulo).base)}</td><td>${links}</td><td style="width:1%">${anexar}</td></tr>`;
   };
@@ -4888,6 +5034,7 @@ function propPintarDetalhe(id, r){
   /* r96q — conversa com o correspondente (caixa separada, na parte do correspondente) */
   const cxHC = document.getElementById("prop-histCorr");
   if(cxHC) cxHC.innerHTML = propHistCorrHtml(id, r);
+  propFichaContadores();
 }
 /* =====================================================================
  * r96q (28/10/2026) — CONVERSA COM O CORRESPONDENTE + AVISO DE E-MAIL NOVO
@@ -4959,6 +5106,7 @@ const PROP_TITULO_BASE=document.title.replace(/^\(\d+\)\s*/,"");
 function propEmailsPintar(){
   const l=propEmailsLista();
   try{ propRender(); propAlerta24(); }catch(e){}
+  try{ propFichaContadores(); }catch(e){}
   document.title=(l.length?"("+l.length+") ":"")+PROP_TITULO_BASE;
 }
 function propEmailsToast(itens){
@@ -5022,12 +5170,12 @@ function propPerfilHtml(campos){
 /* 02/10 (item 10) — alerta ao corretor: e-mail com o link de complemento e a lista do que falta */
 async function propAlerta(id){
   const av=document.getElementById("prop-alertaInfo"); if(!av) return;
-  if(!confirm("Enviar ao CORRETOR um e-mail com o link para completar a proposta e a lista do que falta?")) return;
+  if(!(await propPerguntar({titulo:"Enviar alerta ao corretor?", texto:"• O corretor recebe um e-mail.\n• O e-mail traz o link para completar a proposta.\n• E a lista do que falta.", sim:"Enviar alerta", nao:"Voltar"}))) return;
   /* 05/10 (item 6) — andamento visível, como na venda */
   const etapas=["Montando a lista do que falta…","Gerando o link de complemento…","Enviando o e-mail ao corretor (resposta na conversa da proposta)…"];
   const t0=Date.now();
-  const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000), k=Math.min(etapas.length-1,Math.floor(sg/6));
-    av.className="sim-aviso ok"; av.innerHTML=etapas.map((e2,ix)=>'<div style="opacity:'+(ix<k?'.55':(ix===k?'1':'.3'))+'">'+(ix<k?'✓ ':(ix===k?'⏳ ':'• '))+esc(e2)+'</div>').join("")+'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+sg+' s</div>'; };
+  const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000);
+    av.className="sim-aviso ok"; av.innerHTML=propEtapasHtml(etapas, Math.floor(sg/6), sg, 6, false)+'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+sg+' s</div>'; };
   pintar(); const tmA=setInterval(pintar,1000);
   let r=null; try{ r=await chamar({action:"simsPropostaStatus", pageId:id, alerta:true}, 90000, true); }catch(e){ r=null; }
   clearInterval(tmA);
@@ -5095,7 +5243,7 @@ function propBotoesCorresp(id, lista){
   return (lista||[]).map(c=>
     `<button class="bt az corresp-bt" data-chave="${esc(c.chave)}" data-nome="${esc(c.nome)}"
        onclick="propEnviarCorresp('${id}','${esc(c.chave)}','${esc(c.nome)}','${esc(c.email)}')">
-       ✉ ${esc(c.nome)}<small>${esc(c.email)}</small></button>`).join("");
+       <span aria-hidden="true">✉</span> ${esc(c.nome)}<small>${esc(c.email)}</small></button>`).join("");
 }
 /* 27/10/2026 — quem JÁ recebeu: lê o registro "ENVIO CORRESPONDENTE" (linhas
    "dd/mm/aaaa hh:mm · NOME (e-mail) ...", a mais nova no topo). Cópias ao corretor
@@ -5136,7 +5284,7 @@ function propObsCelula(p){
 let PROP_OBS_ID=null;
 function propObsAbrir(id){
   const p=(PROPS||[]).find(x=>x.id===id); if(!p) return;
-  if(typeof ehSomenteLeitura==="function" && ehSomenteLeitura(S)){ alert("Perfil somente leitura."); return; }
+  if(typeof ehSomenteLeitura==="function" && ehSomenteLeitura(S)){ propAviso("Seu perfil só permite ler. Peça a quem administra o portal para liberar a edição.","Somente leitura"); return; }
   PROP_OBS_ID=id;
   let m=document.getElementById("prop-obsModal");
   if(!m){
@@ -5232,10 +5380,11 @@ async function propEnviarCorresp(id, chave, nome, email){
   const n=PROP_ARQ_TOTAL[id];
   const hist=String((document.getElementById("prop-correspHist")||{}).textContent||"");
   const jaFoi = !!propEnviosCorresp(PROP_ENVIO_ATUAL||p.envioCorrespondente||"")[propCorrNorm(nome)];
-  if(!confirm("Enviar a documentação da proposta "+(p.proposta||"")+" ("+(p.cliente||"")+" · Un. "+(p.unidade||"")+")\n"+
-              "para "+nome+" — "+email+"?\n\n"+
-              "Vai o PDF da proposta"+(n===undefined?" e os documentos anexados":" + "+qtd(n,"documento anexado","documentos anexados"))+"."+
-              (jaFoi?"\n\nATENÇÃO: esta proposta JÁ foi enviada para "+nome+" antes.":""))) return;
+  if(!(await propPerguntar({titulo:"Enviar a documentação ao correspondente?",
+      texto:"• Proposta "+(p.proposta||"")+" ("+(p.cliente||"")+" · Un. "+(p.unidade||"")+").\n• Para "+nome+" — "+email+".\n"+
+            "• Vai o PDF da proposta"+(n===undefined?" e os documentos anexados":" + "+qtd(n,"documento anexado","documentos anexados"))+"."+
+            (jaFoi?"\n• Atenção: esta proposta já foi enviada para "+nome+" antes.":""),
+      sim:"Enviar documentação", nao:"Voltar"}))) return;
   cx.dataset.enviando="1";
   cx.querySelectorAll("button").forEach(b=>b.disabled=true);
   info.innerHTML='<span class="load"></span> Gerando o PDF, juntando os documentos e enviando para <b>'+esc(nome)+'</b>… (pode levar até 1 minuto)';
@@ -5326,7 +5475,7 @@ async function propGerarLinkVenda(id){
   let r; try{ r=await chamar({action:"simsVendaLink", pageId:id}, 60000, true); }catch(e){ r=null; }
   if(!r || !r.ok){
     if(cx) cx.innerHTML='<span style="color:var(--vermelho)">'+esc((r&&(r.mensagem||r.erro))||"não consegui gerar agora")+'</span> '+
-      '<button class="bt ghost" style="padding:4px 10px" onclick="propGerarLinkVenda(\''+id+'\')">↻ Tentar de novo</button>';
+      '<button class="bt ghost" style="padding:4px 10px" onclick="propGerarLinkVenda(\''+id+'\')"><span aria-hidden="true">↻</span> Tentar de novo</button>';
     return;
   }
   const bloco=document.createElement("div");
@@ -5341,7 +5490,7 @@ async function propGerarLinkVenda(id){
     '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+
     '<button class="bt az" onclick="propCopiar(\'prop-vLinkUrl\',this)">Copiar o link</button>'+
     '<button class="bt" onclick="propCopiar(\'prop-vLinkMsg\',this)">Copiar a mensagem</button>'+
-    '<button class="bt verde" onclick="propEnviarLinkVenda(\''+id+'\',this)">✉ Enviar por e-mail ao corretor</button>'+
+    '<button class="bt verde" onclick="propEnviarLinkVenda(\''+id+'\',this)"><span aria-hidden="true">✉</span> Enviar por e-mail ao corretor</button>'+
     '<a class="bt ghost" target="_blank" rel="noopener" href="'+esc(r.url)+'" style="text-decoration:none">Abrir</a>'+
     '</div><div id="prop-vLinkEnvio" style="font-size:12px;margin-top:8px"></div>';
   if(cx){ cx.textContent=""; cx.parentElement.appendChild(bloco); }
@@ -5374,7 +5523,7 @@ async function propPosVendida(id, r, av){
     av.className="sim-aviso err";
     av.innerHTML='A unidade foi marcada como VENDIDA, mas <b>o banco de vendas não foi preenchido</b>: '+
       esc(v.mensagem||v.erro||"sem resposta")+
-      ' <button class="bt ghost" style="padding:4px 10px" onclick="propStatus(\''+id+'\',\'VENDIDA\')">↻ Tentar de novo</button>';
+      ' <button class="bt ghost" style="padding:4px 10px" onclick="propStatus(\''+id+'\',\'VENDIDA\')"><span aria-hidden="true">↻</span> Tentar de novo</button>';
     return;
   }
   const pend=(v.pendencias||[]).length;
@@ -5415,9 +5564,9 @@ function propProgresso(av, status){
     : ["Gravando o status "+status+" na proposta…","Atualizando a unidade no Notion…","Atualizando o mapa e as abas…"];
   const t0=Date.now();
   const pintar=()=>{
-    const seg=Math.round((Date.now()-t0)/1000), k=Math.min(etapas.length-1, Math.floor(seg/(status==="VENDIDA"?7:5)));
+    const seg=Math.round((Date.now()-t0)/1000), passo=(status==="VENDIDA"?7:5);
     av.className="sim-aviso ok";
-    av.innerHTML=etapas.map((e,i)=>'<div style="opacity:'+(i<k?'.55':(i===k?'1':'.3'))+'">'+(i<k?'✓ ':(i===k?'⏳ ':'• '))+esc(e)+'</div>').join("")+
+    av.innerHTML=propEtapasHtml(etapas, Math.floor(seg/passo), seg, passo, false)+
       '<div style="font-size:11px;color:var(--text3);margin-top:4px">'+seg+' s</div>';
   };
   pintar(); const tm=setInterval(pintar,1000);
@@ -5501,11 +5650,11 @@ async function propStatusInterno(id, nome){
   if(k==="DISTRATO"){
     motivo=((document.getElementById("prop-siMotivo")||{}).value||"").trim();
     if(!motivo){ const av0=document.getElementById("prop-siAviso"); av0.className="sim-aviso err"; av0.textContent="Escreva o motivo do distrato."; return; }
-    if(!confirm("Confirmar o DISTRATO da unidade "+(p.unidade||"")+"?\n\nA venda sai da lista de vendas do condomínio (fica guardada em distratos) e a unidade volta a DISPONÍVEL.")) return;
+    if(!(await propPerguntar({titulo:"Confirmar o distrato?", texto:"• A venda da unidade "+(p.unidade||"")+" sai da lista de vendas do condomínio.\n• Ela fica guardada em distratos.\n• A unidade volta a ficar disponível.", sim:"Confirmar distrato da unidade "+(p.unidade||""), nao:"Voltar", perigo:true}))) return;
   } else if(k==="VENDIDA"){
-    if(!confirm("Marcar a unidade "+(p.unidade||"")+" como VENDIDA?\n\nNo mapa a unidade fica RESERVADA até a ETAPA da venda ficar Concluída; os dados da venda são revalidados na lista de vendas do condomínio e o corretor recebe o e-mail.")) return;
+    if(!(await propPerguntar({titulo:"Marcar como vendida?", texto:"• No mapa, a unidade "+(p.unidade||"")+" fica reservada até a etapa da venda ficar concluída.\n• Os dados da venda são conferidos de novo na lista de vendas do condomínio.\n• O corretor recebe o e-mail.", sim:"Marcar unidade "+(p.unidade||"")+" como vendida", nao:"Voltar"}))) return;
   } else if(k==="PAGOU PREFERENCIA"){
-    if(!confirm("Marcar RESERVA PAGA na unidade "+(p.unidade||"")+"?\n\nA linha da venda já é criada na lista de vendas do condomínio.")) return;
+    if(!(await propPerguntar({titulo:"Marcar reserva paga?", texto:"• A reserva da unidade "+(p.unidade||"")+" fica como paga.\n• A linha da venda já é criada na lista de vendas do condomínio.", sim:"Marcar reserva paga", nao:"Voltar"}))) return;
   }
   const av=document.getElementById("prop-siAviso");
   const etapas = k==="DISTRATO"
@@ -5516,8 +5665,8 @@ async function propStatusInterno(id, nome){
         ? ["Marcando a unidade (mapa interno)…","Criando a linha na lista de vendas do condomínio…","Copiando os documentos da proposta…"]
         : ["Gravando o status interno na proposta e na unidade…"]));
   const t0=Date.now();
-  const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000), e=Math.min(etapas.length-1,Math.floor(sg/8));
-    av.className="sim-aviso ok"; av.innerHTML=etapas.map((x,i)=>'<div style="opacity:'+(i<e?'.55':(i===e?'1':'.3'))+'">'+(i<e?'✓ ':(i===e?'⏳ ':'• '))+esc(x)+'</div>').join("")+'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+sg+' s</div>'; };
+  const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000);
+    av.className="sim-aviso ok"; av.innerHTML=propEtapasHtml(etapas, Math.floor(sg/8), sg, 8, false)+'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+sg+' s</div>'; };
   pintar(); const tm=setInterval(pintar,1000);
   let r=null;
   try{ r=await chamar({action:"simsStatusInternoAcao", pageId:id, status:nome, motivo:motivo}, 240000, true); }
@@ -5557,7 +5706,7 @@ async function propStatusInterno(id, nome){
     if(r.avisoUnidade) h+="<br><span style='font-size:12px;color:var(--vermelho)'>Unidade: "+esc(r.avisoUnidade)+"</span>";
     av.className="sim-aviso ok"; av.innerHTML=h;
     if(k==="PAGOU PREFERENCIA" && r.venda && r.venda.linha &&
-       await propSimNao("Preferência paga. Gerar o termo de reserva agora?"))
+       await propSimNao("Reserva paga. Gerar o termo de reserva agora?"))
       propAbrirPreReserva(String(r.venda.linha));
   }
   propSincronizarTudo();
@@ -5578,6 +5727,15 @@ function propSimNao(msg){
     document.body.appendChild(f);
   });
 }
+/* 20/11/2026 (onda 3) — pergunta e aviso no padrão do portal (window.moraisPerguntar, do app.js). Sem o app.js
+   (página aberta sozinha) cai no confirm/alert do navegador. o = {titulo, texto, sim, nao, perigo}. Devolve Promise<boolean>. */
+function propPerguntar(o){
+  if(typeof window.moraisPerguntar==="function") return window.moraisPerguntar(o);
+  const t=(o.titulo?o.titulo+"\n\n":"")+(o.texto||"");
+  if(o.nao===""){ try{ alert(t); }catch(e){} return Promise.resolve(true); }
+  return Promise.resolve(confirm(t));
+}
+function propAviso(texto, titulo){ return propPerguntar({titulo:titulo||"Aviso", texto:texto, sim:"Entendi", nao:""}); }
 /* 28/10 (dono): proposta que JÁ pagou a preferência também gera o termo — acha a linha da venda pela unidade
    na lista de vendas do condomínio (simsVendasCond, o mesmo da Planilha Casas Condomínio). */
 /* 06/11/2026 (dono): depois do Reservar, pergunta se gera o termo de pré-reserva; Sim abre a pergunta rápida
@@ -5609,7 +5767,7 @@ async function propPreReservaDaUnidade(id, o){
 /* 28/10/2026 — TERMO DE PRÉ-RESERVA pela proposta: abre por cima a mesma tela do cartão da unidade
    (conta para devolução, gerar, ver e enviar à Clicksign), desenhada pelo venda-dossie.js na linha da venda. */
 function propAbrirPreReserva(linha, o){
-  if(!window.VendaBlocos || !VendaBlocos.montarPreReserva){ alert("A tela do termo ainda está carregando — tente de novo em instantes."); return; }
+  if(!window.VendaBlocos || !VendaBlocos.montarPreReserva){ propAviso("A tela do termo ainda está carregando. Tente de novo em instantes.","Termo de reserva"); return; }
   let fundo=document.getElementById("prop-pr-fundo");
   if(!fundo){
     fundo=document.createElement("div"); fundo.id="prop-pr-fundo";
@@ -5628,11 +5786,11 @@ function propFecharPreReserva(){
   if(window.VendaBlocos && VendaBlocos.soltarPreReserva) VendaBlocos.soltarPreReserva();
 }
 async function propStatus(id, status){
-  if(status==="VENDIDA" && !confirm("Marcar esta proposta como VENDIDA?\n\nOs dados vão para a lista de vendas do condomínio. No mapa a unidade fica RESERVADA até a ETAPA da venda ficar Concluída.")) return;
+  if(status==="VENDIDA" && !(await propPerguntar({titulo:"Marcar como vendida?", texto:"• Os dados vão para a lista de vendas do condomínio.\n• No mapa, a unidade fica reservada até a etapa da venda ficar concluída.", sim:"Marcar como vendida", nao:"Voltar"}))) return;
   /* 03/11/2026 (dono): Reservar cria a venda, manda o link ao corretor e abre o prazo de 5 dias */
-  if(status==="RESERVADA" && !confirm("Reservar esta proposta?\n\n• a unidade fica RESERVADA no mapa;\n• a venda é criada na lista de vendas do condomínio;\n• o corretor recebe o link para completar dados e documentos;\n• prazo de "+PROP_RESERVA_DIAS+" dias corridos para gerar o contrato — sem contrato, a reserva cai sozinha.")) return;
+  if(status==="RESERVADA" && !(await propPerguntar({titulo:"Reservar esta proposta?", texto:"• A unidade "+((PROPS.find(x=>x.id===id)||{}).unidade||"")+" fica reservada no mapa.\n• A venda é criada na lista de vendas do condomínio.\n• O corretor recebe o link para completar dados e documentos.\n• Prazo de "+PROP_RESERVA_DIAS+" dias corridos para gerar o contrato; sem contrato, a reserva cai sozinha.", sim:"Reservar unidade "+((PROPS.find(x=>x.id===id)||{}).unidade||""), nao:"Voltar"}))) return;
   if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)==="RESERVADA" &&
-     !confirm("Negar esta proposta reservada?\n\nA unidade volta a disponível e a venda criada na reserva vai para distratos.")) return;
+     !(await propPerguntar({titulo:"Negar a proposta reservada?", texto:"• A unidade volta a ficar disponível.\n• A venda criada na reserva vai para distratos.", sim:"Negar proposta", nao:"Voltar", perigo:true}))) return;
   if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)!=="RESERVADA"){
     const pn=PROPS.find(x=>x.id===id)||{};
     if(!(await propSimNao("Negar a proposta de "+(pn.cliente||"este cliente")+"? A unidade "+(pn.unidade||"")+" fica livre."))) return;
@@ -5726,6 +5884,29 @@ function propEstiloEditor(){
       border-radius:4px;padding:4px 8px;font-size:13px;color:var(--text);line-height:1.2;}
     .prop-barra button:hover{background:var(--sup);border-color:var(--border);}
     .prop-barra .sep{width:1px;height:18px;background:var(--border);margin:0 4px;}
+    /* 20/11/2026 (onda 3) — ficha em abas: cabeçalho fixo (título, status, Fechar, Decisão, abas) e painéis que só mostram/escondem.
+       As abas usam o mesmo componente .tabs/.tab do cartão do condomínio (vendas.html, .cd-abas). */
+    .fic-cab{position:sticky;top:0;z-index:3;background:var(--sup);margin:-20px -22px 10px;padding:12px 22px 2px;border-bottom:1px solid var(--border2)}
+    .fic-cab .modal-topo{position:static;margin:0;padding:0 0 4px}
+    .fic-cab .modal-sub{margin:2px 0 8px}
+    .fic-dec{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .fic-dec .prop-dec{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .fic-dec>div{margin-top:0!important}
+    .fic-dec .bt{min-height:40px}
+    .cd-abas.fic-abas{display:flex;justify-content:center;margin:8px 0 6px;overflow-x:auto}
+    .fic-abas .tabs{padding:4px;gap:4px;border-width:2px}
+    .fic-abas .tab{padding:7px 14px;font-size:13.5px;letter-spacing:.06em;min-height:40px}
+    .fic-n{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#C0392B;color:#fff;font-size:12px;line-height:18px;letter-spacing:0;text-align:center}
+    .fic-painel{display:none}
+    .fic-painel.on{display:block}
+    @media (max-width:600px){
+      .fic-cab{margin:-16px -14px 10px;padding:10px 14px 2px}
+      .fic-abas .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));width:100%}
+      .fic-abas .tab{padding:8px 2px;font-size:12px;letter-spacing:0;text-align:center;min-height:44px}
+      .fic-dec .bt{min-height:44px}
+    }
+    .prop-linkbox{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);border-bottom:none;padding:6px 7px;background:var(--bg2);}
+    .prop-linkbox input{flex:1 1 220px;min-width:0;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font:inherit;font-size:16px;background:var(--sup);color:var(--text);}
     .prop-editor{min-height:170px;max-height:340px;overflow:auto;border:1px solid var(--border);
       border-radius:0 0 6px 6px;padding:11px 13px;font-size:14px;line-height:1.6;
       background:#fff;color:#2A2118;outline:none;}
@@ -5767,11 +5948,33 @@ function propCor(c){
   try{ document.execCommand("styleWithCSS",false,true); }catch(e){}
   document.execCommand("foreColor",false,c);
 }
+/* 20/11/2026 (onda 3) — o endereço do link é pedido num campo na própria barra do editor (antes: prompt do navegador).
+   A seleção do texto é guardada antes de o campo tomar o foco e devolvida ao aplicar. */
+let PROP_LINK_SEL=null;
 function propLink(){
-  const u=prompt("Endereço do link (https://…)");
-  if(!u) return;
-  document.getElementById("prop-msg").focus();
+  const ed=document.getElementById("prop-msg"); if(!ed) return;
+  let cx=document.getElementById("prop-linkBox");
+  if(cx){ cx.remove(); return; }
+  PROP_LINK_SEL=null;
+  try{ const sel=window.getSelection(); if(sel.rangeCount && ed.contains(sel.getRangeAt(0).commonAncestorContainer)) PROP_LINK_SEL=sel.getRangeAt(0).cloneRange(); }catch(e){}
+  cx=document.createElement("div"); cx.id="prop-linkBox"; cx.className="prop-linkbox";
+  cx.innerHTML='<input id="prop-linkUrl" type="url" inputmode="url" placeholder="Endereço do link (https://…)" aria-label="Endereço do link">'+
+    '<button type="button" class="bt az" onclick="propLinkAplicar()">Inserir link</button>'+
+    '<button type="button" class="bt" onclick="propLinkFechar()">Cancelar</button>';
+  ed.parentNode.insertBefore(cx, ed);
+  const inp=document.getElementById("prop-linkUrl");
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); propLinkAplicar(); } else if(e.key==="Escape"){ e.preventDefault(); propLinkFechar(); } });
+  inp.focus();
+}
+function propLinkFechar(){ const cx=document.getElementById("prop-linkBox"); if(cx) cx.remove(); const ed=document.getElementById("prop-msg"); if(ed) ed.focus(); }
+function propLinkAplicar(){
+  const inp=document.getElementById("prop-linkUrl"), ed=document.getElementById("prop-msg"); if(!inp||!ed) return;
+  const u=String(inp.value||"").trim();
+  if(!u){ inp.focus(); return; }
+  ed.focus();
+  try{ if(PROP_LINK_SEL){ const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(PROP_LINK_SEL); } }catch(e){}
   document.execCommand("createLink",false,u);
+  const cx=document.getElementById("prop-linkBox"); if(cx) cx.remove();
 }
 function propResumoAnexos(){
   const el=document.getElementById("prop-anexos");
