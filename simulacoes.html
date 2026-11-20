@@ -150,6 +150,18 @@ html[data-tema="escuro"] .hist-email .hist-corpo.email{background:#fdfdfb}
 .an-det{margin-top:14px;border-top:1px solid var(--border2);padding-top:12px}
 .fluxo .dia span{font-size:10px;color:var(--text4);margin-top:4px;white-space:nowrap}
 #sim-mapa svg{width:100%;height:auto;min-width:760px}
+/* 20/11/2026 (ux) — mapa da Análise: no celular rola de lado dentro do próprio contêiner, sem esticar a página */
+#tab-analise .card{min-width:0}
+#an-mapa{max-width:100%}
+@media(max-width:600px){#an-mapa svg{width:100%;height:auto;min-width:760px}}
+.leg-bt{display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;background:none;border-radius:999px;padding:4px 10px;margin:0 2px;
+  font:inherit;font-size:12px;color:var(--text3);cursor:pointer}
+.leg-bt:hover{border-color:var(--border)}
+.leg-bt.on{border-color:var(--azul);background:var(--bg3);color:var(--text);font-weight:700}
+.an-disp{margin-top:10px}
+.an-disp summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--azul);min-height:32px}
+.an-disp-lista{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+@media(max-width:600px){.leg-bt,.disp-item{min-height:44px}.an-disp summary{min-height:44px;display:flex;align-items:center}}
 @media(max-width:720px){.detalhe-media .faixa{grid-template-columns:1fr;gap:2px}}
 html[data-tema="escuro"] .kpi .val.vermelho{color:#f3a29a}
 html[data-tema="escuro"] .kpi .val.verde{color:#8ce0a5}
@@ -707,6 +719,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           <span style="font-size:12px;color:var(--text3)" id="an-legenda"></span></div>
         <div class="card">
           <div id="an-mapa" style="overflow:auto"></div>
+          <div id="an-disp"></div>
           <div id="an-detalheUn" class="an-det"></div>
           <div id="an-diverg" style="margin-top:10px"></div>
         </div>
@@ -1373,6 +1386,8 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
   }
   const cor={vendida:"#C0392B", reservada:"#1F6FB2", preferencia:"#7B4FA0", disponivel:"#1a6b40", indisponivel:"#9aa8b2"};
   let c={vendida:0,reservada:0,preferencia:0,disponivel:0,indisponivel:0};
+  const dispLista=[];   // disponíveis que passam nos filtros (lista abaixo do mapa da Análise)
+  MAPA_CFG[alvo]={leg:alvoLegenda, clicavel:clicavel};
   UNS.forEach(u=>{
     const id=String(u.unidade||"").trim();
     const pol=svg.querySelector('[id="'+id+'"]') || svg.querySelector('[id="'+id.padStart(2,"0")+'"]');
@@ -1390,13 +1405,16 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
     /* 03/11 (dono) — no mapa da Análise de vendas manda a PLANILHA CASAS CONDOMÍNIO */
     const pl=clicavel ? anPlanilhaDaUnidade(id) : null;
     if(pl && pl.estado) e=pl.estado;
-    c[e]++;
+    /* 20/11/2026 (ux): a legenda conta só o que passa nos filtros Tipo/Rua (os da Análise) */
+    const passa = !clicavel || anPassaF(u);
+    if(passa){ c[e]++; if(e==="disponivel") dispLista.push(u); }
+    pol.dataset.e=e; pol.dataset.u=String(u.unidade||"").trim();
     pol.setAttribute("fill", cor[e]);
     pol.setAttribute("fill-opacity","0.62");
     pol.setAttribute("stroke","#fff");
     pol.setAttribute("stroke-width","6");
-    pol.style.cursor = clicavel ? "pointer" : "default";
-    if(clicavel){ pol.onclick=function(){ anDetalhe(id); }; }
+    pol.style.cursor = "pointer";
+    pol.onclick=function(){ anDetalhe(id); };   // o resumo da unidade abre nas duas telas (Análise e Unidades)
     let t=pol.querySelector("title");
     if(!t){ t=document.createElementNS("http://www.w3.org/2000/svg","title"); pol.appendChild(t); }
     t.textContent="Un. "+id+" · T"+(u.tipo||"—")+" · "+simBRL(Number(u.valorVenda)||0)+" · "+
@@ -1404,12 +1422,43 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
       (pl && pl.cliente ? " para "+pl.cliente : "");
   });
   const leg=document.getElementById(alvoLegenda);
+  const sel=MAPA_SIT[alvo]||"";
+  const bt=(e,txt,mostrar)=> mostrar===false ? "" :
+    `<button type="button" class="leg-bt${sel===e?" on":""}" aria-pressed="${sel===e}" onclick="mapaSitClicar('${alvo}','${e}')" title="Mostrar só: ${esc(txt.replace(/^\d+ /,""))} (clique de novo para limpar)"><b style="color:${cor[e]}">■</b> ${txt}</button>`;
   if(leg) leg.innerHTML=
-    `<b style="color:${cor.disponivel}">■</b> ${qtd(c.disponivel,"disponível","disponíveis")} · `+
-    `<b style="color:${cor.reservada}">■</b> ${qtd(c.reservada,"reservada","reservadas")} · `+
-    (c.preferencia ? `<b style="color:${cor.preferencia}">■</b> ${qtd(c.preferencia,"reserva paga","reservas pagas")} · ` : ``)+
-    `<b style="color:${cor.vendida}">■</b> ${qtd(c.vendida,"vendida","vendidas")} · `+
-    `<b style="color:${cor.indisponivel}">■</b> ${c.indisponivel} em breve`;
+    bt("disponivel",qtd(c.disponivel,"disponível","disponíveis"))+
+    bt("reservada",qtd(c.reservada,"reservada","reservadas"))+
+    bt("preferencia",qtd(c.preferencia,"reserva paga","reservas pagas"),c.preferencia>0||sel==="preferencia")+
+    bt("vendida",qtd(c.vendida,"vendida","vendidas"))+
+    bt("indisponivel",c.indisponivel+" em breve");
+  mapaFiltroAplicar(alvo);
+  if(clicavel) anDispLista(dispLista);
+}
+/* situação escolhida na legenda de cada mapa ("" = todas); clicar na mesma situação limpa */
+const MAPA_SIT={}, MAPA_CFG={};
+function mapaSitClicar(alvo,e){
+  MAPA_SIT[alvo]=(MAPA_SIT[alvo]===e)?"":e;
+  const cfg=MAPA_CFG[alvo]; if(cfg) pintarMapa(alvo,cfg.leg,cfg.clicavel);
+}
+/* apaga no mapa o que não passa no filtro de situação (e, na Análise, Tipo/Rua) */
+function mapaFiltroAplicar(alvo){
+  const svg=document.querySelector("#"+alvo+" svg"); if(!svg) return;
+  const sel=MAPA_SIT[alvo]||"", cfg=MAPA_CFG[alvo]||{};
+  svg.querySelectorAll("[data-e]").forEach(pol=>{
+    let ok=!sel || pol.dataset.e===sel;
+    if(ok && cfg.clicavel){ const u=UNS.find(x=>String(x.unidade||"").trim()===pol.dataset.u); if(u && !anPassaF(u)) ok=false; }
+    pol.style.opacity=ok?"":"0.15";
+  });
+}
+/* lista recolhível das disponíveis, abaixo do mapa da Análise */
+function anDispLista(lista){
+  const el=document.getElementById("an-disp"); if(!el) return;
+  const ant=el.querySelector("details"), aberto=!!(ant&&ant.open);
+  const ord=lista.slice().sort((a,b)=>(parseInt(a.unidade,10)||0)-(parseInt(b.unidade,10)||0));
+  el.innerHTML = '<details class="an-disp"'+(aberto?" open":"")+'><summary>Disponíveis ('+ord.length+')</summary><div class="an-disp-lista">'+
+    (ord.length ? ord.map(u=>'<button type="button" class="bt ghost disp-item" onclick="anDetalhe(\''+esc(String(u.unidade).trim())+'\')">Un. '+esc(String(u.unidade))+
+       ' · T'+esc(String(u.tipo||"—"))+' · '+simBRL(Number(u.valorVenda)||0)+'</button>').join("")
+      : '<span class="muted" style="font-size:12.5px">Nenhuma unidade disponível com esses filtros.</span>')+'</div></details>';
 }
 
 /* =====================================================================
@@ -1569,14 +1618,7 @@ function anTop(){
     (r.semData?'<div class="sim-aviso err" style="grid-column:1/-1">'+qtd(r.semData,'contrato assinado','contratos assinados')+' sem data de assinatura válida: não entram em período nenhum. Corrija a data na Planilha Casas Condomínio.</div>':'');
 }
 /* tipo/rua: apaga no mapa as casas fora do filtro */
-function anMapaFiltro(){
-  const svg=document.querySelector("#an-mapa svg"); if(!svg) return;
-  UNS.forEach(u=>{
-    const id=String(u.unidade||"").trim();
-    const pol=svg.querySelector('[id="'+id+'"]')||svg.querySelector('[id="'+id.padStart(2,"0")+'"]');
-    if(pol) pol.style.opacity=anPassaF(u)?"":"0.15";
-  });
-}
+function anMapaFiltro(){ mapaFiltroAplicar("an-mapa"); }   // 20/11/2026: junto com o filtro de situação da legenda
 function analiseRender(){
   if(!document.getElementById("an-vgv")) return;
   /* só com a aba aberta: o Apps Script atende um pedido por vez */
