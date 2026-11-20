@@ -281,6 +281,9 @@ html[data-tema="escuro"] .un-op.res{background:rgba(31,111,178,.18)}
 @media(max-width:600px){.form-ov{padding:0}.form-cx{border-radius:0}}
 /* 07/11/2026 — alterar unidade / valor financiado (proposta e simulação) */
 .bt.verde{background:#27AE60;color:#fff;border-color:#1E8449}.bt.verde:hover{background:#1E8449}.bt:disabled{opacity:.55;cursor:not-allowed}
+/* botão de perigo (Negar, Confirmar distrato) */
+.bt.vermelho{background:var(--vermelho);color:#fff;border-color:var(--vermelho)}.bt.vermelho:hover{background:#9e2d22;border-color:#9e2d22}
+html[data-tema="escuro"] .bt.vermelho{background:#c4463a;border-color:#c4463a;color:#fff}html[data-tema="escuro"] .bt.vermelho:hover{background:#a63a30;border-color:#a63a30}
 .alt-box{margin-top:12px;padding:14px 16px;border:2px solid #27AE60;border-radius:12px;background:rgba(39,174,96,.05)}
 .alt-tit{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--azul-esc);margin-bottom:8px}
 html[data-tema="escuro"] .alt-tit{color:var(--teal)}
@@ -1909,7 +1912,7 @@ function simTagSt(st){
   /* r64 — SIOP fora do ar: saiu a preliminar pela base offline; a
      definitiva vem quando a CAIXA voltar (worker r41). */
   if(n==="OFFLINE") return `<span class="pill zero" style="background:#FBEEC8;color:#7A4A16;border:1px solid #EFB700" title="Preliminar pelo sistema offline — aguardando o sistema online para a definitiva">OFFLINE · PRELIMINAR</span>`;
-  const cls = n==="ERRO" ? "neg" : (n==="CONCLUIDO" ? "pos" : "zero");
+  const cls = n==="ERRO" ? "ruim" : (n==="CONCLUIDO" ? "bom" : "zero");
   return `<span class="pill ${cls}">${n}</span>`;
 }
 
@@ -3307,7 +3310,8 @@ function propSeg(v){
 }
 function propTag(st){
   const n=PROP_NORM(st)||"RECEBIDA";
-  const cls = (n==="ACEITA"||n==="VENDIDA") ? "pos" : ((n==="NEGADA"||n==="DISTRATO") ? "neg" : "zero");
+  /* status (não é dinheiro): verde = bom, vermelho = ruim */
+  const cls = (n==="ACEITA"||n==="VENDIDA") ? "bom" : ((n==="NEGADA"||n==="DISTRATO") ? "ruim" : "zero");
   return `<span class="pill ${cls}">${PROP_ROTULO[n]||n}</span>`;
 }
 /* 02/10 (item 6) — selo do STATUS INTERNO da unidade na lista de propostas */
