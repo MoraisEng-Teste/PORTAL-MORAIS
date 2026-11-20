@@ -8,7 +8,7 @@
   if(t!=="claro"&&t!=="escuro") t="claro";
   document.documentElement.dataset.tema=t;}catch(e){}})();</script>
 <link rel="manifest" href="manifest.json">
-<title>Processos · Morais</title>
+<title>Processos · Portal Morais</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -369,7 +369,7 @@ if(S){ document.getElementById("u-nome").textContent=S.nome||S.login;
 
 const BASE=/arquivos/.test(location.pathname)?"arq":"proc";
 const TXT=BASE==="arq"?{um:"arquivo",Um:"Arquivo",uns:"arquivos",tit:"Arquivos",ck:"arquivos"}:{um:"processo",Um:"Processo",uns:"processos",tit:"Processos",ck:"processos"};
-document.title=TXT.tit+" · Morais";
+document.title=TXT.tit+" · Portal Morais";
 document.querySelector(".htitle").textContent=TXT.tit;
 let D={processos:[],categorias:[],status:[],catMulti:true}, CAT="__todas", BUSCA="", FST="", ABERTO=null, CARREGOU=false;
 const SEM="__sem";
