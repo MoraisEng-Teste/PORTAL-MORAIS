@@ -53,7 +53,7 @@
   function quandoTexto(item){
     const v = new Date(item.vence), hora = v.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit", timeZone:"America/Sao_Paulo"});
     const dia = br(isoDoVence(item.vence)).slice(0, 5);
-    if(item.quando === "venceu") return "venceu (" + dia + ", às " + hora + ") e cai na próxima passada do robô";
+    if(item.quando === "venceu") return "venceu (" + dia + ", às " + hora + ") e cai na próxima verificação automática";
     if(item.quando === "hoje") return "cai hoje, às " + hora;
     if(item.quando === "amanha") return "cai amanhã (" + dia + ", às " + hora + ")";
     return "cai em " + dia + ", às " + hora;

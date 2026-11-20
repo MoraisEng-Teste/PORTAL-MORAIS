@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Simulações · Reserva do Ipês — Morais</title>
+<title>Simulações · Reserva dos Ipês — Morais</title>
 <link rel="manifest" href="manifest.json">
 <style>
 :root{color-scheme:light}
@@ -281,6 +281,9 @@ html[data-tema="escuro"] .un-op.res{background:rgba(31,111,178,.18)}
 @media(max-width:600px){.form-ov{padding:0}.form-cx{border-radius:0}}
 /* 07/11/2026 — alterar unidade / valor financiado (proposta e simulação) */
 .bt.verde{background:#27AE60;color:#fff;border-color:#1E8449}.bt.verde:hover{background:#1E8449}.bt:disabled{opacity:.55;cursor:not-allowed}
+/* botão de perigo (Negar, Confirmar distrato) */
+.bt.vermelho{background:var(--vermelho);color:#fff;border-color:var(--vermelho)}.bt.vermelho:hover{background:#9e2d22;border-color:#9e2d22}
+html[data-tema="escuro"] .bt.vermelho{background:#c4463a;border-color:#c4463a;color:#fff}html[data-tema="escuro"] .bt.vermelho:hover{background:#a63a30;border-color:#a63a30}
 .alt-box{margin-top:12px;padding:14px 16px;border:2px solid #27AE60;border-radius:12px;background:rgba(39,174,96,.05)}
 .alt-tit{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--azul-esc);margin-bottom:8px}
 html[data-tema="escuro"] .alt-tit{color:var(--teal)}
@@ -313,6 +316,15 @@ html[data-tema="escuro"] .alt-tit{color:var(--teal)}
   letter-spacing:.4px;color:var(--azul-esc)}
 html[data-tema="escuro"] .modal-tit{color:var(--teal)}
 .modal-sub{font-size:12px;color:var(--text3);margin:2px 0 14px}
+/* cabeçalho fixo da ficha: título + ✕ Fechar sempre à vista ao rolar */
+.prop-emailRet{font-size:12.5px;font-weight:600;margin-left:10px;overflow-wrap:anywhere}
+.prop-emailRet.ok{color:var(--verde-esc)}.prop-emailRet.err{color:var(--vermelho)}
+html[data-tema="escuro"] .prop-emailRet.ok{color:#8ce0a5}
+.modal-topo{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--sup);margin:-20px -22px 6px;padding:12px 22px 8px}
+.modal-topo .modal-tit{min-width:0;overflow-wrap:anywhere}
+.modal-topo .modal-x{flex:none;padding:6px 12px;min-height:36px}
+@media (max-width:600px){.modal-topo .modal-x{min-height:44px;min-width:44px}}
 /* nome do insumo clicavel */
 td.insumo.link{cursor:pointer;color:var(--azul);text-decoration:underline;text-decoration-style:dotted;
   text-underline-offset:3px}
@@ -529,7 +541,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
   <header>
     <div class="wrap hbar">
       <span class="logo"><img src="img/logo.png" alt="Morais" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><b style="display:none;font-family:'Barlow Condensed';font-weight:800;font-size:16px;color:var(--azul-esc);padding:0 4px">MORAIS</b></span>
-      <div><div class="htitle">Simulações · Reserva do Ipês</div><div class="hsub">Morais Engenharia</div></div>
+      <div><div class="htitle">Simulações · Reserva dos Ipês</div><div class="hsub">Morais Engenharia</div></div>
       <div class="hspace"></div>
       <span class="net on" id="net-status">online</span>
       <span class="hupd" id="updated"></span>
@@ -543,7 +555,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
 
   <main class="wrap">
     <div class="crumb">
-      <a class="btn-voltar" href="index.html">← Voltar para o Dashboard</a>
+      <a class="btn-voltar" href="index.html">← Início</a>
       <span style="flex:1"></span>
       <button class="bt az" onclick="simAtualizarTudo(this)" title="Ignora os caches e busca no Notion agora">↻ Atualizar dados agora</button>
       <span class="carga-portal" id="carga-portal"><i></i><b id="carga-pct">carregando…</b></span>
@@ -570,7 +582,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
         <button class="tab" data-tab="propostas" onclick="trocarTab('propostas')">Propostas</button>
         <button class="tab" data-tab="analise" onclick="trocarTab('analise')">Análise de vendas</button>
         <button class="tab" data-tab="unidades" onclick="trocarTab('unidades')">Unidades</button>
-        <button class="tab" data-tab="servidores" onclick="trocarTab('servidores')">Servidores</button>
+        <button class="tab hide" id="tab-bt-servidores" data-tab="servidores" onclick="trocarTab('servidores')">Servidores</button><!-- só para ADM (simPintarUsuario) -->
       </div></div>
 
       <!-- ==================== PAINEL ==================== -->
@@ -652,8 +664,8 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           </div>
           <!-- 07/11/2026 — preencher nova simulação/proposta pelo portal, como no mapa -->
           <div class="novo-bar">
-            <button class="bt mp-sim" onclick="novoEscolherUn('sim')">＋ Fazer simulação</button>
-            <button class="bt mp-prop" onclick="novoEscolherUn('prop')">＋ SUBIR PASTA</button>
+            <button class="bt mp-sim" onclick="novoEscolherUn('sim')">＋ Simular</button>
+            <button class="bt mp-prop" onclick="novoEscolherUn('prop')">＋ Enviar proposta (subir pasta)</button>
           </div>
         </div>
         <div class="card">
@@ -669,6 +681,9 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
             </span>
           </div>
           <div id="sim-avisoErros" class="sim-aviso" style="margin:0 0 10px"></div>
+          <div class="leg-cores" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin:4px 0 6px">
+            <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FFF3C4;border:1px solid #E8C860;vertical-align:-2px"></i> nova (chegou nas últimas 24 h)</span>
+          </div>
           <div class="tbl-wrap alta"><table id="sim-tabRec"></table></div>
         </div>
       </section>
@@ -738,13 +753,13 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           </div>
           <!-- 07/11/2026 — preencher nova simulação/proposta pelo portal, como no mapa -->
           <div class="novo-bar">
-            <button class="bt mp-sim" onclick="novoEscolherUn('sim')">＋ Fazer simulação</button>
-            <button class="bt mp-prop" onclick="novoEscolherUn('prop')">＋ SUBIR PASTA</button>
-            <a class="bt az" style="text-decoration:none" href="https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/tabela.html" target="_blank" rel="noopener" title="Abre a tabela numa aba nova: SIMULAR e SUBIR PASTA de cada unidade abrem em outra aba">📋 Abrir tabela de disponibilidades</a>
+            <button class="bt mp-sim" onclick="novoEscolherUn('sim')">＋ Simular</button>
+            <button class="bt mp-prop" onclick="novoEscolherUn('prop')">＋ Enviar proposta (subir pasta)</button>
+            <a class="bt az" style="text-decoration:none" href="https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/tabela.html" target="_blank" rel="noopener" title="Abre a tabela numa aba nova: Simular e Enviar proposta de cada unidade abrem em outra aba">📋 Abrir tabela de disponibilidades</a>
             <button class="bt az" id="bt-planilhaFluxo-pdf" onclick="planilhaFluxoPortal('pdf')" title="Valor, avaliação, financiamento (80% da avaliação) e o fluxo padrão de cada unidade à venda">⬇ Tabela de disponibilidades PDF</button>
             <button class="bt az" id="bt-planilhaFluxo-xlsx" onclick="planilhaFluxoPortal('xlsx')" title="Valor, avaliação, financiamento (80% da avaliação) e o fluxo padrão de cada unidade à venda">⬇ Tabela de disponibilidades Excel</button>
             <!-- 14/11/2026 (dono) — fluxo personalizado sem proposta e sem dado de cliente; só no portal (venda/fluxo-personalizado.js) -->
-            <button class="bt verde" id="bt-fxp" onclick="fluxoPersonalizadoAbrir('')" title="Monta um fluxo de pagamento para mostrar ao cliente, sem enviar proposta e sem dados dele. Nada é gravado.">✎ Fluxo personalizado</button>
+            <button class="bt verde" id="bt-fxp" onclick="fluxoPersonalizadoAbrir('')" title="Monta um fluxo de pagamento para mostrar ao cliente, sem enviar proposta e sem dados dele. Nada é gravado.">✎ Simular outro fluxo</button>
           </div>
         </div>
         <div id="fxp-caixa"></div>
@@ -764,9 +779,6 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
                 <button class="seg-bt" data-po="desc" onclick="propOrdenar('desc')">↓ Mais novas primeiro</button>
               </div></div>
             <span style="font-size:12px;color:var(--text3);align-self:center">
-              <span style="display:inline-block;width:10px;height:10px;background:#F6D6D2;border:1px solid #D98A80;border-radius:2px;vertical-align:middle"></span>
-              linha vermelha = reserva vence em menos de 24 h (prazo de 5 dias para gerar o contrato)
-              &nbsp;·&nbsp;
               <span class="leg-res"></span>
               linha azul = proposta enviada com a unidade já <b>reservada</b> (só é analisada se houver desistência)
             </span>
@@ -775,7 +787,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           <div id="prop-aviso" class="sim-aviso"></div>
           <div class="leg-cores" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin:4px 0 6px">
             <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FFF3C4;border:1px solid #E8C860;vertical-align:-2px"></i> nova (recebida, ainda sem decisão)</span>
-            <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#F6D6D2;border:1px solid #E2A493;vertical-align:-2px"></i> reserva vencida</span>
+            <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#F6D6D2;border:1px solid #E2A493;vertical-align:-2px"></i> reserva vence em menos de 24 h (ou já venceu; o prazo é de 5 dias para gerar o contrato)</span>
           </div>
           <div class="tbl-wrap alta"><table id="prop-tab"></table></div>
         </div>
@@ -801,9 +813,10 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
             <span id="sim-alteradas" style="font-size:12px;color:var(--text3);align-self:center"></span>
           </div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin:4px 0 6px">
-            <b style="color:var(--text2)">Cor da linha = STATUS MAPA:</b>
+            <b style="color:var(--text3)">Cor da linha = situação da unidade:</b>
             <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#E3F4E8;border:1px solid #9BD3AE;vertical-align:-2px"></i> disponível</span>
             <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#E1ECF8;border:1px solid #9CC3E4;vertical-align:-2px"></i> reservada</span>
+            <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EDE3F6;border:1px solid #B79AD6;vertical-align:-2px"></i> reserva paga</span>
             <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FBE1E1;border:1px solid #E7A3A3;vertical-align:-2px"></i> vendida</span>
           </div>
           <div class="tbl-wrap alta"><table id="sim-tabUn"></table></div>
@@ -817,7 +830,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
     </div>
   </main>
 
-  <div class="modal-ov hide" id="sim-modal" onclick="if(event.target===this)simFecharDet()">
+  <div class="modal-ov hide" id="sim-modal" onclick="if(event.target===this)simPedirFechar()">
     <div class="modal-cx" id="sim-modalCx"></div>
   </div>
 
@@ -935,6 +948,7 @@ function simPintarUsuario(){
   const tipo=String((S&&S.tipo)||"").toUpperCase();
   const b=document.getElementById("u-tipo"); b.textContent=tipo||"—";
   if(tipo==="ADM") b.classList.add("adm");
+  const bs=document.getElementById("tab-bt-servidores"); if(bs) bs.classList.toggle("hide", tipo!=="ADM");   /* aba Servidores só para ADM */
 }
 function simFalhou(msg){
   document.getElementById("falhou-msg").textContent = msg;
@@ -1025,7 +1039,7 @@ async function srvCarregar(bt){
   const ws=r.workers||[], on=ws.filter(w=>w.online), lid=ws.find(w=>w.papel==="LÍDER");
   const sem=r.ultimoSinal ? Math.round((Date.now()-Date.parse(r.ultimoSinal))/1000) : null;
   res.innerHTML = (on.length
-    ? '<div class="sim-aviso ok"><b>Sistema online.</b> '+on.length+' PC(s) ligado(s). Líder: <b>'+esc(lid?lid.pc:"—")+'</b>'+
+    ? '<div class="sim-aviso ok"><b>Sistema online.</b> '+qtd(on.length,'PC ligado','PCs ligados')+'. Líder: <b>'+esc(lid?lid.pc:"—")+'</b>'+
         (on.length>1?' · '+(on.length-1)+' de reserva':' · <span style="color:#B7791F">sem reserva — se ele cair, só a nuvem cobre</span>')+'.</div>'
     : '<div class="sim-aviso err"><b>Nenhum PC online.</b> '+(sem!==null?'Último sinal há '+srvTempo(sem)+'. ':'')+
         'As simulações estão saindo como PRELIMINAR pela nuvem até um PC voltar.</div>')+
@@ -1109,13 +1123,26 @@ function simAtualizarTudo(bt){
 
 /* O 404 do Notion tem uma causa só e uma solução só — mostrar o texto cru
    da API deixava a pessoa achando que era bug do portal. */
+/* Erro em duas partes: uma frase para quem usa a tela + o detalhe técnico (para o suporte) recolhido */
+/* CPF 000.000.000-00 só na exibição (a busca aceita com ou sem pontos); outro formato fica como veio */
+function cpfFmt(v){
+  const d=String(v==null?"":v).replace(/\D/g,"");
+  return d.length===11 ? d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9) : String(v==null?"":v);
+}
+/* singular/plural certo: plural(2,"unidade","unidades") -> "unidades"; qtd(2,"unidade","unidades") -> "2 unidades" */
+function plural(n,um,varios){ return Number(n)===1 ? um : varios; }
+function qtd(n,um,varios){ return n+" "+plural(n,um,varios); }
+function detTec(html){
+  return '<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer">Detalhe técnico</summary>'+html+'</details>';
+}
+const MSG_SERVIDOR_FALHOU='<b>O servidor do portal não respondeu direito.</b> Tente de novo em 1 minuto; se continuar, avise o suporte.';
 function simErroAmigavel(erro){
   const t = String(erro||"");
   if(t.indexOf("404") >= 0 || t.toLowerCase().indexOf("shared with your integration") >= 0){
-    return '<b>A base do Ipês ainda não foi compartilhada com a integração do portal.</b><br>' +
-           'No Notion, abra a base <b>SIMULAÇÕES – RESERVA DOS IPÊS</b> (e também a de UNIDADES) → ' +
+    return '<b>A lista de simulações ainda não foi liberada para o portal.</b> Avise o suporte.' +
+           detTec('No Notion, abra a base <b>SIMULAÇÕES – RESERVA DOS IPÊS</b> (e também a de UNIDADES) → ' +
            'menu <b>⋯</b> → <b>Conexões</b> → adicione <b>SITES MORAIS</b>.<br>' +
-           '<span style="color:var(--text4);font-size:11px">' + esc(t) + '</span>';
+           '<span style="color:var(--text4);font-size:11px">' + esc(t) + '</span>');
   }
   return esc(t) || "Não foi possível carregar.";
 }
@@ -1160,12 +1187,12 @@ function simRenderVgv(){
   const estoque = UNS.filter(u=>st(u)!=="SIM");
   const med = arr => arr.length ? arr.reduce((a,u)=>a+val(u),0)/arr.length : 0;
   const cards=[
-    ["VGV total", simBRL(UNS.reduce((a,u)=>a+val(u),0)), UNS.length+" unidade(s)", null],
-    ["VGV vendido", simBRL(vendidas.reduce((a,u)=>a+val(u),0)), vendidas.length+" vendida(s)", null],
-    ["VGV em estoque", simBRL(estoque.reduce((a,u)=>a+val(u),0)), estoque.length+" disponível(is) ou reservada(s)", null],
+    ["VGV total", simBRL(UNS.reduce((a,u)=>a+val(u),0)), qtd(UNS.length,"unidade","unidades"), null],
+    ["VGV vendido", simBRL(vendidas.reduce((a,u)=>a+val(u),0)), qtd(vendidas.length,"vendida","vendidas"), null],
+    ["VGV em estoque", simBRL(estoque.reduce((a,u)=>a+val(u),0)), qtd(estoque.length,"disponível ou reservada","disponíveis ou reservadas"), null],
     ["Preço médio · vendidas", simBRL(med(vendidas)), null, med(vendidas)],
     ["Preço médio · estoque", simBRL(med(estoque)), null, med(estoque)],
-    ["Preço médio · geral", simBRL(med(UNS)), reservadas.length+" reservada(s)", med(UNS)]
+    ["Preço médio · geral", simBRL(med(UNS)), qtd(reservadas.length,"reservada","reservadas"), med(UNS)]
   ];
   el.innerHTML = cards.map(k=>{
     let sub = k[2] ? `<div class="sub">${esc(k[2])}</div>` : "";
@@ -1199,7 +1226,7 @@ function abrirDetalheMedia(alvo, titulo, valores){
   el.innerHTML='<h4>'+esc(titulo)+' · distribuição</h4>'+
     faixas.map(f=>`<div class="faixa"><span>${simBRL(f.de)} a ${simBRL(f.ate)}</span>`+
       `<div class="barra"><i style="width:${Math.round(f.qtd/max*100)}%"></i></div>`+
-      `<b>${f.qtd} pessoa(s)</b></div>`).join("");
+      `<b>${qtd(f.qtd,"pessoa","pessoas")}</b></div>`).join("");
 }
 
 function graficoMedias(alvoGraf, alvoDet, dados){
@@ -1214,7 +1241,7 @@ function graficoMedias(alvoGraf, alvoDet, dados){
     `<span class="v">${simBRL(valores[i])}</span>`+
     `<div class="b" style="height:${Math.max(4,(valores[i]/max)*100)}%"></div>`+
     `<span class="l">${esc(d.nome)}</span>`+
-    `<span class="q">${d.valores.filter(x=>x>0).length} pessoa(s)</span></div>`).join("");
+    `<span class="q">${qtd(d.valores.filter(x=>x>0).length,"pessoa","pessoas")}</span></div>`).join("");
 }
 
 /* ---------- fluxo por tempo (itens 3, 4 e 6) ----------
@@ -1250,7 +1277,7 @@ function fluxoPorTempo(alvo, datas, rotulo, modo){
     ({dia:"Dia",semana:"Semana",mes:"Mês"})[x]+`</button>`).join("");
   const topo=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">`+
     `<div class="seg">${seg}</div>`+
-    `<span style="font-size:12px;color:var(--text3)">${ordem.length} período(s) com registro · ${limpas.length} ${rotulo}</span></div>`;
+    `<span style="font-size:12px;color:var(--text3)">${qtd(ordem.length,"período","períodos")} com registro · ${limpas.length} ${rotulo}</span></div>`;
   if(!ordem.length){ el.innerHTML=topo+'<div class="vazio">Nada registrado ainda.</div>'; FLUXO_DADOS[alvo]={datas,rotulo}; return; }
   const max=Math.max(...ordem.map(k=>balde[k]));
   el.innerHTML=topo+'<div class="fluxo">'+ordem.map(k=>{
@@ -1322,15 +1349,15 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
     let t=pol.querySelector("title");
     if(!t){ t=document.createElementNS("http://www.w3.org/2000/svg","title"); pol.appendChild(t); }
     t.textContent="Un. "+id+" · T"+(u.tipo||"—")+" · "+simBRL(Number(u.valorVenda)||0)+" · "+
-      ({vendida:"vendida",reservada:"reservada",preferencia:"pagou preferência",disponivel:"disponível",indisponivel:"em breve"})[e]+
+      ({vendida:"vendida",reservada:"reservada",preferencia:"reserva paga",disponivel:"disponível",indisponivel:"em breve"})[e]+
       (pl && pl.cliente ? " para "+pl.cliente : "");
   });
   const leg=document.getElementById(alvoLegenda);
   if(leg) leg.innerHTML=
-    `<b style="color:${cor.disponivel}">■</b> ${c.disponivel} disponível(is) · `+
-    `<b style="color:${cor.reservada}">■</b> ${c.reservada} reservada(s) · `+
-    (c.preferencia ? `<b style="color:${cor.preferencia}">■</b> ${c.preferencia} pagou preferência · ` : ``)+
-    `<b style="color:${cor.vendida}">■</b> ${c.vendida} vendida(s) · `+
+    `<b style="color:${cor.disponivel}">■</b> ${qtd(c.disponivel,"disponível","disponíveis")} · `+
+    `<b style="color:${cor.reservada}">■</b> ${qtd(c.reservada,"reservada","reservadas")} · `+
+    (c.preferencia ? `<b style="color:${cor.preferencia}">■</b> ${qtd(c.preferencia,"reserva paga","reservas pagas")} · ` : ``)+
+    `<b style="color:${cor.vendida}">■</b> ${qtd(c.vendida,"vendida","vendidas")} · `+
     `<b style="color:${cor.indisponivel}">■</b> ${c.indisponivel} em breve`;
 }
 
@@ -1341,7 +1368,7 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
  * e fluxo). Clicar numa unidade do mapa abre quem está nela.
  * ------------------------------------------------------------------ */
 /* 03/11/2026 (dono) — o mapa da Análise tem de bater com a PLANILHA CASAS CONDOMÍNIO
- * (BANCO DE DADOS VENDAS CONDOMÍNIO): "vendida para X" é quem está na linha da venda, não a
+ * (lista de vendas do condomínio): "vendida para X" é quem está na linha da venda, não a
  * proposta mais nova da unidade (a unidade 18 mostrava uma proposta RECEBIDA de outro cliente e a
  * 31 uma NEGADA com outro corretor). Situação pela linha, mesma régua do contrato-vendida.js:
  * 04/11/2026 (dono): vendida só com a ETAPA Concluída (assinaturas concluídas e venda lançada no Mais Controle);
@@ -1483,12 +1510,12 @@ function anTop(){
   const pct=U.length?r.acumulado.n/U.length*100:0;
   el.innerHTML=
     '<div class="kpi hero"><div class="lab">VGV vendido · '+esc(p.rotulo)+'</div><div class="val">'+simBRL(r.vgv)+'</div>'+
-      (r.ant?delta(r.vgv,r.ant.vgv,r.ant.rotulo):'<div class="sub">'+r.n+' contrato(s) assinado(s)</div>')+'</div>'+
+      (r.ant?delta(r.vgv,r.ant.vgv,r.ant.rotulo):'<div class="sub">'+qtd(r.n,'contrato assinado','contratos assinados')+'</div>')+'</div>'+
     '<div class="kpi"><div class="lab">Casas vendidas</div><div class="val">'+r.n+'</div>'+
       '<div class="sub">'+r.acumulado.n+' de '+U.length+' assinadas até hoje · ticket '+(r.n?simBRL(r.ticket):"—")+'</div><div class="an-mbar"><i style="width:'+pct.toFixed(1)+'%"></i></div></div>'+
-    '<div class="kpi"><div class="lab">Em assinatura · fora do VGV</div><div class="val">'+simBRL(r.assinando.vgv)+'</div><div class="sub">'+r.assinando.n+' contrato(s) enviado(s), faltam assinaturas</div></div>'+
-    '<div class="kpi"><div class="lab">VGV a vender</div><div class="val">'+simBRL(vEst)+'</div><div class="sub">'+estoque.length+' casa(s) em estoque</div></div>'+
-    (r.semData?'<div class="sim-aviso err" style="grid-column:1/-1">'+r.semData+' contrato(s) assinado(s) sem data de assinatura válida: não entram em período nenhum. Corrija a data na Planilha Casas Condomínio.</div>':'');
+    '<div class="kpi"><div class="lab">Em assinatura · fora do VGV</div><div class="val">'+simBRL(r.assinando.vgv)+'</div><div class="sub">'+qtd(r.assinando.n,'contrato enviado','contratos enviados')+', faltam assinaturas</div></div>'+
+    '<div class="kpi"><div class="lab">VGV a vender</div><div class="val">'+simBRL(vEst)+'</div><div class="sub">'+qtd(estoque.length,'casa','casas')+' em estoque</div></div>'+
+    (r.semData?'<div class="sim-aviso err" style="grid-column:1/-1">'+qtd(r.semData,'contrato assinado','contratos assinados')+' sem data de assinatura válida: não entram em período nenhum. Corrija a data na Planilha Casas Condomínio.</div>':'');
 }
 /* tipo/rua: apaga no mapa as casas fora do filtro */
 function anMapaFiltro(){
@@ -1512,7 +1539,7 @@ function anDivergencias(){
   if(AN_PLAN_ERRO){ el.innerHTML='<div class="sim-aviso err">Não consegui ler a Planilha Casas Condomínio ('+esc(AN_PLAN_ERRO)+'): o mapa está só com a base Unidades. <button class="bt" onclick="AN_PLAN_ERRO=\'\';anCarregarPlanilha(true)">↻ Tentar de novo</button></div>'; return; }
   if(!AN_PLAN){ el.innerHTML='<div class="sim-aviso"><span class="load"></span> Lendo a Planilha Casas Condomínio…</div>'; return; }
   if(!UNS.length){ el.innerHTML=""; return; }
-  const nome={vendida:"vendida", reservada:"reservada", preferencia:"pagou preferência", disponivel:"disponível", indisponivel:"em breve"};
+  const nome={vendida:"vendida", reservada:"reservada", preferencia:"reserva paga", disponivel:"disponível", indisponivel:"em breve"};
   const itens=[];
   UNS.forEach(u=>{
     const pl=anPlanilhaDaUnidade(u.unidade);
@@ -1534,7 +1561,7 @@ function anDivergencias(){
     if((!cond || /RESERVA DOS? IPE/.test(cond)) && n!==null && !nums.has(n)) itens.push("Linha da planilha com a unidade "+n+", que não existe na base Unidades.");
   });
   el.innerHTML = itens.length
-    ? '<div class="sim-aviso err"><b>Base Unidades × Planilha Casas Condomínio</b> — o mapa acima já segue a planilha; acerte a base Unidades em Simulações › Editar unidades:<ul style="margin:6px 0 0 18px">'+itens.map(t=>"<li>"+t+"</li>").join("")+"</ul></div>"
+    ? '<div class="sim-aviso err"><b>Base Unidades × Planilha Casas Condomínio</b> — o mapa acima já segue a planilha; acerte a base Unidades na aba Unidades:<ul style="margin:6px 0 0 18px">'+itens.map(t=>"<li>"+t+"</li>").join("")+"</ul></div>"
     : '<div class="sim-aviso ok">Base Unidades e Planilha Casas Condomínio batem.</div>';
 }
 function anVgv(){
@@ -1571,7 +1598,7 @@ function anMapa(){ Promise.resolve(pintarMapa("an-mapa","an-legenda", true)).the
 function anFluxo(){
   const datas=PROPS.filter(p=>["ACEITA","RESERVADA"].includes(PROP_NORM(p.status)))
                    .map(p=>p.dataAceite||p.dataReserva||p.criadoEm);
-  fluxoPorTempo("an-fluxo", datas, "venda(s)/reserva(s)");
+  fluxoPorTempo("an-fluxo", datas, "vendas ou reservas");
 }
 function anTabela(){
   const el=document.getElementById("an-tabela"); if(!el) return;
@@ -1582,7 +1609,7 @@ function anTabela(){
   const corpo=linhas.length ? linhas.map(u=>{
     const e=anEstado(u), p=anPropostaDaUnidade(u.unidade), pl=anPlanilhaDaUnidade(u.unidade);
     const sit=e==="vendida" ? '<span class="pill ruim">VENDIDA</span>'
-      : e==="preferencia" ? '<span class="pill" style="background:rgba(123,79,160,.16);color:#7B4FA0">PAGOU PREFERÊNCIA</span>'
+      : e==="preferencia" ? '<span class="pill" style="background:rgba(123,79,160,.16);color:#7B4FA0">RESERVA PAGA</span>'
       : '<span class="pill" style="background:rgba(31,111,178,.16);color:#1F6FB2">RESERVADA</span>';
     /* 03/11 — cliente e corretor da PLANILHA CASAS CONDOMÍNIO; sem linha lá, os da proposta */
     const cli=(pl&&pl.cliente)||(p&&p.cliente)||"—", cor=(pl&&pl.corretor)||(p&&p.vendedor)||"—";
@@ -1604,20 +1631,20 @@ function anDetalhe(un){
   if(!u){ cx.innerHTML=""; return; }
   const e=anEstado(u), p=anPropostaDaUnidade(un), pl=anPlanilhaDaUnidade(un);
   const it=(r,v)=>`<div class="sim-item"><small>${r}</small><b>${v||"—"}</b></div>`;
-  const nome={vendida:"Vendida", reservada:"Reservada", preferencia:"Pagou preferência", disponivel:"Disponível", indisponivel:"Em breve"}[e];
+  const nome={vendida:"Vendida", reservada:"Reservada", preferencia:"Reserva paga", disponivel:"Disponível", indisponivel:"Em breve"}[e];
   let html=`<div class="modal-tit">Unidade ${esc(String(un))} · ${nome}${pl&&pl.cliente ? " para "+esc(pl.cliente) : ""}</div>
     <div class="modal-sub">Condomínio Reserva dos Ipês</div>
     <div class="sim-grade" style="margin-top:12px">${it("Tipo","T"+esc(String(u.tipo||"—")))}${it("Valor de venda",simBRL((pl&&pl.valor)||u.valorVenda))}
     ${it("Avaliação",simBRL(u.avaliacao))}${it("Situação",nome)}</div>`;
   if(pl && pl.cliente){
-    html+=`<div class="sim-grade" style="margin-top:12px">${it("Comprador(es) · planilha",esc(pl.cliente))}${it("Corretor · planilha",esc(pl.corretor))}
+    html+=`<div class="sim-grade" style="margin-top:12px">${it("Compradores · planilha",esc(pl.cliente))}${it("Corretor · planilha",esc(pl.corretor))}
       ${it("Imobiliária · planilha",esc(pl.imobiliaria))}${it("Contrato",esc(pl.assinatura||"não enviado"))}</div>`;
   }
   if(!p){
     html+='<div class="sim-aviso" style="margin-top:12px">Nenhuma proposta ligada a esta unidade no portal.</div>';
   } else {
     html+=`<div class="sim-grade" style="margin-top:12px">
-      ${it("Cliente",esc(p.cliente||""))}${it("CPF",esc(p.cpf||""))}
+      ${it("Cliente",esc(p.cliente||""))}${it("CPF",esc(cpfFmt(p.cpf)))}
       ${it("Corretor",esc(p.vendedor||""))}${it("Imobiliária",esc(p.imobiliaria||""))}
       ${it("Situação da proposta",esc(p.status||""))}
       ${it("Crédito na CAIXA", p.comCredito?("APROVADO · "+simBRL(p.creditoAprovado)):"SEM CARTA — estimativa")}
@@ -1626,7 +1653,7 @@ function anDetalhe(un){
     </div>${propQuadroFluxo(p)}
     <div style="margin-top:10px"><button class="bt az" onclick="simFecharDet();trocarTab('propostas');setTimeout(function(){propVer('${p.id}')},250)">Abrir a proposta</button></div>`;
   }
-  html+='<div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simFecharDet()">Fechar</button></div>';
+  html+='<div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simPedirFechar()">Fechar</button></div>';
   cx.innerHTML=html;
 }
 
@@ -1661,7 +1688,7 @@ function simRenderGrafico(){
     {nome:"Valor para entrada", valores:SIMS.map(s=>Number(s.entradaInformada)||0)},
     {nome:"Entrada a pagar", valores:SIMS.map(s=>Number(s.entrada)||0)}
   ]);
-  fluxoPorTempo("sim-fluxoTempo", SIMS.map(s=>s.criadoEm), "simulação(ões)");
+  fluxoPorTempo("sim-fluxoTempo", SIMS.map(s=>s.criadoEm), "simulações");
 }
 
 /* ---------- ranking de corretores e imobiliárias ---------- */
@@ -1744,7 +1771,7 @@ function simIdade(d){ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||"")); if
   const h=new Date(); let i=h.getFullYear()-Number(m[1]); if(h.getMonth()+1<Number(m[2])||(h.getMonth()+1===Number(m[2])&&h.getDate()<Number(m[3]))) i--; return i; }
 function simPerfilHtml(s){
   const p=s.perfil||{};
-  if(!s.perfil) return `<div style="margin-top:14px;border:1.5px dashed var(--azul);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text3)"><b style="color:var(--azul)">Cliente — dados usados na simulação</b><br>Atualize a página (Ctrl+Shift+R) para carregar estes dados.</div>`;
+  if(!s.perfil) return `<div style="margin-top:14px;border:1.5px dashed var(--azul);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text3)"><b style="color:var(--azul)">Cliente — dados usados na simulação</b><br>Clique em <b>Atualizar</b> para carregar estes dados. Se continuar assim, avise o suporte.<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer">Detalhe técnico</summary>Recarregue a página sem cache (Ctrl+Shift+R).</details></div>`;
   const idade=simIdade(p.dataNascimento), dn=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(p.dataNascimento||""));
   const marca=(ok,txt)=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px;color:${ok?'var(--azul-esc)':'var(--text3)'}">`+
     `<span style="display:inline-flex;width:18px;height:18px;border-radius:4px;align-items:center;justify-content:center;font-size:12px;font-weight:800;`+
@@ -1791,7 +1818,7 @@ function simRenderRecebidas(){
   }
   const termo=(document.getElementById("sim-busca").value||"").toLowerCase();
   let vis=SIMS.filter(s=>{
-    const alvo=`${s.cliente||""} ${s.cpf||""} ${s.corretor||""} ${s.imobiliaria||""}`.toLowerCase();
+    const alvo=`${s.cliente||""} ${s.cpf||""} ${cpfFmt(s.cpf)} ${String(s.cpf||"").replace(/\D/g,"")} ${s.corretor||""} ${s.imobiliaria||""}`.toLowerCase();
     if(!alvo.includes(termo)) return false;
     if(!simFiltroSt) return true;
     const st=simSt(s);
@@ -1814,7 +1841,7 @@ function simRenderRecebidas(){
     return;
   }
   const corpo=vis.map(s=>`<tr class="clicavel${chegouReservada(s,false)?' linha-res':''}"${chegouReservada(s,false)?' title="Simulação feita com a unidade já reservada"':''}${simNova(s)?' style="background:#FFF3C4"':''} onclick="simVerDet('${s.id}')">
-    <td>${esc(s.cliente||"—")}</td><td class="col-un">${esc(s.cpf||"—")}</td>
+    <td>${esc(s.cliente||"—")}</td><td class="col-un">${esc(cpfFmt(s.cpf)||"—")}</td>
     <td>${esc(s.corretor||"—")}${s.celularCorretor?`<div style="font-size:11px;color:var(--text3)">📱 ${esc(simFmtTel(s.celularCorretor))}</div>`:""}</td><td>${esc(s.imobiliaria||"—")}</td>
     <td>Un. ${esc(String(s.unidade||"—"))} <span style="color:var(--text3)">(T${esc(String(s.tipo||"—"))})</span></td>
     <td class="num">${s.renda?simBRL(s.renda):"—"}</td>
@@ -1909,7 +1936,7 @@ function simTagSt(st){
   /* r64 — SIOP fora do ar: saiu a preliminar pela base offline; a
      definitiva vem quando a CAIXA voltar (worker r41). */
   if(n==="OFFLINE") return `<span class="pill zero" style="background:#FBEEC8;color:#7A4A16;border:1px solid #EFB700" title="Preliminar pelo sistema offline — aguardando o sistema online para a definitiva">OFFLINE · PRELIMINAR</span>`;
-  const cls = n==="ERRO" ? "neg" : (n==="CONCLUIDO" ? "pos" : "zero");
+  const cls = n==="ERRO" ? "ruim" : (n==="CONCLUIDO" ? "bom" : "zero");
   return `<span class="pill ${cls}">${n}</span>`;
 }
 
@@ -1955,7 +1982,7 @@ function simVerAbaixo(id){
       ${!ehSomenteLeitura(S)?`<button class="bt verde" style="margin-right:8px" onclick="simVerDet('${s.id}');setTimeout(function(){altSimAbrir('${s.id}')},60)">✎ Alterar unidade / valor</button>`:""}
       <button class="bt" style="margin-right:8px" onclick="fluxoPdf('sim','${s.id}')">📄 PDF do fluxo</button>
       <button class="bt ghost" onclick="document.getElementById('sim-detBaixo').style.display='none'">Fechar</button></div>
-    <div class="modal-sub" style="margin-bottom:10px">CPF ${esc(s.cpf||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
+    <div class="modal-sub" style="margin-bottom:10px">CPF ${esc(cpfFmt(s.cpf)||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <div class="sim-grade">
       ${it("Corretor",esc(s.corretor||""))}${it("Imobiliária",esc(s.imobiliaria||""))}${it("E-mail",esc(s.email||""))}${it("Celular do corretor",s.celularCorretor?simLinkTel(s.celularCorretor):"—")}
       ${it("Unidade","Un. "+esc(String(s.unidade||"—"))+" (Tipo "+esc(String(s.tipo||"—"))+")")}
@@ -1995,8 +2022,9 @@ function simVerDet(id){
     </div>` : "";
 
   document.getElementById("sim-modalCx").innerHTML=`
-    <div class="modal-tit">${esc(s.cliente||"—")}</div>
-    <div class="modal-sub">CPF ${esc(s.cpf||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
+    <div class="modal-topo"><div class="modal-tit">${esc(s.cliente||"—")}</div>
+      <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
+    <div class="modal-sub">CPF ${esc(cpfFmt(s.cpf)||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <!-- 07/11/2026 — alterar unidade / valor e PDF do fluxo: logo no topo -->
     <div class="alt-acoes">
       ${!ehSomenteLeitura(S)?`<button class="bt verde" onclick="altSimAbrir('${s.id}')">✎ Alterar unidade / valor</button>`:""}
@@ -2022,9 +2050,8 @@ function simVerDet(id){
       ${simSt(s)==="ERRO" && !ehSomenteLeitura(S)
         ? `<button class="bt az" onclick="simRefazer('${s.id}')">↻ Tentar de novo</button>` : ""}
       <button class="bt" style="background:#2a9d5c;color:#fff;border-color:#2a9d5c" onclick="simParaProposta('${s.id}')">📄 Transformar em proposta</button>
-      <button class="bt" onclick="simFecharDet()">Fechar</button>
+      <button class="bt" onclick="simPedirFechar()">Fechar</button>
     </div>
-    <div id="sim-detAviso" class="sim-aviso" style="margin-top:10px"></div>
     <div id="sim-detAviso" class="sim-aviso" style="margin-top:10px"></div>`;
   document.getElementById("sim-modal").classList.remove("hide");
 }
@@ -2057,6 +2084,36 @@ function simParaProposta(id){
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
 function simFecharDet(){ document.getElementById("sim-modal").classList.add("hide"); }
+/* e-mail da ficha com texto digitado e não enviado (assunto alterado ou mensagem preenchida) */
+function simEmailPendente(){
+  const ed=document.getElementById("prop-msg"), as=document.getElementById("prop-assunto");
+  if(!ed) return false;
+  if(ed.textContent.trim() || ed.querySelector("img,li")) return true;
+  return !!(as && as.dataset.orig!==undefined && as.value!==as.dataset.orig);
+}
+/* fecha a ficha; se há e-mail não enviado, pergunta antes (pergunta Sim/Não da tela, não o confirm do navegador) */
+let _simFechando=false;
+async function simPedirFechar(){
+  if(_simFechando) return;
+  _simFechando=true;
+  try{
+    if(simEmailPendente() && !(await propSimNao("Há um e-mail escrito e ainda não enviado. Fechar a ficha mesmo assim?"))) return;
+    simFecharDet();
+  } finally { _simFechando=false; }
+}
+/* Esc fecha a ficha, a menos que haja outra janela por cima dela */
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Escape") return;
+  const m=document.getElementById("sim-modal"); if(!m||m.classList.contains("hide")) return;
+  if(document.querySelector(".sn-fundo, #novo-form:not(.hide), #novo-un:not(.hide)")) return;
+  const acima=Array.from(document.body.children).some(el=>{
+    if(el===m||el.classList.contains("hide")) return false;
+    const cs=getComputedStyle(el);
+    return cs.position==="fixed" && cs.display!=="none" && (parseInt(cs.zIndex,10)||0)>60 && el.offsetWidth>=window.innerWidth*0.9;
+  });
+  if(acima) return;
+  simPedirFechar();
+});
 
 /* =====================================================================
  * 07/11/2026 (dono) — NOVA SIMULAÇÃO / SUBIR PASTA PELO PORTAL
@@ -2078,7 +2135,7 @@ function novoEstadoUn(u){
 }
 async function novoEscolherUn(modo){
   NOVO_MODO = modo;
-  document.getElementById("novo-unTit").textContent = modo==="sim" ? "Fazer simulação · escolha a unidade" : "SUBIR PASTA · escolha a unidade";
+  document.getElementById("novo-unTit").textContent = modo==="sim" ? "Simular · escolha a unidade" : "Enviar proposta · escolha a unidade";
   document.getElementById("novo-unSub").innerHTML = modo==="sim"
     ? "Abre o simulador com a unidade já escolhida, como pelo mapa de vendas."
     : "Abre a proposta com a unidade já escolhida, como pelo mapa de vendas. Unidade <b style=\"color:#1F6FB2\">reservada</b>: a proposta entra, mas só é analisada se houver desistência.";
@@ -2119,7 +2176,7 @@ function novoAbrir(tipo, unidade){
   const pag = NOVO_MODO==="sim" ? "simulador.html" : "proposta.html";
   NOVO_URL = SIMULADOR_URL + pag + (unidade ? "?tipo="+encodeURIComponent(tipo)+"&unidade="+encodeURIComponent(unidade) : "");
   document.getElementById("novo-formTit").textContent =
-    (NOVO_MODO==="sim" ? "Fazer simulação" : "SUBIR PASTA") + (unidade ? " · Unidade "+unidade+(tipo?" · Tipo "+tipo:"") : "");
+    (NOVO_MODO==="sim" ? "Simular" : "Enviar proposta") + (unidade ? " · Unidade "+unidade+(tipo?" · Tipo "+tipo:"") : "");
   document.getElementById("novo-formFr").src = NOVO_URL;
   document.getElementById("novo-form").classList.remove("hide");
   document.body.style.overflow = "hidden";
@@ -2465,7 +2522,7 @@ function fluxoPdf(tipo, id){
   <button class="b1" onclick="baixar()">⬇ Baixar PDF</button><button class="b2" onclick="print()">🖨 Imprimir</button></div>
 <div id="pdf">
   <div class="pdf-cab"><div><h1>${esc(tit)}</h1><div class="s">${esc(sub)}</div></div>
-    <div class="m">Condomínio Reserva do Ipês<br>Morais Engenharia e Construção<br>${esc(hoje)}</div></div>
+    <div class="m">Condomínio Reserva dos Ipês<br>Morais Engenharia e Construção<br>${esc(hoje)}</div></div>
   ${corpo}
   <div class="pdf-rod">Documento informativo: repassa os dados preenchidos e não substitui o contrato. As parcelas e os valores podem mudar
     conforme a data de assinatura do contrato. O financiamento depende da aprovação da CAIXA.</div>
@@ -2514,7 +2571,7 @@ async function simRefazerErros(){
   const av=document.getElementById("sim-avisoErros");
   const bt=document.getElementById("sim-btRefazerErros");
   if(!erros.length){ av.className="sim-aviso ok"; av.textContent="Nenhuma simulação com erro."; return; }
-  if(!confirm("Devolver "+erros.length+" simulação(ões) com erro para a fila?")) return;
+  if(!confirm("Devolver "+qtd(erros.length,"simulação com erro","simulações com erro")+" para a fila?")) return;
   bt.disabled=true;
   let ok=0, falha=[];
   for(let i=0;i<erros.length;i++){
@@ -2528,7 +2585,7 @@ async function simRefazerErros(){
   }
   bt.disabled=false;
   av.className = falha.length ? "sim-aviso err" : "sim-aviso ok";
-  av.innerHTML = "<b>"+ok+" de "+erros.length+" devolvida(s) para a fila.</b> O worker pega no próximo ciclo."+
+  av.innerHTML = "<b>"+ok+" de "+erros.length+" "+plural(erros.length,"devolvida","devolvidas")+" para a fila.</b> O worker pega no próximo ciclo."+
     (falha.length ? "<br>Não foram: "+falha.map(esc).join(" · ") : "");
   storeInvalidar("sims_lista");
   simCarregar(true);
@@ -2595,6 +2652,7 @@ async function propEnviarLink(id, bt){
   if(!texto){ av.innerHTML='<span style="color:var(--vermelho)">Escreva a mensagem antes de enviar.</span>'; return; }
   const html='<div style="white-space:pre-wrap">'+esc(texto).replace(
       esc(url.value), '<a href="'+esc(url.value)+'">'+esc(url.value)+'</a>')+'</div>';
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o corretor")+"?"))) return;
   bt.disabled=true; av.innerHTML='Enviando…';
   let r;
   try{ r=await chamar({action:"simsPropostaEmail", pageId:id, mensagemHtml:html, mensagem:texto,
@@ -2687,8 +2745,8 @@ async function simCarregarUnidades(forcar, bt){
   else {
     const a=document.getElementById("sim-avisoUn"); a.className="sim-aviso err";
     a.innerHTML = (String(r&&r.erro||"")==="ERRO_API")
-      ? '<b>O servidor respondeu, mas não em JSON (ERRO_API).</b><br>' +
-        'Isso é implantação, não Notion. Clique em <b>🩺 Diagnóstico</b> aqui do lado para ver a resposta crua.'
+      ? '<b>O servidor do portal não respondeu direito.</b> Clique em <b>Atualizar</b>. Se continuar, avise o suporte.' +
+        detTec('ERRO_API: o servidor respondeu, mas não em JSON. Isso é implantação, não Notion (a função simDiagRede, no console, mostra a resposta crua).')
       : simErroAmigavel(r&&r.erro);
   }
 }
@@ -2712,7 +2770,7 @@ async function simDiagRede(){
       const un=(obj.unidades||[])[0]||{};
       a.className="sim-aviso ok";
       a.innerHTML='<b>Diagnóstico: está tudo certo.</b><br>'+
-        'HTTP '+resp.status+' · JSON válido · '+((obj.unidades||[]).length)+' unidade(s).<br>'+
+        'HTTP '+resp.status+' · JSON válido · '+qtd((obj.unidades||[]).length,'unidade','unidades')+'.<br>'+
         'Amostra da unidade '+esc(String(un.unidade||"—"))+': avaliação '+simBRL(un.avaliacao||0)+
         ' · planta '+(un.planta?'ok':'vazia')+' · '+
         (un.vendido?'VENDIDA':(un.reservado?'RESERVADA':(un.disponivel?'DISPONÍVEL':'EM BREVE')))+'.<br>'+
@@ -2749,7 +2807,7 @@ function simMarcarContador(){
   const n=SIM_ALTERADAS.size;
   const falhas=[...SIM_ALTERADAS].filter(i=>SIM_ESTADO[i]==="erro").length;
   const salvando=SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length;
-  if(el) el.textContent = falhas ? (falhas+" unidade(s) não salvaram — veja as linhas em vermelho")
+  if(el) el.textContent = falhas ? (qtd(falhas,"unidade não salvou","unidades não salvaram")+" — veja as linhas em vermelho")
                         : (salvando ? "salvando no Notion…" : (SIM_ULTIMO_OK ? "tudo salvo · "+SIM_ULTIMO_OK : ""));
   if(bt){ bt.style.display = falhas ? "" : "none"; bt.disabled = !falhas; }
 }
@@ -2843,7 +2901,7 @@ function simObsAbrir(i){
   if(!m){
     m=document.createElement("div"); m.id="sim-obsModal";
     m.style.cssText="position:fixed;inset:0;background:rgba(10,25,35,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
-    m.innerHTML='<div style="background:#fff;border-radius:12px;max-width:620px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.25)">'+
+    m.innerHTML='<div style="background:var(--sup);color:var(--text);border-radius:12px;max-width:620px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.25)">'+
       '<b id="sim-obsTit" style="font-size:15px;color:var(--azul)"></b>'+
       '<textarea id="sim-obsTxt" rows="10" style="width:100%;box-sizing:border-box;margin-top:10px;font-family:inherit;font-size:14px;line-height:1.5;resize:vertical"></textarea>'+
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">'+
@@ -3159,17 +3217,17 @@ function propErro(e){
     /* r60 — a causa real (22/09/2026): as funções das simulações não estão
        no projeto que respondeu. Elas moram no Simulacoes.gs, que precisa
        estar nos DOIS projetos (leitura e escrita), publicado como Nova versão. */
-    return '<b>Este projeto do Apps Script não tem o Simulacoes.gs.</b><br>' +
+    return MSG_SERVIDOR_FALHOU +
+           detTec('Este projeto do Apps Script não tem o Simulacoes.gs.<br>' +
            'Adicione o arquivo <b>Simulacoes.gs</b> (e o Code.gs r44) nos <b>dois</b> projetos do portal — ' +
            'leitura e escrita — e publique cada um em <b>Implantar → Gerenciar implantações → ✏️ → ' +
            'Nova versão</b>. Salvar o arquivo não publica.<br>' +
-           'Para conferir: <code>?action=ping</code> tem que responder <code>2026-09-22 r44</code>.';
+           'Para conferir: <code>?action=ping</code> tem que responder <code>2026-09-22 r44</code>.');
   }
   if(t.indexOf("SIM_DB_PROPOSTAS_NAO_CONFIGURADO")>=0){
-    return '<b>A base de PROPOSTAS ainda não está ligada.</b><br>' +
-           'No Apps Script do portal: <b>Configurações do projeto → Propriedades do script</b> → ' +
-           'adicione <code>SIM_DB_PROPOSTAS</code> com o id da base. Depois, na aba Unidades, ' +
-           'use <b>🩺 Diagnóstico</b> para conferir as colunas.';
+    return '<b>A lista de propostas ainda não está ligada ao portal.</b> Avise o suporte.' +
+           detTec('SIM_DB_PROPOSTAS_NAO_CONFIGURADO. No Apps Script do portal: <b>Configurações do projeto → Propriedades do script</b> → ' +
+           'adicione <code>SIM_DB_PROPOSTAS</code> com o id da base. Depois confira as colunas da base.');
   }
   return simErroAmigavel(e);
 }
@@ -3189,7 +3247,7 @@ function propPintar(r){
   const o=document.getElementById("prop-origem");
   if(o){
     const hora = t => new Date(t).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-    o.innerHTML = PROPS.length + " proposta(s) · " +
+    o.innerHTML = qtd(PROPS.length,"proposta","propostas") + " · " +
       (r.doCache ? '<b style="color:var(--laranja)">do cache das ' + hora(r._ts) + '</b> — clique em ↻ Atualizar agora'
                  : "lido do Notion às " + hora(r.lidoEm || Date.now())) +
       (r.baseId ? ' · base ' + String(r.baseId).slice(-6) : "");
@@ -3283,12 +3341,12 @@ function propAlerta24(){
   const emls=(typeof propEmailsLista==="function") ? propEmailsLista() : [];   // r96q — e-mail novo
   if(!vencidas.length && !corr.length && !emls.length){ el.classList.add("hide"); return; }
   el.classList.remove("hide");
-  el.innerHTML = (vencidas.length ? "<b>"+vencidas.length+" reserva(s) vencendo em menos de 24 horas sem contrato gerado.</b><br>" +
+  el.innerHTML = (vencidas.length ? "<b>"+qtd(vencidas.length,"reserva vencendo","reservas vencendo")+" em menos de 24 horas sem contrato gerado.</b><br>" +
     vencidas.map(p=>{ const h=propReservaFaltaH(p); return "Un. "+esc(String(p.unidade||"—"))+" · "+esc(p.cliente||"—")+
       " · "+(h<=0?"prazo esgotado":"faltam "+propHorasTxt(h)); }).join("<br>") : "") +
-    (corr.length ? (vencidas.length?"<br><br>":"")+"<b>"+corr.length+" proposta(s) SEM CARTA enviada(s) ao correspondente há mais de 24 horas.</b><br>" +
+    (corr.length ? (vencidas.length?"<br><br>":"")+"<b>"+qtd(corr.length,"proposta SEM CARTA enviada","propostas SEM CARTA enviadas")+" ao correspondente há mais de 24 horas.</b><br>" +
     corr.map(p=>{ const e=propCorrEnvio(p); return "Un. "+esc(String(p.unidade||"—"))+" · "+esc(p.cliente||"—")+" · "+esc(e.nomes.join(" / "))+" · "+propHorasTxt(e.horas); }).join("<br>") : "") +
-    (emls.length ? ((vencidas.length||corr.length)?"<br><br>":"")+"<b>✉ "+emls.length+" e-mail(s) novo(s) sem abrir.</b><br>" +
+    (emls.length ? ((vencidas.length||corr.length)?"<br><br>":"")+"<b>✉ "+qtd(emls.length,"e-mail novo","e-mails novos")+" sem abrir.</b><br>" +
     emls.map(x=>'<a href="#" onclick="propVer(\''+x.p.id+'\');return false" style="color:inherit">'+esc(x.p.proposta||"")+" · Un. "+esc(String(x.p.unidade||"—"))+" · "+esc(x.p.cliente||"—")+"</a> — "+(x.t==='c'?'correspondente':'proposta')+(x.e.de?" ("+esc(x.e.de)+")":"")+" · "+simData(x.e.data)).join("<br>") : "");
 }
 
@@ -3307,7 +3365,8 @@ function propSeg(v){
 }
 function propTag(st){
   const n=PROP_NORM(st)||"RECEBIDA";
-  const cls = (n==="ACEITA"||n==="VENDIDA") ? "pos" : ((n==="NEGADA"||n==="DISTRATO") ? "neg" : "zero");
+  /* status (não é dinheiro): verde = bom, vermelho = ruim */
+  const cls = (n==="ACEITA"||n==="VENDIDA") ? "bom" : ((n==="NEGADA"||n==="DISTRATO") ? "ruim" : "zero");
   return `<span class="pill ${cls}">${PROP_ROTULO[n]||n}</span>`;
 }
 /* 02/10 (item 6) — selo do STATUS INTERNO da unidade na lista de propostas */
@@ -3330,13 +3389,13 @@ function propDonoUnidade(unidade){
 function propSeloInterno(unidade, p){
   const u=(UNS||[]).find(x=>String(x.unidade)===String(unidade)); if(!u) return "";
   const k=PROP_NORM(u.statusInterno||"");
-  const est={"RESERVADA":["RESERVADA","#1B4F7A","#E1ECF8","#9CC3E4"],"PAGOU PREFERENCIA":["PAGOU PREFERÊNCIA","#5B3285","#EDE3F6","#B79AD6"],"VENDIDA":["VENDIDA","#8A2E17","#FBE1E1","#E7A3A3"]}[k];
+  const est={"RESERVADA":["RESERVADA","#1B4F7A","#E1ECF8","#9CC3E4"],"PAGOU PREFERENCIA":["RESERVA PAGA","#5B3285","#EDE3F6","#B79AD6"],"VENDIDA":["VENDIDA","#8A2E17","#FBE1E1","#E7A3A3"]}[k];
   if(!est) return "";
   const dono=p ? propDonoUnidade(unidade) : null;
   if(p && dono && dono.id!==p.id){
     /* nome e último sobrenome ("HELCIO FERREIRA"); preferência é PAGA POR, reserva/venda é PARA */
     const pn=String(dono.cliente||"outro cliente").trim().split(/\s+/), nome=pn.length>1 ? pn[0]+" "+pn[pn.length-1] : pn[0];
-    const txt = k==="PAGOU PREFERENCIA" ? "PREFERÊNCIA PAGA POR "+nome : est[0]+" PARA "+nome;
+    const txt = k==="PAGOU PREFERENCIA" ? "RESERVA PAGA POR "+nome : est[0]+" PARA "+nome;
     return ' <span title="Status interno da unidade — proposta '+esc(dono.proposta||"")+' · '+esc(dono.cliente||"")+'" style="font-size:10px;font-weight:800;color:#6B5A45;background:#F1ECE4;border:1px dashed #C9B89A;border-radius:8px;padding:1px 6px">'+esc(txt)+'</span>';
   }
   return ' <span title="status interno da unidade'+(p&&!dono?' — marque na proposta certa pelo Status interno':'')+'" style="font-size:10px;font-weight:800;color:'+est[1]+';background:'+est[2]+';border:1px solid '+est[3]+';border-radius:8px;padding:1px 6px">'+est[0]+' (interno)</span>';
@@ -3368,7 +3427,7 @@ function propRender(){
   try{ propRankAba(); }catch(e){}  // 30/10 — rankings abaixo da tabela
   const termo=(document.getElementById("prop-busca").value||"").toLowerCase();
   const vis=PROPS.filter(p=>{
-    const alvo=`${p.cliente||""} ${p.cpf||""} ${p.unidade||""} ${p.vendedor||""} ${p.imobiliaria||""}`.toLowerCase();
+    const alvo=`${p.cliente||""} ${p.cpf||""} ${cpfFmt(p.cpf)} ${String(p.cpf||"").replace(/\D/g,"")} ${p.unidade||""} ${p.vendedor||""} ${p.imobiliaria||""}`.toLowerCase();
     if(!alvo.includes(termo)) return false;
     if(propFiltroCredito==="SIM" && !p.comCredito) return false;
     if(propFiltroCredito==="NAO" && p.comCredito) return false;
@@ -3385,7 +3444,7 @@ function propRender(){
      06/11 — correspondente, cliente e CPF do cliente juntos, depois o corretor */
   const cab='<thead><tr><th>Proposta</th><th>Unidade</th><th>Crédito Caixa</th><th>Sinal</th>'+
             '<th>Correspondente</th><th>Cliente</th><th>CPF</th><th>Corretor</th>'+
-            '<th class="col-num">Valor</th><th class="col-num">Entrada</th>'+
+            '<th class="col-num">Crédito aprovado</th><th class="col-num">Entrada</th>'+
             '<th class="col-num">Renda</th><th>Imobiliária</th><th>Observações</th>'+
             '<th style="cursor:pointer" title="Clique para inverter a ordem" onclick="propOrdenar(propOrdem===\'asc\'?\'desc\':\'asc\')">'+
             'Criada <span class="arr">'+(propOrdem==="desc"?"▼":"▲")+'</span></th><th>Status</th></tr></thead>';
@@ -3407,7 +3466,7 @@ function propRender(){
             : '<span class="pill ruim">SEM CARTA</span>'+propCorrCelula(p)}</td>
       <td>${propPillSinais(p)}</td>
       <td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>
-      <td>${esc(p.cliente||"—")}</td><td class="col-un">${esc(p.cpf||"—")}</td><td>${esc(p.vendedor||"—")}</td>
+      <td>${esc(p.cliente||"—")}</td><td class="col-un">${esc(cpfFmt(p.cpf)||"—")}</td><td>${esc(p.vendedor||"—")}</td>
       <td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
       <td class="num">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
       <td class="num">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
@@ -3533,7 +3592,7 @@ function propKpis(){
     {nome:"Valor para entrada", valores:PROPS.map(p=>Number(p.valorEntrada)||0)},
     {nome:"Crédito aprovado", valores:PROPS.map(p=>Number(p.creditoAprovado)||0)}
   ]);
-  fluxoPorTempo("prop-fluxoTempo", PROPS.map(p=>p.criadoEm), "proposta(s)");
+  fluxoPorTempo("prop-fluxoTempo", PROPS.map(p=>p.criadoEm), "propostas");
   propRankUnidades();
 }
 
@@ -3874,11 +3933,12 @@ function propDilEmailHtml(p){
     '<p style="margin:0 0 12px;font-size:14px">'+esc(p.cliente||"")+' · Unidade '+esc(String(p.unidade||""))+'</p>'+
     '<p style="font-size:14px">Olá! Parte dos balões foi diluída nas parcelas pré-chaves. Segue o fluxo atualizado — as linhas alteradas estão destacadas em verde.</p>'+
     entEmailHtml(c,{mudou:mudouI})+
-    '<p style="font-size:13px;color:#6B5E50">Morais Engenharia · Reserva do Ipês</p></div>';
+    '<p style="font-size:13px;color:#6B5E50">Morais Engenharia · Reserva dos Ipês</p></div>';
 }
 async function propDilEnviar(id, bt){
   const p=PROPS.find(x=>x.id===id); const st=PROP_DIL[id]||(PROP_DIL[id]={sel:{}}); if(!p) return;
   const fx=propParseEsquema(p.esquema), m=propDilAplicar(p,fx);
+  if(!(await propSimNao("Enviar o novo fluxo por e-mail para "+(p.email||"o corretor")+"?"))) return;
   const html=propDilEmailHtml(p);
   const texto="Novo fluxo de pagamento — proposta "+(p.proposta||"")+" — "+(p.cliente||"")+", unidade "+(p.unidade||"")+"\n\n"+
     fx.map((f,i)=>(f.quando||"")+" — "+(f.valor||"")+" — "+(f.forma||"")+(m.mudou.has(i)?" (novo)":"")).join("\n");
@@ -4213,8 +4273,9 @@ function propVer(id){
   propEstiloEditor();
 
   document.getElementById("sim-modalCx").innerHTML=`
-    <div class="modal-tit">${esc(p.cliente||"—")} · Un. ${esc(String(p.unidade||"—"))}</div>
-    <div class="modal-sub">${esc(p.proposta||"")} · CPF ${esc(p.cpf||"—")} · ${simData(p.criadoEm)} · ${propTag(p.status)}
+    <div class="modal-topo"><div class="modal-tit">${esc(p.cliente||"—")} · Un. ${esc(String(p.unidade||"—"))}</div>
+      <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
+    <div class="modal-sub">${esc(p.proposta||"")} · CPF ${esc(cpfFmt(p.cpf)||"—")} · ${simData(p.criadoEm)} · ${propTag(p.status)}
       ${h!==null?` · reservada há ${Math.floor(h)} h`:""}</div>
     ${chegouReservada(p,true)?`<div class="aviso-res"><b>Unidade já reservada no envio.</b>
       Esta proposta chegou quando a unidade ${esc(String(p.unidade||""))} já estava reservada —
@@ -4223,7 +4284,7 @@ function propVer(id){
     <div class="alt-acoes">
       ${podeGravar?`<button class="bt verde" onclick="altPropAbrir('${p.id}')">✎ Alterar unidade / valor financiado</button>`:""}
       <button class="bt az" onclick="fluxoPdf('prop','${p.id}')">📄 Gerar PDF do fluxo</button>
-      <button class="bt ghost" onclick="fluxoPersonalizadoAbrir('${p.id}')" title="Abre o fluxo personalizado já com a unidade e os valores desta proposta. Não muda a proposta: nada é gravado.">✎ Fluxo personalizado (não grava)</button>
+      <button class="bt ghost" onclick="fluxoPersonalizadoAbrir('${p.id}')" title="Abre o simulador de outro fluxo já com a unidade e os valores desta proposta. Não muda a proposta: nada é gravado.">✎ Simular outro fluxo</button>
     </div>
     <div id="fxp-prop"></div>
     <div id="alt-prop"></div>
@@ -4250,7 +4311,7 @@ function propVer(id){
       <button class="bt" onclick="propGerarLinkVenda('${p.id}')">🧾 Link para completar as informações da venda</button>
       <span id="prop-vendaLinkCx" style="font-size:12px;color:var(--text3);margin-left:8px"></span>
       <div style="font-size:12px;color:var(--text3);margin-top:5px">Para a venda fechada: o cliente ou o corretor completa
-        os dados e documentos que faltam (inclusive o comprovante de endereço) — cai no BANCO DE DADOS VENDAS CONDOMÍNIO.</div>
+        os dados e documentos que faltam (inclusive o comprovante de endereço) — cai na lista de vendas do condomínio.</div>
     </div>`:""}
 
     <!-- r51 — as pendências aparecem na hora (dados da lista) e são
@@ -4276,9 +4337,9 @@ function propVer(id){
         <div id="prop-alertaInfo" class="sim-aviso" style="margin-top:6px"></div></div>
       <div style="font-size:12px;color:var(--text3);margin-top:6px">
         <b>Reservar</b> marca a unidade ${esc(String(p.unidade||""))} como RESERVADA no mapa, cria a venda no
-        BANCO DE DADOS VENDAS CONDOMÍNIO e manda ao corretor o link para completar os dados e documentos.
+        lista de vendas do condomínio e manda ao corretor o link para completar os dados e documentos.
         A reserva vale <b>${PROP_RESERVA_DIAS} dias corridos</b> — com termo de reserva, até a <b>data limite do termo</b>: sem contrato gerado nesse prazo ela cai sozinha
-        (a unidade volta a disponível e a venda vai para DISTRATOS CONDOMÍNIO). <b>Negar</b> faz o mesmo na hora.
+        (a unidade volta a disponível e a venda vai para distratos). <b>Negar</b> faz o mesmo na hora.
         A proposta vira <b>VENDIDA</b> sozinha quando o contrato é gerado — e só então o corretor recebe o e-mail de venda.
         ${propReservaPrazoHtml(p)}
       </div>
@@ -4319,7 +4380,7 @@ function propVer(id){
         <span>cópia para vendasreservadosipes@gmail.com</span></div>
       <label class="prop-rot">Assunto</label>
       <input id="prop-assunto" class="prop-inp" type="text"
-             value="${esc("Proposta "+(p.proposta||"")+" - Reserva do Ipês")}">
+             value="${esc("Proposta "+(p.proposta||"")+" - Reserva dos Ipês")}">
       <label class="prop-rot">Mensagem</label>
       <div class="prop-barra">
         <button type="button" title="Negrito (Ctrl+B)" onmousedown="event.preventDefault()" onclick="propFmt('bold')"><b>B</b></button>
@@ -4346,13 +4407,15 @@ function propVer(id){
       <span id="prop-anexoInfo" class="prop-anexo-info"></span>
       <div style="margin-top:12px">
         <button class="bt az" id="prop-btEmail" onclick="propEmail('${p.id}')">Enviar e-mail</button>
+        <span id="prop-emailRet" class="prop-emailRet" role="status" aria-live="polite"></span>
       </div>
     </div>
     <!-- r53 — a conversa fica logo abaixo do campo de resposta -->
     <div id="prop-hist"><div class="sim-aviso" style="margin-top:12px"><span class="load"></span> Carregando a conversa de e-mail…</div></div>`:""}
-    <div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simFecharDet()">Fechar</button></div>
+    <div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simPedirFechar()">Fechar</button></div>
     ${podeGravar?'':'<div id="prop-detAviso" class="sim-aviso" style="margin-top:10px"></div>'}`;
   document.getElementById("sim-modal").classList.remove("hide");
+  const asu=document.getElementById("prop-assunto"); if(asu) asu.dataset.orig=asu.value;
   const ed=document.getElementById("prop-msg");
   if(ed){
     /* sem isto, alguns navegadores criam <div> soltos em vez de parágrafos
@@ -4489,8 +4552,8 @@ function propPintarDetalhe(id, r){
         ? 'Ainda não achei a conversa desta proposta no Gmail (ela pode ter saído antes desta versão). '+
           'A mensagem daqui sai como um e-mail novo.'
         : (hist.motivo==="SEM_ACESSO"
-            ? 'A conversa está em outra conta Google, então não consigo abri-la aqui. '+
-              'Confira a propriedade <b>SIM_SEGREDO</b> no Apps Script do portal.'
+            ? 'Não consegui abrir a conversa desta proposta aqui. Avise o suporte.'+
+              detTec('A conversa está em outra conta Google. Confira a propriedade <b>SIM_SEGREDO</b> no Apps Script do portal.')
             : 'Não consegui carregar a conversa de e-mail agora.'))+
       ' <button class="bt ghost" style="margin-left:8px;padding:4px 10px" '+
       'onclick="propCarregarDetalhe(\''+id+'\')">↻ Tentar de novo</button></div>';
@@ -4664,7 +4727,7 @@ function propEmailsToast(itens){
     itens.slice(0,4).map(x=>'<div style="margin-top:6px;cursor:pointer;text-decoration:underline" onclick="if(window.trocarTab)trocarTab(\'propostas\');propVer(\''+x.p.id+'\')">'+
       esc(x.p.proposta||"")+' · Un. '+esc(String(x.p.unidade||""))+' — '+(x.t==='c'?'correspondente':'proposta')+(x.e.de?' ('+esc(x.e.de)+')':'')+'</div>').join("")+
     (itens.length>4?'<div style="margin-top:4px;opacity:.75">+ '+(itens.length-4)+'</div>':'');
-  try{ if(window.Notification && Notification.permission==="granted") new Notification("E-mail novo — Reserva do Ipês", {body: itens.map(x=>x.p.proposta+" ("+(x.t==='c'?'correspondente':'proposta')+")").join("\n")}); }catch(e){}
+  try{ if(window.Notification && Notification.permission==="granted") new Notification("E-mail novo — Reserva dos Ipês", {body: itens.map(x=>x.p.proposta+" ("+(x.t==='c'?'correspondente':'proposta')+")").join("\n")}); }catch(e){}
 }
 async function propEmailsCarregar(forcar){
   let r=null; try{ r=await simDireto({action:"simsEmailsNovos", forcar:!!forcar}, 60000); }catch(e){ r=null; }
@@ -4725,7 +4788,7 @@ async function propAlerta(id){
   pintar(); const tmA=setInterval(pintar,1000);
   let r=null; try{ r=await chamar({action:"simsPropostaStatus", pageId:id, alerta:true}, 90000, true); }catch(e){ r=null; }
   clearInterval(tmA);
-  if(r&&r.ok){ av.className="sim-aviso ok"; av.innerHTML="<b>✓ Alerta enviado</b> para "+esc(r.para||"o corretor")+" — "+(r.pendencias||0)+" pendência(s) listada(s)."; }
+  if(r&&r.ok){ av.className="sim-aviso ok"; av.innerHTML="<b>✓ Alerta enviado</b> para "+esc(r.para||"o corretor")+" — "+qtd((r.pendencias||0),"pendência listada","pendências listadas")+"."; }
   else { av.className="sim-aviso err"; av.textContent="Não enviou: "+((r&&(r.mensagem||r.erro))||"sem resposta"); }
 }
 /* 05/10 (item 7) — anexar um documento direto pelo portal: vai para a coluna certa da proposta no Notion */
@@ -4733,14 +4796,14 @@ async function propAnexarDoc(id, coluna, input){
   const av=document.getElementById("prop-anexarInfo"); const fs=[...(input.files||[])]; if(!fs.length) return;
   const tot=fs.reduce((a,f)=>a+f.size,0);
   if(tot>18*1024*1024){ if(av){ av.className="sim-aviso err"; av.textContent="Arquivos acima de 18 MB — envie em partes."; } return; }
-  if(av){ av.className="sim-aviso ok"; av.innerHTML='<span class="load"></span> Enviando '+fs.length+' arquivo(s) para <b>'+esc(coluna)+'</b>…'; }
+  if(av){ av.className="sim-aviso ok"; av.innerHTML='<span class="load"></span> Enviando '+qtd(fs.length,'arquivo','arquivos')+' para <b>'+esc(coluna)+'</b>…'; }
   try{
     const anexos=await Promise.all(fs.map(f=>new Promise((ok,er)=>{ const rd=new FileReader();
       rd.onload=()=>ok({nome:f.name, tipo:f.type||"application/octet-stream", base64:String(rd.result).split(",")[1], rotulo:coluna}); rd.onerror=er; rd.readAsDataURL(f); })));
     const resp=await fetch(SRV_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({acao:"anexarProposta",pageId:id,anexos:anexos})});
     const x=await resp.json();
     const ok=(x&&x.anexosNotion&&x.anexosNotion.ok)||0, falhas=(x&&x.anexosNotion&&x.anexosNotion.falhas)||[];
-    if(x&&x.ok&&ok){ if(av){ av.className="sim-aviso ok"; av.innerHTML="<b>✓ "+ok+" arquivo(s) anexado(s).</b> Atualizando a lista…"; } setTimeout(()=>propCarregarDetalhe(id),800); }
+    if(x&&x.ok&&ok){ if(av){ av.className="sim-aviso ok"; av.innerHTML="<b>✓ "+qtd(ok,"arquivo anexado","arquivos anexados")+".</b> Atualizando a lista…"; } setTimeout(()=>propCarregarDetalhe(id),800); }
     else if(av){ av.className="sim-aviso err"; av.textContent="Não anexou: "+(falhas.join(" · ")||(x&&x.erro)||"sem resposta"); }
   }catch(e){ if(av){ av.className="sim-aviso err"; av.textContent="Não anexou: "+e; } }
   input.value="";
@@ -4915,8 +4978,8 @@ function propHistCorresp(txt){
         nomes.map(k=>esc(env[k].nome)+' — '+esc(env[k].email)+' — em <b>'+esc(env[k].quando)+'</b>'+
           (env[k].vezes>1?' (enviada '+env[k].vezes+' vezes)':'')).join('<br>')+'</div>'
     : '';
-  return destaque+'<div style="margin-top:6px"><b style="color:var(--text2)">Histórico de envios:</b><br>'+linhas.slice(0,6).map(esc).join("<br>")+
-         (linhas.length>6?'<br><span style="color:var(--text3)">+ '+(linhas.length-6)+' envio(s) antigo(s)</span>':'')+'</div>';
+  return destaque+'<div style="margin-top:6px"><b style="color:var(--text3)">Histórico de envios:</b><br>'+linhas.slice(0,6).map(esc).join("<br>")+
+         (linhas.length>6?'<br><span style="color:var(--text3)">+ '+qtd(linhas.length-6,'envio antigo','envios antigos')+'</span>':'')+'</div>';
 }
 async function propEnviarCorresp(id, chave, nome, email){
   const p=PROPS.find(x=>x.id===id)||{};
@@ -4928,7 +4991,7 @@ async function propEnviarCorresp(id, chave, nome, email){
   const jaFoi = !!propEnviosCorresp(PROP_ENVIO_ATUAL||p.envioCorrespondente||"")[propCorrNorm(nome)];
   if(!confirm("Enviar a documentação da proposta "+(p.proposta||"")+" ("+(p.cliente||"")+" · Un. "+(p.unidade||"")+")\n"+
               "para "+nome+" — "+email+"?\n\n"+
-              "Vai o PDF da proposta"+(n===undefined?" e os documentos anexados":" + "+n+" documento(s) anexado(s)")+"."+
+              "Vai o PDF da proposta"+(n===undefined?" e os documentos anexados":" + "+qtd(n,"documento anexado","documentos anexados"))+"."+
               (jaFoi?"\n\nATENÇÃO: esta proposta JÁ foi enviada para "+nome+" antes.":""))) return;
   cx.dataset.enviando="1";
   cx.querySelectorAll("button").forEach(b=>b.disabled=true);
@@ -4974,14 +5037,14 @@ async function propEnviarCorresp(id, chave, nome, email){
     const e=String(r&&r.erro||"");
     info.innerHTML='<span style="color:#C0392B">'+
       (e==="MODO_TESTE" ? "Perfil TESTES não envia e-mail."
-       : e==="SEM_PERMISSAO_EMAIL" ? "O Apps Script do portal ainda não tem permissão de enviar e-mail: rode <b>autorizarEnvioDeEmail</b> no editor (uma vez)."
-       : e==="CORRESPONDENTE_INVALIDO" ? "Correspondente não reconhecido pelo servidor — publique a versão nova do Simulacoes.gs."
+       : e==="SEM_PERMISSAO_EMAIL" ? "O portal ainda não tem permissão para enviar e-mail. Avise o suporte."+detTec("No editor do Apps Script, rode <b>autorizarEnvioDeEmail</b> (uma vez).")
+       : e==="CORRESPONDENTE_INVALIDO" ? "O servidor não reconheceu o correspondente. Avise o suporte."+detTec("Publique a versão nova do Simulacoes.gs.")
        : e.indexOf("ACAO_DESCONHECIDA")>=0 ? propErro(e)
        : "Não enviou: "+esc(e||"erro desconhecido"))+'</span>';
     return;
   }
   info.innerHTML='<span style="color:#1D7A45"><b>✓ Enviado para '+esc(r.correspondente)+'</b> ('+esc(r.para)+')'+
-    (r.viaRegistro ? ' — confirmado pelo registro da proposta.' : ' — '+r.anexos+' anexo(s)'+(r.partes>1?' em '+r.partes+' e-mails (tamanho)':'')+'.')+'</span>'+
+    (r.viaRegistro ? ' — confirmado pelo registro da proposta.' : ' — '+qtd(r.anexos,'anexo','anexos')+(r.partes>1?' em '+r.partes+' e-mails (tamanho)':'')+'.')+'</span>'+
     /* r48 — quantos documentos a proposta tinha, para bater com o que saiu */
     (r.encontrados!==undefined ? '<br><span style="color:var(--text3)">Documentos cadastrados na proposta: <b>'+
       r.encontrados+'</b> + o PDF.</span>' : '')+
@@ -5048,6 +5111,7 @@ async function propEnviarLinkVenda(id, bt){
   if(!texto){ av.innerHTML='<span style="color:var(--vermelho)">Escreva a mensagem antes de enviar.</span>'; return; }
   const html='<div style="white-space:pre-wrap">'+esc(texto).replace(
       esc(url.value), '<a href="'+esc(url.value)+'">'+esc(url.value)+'</a>')+'</div>';
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o corretor")+"?"))) return;
   bt.disabled=true; av.innerHTML='Enviando…';
   let r;
   try{ r=await chamar({action:"simsPropostaEmail", pageId:id, mensagemHtml:html, mensagem:texto,
@@ -5074,13 +5138,13 @@ async function propPosVendida(id, r, av){
   av.className="sim-aviso ok";
   av.innerHTML='<b>Vendida.</b> '+esc(r.reflexo||"")+'<br>Banco de vendas: linha da unidade '+esc(v.unidade||"")+
     (v.criou?' criada':' atualizada')+
-    (pend?' — <b>'+pend+' pendência(s)</b> para completar (gere o link abaixo).':' — cadastro completo.')+
+    (pend?' — <b>'+qtd(pend,'pendência','pendências')+'</b> para completar (gere o link abaixo).':' — cadastro completo.')+
     ((v.colunasCriadas||[]).length?'<br><span style="font-size:12px">Colunas criadas no banco: '+esc(v.colunasCriadas.join(", "))+'</span>':'');
   /* 30/09: os documentos agora são copiados pelo servidor (fila) — pode fechar a tela */
   const cd=v.copiaDocs;
   if(cd&&cd.pedidos){
     av.innerHTML+='<br><span style="font-size:12px">Documentos da proposta: '+
-      (cd.copiados?cd.copiados+' copiado(s)':'')+
+      (cd.copiados?qtd(cd.copiados,'copiado','copiados'):'')+
       (cd.naFila?(cd.copiados?' · ':'')+cd.naFila+' copiando em segundo plano (pode fechar esta tela — se falhar, o servidor tenta de novo sozinho)':'')+
       (!cd.naFila&&cd.copiados===cd.pedidos?' ✓':'')+'</span>';
   }
@@ -5103,7 +5167,7 @@ async function propPosVendida(id, r, av){
 function propProgresso(av, status){
   const etapas = status==="VENDIDA"
     ? ["Gravando o status VENDIDA na proposta…","Marcando a unidade como VENDIDA no Notion…",
-       "Levando os dados para o BANCO DE DADOS VENDAS CONDOMÍNIO…","Conferindo as pendências do cadastro da venda…",
+       "Levando os dados para a lista de vendas do condomínio…","Conferindo as pendências do cadastro da venda…",
        "Atualizando o mapa e as abas…"]
     : ["Gravando o status "+status+" na proposta…","Atualizando a unidade no Notion…","Atualizando o mapa e as abas…"];
   const t0=Date.now();
@@ -5134,10 +5198,10 @@ function propSincronizarTudo(){
  * r96p (28/10/26) — STATUS INTERNO NA PROPOSTA
  * DISPONÍVEL · RESERVADA · PAGOU PREFERÊNCIA · VENDIDA · DISTRATO. Grava na
  * proposta e na unidade (mapa interno) e mexe na venda:
- *   PAGOU PREFERÊNCIA → cria a linha no BANCO DE DADOS VENDAS CONDOMÍNIO;
+ *   PAGOU PREFERÊNCIA → cria a linha na lista de vendas do condomínio;
  *   VENDIDA           → o "Vendida" de sempre (unidade, e-mail ao corretor) e
  *                       revalida a linha da venda;
- *   DISTRATO          → a venda vai para a base DISTRATOS CONDOMÍNIO (com os
+ *   DISTRATO          → a venda vai para a base distratos (com os
  *                       arquivos), sai da base de vendas e a unidade volta a
  *                       DISPONÍVEL.
  * ------------------------------------------------------------------- */
@@ -5164,8 +5228,8 @@ function propSIBloco(p){
       <div class="prop-si ${at?'tem-status':''}" style="display:flex;gap:9px;margin-top:8px;flex-wrap:wrap">${bts}</div>
       <div id="prop-siDist" class="hide" style="margin-top:10px;padding:12px;border:1px solid #E7A3A3;background:#FDF1F1;border-radius:10px">
         <b style="color:#8A2E17">Distrato da unidade ${esc(String(p.unidade||""))}</b>
-        <div style="font-size:12px;color:var(--text3);margin:4px 0 8px">A venda é copiada (com os arquivos) para a base <b>DISTRATOS CONDOMÍNIO</b>,
-          sai do BANCO DE DADOS VENDAS CONDOMÍNIO e a unidade volta a <b>DISPONÍVEL</b>. A proposta fica como DISTRATO.</div>
+        <div style="font-size:12px;color:var(--text3);margin:4px 0 8px">A venda é copiada (com os arquivos) para os <b>distratos</b>,
+          sai da lista de vendas do condomínio e a unidade volta a <b>DISPONÍVEL</b>. A proposta fica como DISTRATO.</div>
         <textarea id="prop-siMotivo" rows="3" placeholder="Motivo do distrato (obrigatório)" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
           <button class="bt vermelho" onclick="propStatusInterno('${p.id}','DISTRATO')">Confirmar distrato</button>
@@ -5174,7 +5238,7 @@ function propSIBloco(p){
       </div>
       <div id="prop-siAviso" class="sim-aviso" style="margin-top:8px"></div>
       <div style="font-size:12px;color:var(--text3);margin-top:6px">
-        <b>Distrato</b> guarda a venda em DISTRATOS CONDOMÍNIO, tira do banco de vendas e a unidade volta a DISPONÍVEL.
+        <b>Distrato</b> guarda a venda em distratos, tira do banco de vendas e a unidade volta a DISPONÍVEL.
       </div>
     </div>`;
 }
@@ -5194,19 +5258,19 @@ async function propStatusInterno(id, nome){
   if(k==="DISTRATO"){
     motivo=((document.getElementById("prop-siMotivo")||{}).value||"").trim();
     if(!motivo){ const av0=document.getElementById("prop-siAviso"); av0.className="sim-aviso err"; av0.textContent="Escreva o motivo do distrato."; return; }
-    if(!confirm("Confirmar o DISTRATO da unidade "+(p.unidade||"")+"?\n\nA venda sai do BANCO DE DADOS VENDAS CONDOMÍNIO (fica guardada em DISTRATOS CONDOMÍNIO) e a unidade volta a DISPONÍVEL.")) return;
+    if(!confirm("Confirmar o DISTRATO da unidade "+(p.unidade||"")+"?\n\nA venda sai da lista de vendas do condomínio (fica guardada em distratos) e a unidade volta a DISPONÍVEL.")) return;
   } else if(k==="VENDIDA"){
-    if(!confirm("Marcar a unidade "+(p.unidade||"")+" como VENDIDA?\n\nNo mapa a unidade fica RESERVADA até a ETAPA da venda ficar Concluída; os dados da venda são revalidados no BANCO DE DADOS VENDAS CONDOMÍNIO e o corretor recebe o e-mail.")) return;
+    if(!confirm("Marcar a unidade "+(p.unidade||"")+" como VENDIDA?\n\nNo mapa a unidade fica RESERVADA até a ETAPA da venda ficar Concluída; os dados da venda são revalidados na lista de vendas do condomínio e o corretor recebe o e-mail.")) return;
   } else if(k==="PAGOU PREFERENCIA"){
-    if(!confirm("Marcar PAGOU PREFERÊNCIA na unidade "+(p.unidade||"")+"?\n\nA linha da venda já é criada no BANCO DE DADOS VENDAS CONDOMÍNIO.")) return;
+    if(!confirm("Marcar RESERVA PAGA na unidade "+(p.unidade||"")+"?\n\nA linha da venda já é criada na lista de vendas do condomínio.")) return;
   }
   const av=document.getElementById("prop-siAviso");
   const etapas = k==="DISTRATO"
-    ? ["Copiando a venda e os arquivos para DISTRATOS CONDOMÍNIO…","Tirando a linha do BANCO DE DADOS VENDAS CONDOMÍNIO…","Liberando a unidade e marcando a proposta…"]
+    ? ["Copiando a venda e os arquivos para distratos…","Tirando a linha da lista de vendas do condomínio…","Liberando a unidade e marcando a proposta…"]
     : (k==="VENDIDA"
-      ? ["Gravando VENDIDA na proposta e na unidade…","Revalidando os dados no BANCO DE DADOS VENDAS CONDOMÍNIO…","E-mail ao corretor e mapa…"]
+      ? ["Gravando VENDIDA na proposta e na unidade…","Revalidando os dados na lista de vendas do condomínio…","E-mail ao corretor e mapa…"]
       : (k==="PAGOU PREFERENCIA"
-        ? ["Marcando a unidade (mapa interno)…","Criando a linha no BANCO DE DADOS VENDAS CONDOMÍNIO…","Copiando os documentos da proposta…"]
+        ? ["Marcando a unidade (mapa interno)…","Criando a linha na lista de vendas do condomínio…","Copiando os documentos da proposta…"]
         : ["Gravando o status interno na proposta e na unidade…"]));
   const t0=Date.now();
   const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000), e=Math.min(etapas.length-1,Math.floor(sg/8));
@@ -5234,15 +5298,15 @@ async function propStatusInterno(id, nome){
       /* 28/10 (dono): pagou a preferência = hora do TERMO DE PRÉ-RESERVA — a mesma tela do cartão da unidade */
       if(v.linha) h+='<div style="margin-top:8px"><button class="bt" style="background:#7B4FA0;color:#fff" onclick="propAbrirPreReserva(\''+esc(String(v.linha))+'\')">Termo de reserva</button></div>';
       h+="<br>Banco de vendas: linha da unidade "+esc(String(v.unidade||p.unidade||""))+(v.criou?" criada":" atualizada")+
-         (pend?" — <b>"+pend+" pendência(s)</b> para completar (gere o link da venda acima).":" — cadastro completo.");
-      const cd=v.copiaDocs; if(cd&&cd.pedidos) h+="<br><span style='font-size:12px'>Documentos da proposta: "+(cd.copiados||0)+" copiado(s)"+(cd.naFila?" · "+cd.naFila+" copiando em segundo plano":"")+"</span>";
+         (pend?" — <b>"+qtd(pend,"pendência","pendências")+"</b> para completar (gere o link da venda acima).":" — cadastro completo.");
+      const cd=v.copiaDocs; if(cd&&cd.pedidos) h+="<br><span style='font-size:12px'>Documentos da proposta: "+qtd((cd.copiados||0),"copiado","copiados")+(cd.naFila?" · "+cd.naFila+" copiando em segundo plano":"")+"</span>";
     }
     if(k==="DISTRATO"){
       const a=r.arquivos||{};
       h+= r.semVenda ? "<br>Não havia linha desta proposta no banco de vendas — unidade liberada e proposta marcada como DISTRATO."
-        : "<br>Venda guardada em <b>DISTRATOS CONDOMÍNIO</b>"+(r.distratoUrl?' (<a href="'+esc(r.distratoUrl)+'" target="_blank" rel="noopener">abrir no Notion</a>)':"")+
-          " e retirada do BANCO DE DADOS VENDAS CONDOMÍNIO. Unidade "+esc(String(r.unidade||""))+" DISPONÍVEL."+
-          "<br><span style='font-size:12px'>Arquivos: "+(a.copiados||0)+" copiado(s)"+(a.naFila?" · "+a.naFila+" coluna(s) terminando em segundo plano":"")+
+        : "<br>Venda guardada em <b>distratos</b>"+(r.distratoUrl?' (<a href="'+esc(r.distratoUrl)+'" target="_blank" rel="noopener">abrir no Notion</a>)':"")+
+          " e retirada da lista de vendas do condomínio. Unidade "+esc(String(r.unidade||""))+" DISPONÍVEL."+
+          "<br><span style='font-size:12px'>Arquivos: "+qtd((a.copiados||0),"copiado","copiados")+(a.naFila?" · "+qtd(a.naFila,"coluna terminando","colunas terminando")+" em segundo plano":"")+
           ((a.falhas||[]).length?" · <span style='color:var(--vermelho)'>"+esc(a.falhas.join("; "))+"</span>":"")+"</span>";
       const bd=document.getElementById("prop-siDist"); if(bd) bd.classList.add("hide");
     }
@@ -5272,7 +5336,7 @@ function propSimNao(msg){
   });
 }
 /* 28/10 (dono): proposta que JÁ pagou a preferência também gera o termo — acha a linha da venda pela unidade
-   no BANCO DE DADOS VENDAS CONDOMÍNIO (simsVendasCond, o mesmo da Planilha Casas Condomínio). */
+   na lista de vendas do condomínio (simsVendasCond, o mesmo da Planilha Casas Condomínio). */
 /* 06/11/2026 (dono): depois do Reservar, pergunta se gera o termo de pré-reserva; Sim abre a pergunta rápida
    (valor, data do pagamento e data limite — a data limite vira o prazo da reserva). A linha da venda vem da resposta
    do Reservar; sem ela (resposta perdida), procura pela unidade. */
@@ -5294,7 +5358,7 @@ async function propPreReservaDaUnidade(id, o){
   const val=(l,nome)=>{ const v=(l&&l.v)||{}; if(v[nome]!==undefined) return v[nome];
     const k=Object.keys(v).find(x=>PROP_NORM(x)===PROP_NORM(nome)); return k===undefined?null:v[k]; };
   const achadas=(r.linhas||[]).filter(l=>un && so(val(l,"UNIDADE"))===un);
-  if(!achadas.length){ if(av){ av.className="sim-aviso err"; av.textContent="A unidade "+(p.unidade||"")+" não tem linha no BANCO DE DADOS VENDAS CONDOMÍNIO. Marque PAGOU PREFERÊNCIA de novo para criar."; } return; }
+  if(!achadas.length){ if(av){ av.className="sim-aviso err"; av.textContent="A unidade "+(p.unidade||"")+" não tem linha na lista de vendas do condomínio. Clique em Reservar de novo para criar a venda."; } return; }
   if(achadas.length>1){ if(av){ av.className="sim-aviso err"; av.textContent="A unidade "+(p.unidade||"")+" tem "+achadas.length+" linhas no banco de vendas — abra pela Planilha Casas Condomínio."; } return; }
   if(av){ av.className=avAntes[0]; av.innerHTML=avAntes[1]; }
   propAbrirPreReserva(String(achadas[0].id), o);
@@ -5321,11 +5385,15 @@ function propFecharPreReserva(){
   if(window.VendaBlocos && VendaBlocos.soltarPreReserva) VendaBlocos.soltarPreReserva();
 }
 async function propStatus(id, status){
-  if(status==="VENDIDA" && !confirm("Marcar esta proposta como VENDIDA?\n\nOs dados vão para o BANCO DE DADOS VENDAS CONDOMÍNIO. No mapa a unidade fica RESERVADA até a ETAPA da venda ficar Concluída.")) return;
+  if(status==="VENDIDA" && !confirm("Marcar esta proposta como VENDIDA?\n\nOs dados vão para a lista de vendas do condomínio. No mapa a unidade fica RESERVADA até a ETAPA da venda ficar Concluída.")) return;
   /* 03/11/2026 (dono): Reservar cria a venda, manda o link ao corretor e abre o prazo de 5 dias */
-  if(status==="RESERVADA" && !confirm("Reservar esta proposta?\n\n• a unidade fica RESERVADA no mapa;\n• a venda é criada no BANCO DE DADOS VENDAS CONDOMÍNIO;\n• o corretor recebe o link para completar dados e documentos;\n• prazo de "+PROP_RESERVA_DIAS+" dias corridos para gerar o contrato — sem contrato, a reserva cai sozinha.")) return;
+  if(status==="RESERVADA" && !confirm("Reservar esta proposta?\n\n• a unidade fica RESERVADA no mapa;\n• a venda é criada na lista de vendas do condomínio;\n• o corretor recebe o link para completar dados e documentos;\n• prazo de "+PROP_RESERVA_DIAS+" dias corridos para gerar o contrato — sem contrato, a reserva cai sozinha.")) return;
   if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)==="RESERVADA" &&
-     !confirm("Negar esta proposta reservada?\n\nA unidade volta a disponível e a venda criada na reserva vai para DISTRATOS CONDOMÍNIO.")) return;
+     !confirm("Negar esta proposta reservada?\n\nA unidade volta a disponível e a venda criada na reserva vai para distratos.")) return;
+  if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)!=="RESERVADA"){
+    const pn=PROPS.find(x=>x.id===id)||{};
+    if(!(await propSimNao("Negar a proposta de "+(pn.cliente||"este cliente")+"? A unidade "+(pn.unidade||"")+" fica livre."))) return;
+  }
   const av=document.getElementById("prop-detAviso");
   av.className="sim-aviso ok"; av.textContent="Salvando…";
   const pararProg=propProgresso(av, status);
@@ -5372,8 +5440,8 @@ async function propStatus(id, status){
     av.innerHTML="<b>✓ Status: "+esc(r.status||status)+".</b> "+esc(r.reflexo||"")+"<br><span style='font-size:12px'>Unidade, mapa e lista de propostas já atualizados."+
       (r.emailCorretor ? (r.emailCorretor.ok ? " E-mail enviado ao corretor ("+esc(r.emailCorretor.para||"")+")." : " ⚠ E-mail ao corretor não saiu: "+esc(r.emailCorretor.erro||"")) : "")+
       (r.emailCorretor && r.emailCorretor.vence ? " Reserva vence em "+esc(new Date(r.emailCorretor.vence).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))+"." : "")+
-      (r.emailCorretor && r.emailCorretor.venda ? (r.emailCorretor.venda.ok ? " Venda criada no BANCO DE DADOS VENDAS CONDOMÍNIO." : " ⚠ A venda não foi criada: "+esc(r.emailCorretor.venda.erro||r.emailCorretor.venda.mensagem||"")) : "")+
-      (r.reservaCaiu ? (r.reservaCaiu.ok ? " A venda da reserva foi para DISTRATOS CONDOMÍNIO." : " ⚠ A venda da reserva não saiu do banco de vendas: "+esc(r.reservaCaiu.mensagem||r.reservaCaiu.erro||"")) : "")+"</span>";
+      (r.emailCorretor && r.emailCorretor.venda ? (r.emailCorretor.venda.ok ? " Venda criada na lista de vendas do condomínio." : " ⚠ A venda não foi criada: "+esc(r.emailCorretor.venda.erro||r.emailCorretor.venda.mensagem||"")) : "")+
+      (r.reservaCaiu ? (r.reservaCaiu.ok ? " A venda da reserva foi para distratos." : " ⚠ A venda da reserva não saiu do banco de vendas: "+esc(r.reservaCaiu.mensagem||r.reservaCaiu.erro||"")) : "")+"</span>";
     propMarcarAtual(status);
     propSincronizarTudo();
     if(status==="RESERVADA") propOferecerTermo(id, r);
@@ -5470,7 +5538,7 @@ function propResumoAnexos(){
   const total=arqs.reduce((a,f)=>a+f.size,0);
   const mb=(total/1048576).toFixed(1);
   info.innerHTML=arqs.map(f=>`<span class="arq">📄 ${esc(f.name)}</span>`).join("")+
-    "<br>"+arqs.length+" arquivo(s) · "+mb+" MB"+
+    "<br>"+qtd(arqs.length,"arquivo","arquivos")+" · "+mb+" MB"+
     (total>20*1048576 ? ' <b style="color:#C0392B">— acima do limite de 20 MB</b>' : "");
 }
 function propLerBase64(f){
@@ -5501,7 +5569,11 @@ async function propConferirStatus(id, status){
    função. Agora o campo é um editor de verdade (contenteditable) e a
    leitura aceita os dois formatos, por garantia. */
 async function propEmail(id){
-  const av=document.getElementById("prop-detAviso");
+  const av0=document.getElementById("prop-detAviso"), ret=document.getElementById("prop-emailRet");
+  /* retorno ao lado do botão E no bloco Decisão: av.className / av.textContent / av.innerHTML escrevem nos dois */
+  const av={ set className(v){ av0.className=v; if(ret) ret.className="prop-emailRet "+(/err/.test(v)?"err":"ok"); },
+             set textContent(v){ av0.textContent=v; if(ret) ret.textContent=v; },
+             set innerHTML(v){ av0.innerHTML=v; if(ret){ const t=document.createElement("div"); t.innerHTML=v; t.querySelectorAll("details").forEach(d=>d.remove()); ret.textContent=t.textContent; } } };
   const ed=document.getElementById("prop-msg");
   if(!ed){ av.className="sim-aviso err"; av.textContent="Editor do e-mail não encontrado. Feche e abra a proposta."; return; }
   let html, texto;
@@ -5521,6 +5593,7 @@ async function propEmail(id){
   if(total>20*1048576){
     av.className="sim-aviso err"; av.textContent="Os anexos passam de 20 MB. Tire algum arquivo."; return;
   }
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o destinatário da proposta")+"?"))) return;
   av.className="sim-aviso ok"; av.textContent=arqs.length?"Preparando anexos…":"Enviando…";
   if(bt) bt.disabled=true;
   let anexos=[];
@@ -5544,17 +5617,17 @@ async function propEmail(id){
   if(r && r.ok){
     av.className="sim-aviso ok";
     av.textContent="E-mail enviado para "+r.enviadoPara+
-      (r.anexos?" com "+r.anexos+" anexo(s)":"")+" (com cópia para vendasreservadosipes@gmail.com).";
+      (r.anexos?" com "+qtd(r.anexos,"anexo","anexos"):"")+" (com cópia para vendasreservadosipes@gmail.com).";
     if(ed.tagName==="TEXTAREA") ed.value=""; else ed.innerHTML="";
     const inpA=document.getElementById("prop-anexos"); if(inpA) inpA.value="";
     propResumoAnexos();
   }
   else if(r && r.erro==="SEM_PERMISSAO_EMAIL"){
     av.className="sim-aviso err";
-    av.innerHTML="<b>O Apps Script ainda não tem permissão para enviar e-mail.</b><br>"+
-      "Abra o projeto do Apps Script, selecione a função <code>autorizarEnvioDeEmail</code> "+
+    av.innerHTML="<b>O portal ainda não tem permissão para enviar e-mail.</b> Avise o suporte."+
+      detTec("Abra o projeto do Apps Script, selecione a função <code>autorizarEnvioDeEmail</code> "+
       "na barra de cima e clique em <b>Executar</b>. O Google vai pedir a permissão — aceite. "+
-      "Publicar nova versão não pede permissão nenhuma; quem pede é a execução no editor.";
+      "Publicar nova versão não pede permissão nenhuma; quem pede é a execução no editor.");
   }
   else { av.className="sim-aviso err"; av.textContent=(r&&r.mensagem) || propErro(r&&r.erro); }
 }
@@ -5576,7 +5649,7 @@ async function propSetup(){
     let tabela = "";
     if(det && det.PROPOSTAS && det.PROPOSTAS.colunas){
       const cols = det.PROPOSTAS.colunas;
-      tabela = '<div style="margin-top:8px"><b>Base PROPOSTAS · '+cols.length+' coluna(s)</b>'+
+      tabela = '<div style="margin-top:8px"><b>Base PROPOSTAS · '+qtd(cols.length,'coluna','colunas')+'</b>'+
         '<div class="tbl-wrap" style="max-height:260px;margin-top:6px"><table><tbody>'+
         cols.map(c=>`<tr><td>${esc(c.coluna)}</td><td style="color:var(--text3)">${esc(c.tipo)}</td></tr>`).join("")+
         '</tbody></table></div>'+

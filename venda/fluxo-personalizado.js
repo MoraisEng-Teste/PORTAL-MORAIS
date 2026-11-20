@@ -111,7 +111,7 @@ var FluxoPersonalizado = (function () {
     var pago = F.soma(proprias);
     function quando(l) { return l.n > 1 ? "de " + F.dataBR(l.d) + " a " + F.dataBR(ultimaData(l)) : F.dataBR(l.d); }
     function quanto(l) { return l.n > 1 ? l.n + " × " + brl(l.v) + (l.u ? " (última " + brl(l.u) + ")" : "") : brl(l.v); }
-    var t = ["*Reserva do Ipês — " + rotuloUn + "*", "Valor do imóvel: " + brl(fluxo.valor)];
+    var t = ["*Reserva dos Ipês — " + rotuloUn + "*", "Valor do imóvel: " + brl(fluxo.valor)];
     terceiros.forEach(function (l) { t.push(T[l.t].nome + ": " + brl(F.totalLinha(l))); });
     t.push("Entrada (direto à incorporadora): " + brl(pago), "");
     proprias.forEach(function (l) { t.push("• " + T[l.t].nome + (l.x ? " (" + l.x + ")" : "") + ": " + quanto(l) + " — " + quando(l)); });
@@ -160,7 +160,7 @@ var FluxoPersonalizado = (function () {
       }).join("");
     }
     function opDil() { return [0, 25, 50, 75, 100].map(function (p) { return '<option value="' + p + '">' + (p ? p + "%" : "não diluir") + "</option>"; }).join(""); }
-    el.innerHTML = '<div class="alt-box"><div class="alt-tit">Fluxo personalizado — sem proposta e sem dados do cliente</div>' +
+    el.innerHTML = '<div class="alt-box"><div class="alt-tit">Simular outro fluxo — sem proposta e sem dados do cliente</div>' +
       '<div class="alt-aj" style="margin-bottom:10px">Só no portal (o corretor não tem). Nada é gravado nem enviado: sai um quadro para imprimir ou copiar.' +
       (cfg.origem ? " <b>" + esc(cfg.origem) + "</b>" : "") + "</div>" +
       '<div class="alt-grade">' +
@@ -312,8 +312,8 @@ var FluxoPersonalizado = (function () {
         ".fxp-tab{border-collapse:collapse;width:100%;font-size:12px}.fxp-tab th{text-align:left;font-size:10.5px;text-transform:uppercase;color:#6B5A45;padding:5px 6px;border-bottom:1px solid #E7DCC7}" +
         ".fxp-tab td{padding:4px 6px;border-bottom:1px solid #F1E9D8;vertical-align:top}.fxp-n{text-align:right;white-space:nowrap}.fxp-sub{font-weight:800;font-size:12.5px;color:#7A4A16;text-transform:uppercase;margin:16px 0 6px}" +
         ".fxp-min{font-size:10.5px;color:#6B5A45}tr{break-inside:avoid}";
-      w.document.write("<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><title>Reserva do Ipês — " + esc(rotuloUn()) + "</title><style>" + css + "</style></head><body>" +
-        '<div class="cab">' + (cfg.logo ? '<img src="' + esc(cfg.logo) + '" alt="">' : "") + "<div><h1>Reserva do Ipês — Fluxo de pagamento</h1><p class=\"sub\">" + esc(rotuloUn()) + " · gerado em " + F.dataBR(hojeIso()) + "</p></div></div>" +
+      w.document.write("<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><title>Reserva dos Ipês — " + esc(rotuloUn()) + "</title><style>" + css + "</style></head><body>" +
+        '<div class="cab">' + (cfg.logo ? '<img src="' + esc(cfg.logo) + '" alt="">' : "") + "<div><h1>Reserva dos Ipês — Fluxo de pagamento</h1><p class=\"sub\">" + esc(rotuloUn()) + " · gerado em " + F.dataBR(hojeIso()) + "</p></div></div>" +
         z("folha").innerHTML + "</body></html>");
       w.document.close();
       setTimeout(function () { try { w.focus(); w.print(); } catch (e) { /* a pessoa imprime pela janela */ } }, 500);
