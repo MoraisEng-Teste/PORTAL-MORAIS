@@ -564,7 +564,9 @@ function preencher(chave, campos){
     /* Onda 2 (item 11c): se o campo já tem valor diferente do lido (digitado ou já cadastrado), o valor da pessoa fica
        e o do documento aparece embaixo, com "usar este". Campo vazio ou preenchido só por leitura anterior: o documento corrige. */
     var atual=String(el.value||'').trim();
-    if(el.tagName!=='SELECT' && atual && normCmp(atual)!==normCmp(v) && (el.dataset.digitado || !el.classList.contains('lido'))){
+    /* DESLIGADO na junta da Onda 2: a regra do dono de 06/10 é "a leitura SEMPRE corrige o campo".
+       Trocar por "manter o digitado e sugerir" é decisão dele; até lá fica como era. */
+    if(false && el.tagName!=='SELECT' && atual && normCmp(atual)!==normCmp(v) && (el.dataset.digitado || !el.classList.contains('lido'))){
       sugerirDoDocumento(el, v); sug++; return;
     }
     var velha=el.parentNode && el.parentNode.querySelector('.sug-doc[data-para="'+el.id+'"]'); if(velha) velha.remove();
