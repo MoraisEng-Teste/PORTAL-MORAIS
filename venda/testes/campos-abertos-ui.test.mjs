@@ -24,7 +24,7 @@ test("formulário: um campo por falta, agrupado; lista só com o que o formulár
   assert.match(h, /data-campo="corretor\|CRECI"/);
   assert.match(h, /data-campo="corretor\|CPF\/CNPJ"/);
   assert.match(h, /escolha ou digite em "Conta de recebimento"/);
-  assert.match(h, /data-acao="c-salvar-campos">Salvar dados e gerar pré-contrato/);
+  assert.match(h, /data-acao="c-salvar-campos">Salvar dados e gerar prévia do contrato/);
   /* TESTES: tudo desabilitado */
   const t = D.htmlContrato({ gerado: false, etapa: "NENHUM" }, uic({ testes: true, campos: fr.campos, faltas: fr.faltas }));
   assert.match(t, /data-campo="vendedor\|RG" disabled/);
@@ -88,7 +88,7 @@ test("29/10 condições especiais na tela: campo + Redigir com IA + Salvar; avis
   assert.match(h, /data-acao="c-condesp-salvar"/);
   assert.match(h, /<textarea class="vb-condesp"[^>]*>Na cláusula 9\.2, leia-se 45 dias\.<\/textarea>/);
   assert.match(h, /última gravação: ana\.teste/);
-  assert.match(h, /confira o item 16 no pré-contrato/);
+  assert.match(h, /confira o item 16 na prévia do contrato/);
   const vazio = D.htmlContrato(D.estadoContrato({ ok: true, condicoes: { coluna: true, texto: "" } }), uic());
   assert.doesNotMatch(vazio, /confira o item 16/);
   const t = D.htmlContrato(D.estadoContrato({ ok: true, condicoes: { coluna: true, texto: "" } }), uic({ testes: true }));

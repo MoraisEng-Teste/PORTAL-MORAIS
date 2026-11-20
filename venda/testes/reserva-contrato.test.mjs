@@ -72,7 +72,7 @@ test("só a CONTRATO - GERADO EM faltando: grava as outras duas e avisa", () => 
   assert.ok(c.g.logs.some((l) => /coluna faltando ou de outro tipo: CONTRATO - GERADO EM$/.test(l)));
 });
 
-test("bloco do contrato: 'Reservada até dd/mm hh:mm — 48 h para assinar'; vencido avisa e aponta o Cancelar envelope", () => {
+test("bloco do contrato: 'Reservada até dd/mm hh:mm — 48 h para assinar'; vencido avisa e aponta o Cancelar envio para assinatura", () => {
   const est = D.estadoContrato({ ok: true, gerado: true, etapa: "FINAL", nome: "CONTRATO - X.pdf", url: "https://x",
                                  reserva: { estado: "RESERVADA", geradoEm: G, ate: "2026-11-07T13:00:00.000Z" } });
   assert.equal(est.reserva.ate, "2026-11-07T13:00:00.000Z");
@@ -80,7 +80,7 @@ test("bloco do contrato: 'Reservada até dd/mm hh:mm — 48 h para assinar'; ven
   assert.match(ok, /Reservada até \d\d\/\d\d \d\d:\d\d — 48 h para assinar/);
   const venc = D.htmlReservaContrato(est.reserva, T + 49 * H);
   assert.ok(venc.includes(D.MSG_RESERVA_VENCIDA), venc);
-  assert.match(venc, /Cancelar envelope/);
+  assert.match(venc, /Cancelar envio para assinatura/);
   assert.equal(D.MSG_RESERVA_VENCIDA, "Prazo de 48 h para assinar venceu — casa liberada no mapa");
   assert.match(D.htmlReservaContrato({ estado: "VENDIDA", ate: "2026-11-07T13:00:00.000Z" }, T + 99 * H), /casa vendida/);
   assert.equal(D.htmlReservaContrato(null), "");

@@ -27,7 +27,7 @@ test("processando trava os dois e avisa; atualizar continua", () => {
   assert.match(botao(h, "mc-previa"), /disabled/);
   assert.match(botao(h, "mc-lancar"), /disabled/);
   assert.doesNotMatch(botao(h, "mc-atualizar"), /disabled/);
-  assert.match(h, /robô está trabalhando/);
+  assert.match(h, /Mais Controle está trabalhando/);
 });
 
 test("lançada: mostra o id e some com prévia/lançar", () => {
@@ -117,7 +117,7 @@ test("ZIP não enviado mostra 'Enviar ZIP ao Mais Controle'; enviado ou só pedi
 
 test("mensagens do anexo", () => {
   assert.match(D.mensagemMC({ erro: "MC_SEM_VENDA" }), /ainda não foi lançada/);
-  assert.match(D.mensagemMC({ erro: "MC_ANEXOS_SEM_FILA" }), /robô do servidor/);
+  assert.match(D.mensagemMC({ erro: "MC_ANEXOS_SEM_FILA" }), /envio automático/);
   assert.match(D.mensagemMC({ erro: "MC_SEM_ZIP" }), /ZIP/);
 });
 

@@ -65,7 +65,7 @@ test("fluxo da troca: prévia → gerar (lê as linhas dos termos) → enviar co
   let h = A.montarBlocoAssinatura(c);
   assert.match(h, /Trocar fiadores/);
   assert.match(h, /ass-troca-fia/, "lugar do bloco Fiadores editável");
-  assert.match(h, /Será cancelado \(envelope do contrato\): CONFISSÃO PRÉ-CHAVES/);
+  assert.match(h, /Será cancelado \(envio para assinatura do contrato\): CONFISSÃO PRÉ-CHAVES/);
   assert.doesNotMatch(botao(h, "a-troca-gerar")[0], /disabled/);
   c = await A.executarAcaoAssinatura("a-troca-gerar", c, deps);
   assert.equal(pedidos[1].carimbo, "c0ffee00");

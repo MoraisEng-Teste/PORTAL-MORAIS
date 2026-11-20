@@ -1066,7 +1066,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
 
     <!-- HUB -->
     <section id="view-hub">
-      <div class="crumb"><a class="btn-voltar" href="index.html">← Voltar para o Dashboard</a></div>
+      <div class="crumb"><a class="btn-voltar" href="index.html">← Início</a></div>
       <div class="sec"><span class="cond">Setores</span></div>
       <div class="setores" id="setores"></div>
 
@@ -1160,7 +1160,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
           <button class="cd-bt" onclick="condCarregar(true)">↻ Atualizar</button>
           <span class="count" id="cd-count"></span>
         </div>
-        <div class="cd-dica">Clique no número da <b>unidade</b> para abrir o card com o fluxo de pagamento. Clique numa célula com fundo azulado para editar.
+        <div class="cd-dica">Clique no número da <b>unidade</b> para abrir o cartão com o fluxo de pagamento. Clique numa célula com fundo azulado para editar.
           Ao preencher a <b>data de assinatura</b>, o <b>dia de pagamento</b> ou a <b>data da entrega</b>, as datas, o nº de parcelas e os valores do fluxo são recalculados.</div>
         <div id="rp-faixa-cond" style="display:none"></div><!-- 12/11: reservas que caem em 24 h (venda/reserva-prazo-ui.js) -->
         <div class="tabela-wrap" id="cd-wrap"><div class="vazio">Carregando…</div></div>
@@ -2233,7 +2233,7 @@ function condEtapas(l){
     {nome:"Datas do fluxo", alvo:"#cd-ass", feito:!!(g("DATA DE ASSINATURA DO CONTRATO")&&g("DIA PAGAMENTO PARCELAS")&&g("DATA DA ENTREGA")),
      sub:"", prox:"preencher data de assinatura, dia de pagamento e entrega e salvar o fluxo"},
     {nome:"Contrato", alvo:".vb-ct", feito:cdTemArq(g("CONTRATO GERADO"))||!!aSit,
-     sub:"", prox:"gerar o pré-contrato, conferir e gerar o contrato"},
+     sub:"", prox:"gerar a prévia do contrato, conferir e gerar o contrato"},
     {nome:"Assinaturas", alvo:".vb-ass", feito:aSit==="ASSINADO", erro:ruim(aSit),
      sub:aSit==="ENVIADO"?"assinando"+(aProg?" · "+aProg:""):aSit==="ASSINADO"?"assinado":ruim(aSit)?aSit.toLowerCase():"", prox:aSit==="ENVIADO"?"esperar as assinaturas (ou reenviar o link)":"enviar o contrato para assinatura na Clicksign"},
     {nome:"Mais Controle", alvo:".vb-mc", feito:!!String(g("MC - VENDA ID")||"").trim(),
@@ -2519,7 +2519,7 @@ function condDistratoHtml(l){
     '<button type="button" class="cd-bt" style="background:#6B5A45;border-color:#6B5A45;color:#fff" onclick="condDistratoAbrir()">Distrato</button>'+
     '<div id="cd-dist-box" style="display:none;margin-top:8px;border:1.5px solid #E7B3A6;background:#FDF1EE;border-radius:10px;padding:12px">'+
       '<b style="color:#8A2E17">Distrato da unidade '+un+'</b>'+
-      '<div style="font-size:12px;margin:4px 0 8px">A venda é copiada (com os arquivos) para a base <b>DISTRATOS CONDOMÍNIO</b>, sai do BANCO DE DADOS VENDAS CONDOMÍNIO e a unidade volta a <b>DISPONÍVEL</b>. A proposta fica como DISTRATO.</div>'+
+      '<div style="font-size:12px;margin:4px 0 8px">A venda é copiada (com os arquivos) para os <b>distratos</b>, sai da lista de vendas do condomínio e a unidade volta a <b>DISPONÍVEL</b>. A proposta fica como DISTRATO.</div>'+
       '<textarea id="cd-dist-motivo" rows="3" placeholder="Motivo do distrato (obrigatório)" style="width:100%;box-sizing:border-box;font:inherit;font-size:13px"></textarea>'+
       '<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="cd-bt" id="cd-dist-ok" onclick="condDistrato(COND_ABERTA)">Confirmar distrato</button>'+
       '<button type="button" class="cd-bt" onclick="condDistratoAbrir(false)">Cancelar</button></div>'+
@@ -2540,10 +2540,10 @@ async function condDistrato(id){
   const motivo=((document.getElementById("cd-dist-motivo")||{}).value||"").trim();
   if(!pid){ av.style.color="var(--vermelho)"; av.textContent="Esta venda não tem proposta ligada (ID PROPOSTA)."; return; }
   if(!motivo){ av.style.color="var(--vermelho)"; av.textContent="Escreva o motivo do distrato."; return; }
-  if(!confirm("Confirmar o DISTRATO da unidade "+un+"?\n\nA venda sai do BANCO DE DADOS VENDAS CONDOMÍNIO (fica guardada em DISTRATOS CONDOMÍNIO) e a unidade volta a DISPONÍVEL.")) return;
+  if(!confirm("Confirmar o DISTRATO da unidade "+un+"?\n\nA venda sai da lista de vendas do condomínio (fica guardada nos distratos) e a unidade volta a DISPONÍVEL.")) return;
   const ok=document.getElementById("cd-dist-ok"); if(ok) ok.disabled=true;
   const t0=Date.now();
-  const pintar=()=>{ av.style.color=""; av.innerHTML='<span class="load"></span> Copiando a venda e os arquivos para DISTRATOS CONDOMÍNIO, tirando a linha do banco de vendas e liberando a unidade… '+Math.round((Date.now()-t0)/1000)+' s'; };
+  const pintar=()=>{ av.style.color=""; av.innerHTML='<span class="load"></span> Copiando a venda e os arquivos para os distratos, tirando a linha da lista de vendas e liberando a unidade… '+Math.round((Date.now()-t0)/1000)+' s'; };
   pintar(); const tm=setInterval(pintar,1000);
   let r=null;
   try{ r=await chamar({action:"simsStatusInternoAcao", pageId:pid, status:"DISTRATO", motivo:motivo}, 240000, true); }
@@ -2559,7 +2559,7 @@ async function condDistrato(id){
   const a=r.arquivos||{};
   av.style.color="";
   av.innerHTML='<b>✓ Distrato feito.</b> '+(r.semVenda?"Não havia linha desta proposta no banco de vendas — unidade liberada e proposta marcada como DISTRATO."
-    :'Venda guardada em <b>DISTRATOS CONDOMÍNIO</b>'+(r.distratoUrl?' (<a href="'+esc(r.distratoUrl)+'" target="_blank" rel="noopener">abrir no Notion</a>)':'')+
+    :'Venda guardada nos <b>distratos</b>'+(r.distratoUrl?' (<a href="'+esc(r.distratoUrl)+'" target="_blank" rel="noopener">abrir no Notion</a>)':'')+
      ' e retirada do banco de vendas. Unidade '+esc(String(r.unidade||un))+' DISPONÍVEL.'+
      '<br><span style="font-size:12px">Arquivos: '+(a.copiados||0)+' copiado(s)'+(a.naFila?' · '+a.naFila+' coluna(s) terminando em segundo plano':'')+
      ((a.falhas||[]).length?' · <span style="color:var(--vermelho)">'+esc(a.falhas.join("; "))+'</span>':'')+'</span>')+
@@ -5135,14 +5135,14 @@ const DIST_ERROS={ DISTRATO_SINAL_FALTA:"Responda se houve sinal/pagamento receb
   DISTRATO_SEM_PREVIA:"Veja primeiro o que acontece no Mais Controle (prévia).",
   DISTRATO_PREVIA_OUTRA_RESPOSTA:"As respostas mudaram depois da prévia — peça a prévia de novo.",
   DISTRATOS_NAO_CONFIGURADO:"A base DISTRATOS não está configurada (Propriedade DB_DISTRATOS). Nada foi limpo.",
-  MC_NAO_CONFIGURADO:"O robô do Mais Controle não está configurado (GITHUB_TOKEN). Nada foi limpo.",
-  MC_DISPARO_FALHOU:"Não consegui acionar o robô do Mais Controle. Nada foi limpo — tente de novo.",
-  MC_PROCESSANDO:"O robô ainda está trabalhando nesta venda. Aguarde um pouco." };
+  MC_NAO_CONFIGURADO:"O Mais Controle não está configurado (GITHUB_TOKEN). Nada foi limpo.",
+  MC_DISPARO_FALHOU:"Não consegui acionar o Mais Controle. Nada foi limpo — tente de novo.",
+  MC_PROCESSANDO:"O Mais Controle ainda está trabalhando nesta venda. Aguarde um pouco." };
 async function pedirPreviaDistrato(){
   const out=document.getElementById("dist-previa"), erro=document.getElementById("dist-erro");
   const pageId=DIST_PAGE; if(!pageId) return;
   distMudou(); erro.textContent="";
-  out.innerHTML='<span class="load"></span> Pedindo a prévia ao robô do Mais Controle (leva 1 a 3 minutos)…';
+  out.innerHTML='<span class="load"></span> Pedindo a prévia ao Mais Controle (leva 1 a 3 minutos)…';
   let r; try{ r=await chamar(Object.assign({action:"distratoPrevia", pageId:pageId}, distResp())); }catch(e){ r={ok:false,erro:"REDE"}; }
   if(!r||!r.ok){ out.textContent=""; erro.textContent=DIST_ERROS[(r&&r.erro)||""]||("Não foi possível: "+erroTexto((r&&r.erro)||"REDE")); return; }
   if(r.semErp){ out.textContent=r.texto; DIST_PREVIA_OK=true; document.getElementById("dist-ok").disabled=false; return; }
@@ -5151,13 +5151,13 @@ async function pedirPreviaDistrato(){
     if(DIST_PAGE!==pageId) return;
     let e; try{ e=await chamar({action:"distratoEstado", pageId:pageId}); }catch(x){ e=null; }
     if(e&&e.ok&&!e.processando){
-      out.textContent=e.texto||"(o robô não escreveu nada)";
+      out.textContent=e.texto||"(o Mais Controle não escreveu nada)";
       DIST_PREVIA_OK=!!e.previaOk; document.getElementById("dist-ok").disabled=!DIST_PREVIA_OK;
-      if(!DIST_PREVIA_OK) erro.textContent="O robô recusou ou falhou — leia acima. O distrato não pode seguir assim.";
+      if(!DIST_PREVIA_OK) erro.textContent="O Mais Controle recusou ou falhou — leia acima. O distrato não pode seguir assim.";
       else setTimeout(()=>document.getElementById("dist-senha").focus(),50);
       return;
     }
-    if(Date.now()-inicio>6*60*1000){ out.textContent="O robô não respondeu em 6 minutos. Tente a prévia de novo mais tarde."; return; }
+    if(Date.now()-inicio>6*60*1000){ out.textContent="O Mais Controle não respondeu em 6 minutos. Tente a prévia de novo mais tarde."; return; }
     DIST_POLL=setTimeout(olhar,8000);
   };
   DIST_POLL=setTimeout(olhar,15000);
@@ -5198,7 +5198,7 @@ async function confirmarDistrato(pageId){
     fecharDistrato(); fecharObra();
     toast("Distrato registrado ✓ — "+(r.camposLimpos||marcados)+" campo(s) limpo(s)"+
           (r.atividadesApagadas?(" e "+r.atividadesApagadas+" atividade(s) apagada(s)"):"")+
-          (r.erp==="ROBO_ACIONADO"?" — o robô está aplicando no Mais Controle (resultado na base DISTRATOS, coluna MC - DISTRATO)":""));
+          (r.erp==="ROBO_ACIONADO"?" — o Mais Controle está aplicando o distrato (resultado nos distratos, coluna MC - DISTRATO)":""));
     ler({action:"atividades"},"atividades").then(x=>{ if(x&&x.ok){ ATIV_ALL=x.atividades; atualizarBadgesSetores(); if(document.getElementById("st-atividades").style.display!=="none") carregarAtividades(); } });
     carregarPlanilha(document.getElementById("view-setor").style.display!=="none"?"set":"hub");
   } else {

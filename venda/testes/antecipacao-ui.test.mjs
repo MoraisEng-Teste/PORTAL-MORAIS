@@ -49,21 +49,21 @@ test("retrato bom mas de outro mês também não mostra número", () => {
 
 test("processando: mensagem, botão de ler travado e nenhum número (mesmo com retrato do mês)", () => {
   const h = D.htmlAntecipacao(est({ processando: true }), ui());
-  assert.match(h, /Lendo a venda no ERP/);
+  assert.match(h, /Lendo a venda no Mais Controle/);
   assert.match(h, /data-acao="an-ler"[^>]*disabled/);
   assert.doesNotMatch(h, /\d+,\d{2}/); assert.doesNotMatch(h, /an-modo/);
-  assert.match(D.htmlAntecipacao(est({ retrato: undefined, velho: true }), ui({ lendo: true })), /Lendo a venda no ERP/);
+  assert.match(D.htmlAntecipacao(est({ retrato: undefined, velho: true }), ui({ lendo: true })), /Lendo a venda no Mais Controle/);
 });
 
 test("erro do robô sem retrato bom: mostra o motivo escapado e nenhum número", () => {
   const h = D.htmlAntecipacao({ ok: true, pode: true, velho: true, lido: "", erroRobo: "falhou <b>x</b>", temFiador: false }, ui());
-  assert.match(h, /A leitura da venda no ERP falhou \(falhou &lt;b&gt;x&lt;\/b&gt;\)/);
+  assert.match(h, /A leitura da venda no Mais Controle falhou \(falhou &lt;b&gt;x&lt;\/b&gt;\)/);
   assert.match(h, /an-ler/); assert.doesNotMatch(h, /<b>x/); assert.doesNotMatch(h, /\d+,\d{2}/);
 });
 
 test("nunca lida: pede a primeira leitura", () => {
   const h = D.htmlAntecipacao({ ok: true, pode: true, velho: true, lido: "", temFiador: false }, ui());
-  assert.match(h, /Ainda não lido do ERP/); assert.match(h, /ainda não foi lida/);
+  assert.match(h, /Ainda não lido do Mais Controle/); assert.match(h, /ainda não foi lida/);
 });
 
 test("retrato bom com erro do robô: mostra o retrato e um aviso discreto", () => {
@@ -82,7 +82,7 @@ test("topo: com fiador ou sem fiador, e a nota fixa do que não dá por aqui", (
   assert.match(com, /Com fiador: travas ligadas/);
   assert.match(D.htmlAntecipacao(est({ temFiador: false }), ui()), /Sem fiador \(24x\)/);
   assert.match(com, /Não dá por aqui: mudar data de balão, dividir balão nas mensais, esticar prazo\. Isso é renegociação e precisa de aditivo assinado por todos, inclusive os fiadores\./);
-  assert.match(com, /Lido do ERP em 21\/10\/2026 10:00/);
+  assert.match(com, /Lido do Mais Controle em 21\/10\/2026 10:00/);
 });
 
 test("os cinco jeitos, o campo de valor e a data de hoje com min e max", () => {
@@ -358,8 +358,8 @@ test("portal sem as ações da antecipação (ACAO_DESCONHECIDA): só o aviso, n
 test("erro do robô sem nunca ter lido (lido vazio): nenhum 'Lido do ERP em', Ler de novo liberado, nenhum número", () => {
   const e = { ok: true, pode: true, velho: true, lido: "", processando: false, erroRobo: "2026-10-25 08:00: ERP fora do ar", temFiador: false };
   const h = D.htmlAntecipacao(e, ui());
-  assert.doesNotMatch(h, /Lido do ERP em/); assert.match(h, /Ainda não lido do ERP/);
+  assert.doesNotMatch(h, /Lido do ERP em/); assert.match(h, /Ainda não lido do Mais Controle/);
   assert.match(h, /data-acao="an-ler"(?![^>]*disabled)/);
-  assert.match(tudo(h), /A leitura da venda no ERP falhou \(2026-10-25 08:00: ERP fora do ar\)/);
+  assert.match(tudo(h), /A leitura da venda no Mais Controle falhou \(2026-10-25 08:00: ERP fora do ar\)/);
   assert.doesNotMatch(h, /\d+,\d{2}/); assert.doesNotMatch(h, /an-modo|ant-valor|ant-data/);
 });

@@ -57,7 +57,7 @@ test("mudar valor esperado: botão, campo com o valor atual e nota do robô só 
   assert.match(h, /data-acao="r-editar" data-item="SINAL">Mudar valor/);
   h = D.htmlRecebimentos(E(), uir({ editando: "SINAL" }));
   assert.match(h, /data-rec-esp="SINAL" value="5\.000,00"/);
-  assert.match(h, /data-acao="r-valor" data-item="SINAL">Salvar valor<\/button> <small class="rec-arq">o robô acerta a parcela no Mais Controle/);
+  assert.match(h, /data-acao="r-valor" data-item="SINAL">Salvar valor<\/button> <small class="rec-arq">a parcela é acertada no Mais Controle/);
   h = D.htmlRecebimentos(E(), uir({ editando: "OUTRO:0a0b0c0d", esperados: { "OUTRO:0a0b0c0d": "9,99" } }));
   assert.match(h, /data-rec-esp="OUTRO:0a0b0c0d" value="9,99"/);
   assert.doesNotMatch(h, /data-item="OUTRO:0a0b0c0d">Salvar valor<\/button> <small/);
@@ -74,13 +74,13 @@ test("TESTES e ocupado travam tudo; sem fila o Conferir fica desligado; venda n�
 });
 
 test("mensagens: pedido ao robô e erros novos", () => {
-  assert.match(D.mensagemRec({ ok: true, mcPedido: "NA_FILA" }, "Sinal"), /confirmado\. O robô vai conferir no Mais Controle/);
+  assert.match(D.mensagemRec({ ok: true, mcPedido: "NA_FILA" }, "Sinal"), /confirmado\. O Mais Controle vai conferir em instantes/);
   assert.match(D.mensagemRec({ ok: true, mcPedido: "SEM_VENDA" }, "Sinal"), /a baixa sai depois do lançamento/);
   assert.equal(D.mensagemRec({ ok: true }, "Sinal"), "Recebimento do Sinal confirmado.");
   assert.match(D.mensagemRec({ ok: false, erro: "JA_BAIXADO_NO_MC" }), /já foi baixado no Mais Controle/);
   assert.match(D.mensagemRec({ ok: false, erro: "VALOR_INVALIDO" }), /Informe o valor/);
   assert.equal(D.textoMC({ situacao: "RECUSADO", texto: "passa do que falta" }), "recusado: passa do que falta");
-  assert.equal(D.textoMC({ situacao: "PROCESSANDO", texto: "pedido na fila" }), "robô trabalhando…: pedido na fila");
+  assert.equal(D.textoMC({ situacao: "PROCESSANDO", texto: "pedido na fila" }), "Mais Controle trabalhando…: pedido na fila");
   assert.equal(D.textoMC(null), "");
 });
 

@@ -47,7 +47,7 @@
     ARQUIVO_MUDOU: "A lista de arquivos mudou (alguém anexou ou excluiu) — a tela foi atualizada; confira e tente de novo.",
     ESPACO_DESCONHECIDO: "Documento desconhecido — atualize a página e tente de novo.",
     CONTRATO_ASSINADO: "O contrato já foi assinado — os documentos do dossiê não podem mais ser excluídos.",
-    ENVELOPE_ABERTO: "O contrato já foi enviado para assinatura. Para mudar, cancele o envelope primeiro.",
+    ENVELOPE_ABERTO: "O contrato já foi enviado para assinatura. Para mudar, cancele o envio para assinatura primeiro.",
     NOTION_OCUPADO: "O Notion está ocupado — tente de novo em 1 minuto."
   };
 
@@ -401,7 +401,7 @@
     var itens = [["Denominação", l.denominacao], ["Matrícula do loteamento", l.matricula], ["Cartório", l.cartorio]]
       .filter(function (x) { return x[1]; });
     if (!itens.length) return "";
-    return '<div class="dz-aviso">Condomínio/loteamento lido do documento (gravado na casa e usado no contrato):</div><ul>' +
+    return '<div class="dz-aviso">Condomínio/loteamento lido do documento (gravado na venda e usado no contrato):</div><ul>' +
       itens.map(function (x) { return "<li>" + esc(x[0]) + ": " + esc(x[1]) + "</li>"; }).join("") + "</ul>";
   }
   function htmlImovel(e, ui) {
@@ -467,19 +467,19 @@
     SO_CONDOMINIO: "Isso só vale para as vendas do condomínio.",
     MODELO_NAO_CONFIGURADO: "O modelo do contrato não está configurado neste ambiente.",
     TESTEMUNHAS_INVALIDAS: "Essas testemunhas não estão mais na lista — recarregue e escolha de novo.",
-    ENVELOPE_ABERTO: "O contrato já foi enviado para assinatura. Para mudar, cancele o envelope primeiro.",   /* 03/11: trava central */
+    ENVELOPE_ABERTO: "O contrato já foi enviado para assinatura. Para mudar, cancele o envio para assinatura primeiro.",   /* 03/11: trava central */
     CONTRATO_DESATUALIZADO: "O fluxo ou as condições especiais mudaram depois do contrato. Gere o contrato de novo antes de enviar.",
     CADASTRO_NAO_CONFIGURADO: "Os cadastros do contrato não estão configurados neste ambiente.",
     DRIVE_API_DESLIGADA: "Ative o serviço Drive API no PORTAL-VENDA (veja COMO-IMPLANTAR).",
     CONTRATO_FALHOU: "Não consegui gerar o contrato — tente de novo.",
     MODELO_COM_MARCADOR_SOBRANDO: "O modelo do contrato tem um campo sem preenchimento — avise o suporte.",
     FALTAM_DADOS: "Faltam dados para gerar o contrato.",
-    PRECONTRATO_FALTANDO: "Gere o pré-contrato e confira antes de gerar o contrato.",
-    PRECONTRATO_GRANDE: "O pré-contrato ficou grande demais para abrir pelo portal — avise o desenvolvedor.",
-    PRECONTRATO_DESATUALIZADO: "Os dados mudaram depois do pré-contrato — gere o pré-contrato de novo e confira.",
-    PRECONTRATO_REFAZER: "Não consegui gerar o contrato — gere o pré-contrato de novo, confira e tente outra vez.",   /* 01/11 */
+    PRECONTRATO_FALTANDO: "Gere a prévia do contrato e confira antes de gerar o contrato.",
+    PRECONTRATO_GRANDE: "A prévia do contrato ficou grande demais para abrir pelo portal — avise o desenvolvedor.",
+    PRECONTRATO_DESATUALIZADO: "Os dados mudaram depois da prévia do contrato — gere a prévia do contrato de novo e confira.",
+    PRECONTRATO_REFAZER: "Não consegui gerar o contrato — gere a prévia do contrato de novo, confira e tente outra vez.",   /* 01/11 */
     NOTION_OCUPADO: "O sistema está ocupado — espere 1 minuto e tente de novo.",
-    CONTRATO_EM_ASSINATURA: "Este contrato já foi enviado para assinatura. Para mudar, cancele o envelope primeiro.",
+    CONTRATO_EM_ASSINATURA: "Este contrato já foi enviado para assinatura. Para mudar, cancele o envio para assinatura primeiro.",
     CAMPOS_INVALIDOS: "Confira os campos.",
     VENDEDOR_SEM_CADASTRO: "O dono da obra não está no cadastro de vendedores — o cadastro do vendedor é feito no Notion, não pelo portal.",
     CORRETOR_NA_VENDA_FALTANDO: "A venda não tem corretor preenchido — preencha o CORRETOR na venda.",
@@ -489,7 +489,7 @@
     /* 29/10: Alterar fluxo */
     FLUXO_VENDA_LANCADA: "A venda já foi lançada no Mais Controle — o fluxo não muda mais por aqui.",
     FLUXO_CONTRATO_ASSINADO: "O contrato já foi assinado — mudar o fluxo agora exige aditivo.",
-    FLUXO_ASSINATURA_ABERTA: "O contrato está na Clicksign esperando assinatura — cancele o envelope antes de alterar o fluxo.",
+    FLUXO_ASSINATURA_ABERTA: "O contrato está na Clicksign esperando assinatura — cancele o envio para assinatura antes de alterar o fluxo.",
     FLUXO_JA_E_O_DA_PROPOSTA: "O fluxo desta venda já é o da proposta.",
     /* 03/11: CRLV da permuta */
     NAO_E_CRLV: "Esse arquivo não parece ser o CRLV do veículo — envie a foto ou o PDF do CRLV (ou preencha à mão).",
@@ -498,7 +498,7 @@
     FLUXO_ISENCAO_AGUARDANDO_MODELO: "Isentar a comissão ainda não está liberado: o contrato do advogado não tem o texto de venda sem corretor. Use desconto em R$ ou %.",
     MODELO_CNPJ_VENDEDOR_DIFERENTE: "O CNPJ do vendedor no cadastro (VENDEDORES – CONTRATO) não é o que está escrito no modelo do contrato — o contrato não foi gerado. Confira o cadastro ou avise o suporte.",
     MODELO_SEM_BLOCO_SEM_COMISSAO: "Esta venda é sem comissão (venda direta), mas o modelo do contrato ainda não tem esse texto — o contrato não foi gerado. Avise o desenvolvedor.",
-    FLUXO_PRECO_SEM_PERMISSAO: "Seu login não pode mudar o valor da casa — os nomes de quem pode aparecem no campo Valor da casa."
+    FLUXO_PRECO_SEM_PERMISSAO: "Seu login não pode mudar o valor da unidade — os nomes de quem pode aparecem no campo Valor da unidade."
   };
   /* Nunca inclui nomes de marcador do modelo (resposta.marcadores): esses vão só para o console.
      CAMPOS_INVALIDOS: os motivos (só nomes de campo) vão junto. */
@@ -620,7 +620,7 @@
       });
     });
     if (campos.conta) h += '<div class="dz-aviso">Banco, agência e conta: escolha ou digite em "Conta de recebimento", abaixo.</div>';
-    h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-salvar-campos"' + dis + ">Salvar dados e gerar pré-contrato</button></div>";
+    h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-salvar-campos"' + dis + ">Salvar dados e gerar prévia do contrato</button></div>";
     return h;
   }
   /* entradas da tela [{chave: "grupo|COLUNA", valor}] + conta digitada (ou null) -> pedido do salvarCamposContrato */
@@ -671,7 +671,7 @@
     if (!cc.temCadastro) h += '<div class="dz-msg dz-nota">' + esc(nome) + " ainda não tem cadastro: o salvar cria a linha em CORRETORES – CONTRATO.</div>";
     if (u.ocupadoContrato === "comissao") h += '<div class="dz-linha"><b>salvando no cadastro do corretor…</b></div>';
     h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-com-salvar"' + disB + ">Salvar no cadastro do corretor</button></div>";
-    h += '<div class="dz-msg dz-nota">Vale para todas as vendas deste corretor. Depois de salvar, gere o pré-contrato de novo.</div>';
+    h += '<div class="dz-msg dz-nota">Vale para todas as vendas deste corretor. Depois de salvar, gere a prévia do contrato de novo.</div>';
     return h;
   }
   /* caixas [{coluna, orig, valor}] -> { corretor: {COLUNA: valor} } só com o que mudou e não está vazio; null = nada mudou */
@@ -776,7 +776,7 @@
     var rot = b.precisa && b.conjuge ? "Salvar fiadores e cônjuge" : b.precisa ? "Salvar fiadores" : "Salvar cônjuge";
     h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-fia-salvar"' + dis + ">" + rot + "</button>" +
       (b.botaoConjuge ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fia-conjuge"' + dis + ">O cônjuge do Fiador 1 é o Fiador 2</button>" : "") + "</div>";
-    h += '<div class="dz-msg dz-nota">Grava na linha desta venda. Depois, gere o pré-contrato de novo.</div></div>';
+    h += '<div class="dz-msg dz-nota">Grava na linha desta venda. Depois, gere a prévia do contrato de novo.</div></div>';
     return h;
   }
   /* rodada de conserto 1 (revisão 01/11): o rascunho do bloco guarda SÓ o que a pessoa mexeu (valor ≠ data-fia-orig).
@@ -826,8 +826,8 @@
     var ate = Date.parse(rs.ate), agora = typeof agoraMs === "number" ? agoraMs : Date.now();
     if (isNaN(ate)) return "";
     if (rs.estado === "LIBERADA" || agora >= ate)
-      return '<div class="dz-aviso dz-reserva" role="status"><b>' + esc(MSG_RESERVA_VENCIDA) + "</b>. O envelope continua aberto na Clicksign — " +
-        "se a venda não vai seguir, use <b>Cancelar envelope</b> no bloco Assinatura.</div>";
+      return '<div class="dz-aviso dz-reserva" role="status"><b>' + esc(MSG_RESERVA_VENCIDA) + "</b>. O envio para assinatura continua aberto na Clicksign — " +
+        "se a venda não vai seguir, use <b>Cancelar envio para assinatura</b> no bloco Assinatura.</div>";
     return '<div class="dz-linha dz-reserva"><span class="dz-rot">Reservada até ' + esc(dataHoraBR(rs.ate).replace(",", "")) +
       " — 48 h para assinar</span></div>";
   }
@@ -850,9 +850,9 @@
     var h = '<div class="grp">Contrato</div>';
     if (testes) h += '<div class="dz-aviso">Perfil TESTES só consulta.</div>';
     if (!e) return h + '<div class="vazio">' + esc(u.msg || "carregando…") + "</div>";
-    if (u.ocupadoContrato === "pre") h += '<div class="dz-linha"><b>gerando o pré-contrato… (pode levar até 2 minutos)</b></div>';
+    if (u.ocupadoContrato === "pre") h += '<div class="dz-linha"><b>gerando a prévia do contrato… (pode levar até 2 minutos)</b></div>';
     if (u.ocupadoContrato === "aprovar") h += '<div class="dz-linha"><b>gerando o contrato… (pode levar até 2 minutos)</b></div>';
-    if (u.ocupadoContrato === "salvar") h += '<div class="dz-linha"><b>salvando os dados e gerando o pré-contrato… (pode levar até 2 minutos)</b></div>';
+    if (u.ocupadoContrato === "salvar") h += '<div class="dz-linha"><b>salvando os dados e gerando a prévia do contrato… (pode levar até 2 minutos)</b></div>';
     if (u.ocupadoContrato === "fia") h += '<div class="dz-linha"><b>salvando na venda…</b></div>';
     /* entrega 12: o que o formulário cobre sai da lista (u.faltas = só as outras); 01/11: e o que o bloco Fiadores cobre */
     var faltasLista = u.faltas;
@@ -873,18 +873,18 @@
     }
     h += htmlCampos(u.campos, u, dis);
     h += htmlFiadores(e.fiadores, u, dis);
-    /* entrega 9: (a) nada → Gerar pré-contrato; (b) pré-contrato a conferir → Visualizar pré-contrato,
-       "Conferi…" e Gerar pré-contrato de novo; (c) contrato final → Visualizar / Gerar de novo (volta ao pré-contrato) */
+    /* entrega 9: (a) nada → Gerar prévia do contrato; (b) pré-contrato a conferir → Visualizar prévia,
+       "Conferi…" e Gerar prévia do contrato de novo; (c) contrato final → Visualizar / Gerar de novo (volta ao pré-contrato) */
     var etapa = etapaContrato(e);
     if (etapa === "PRE") {
       var pre = e.pre || {}, velho = !!pre.desatualizado;
-      h += '<div class="dz-linha"><span class="dz-rot">Pré-contrato: ' + esc(pre.nome || "") + "</span>" +
-        '<button type="button" class="bt bt-mini" data-acao="c-ver-pre"' + (ocupado ? " disabled" : "") + ">Visualizar pré-contrato</button></div>";
-      h += '<div class="dz-msg">Confira no pré-contrato o que está grifado: amarelo = preenchido pelo app; vermelho = ficou em branco.</div>';
-      if (velho) h += '<div class="dz-aviso">Os dados mudaram depois deste pré-contrato — gere o pré-contrato de novo.</div>';
+      h += '<div class="dz-linha"><span class="dz-rot">Prévia do contrato: ' + esc(pre.nome || "") + "</span>" +
+        '<button type="button" class="bt bt-mini" data-acao="c-ver-pre"' + (ocupado ? " disabled" : "") + ">Visualizar prévia</button></div>";
+      h += '<div class="dz-msg">Confira na prévia do contrato o que está grifado: amarelo = preenchido pelo app; vermelho = ficou em branco.</div>';
+      if (velho) h += '<div class="dz-aviso">Os dados mudaram depois desta prévia do contrato — gere a prévia do contrato de novo.</div>';
       h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-aprovar"' + ((ocupado || testes || velho) ? " disabled" : "") +
         ">Conferi, está tudo certo — gerar contrato</button> " +
-        '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar pré-contrato de novo</button></div>";
+        '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button></div>";
       if (e.gerado) h += '<div class="dz-msg">Contrato anterior: ' + esc(e.nome) + " (será substituído ao conferir).</div>";
     } else if (etapa === "FINAL") {
       h += '<div class="dz-linha"><span class="dz-rot">Contrato gerado<span class="dz-arq-nome">: ' + esc(e.nome) + "</span></span>" +
@@ -897,7 +897,7 @@
           '<button type="button" class="bt ghost bt-mini" data-acao="c-ver-cfd-' + (x.tipo === "POS" ? "pos" : "pre") + '"' + dis + ">Visualizar</button></div>";
       });
     } else {
-      h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-pre"' + dis + ">Gerar pré-contrato</button></div>";
+      h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato</button></div>";
     }
     if (u.perguntaReserva) h += htmlPerguntaReserva(u.perguntaReserva, dis);   /* 08/11 */
     if (u.avisoReserva) h += '<div class="dz-aviso">' + esc(u.avisoReserva) + "</div>";
@@ -919,7 +919,7 @@
      se cancelar o envelope". Com o envelope do contrato aberto (RASCUNHO, ENVIADO, aguardando) a aba Contrato fica só
      leitura: Visualizar (contrato e termos), Ver fluxo e o que vai no contrato como texto; sem Gerar de novo, Alterar
      fluxo, Redigir com IA, Salvar… nem listas. O bloco da Clicksign (assinatura-ui) segue com Atualizar/Reenviar/Cancelar. */
-  var MSG_SO_LEITURA = "Contrato enviado para assinatura — só leitura. Para mudar algo, cancele o envelope.";
+  var MSG_SO_LEITURA = "Contrato enviado para assinatura — só leitura. Para mudar algo, cancele o envio para assinatura.";
   function nomesTestemunhas(t) {
     if (!t || !t.opcoes || t.opcoes.length < 2) return "";
     function nome(id) { var o = t.opcoes.filter(function (x) { return x.id === id; })[0]; return o ? o.nome : ""; }
@@ -1017,7 +1017,7 @@
       ' placeholder="Ex.: Na cláusula 9.2, onde se lê 30 dias, leia-se 45 dias.">' + esc(rasc) + "</textarea>" +
       '<div style="margin-top:6px"><button type="button" class="bt bt-mini" data-acao="c-condesp-salvar"' + dis + ">Salvar condições especiais</button>" +
       (c.por ? ' <span class="ass-data">última gravação: ' + esc(c.por) + (c.em ? " em " + esc(dataHoraBR(c.em)) : "") + "</span>" : "") + "</div></div>";
-    if (c.texto) h += '<div class="dz-aviso">Este contrato tem condições especiais — confira o item 16 no pré-contrato antes de aprovar.</div>';
+    if (c.texto) h += '<div class="dz-aviso">Este contrato tem condições especiais — confira o item 16 na prévia do contrato antes de aprovar.</div>';
     return h;
   }
   /* ---- 29/10: "Alterar fluxo" — exceção na mesa (pedido do diretor). Lista livre de pagamentos; o tipo decide o
@@ -1059,7 +1059,7 @@
         ? "alterado no portal" + (f.por ? " por " + esc(f.por) : "") + (f.em ? " em " + esc(dataHoraBR(f.em)) : "") + "."
         : "o da proposta (simulador).") + (lancada ? " Já lançado no Mais Controle com este fluxo; não muda mais por aqui." : "") + "</span>" +
         '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-ver">Ver fluxo</button>' +
-        /* 04/11 (dono): PDF do fluxo salvo para mandar ao cliente, antes do pré-contrato (o mesmo do quadro do cartão) */
+        /* 04/11 (dono): PDF do fluxo salvo para mandar ao cliente, antes da prévia do contrato (o mesmo do quadro do cartão) */
         (typeof window !== "undefined" && typeof window.condPdfFluxo === "function"
           ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-pdf" title="PDF do fluxo para mandar ao cliente">📄 PDF do fluxo</button>' : "") +
         (lancada ? "" : ' <button type="button" class="bt bt-mini" data-acao="c-fluxo-abrir"' + (dis || (f.trava ? " disabled" : "")) + ">Alterar fluxo</button>") + "</div>";
@@ -1072,7 +1072,7 @@
     var msgPreco = quem.length ? "Só " + (quem.length > 1 ? quem.slice(0, -1).join(", ") + " e " + quem[quem.length - 1] : quem[0]) + (quem.length > 1 ? " mudam" : " muda") + " o valor da casa"
       : "Ninguém muda o valor da casa por aqui";
     var F = FL(), ops = F.ORDEM.filter(function (t) { return !F.TIPOS[t].fixo; }).map(function (t) { return [t, F.TIPOS[t].nome]; });
-    h += '<div class="dz-linha vb-fx"><label class="dz-campo">Valor da casa (R$) <input type="text" inputmode="decimal" data-fx="valor" value="' + esc(numBR(ed.valor)) + '"' +
+    h += '<div class="dz-linha vb-fx"><label class="dz-campo">Valor da unidade (R$) <input type="text" inputmode="decimal" data-fx="valor" value="' + esc(numBR(ed.valor)) + '"' +
       (dis || (ed.podePreco ? "" : " disabled")) + (ed.podePreco ? "" : ' title="' + esc(msgPreco) + '"') + ' style="width:9em;text-align:right"></label>' +
       (ed.entrega ? ' <span class="dz-nota">entrega das chaves: ' + esc(F.dataBR(ed.entrega)) + "</span>" : "") + "</div>";
     if (!ed.podePreco) h += '<div class="dz-msg">' + esc(msgPreco) + ".</div>";
@@ -1404,7 +1404,7 @@
     var bate = Math.round(dif * 100) === 0, ok = r.erros.length === errosBem.length && motivoOk;
     var h = '<div class="vb-fx-placar" style="display:flex;flex-wrap:wrap;gap:4px 18px;margin:6px 0;padding:6px 10px;border-radius:6px;' +
       (bate ? "background:rgba(29,107,67,.14)" : "background:rgba(163,39,31,.14)") + '">' +
-      "<span>Valor da casa: <b>" + esc(F.moeda(ed.valor)) + "</b></span><span>Soma do fluxo: <b>" + esc(F.moeda(soma)) + "</b></span>" +
+      "<span>Valor da unidade: <b>" + esc(F.moeda(ed.valor)) + "</b></span><span>Soma do fluxo: <b>" + esc(F.moeda(soma)) + "</b></span>" +
       "<span>" + (bate ? "Diferença: <b>R$ 0,00 ✓</b>" : (dif > 0 ? "Faltam" : "Sobram") + ": <b>" + esc(F.moeda(Math.abs(dif))) + "</b>") + "</span>" +
       /* 30/10: a comissão que vai sair (sem comissão na isenção; pela regra do prazo sobre o valor novo no desconto) */
       (ed.semComissao ? "<span>Comissão: <b>sem comissão (venda direta)</b></span>"
@@ -1460,13 +1460,13 @@
   var MSG_MC = {
     MC_NAO_CONFIGURADO: "O lançamento no Mais Controle não está configurado neste ambiente.",
     MC_JA_LANCADA: "Esta venda já foi lançada no Mais Controle.",
-    MC_PROCESSANDO: "O robô ainda está processando — aguarde e clique em Atualizar.",
+    MC_PROCESSANDO: "O Mais Controle ainda está processando — aguarde e clique em Atualizar.",
     MC_SEM_PREVIA: "Veja a prévia primeiro: o lançamento só é liberado com PRÉVIA OK.",
-    MC_DISPARO_FALHOU: "Não consegui acionar o robô do Mais Controle — tente de novo.",
+    MC_DISPARO_FALHOU: "Não consegui acionar o Mais Controle — tente de novo.",
     /* 03/11: Anexar contrato / Enviar ZIP (AnexosMC.gs) */
     MC_SEM_VENDA: "A venda ainda não foi lançada no Mais Controle — não há onde anexar o contrato.",
     MC_SEM_ZIP: "Ainda não há ZIP dos documentos assinados nesta venda (ele é montado quando todos assinam).",
-    MC_ANEXOS_SEM_FILA: "O robô do servidor não está configurado neste ambiente — anexe à mão no Mais Controle."
+    MC_ANEXOS_SEM_FILA: "O envio automático não está configurado neste ambiente — anexe à mão no Mais Controle."
   };
   function mensagemMC(r) {
     var e = String((r && r.erro) || "");
@@ -1523,7 +1523,7 @@
         '<a class="mc-abrir" href="' + esc(MC_URL_VENDA + encodeURIComponent(String(e.vendaId).trim())) +
         '" target="_blank" rel="noopener noreferrer">Abrir no Mais Controle</a></div>';
     }
-    if (processando) h += '<div class="dz-linha"><b>o robô está trabalhando… (1 a 3 minutos)</b></div>';
+    if (processando) h += '<div class="dz-linha"><b>o Mais Controle está trabalhando… (1 a 3 minutos)</b></div>';
     var liberaLancar = /^PR[ÉE]VIA OK/i.test(sit) && !e.vendaId;
     var d = function (x) { return (x || testes) ? " disabled" : ""; };
     h += '<div class="dz-linha">';
@@ -1565,12 +1565,12 @@
     OUTROS_DEMAIS: "Já são 10 recebimentos extras nesta casa — use um dos que existem.",
     SO_COM_LISTA: "Este item ainda está no jeito antigo (sem a coluna de pagamentos) — confirme de novo para corrigir.",
     MC_SEM_VENDA: "A venda ainda não está no Mais Controle: lance a venda antes.",
-    FILA_NAO_CONFIGURADA: "O robô do servidor não está ligado neste ambiente (DB_FILA_ROBO).",
+    FILA_NAO_CONFIGURADA: "O envio automático não está ligado neste ambiente (DB_FILA_ROBO).",
     MC_DISPARO_FALHOU: "Não consegui pôr o pedido na fila do servidor — tente de novo.",
     SEM_ARQUIVO: "Escolha o contrato de financiamento (PDF ou foto)."
   };
   var MC_PEDIDO = {
-    NA_FILA: " O robô vai conferir no Mais Controle em instantes.",
+    NA_FILA: " O Mais Controle vai conferir em instantes.",
     NA_FILA_SEM_SINAL: " O pedido ao Mais Controle está na fila, mas o servidor não está dando sinal.",
     SEM_VENDA: " A venda ainda não está no Mais Controle: a baixa sai depois do lançamento.",
     FILA_NAO_CONFIGURADA: "",
@@ -1598,7 +1598,7 @@
   /* situação do robô (por item ou por pagamento): "baixado no Mais Controle", "prévia: …", "recusado: …" */
   var MC_SIT = { BAIXADO: "baixado no Mais Controle", PREVIA: "prévia", AGUARDANDO: "aguardando", PENDENTE: "aguardando",
                  RECUSADO: "recusado", ERRO: "erro", ALTERADO: "alterado no Mais Controle", OK: "conferido no Mais Controle",
-                 SEM_PARCELA: "sem parcela no Mais Controle", PROCESSANDO: "robô trabalhando…" };
+                 SEM_PARCELA: "sem parcela no Mais Controle", PROCESSANDO: "Mais Controle trabalhando…" };
   function textoMC(x) {
     if (!x || !x.situacao) return "";
     var s = MC_SIT[x.situacao] || String(x.situacao).toLowerCase(), t = String(x.texto || "");
@@ -1629,7 +1629,7 @@
       var ve = it.id in esps ? esps[it.id] : numRec(it.esperado);
       h += '<div class="dz-linha"><label class="dz-campo">Novo valor esperado <input type="text" inputmode="decimal" data-rec-esp="' + id + '" value="' + esc(ve) + '"' + dis + "></label> " +
         '<button type="button" class="bt bt-mini" data-acao="r-valor" data-item="' + id + '"' + dis + ">Salvar valor</button>" +
-        (/^(SINAL|FINANCIAMENTO|FGTS)$/.test(it.id) ? ' <small class="rec-arq">o robô acerta a parcela no Mais Controle</small>' : "") + "</div>";
+        (/^(SINAL|FINANCIAMENTO|FGTS)$/.test(it.id) ? ' <small class="rec-arq">a parcela é acertada no Mais Controle</small>' : "") + "</div>";
     }
     if (it.erro) return h + '<div class="dz-aviso">' + esc(mensagemDeErro(it.erro)) + " — este item não grava até a coluna existir.</div>";
     h += '<div class="dz-linha"><span class="dz-rot">' + linhaSituacaoRec(it) + "</span></div>";
@@ -1681,13 +1681,13 @@
         (af && af.name ? ' <small class="rec-arq">escolhido: ' + esc(af.name) + "</small>" : "") + " " +
         '<button type="button" class="bt bt-mini" data-acao="r-fin"' + dis + ">" + (af || !n ? "Ler e atualizar os valores" : "Ler de novo") + "</button>" +
         (u.ocupado === "FIN" ? " <b>lendo…</b>" : "") + "</div>" +
-        '<div class="dz-msg dz-nota">A leitura troca o VALOR FINANCIADO e, se o contrato mostrar, o FGTS e o subsídio; depois o robô acerta as parcelas no Mais Controle.</div>';
+        '<div class="dz-msg dz-nota">A leitura troca o VALOR FINANCIADO e, se o contrato mostrar, o FGTS e o subsídio; depois as parcelas são acertadas no Mais Controle.</div>';
       if (u.finMsg) h += '<div class="dz-msg">' + esc(u.finMsg) + "</div>";
     }
     if (e.vendaLancada) {
       var mc = e.mc || {};
       h += '<div class="dz-linha rec-item"><span class="dz-rot"><b>Mais Controle</b> — ' +
-        esc(mc.situacao ? textoMC(mc) + (mc.em && mc.situacao !== "PROCESSANDO" ? " (" + mc.em + ")" : "") : "ainda não conferido pelo robô") + "</span> " +
+        esc(mc.situacao ? textoMC(mc) + (mc.em && mc.situacao !== "PROCESSANDO" ? " (" + mc.em + ")" : "") : "ainda não conferido no Mais Controle") + "</span> " +
         '<button type="button" class="bt ghost bt-mini" data-acao="r-mc"' + ((dis || !e.filaLigada) ? " disabled" : "") + ">Conferir no Mais Controle</button></div>";
       (mc.avisos || []).forEach(function (a) { h += '<div class="dz-msg dz-nota">' + esc(a) + "</div>"; });
     } else if (e.vendaLancada === false) {
@@ -2347,7 +2347,7 @@
       return o;
     }
     var sit, valor, bal;
-    try { sit = A.situacao(retrato, d); valor = A.lerValor(u.valor); } catch (e) { o.erroData = "O retrato da venda não está legível. Clique em Ler de novo do ERP."; return o; }
+    try { sit = A.situacao(retrato, d); valor = A.lerValor(u.valor); } catch (e) { o.erroData = "A leitura da venda não está legível. Clique em Ler de novo do Mais Controle."; return o; }
     o.sit = sit; bal = sit.balaoes;
     o.parcelaId = bal.some(function (x) { return x.id === u.parcelaId; }) ? u.parcelaId : (bal.length ? bal[0].id : "");
     var q = antQuantas(u.quantas, sit.posAbertas);
@@ -2382,8 +2382,8 @@
                : "Esse valor não fecha ao centavo nas parcelas que ficam. Mude um pouco o valor.";
     }
     if (e === "TRAVA") return "Esse jeito não passa nas travas do fiador: " + esc((r.travas || []).join("; ")) + ".";
-    if (e === "RETRATO_INCOERENTE") return "O retrato lido do ERP não fecha na conta. Clique em Ler de novo do ERP.";
-    return "Não consegui calcular esse jeito. Clique em Ler de novo do ERP e tente de novo.";
+    if (e === "RETRATO_INCOERENTE") return "A leitura do Mais Controle não fecha na conta. Clique em Ler de novo do Mais Controle.";
+    return "Não consegui calcular esse jeito. Clique em Ler de novo do Mais Controle e tente de novo.";
   }
   /* a frase "para o cliente" de cada cartão */
   function antFrase(m, r, c) {
@@ -2511,14 +2511,14 @@
       "Isso é renegociação e precisa de aditivo assinado por todos, inclusive os fiadores.</div>";
     if (!e.pode) return h + '<div class="dz-aviso">' + esc(e.motivo || "Esta venda ainda não pode antecipar.") + "</div>";
     var bom = !!(e.retrato && !e.velho && !e.processando);
-    h += '<div class="dz-linha"><span class="dz-rot">' + (e.lido ? "Lido do ERP em " + antLido(e.lido) : "Ainda não lido do ERP") + "</span>" +
-      '<button type="button" class="bt bt-mini ghost" data-acao="an-ler"' + (u.lendo || e.processando || u.testes ? " disabled" : "") + ">Ler de novo do ERP</button></div>";
+    h += '<div class="dz-linha"><span class="dz-rot">' + (e.lido ? "Lido do Mais Controle em " + antLido(e.lido) : "Ainda não lido do Mais Controle") + "</span>" +
+      '<button type="button" class="bt bt-mini ghost" data-acao="an-ler"' + (u.lendo || e.processando || u.testes ? " disabled" : "") + ">Ler de novo do Mais Controle</button></div>";
     if (!bom) {
       var t;
-      if (e.processando || u.lendo) t = "Lendo a venda no ERP… leva cerca de 1 minuto. A tela confere sozinha a cada 10 segundos.";
-      else if (e.erroRobo && !e.retrato) t = "A leitura da venda no ERP falhou (" + e.erroRobo + "). Clique em Ler de novo do ERP.";
-      else if (e.lido) t = "A última leitura é de " + antData(e.lido) + ", de outro mês. Clique em Ler de novo do ERP (cerca de 1 minuto) para simular com os valores de hoje.";
-      else t = "A venda ainda não foi lida do ERP neste mês. Clique em Ler de novo do ERP (cerca de 1 minuto).";
+      if (e.processando || u.lendo) t = "Lendo a venda no Mais Controle… leva cerca de 1 minuto. A tela confere sozinha a cada 10 segundos.";
+      else if (e.erroRobo && !e.retrato) t = "A leitura da venda no Mais Controle falhou (" + e.erroRobo + "). Clique em Ler de novo do Mais Controle.";
+      else if (e.lido) t = "A última leitura é de " + antData(e.lido) + ", de outro mês. Clique em Ler de novo do Mais Controle (cerca de 1 minuto) para simular com os valores de hoje.";
+      else t = "A venda ainda não foi lida do Mais Controle neste mês. Clique em Ler de novo do Mais Controle (cerca de 1 minuto).";
       h += '<div class="dz-aviso">' + esc(t) + "</div>";
       if (e.retrato && e.erroRobo && !e.processando && !u.lendo) h += '<div class="dz-linha dz-nota">A última tentativa de ler de novo falhou: ' + esc(e.erroRobo) + "</div>";
       return h + antMsg(u);
@@ -2545,7 +2545,7 @@
   function antSemBackend(r) { return !!(r && r.ok === false && /ACAO_DESCONHECIDA/.test(String(r.erro || ""))); }
   function mensagemAnt(r) {
     if (antSemBackend(r)) return antSemBackendMsg();
-    var M = { RETRATO_VELHO: "A leitura da venda é de outro mês. Clique em Ler de novo do ERP.",
+    var M = { RETRATO_VELHO: "A leitura da venda é de outro mês. Clique em Ler de novo do Mais Controle.",
               DATA_FORA_DO_MES: "A data do pagamento tem de ficar entre hoje e o fim deste mês.",
               NAO_FECHA: "Esse valor não fecha ao centavo nas parcelas que ficam. Mude o valor e tente de novo.",
               QUANTAS_INVALIDA: "Digite quantas parcelas quitar: um número inteiro, de 1 até o total em aberto.",
@@ -2556,13 +2556,13 @@
               DATA_INVALIDA: "Data do pagamento inválida. Escolha uma data de hoje até o fim do mês.",
               MODO_INVALIDO: "Jeito de antecipar inválido. Escolha um dos cinco jeitos.",
               RETRATO_PROCESSANDO: "A leitura da venda já está em andamento.",
-              SEM_RETRATO: "A venda ainda não foi lida do ERP. Clique em Ler de novo do ERP.",
-              FILA_NAO_CONFIGURADA: "A fila de leitura do robô ainda não está ligada neste ambiente — avise o desenvolvedor.",
+              SEM_RETRATO: "A venda ainda não foi lida do Mais Controle. Clique em Ler de novo do Mais Controle.",
+              FILA_NAO_CONFIGURADA: "A fila de leitura do Mais Controle ainda não está ligada neste ambiente — avise o desenvolvedor.",
               BASE_ANTECIPACOES_NAO_CONFIGURADA: "A base ANTECIPAÇÕES ainda não está ligada neste ambiente — avise o desenvolvedor.",
               REGISTRO_FALHOU: "Não consegui registrar a simulação no Notion — tente de novo.",
               ANEXO_FALHOU: "Não consegui guardar o PDF — tente de novo.",
               TRAVA: "Esse jeito não passa nas travas do fiador.",
-              RETRATO_INCOERENTE: "O retrato lido do ERP não fecha na conta. Clique em Ler de novo do ERP." };
+              RETRATO_INCOERENTE: "A leitura do Mais Controle não fecha na conta. Clique em Ler de novo do Mais Controle." };
     var e = String((r && r.erro) || "");
     if (e === "NAO_PODE") return String((r && r.motivo) || "Esta venda ainda não pode antecipar.");
     return M[e] || mensagemContrato(r);
@@ -2584,7 +2584,7 @@
       return '<div class="dz-linha"><label class="dz-rot" style="flex:0 0 90px">' + esc(x.rotulo) + "</label>" + inp + "</div>";
     }).join("");
     var cols = (c.campos || []).map(function (x) { return x.coluna; }).join(", ");
-    h += '<div class="dz-aviso">Grava em ' + esc(cols) + " na venda. Depois, gere o contrato de novo; se ele já foi para a Clicksign, cancele o envelope e envie de novo.</div>";
+    h += '<div class="dz-aviso">Grava em ' + esc(cols) + " na venda. Depois, gere o contrato de novo; se ele já foi para a Clicksign, cancele o envio para assinatura e envie de novo.</div>";
     h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="d-corr-salvar"' + dis + ">Salvar correção</button> " +
       ((c.campos || []).length === 1 && l.lido && !(c.campos[0].opcoes && c.campos[0].opcoes.length)
         ? '<button type="button" class="bt ghost bt-mini" data-acao="d-corr-usar"' + dis + ">Usar o do documento</button> " : "") +
@@ -3134,7 +3134,7 @@
       var quanto = lista ? (valor ? "R$ " + valor : moedaRec(it.falta)) + " " : "";
       if (!window.confirm("Confirmar o recebimento de " + quanto + "do " + it.rotulo + " em " + dataRec(data) + "?" +
                           (estadoR.emailConfigurado ? " Um e-mail de aviso será enviado." : "") +
-                          (it.baixaMC && estadoR.vendaLancada ? " O robô dá baixa no Mais Controle." : ""))) return;
+                          (it.baixaMC && estadoR.vendaLancada ? " A baixa é dada no Mais Controle." : ""))) return;
       uiR.ocupado = id; uiR.msg = ""; pintarR();
       var payload = { action: "recebimentoConfirmar", pageId: pageId, item: id, data: data };
       if (lista && valor) payload.valor = valor;
@@ -3171,7 +3171,7 @@
       if (!it) return;
       if (!v) { uiR.msg = "Informe o novo valor esperado do " + it.rotulo + " (0 para zerar)."; pintarR(); return; }
       if (!window.confirm("Mudar o valor esperado do " + it.rotulo + " para R$ " + v + "?" +
-                          (/^(SINAL|FINANCIAMENTO|FGTS)$/.test(id) && estadoR.vendaLancada ? " O robô acerta a parcela no Mais Controle." : ""))) return;
+                          (/^(SINAL|FINANCIAMENTO|FGTS)$/.test(id) && estadoR.vendaLancada ? " A parcela é acertada no Mais Controle." : ""))) return;
       uiR.ocupado = id; uiR.msg = ""; pintarR();
       var r = await chamarVenda({ action: "recebimentoValor", pageId: pageId, item: id, valor: v, rotulo: it.outro ? it.rotulo : undefined });
       if (!vivo()) return;
@@ -3217,7 +3217,7 @@
       if (!vivo()) return;
       depoisR(r, function (x) { return x.ok ? "Pedido ao Mais Controle na fila." + (MC_PEDIDO[x.mcPedido] || "") : mensagemRec(x); });
     }
-    /* entrega 14: "Ver contrato assinado" — o PDF vem pela sessão do portal, como o pré-contrato */
+    /* entrega 14: "Ver contrato assinado" — o PDF vem pela sessão do portal, como a prévia do contrato */
     async function verAssinado() {
       if (ctxA.ocupado) return;
       var w = window.open("about:blank", "_blank");
@@ -3618,7 +3618,7 @@
         var ra = await chamarVenda({ action: "mcAnexar", pageId: pageId, zip: acao === "mc-anexar-zip" });
         if (!vivo()) return;
         uiM.ocupado = null;
-        uiM.msg = ra.ok ? "Pedido ao robô do servidor — em 1 a 3 minutos clique em Atualizar." : mensagemMC(ra);
+        uiM.msg = ra.ok ? "Pedido ao Mais Controle — em 1 a 3 minutos clique em Atualizar." : mensagemMC(ra);
         await carregarMC();
         return;
       }
@@ -3628,7 +3628,7 @@
       var r = await chamarVenda({ action: "mcLancar", pageId: pageId, aplicar: aplicar });
       if (!vivo()) return;
       uiM.ocupado = null;
-      uiM.msg = r.ok ? (aplicar ? "Lançamento pedido ao robô." : "Prévia pedida ao robô.") : mensagemMC(r);
+      uiM.msg = r.ok ? (aplicar ? "Lançamento pedido ao Mais Controle." : "Prévia pedida ao Mais Controle.") : mensagemMC(r);
       await carregarMC();
       if (r.ok) acompanharMC(24);
     }
@@ -3702,7 +3702,7 @@
         return;
       }
       if (acao === "c-ver-cfd-pre" || acao === "c-ver-cfd-pos") {
-        /* 28/10: termo de confissão — o PDF vem pelo portal, como o pré-contrato */
+        /* 28/10: termo de confissão — o PDF vem pelo portal, como a prévia do contrato */
         var wc = window.open("about:blank", "_blank");
         uiC.ocupadoContrato = "ver"; uiC.msg = ""; pintar();
         seq = ++seqC;
@@ -3781,8 +3781,8 @@
       if (acao === "c-pre" || acao === "c-aprovar") {
         var aprovar = acao === "c-aprovar";
         if (!aprovar && etapaContrato(estadoC) === "FINAL" &&
-            !window.confirm("Gerar de novo? Primeiro sai um pré-contrato para conferir; o contrato atual só é substituído quando você conferir.")) return;
-        if (aprovar && !window.confirm("Você conferiu o pré-contrato e está tudo certo? O contrato final será gerado (sem grifos).")) return;
+            !window.confirm("Gerar de novo? Primeiro sai uma prévia do contrato para conferir; o contrato atual só é substituído quando você conferir.")) return;
+        if (aprovar && !window.confirm("Você conferiu a prévia do contrato e está tudo certo? O contrato final será gerado (sem grifos).")) return;
         uiC.ocupadoContrato = aprovar ? "aprovar" : "pre"; uiC.msg = ""; uiC.faltas = null; uiC.campos = null; uiC.link = null; pintar();
         seq = ++seqC;
         r = await chamarVenda({ action: aprovar ? "aprovarPreContrato" : "gerarPreContrato", pageId: pageId }, 150000);
@@ -3790,7 +3790,7 @@
         return tratarGeracao(r, aprovar);
       }
       if (acao === "c-salvar-campos") {
-        /* entrega 12: grava no cadastro o que foi digitado (e a conta digitada, se houver) e gera o pré-contrato */
+        /* entrega 12: grava no cadastro o que foi digitado (e a conta digitada, se houver) e gera a prévia do contrato */
         guardarRascunho();
         var entradas = [];
         raiz.querySelectorAll("[data-campo]").forEach(function (x) { entradas.push({ chave: x.getAttribute("data-campo"), valor: x.value }); });
@@ -3873,7 +3873,7 @@
           pintarA();
           return;
         }
-        var feito = (r.gravou && r.gravou.length) ? "Salvo na venda. Gere o pré-contrato de novo." : "Nada mudou.";
+        var feito = (r.gravou && r.gravou.length) ? "Salvo na venda. Gere a prévia do contrato de novo." : "Nada mudou.";
         await carregarContrato();   /* relê as faltas: o que foi corrigido some do bloco */
         if (!vivo()) return;
         uiC.msg = feito;
@@ -3906,7 +3906,7 @@
       }
       var texto = String(uiC.condRasc || "");
       if (texto.trim() === c.texto.trim()) { uiC.msg = "Nada mudou nas condições especiais."; pintar(); return; }
-      if (!window.confirm(texto.trim() ? "Salvar estas condições especiais no contrato desta venda? O pré-contrato precisa ser gerado de novo." :
+      if (!window.confirm(texto.trim() ? "Salvar estas condições especiais no contrato desta venda? A prévia do contrato precisa ser gerada de novo." :
                                          "Apagar as condições especiais desta venda? O contrato volta a sair com \"Não há.\".")) return;
       uiC.ocupadoContrato = "condesp"; pintar();
       var rs = await chamarVenda({ action: "salvarCondicoesEspeciais", pageId: pageId, texto: texto });
@@ -3916,7 +3916,7 @@
         estadoC.condicoes = { coluna: true, texto: rs.condicoes.texto, por: rs.condicoes.por, em: rs.condicoes.em, max: rs.condicoes.max || c.max };
         uiC.condRasc = null; uiC.condIA = ""; uiC.condPedido = ""; sujoC.condesp = false;
         if (estadoC.pre) estadoC.pre.desatualizado = true;
-        uiC.msg = "Condições especiais salvas — gere o pré-contrato de novo.";
+        uiC.msg = "Condições especiais salvas — gere a prévia do contrato de novo.";
       } else uiC.msg = mensagemContrato(rs);
       pintar();
     }
@@ -4102,7 +4102,7 @@
         return;
       }
       if (!window.confirm(voltar ? "Voltar ao fluxo da proposta (simulador)? A alteração fica guardada no histórico."
-                                 : "Salvar este fluxo? O pré-contrato precisa ser gerado de novo e fica registrado quem alterou e o motivo.")) return;
+                                 : "Salvar este fluxo? A prévia do contrato precisa ser gerada de novo e fica registrado quem alterou e o motivo.")) return;
       uiC.ocupadoContrato = "fluxo-salvar"; pintar();
       var rs = await chamarVenda(voltar ? { action: "salvarFluxo", pageId: pageId, voltar: true, motivo: ed.motivo }
         : { action: "salvarFluxo", pageId: pageId, fluxo: ed.semComissao ? { valor: ed.valor, linhas: ed.linhas, semComissao: true } : { valor: ed.valor, linhas: ed.linhas },
@@ -4113,7 +4113,7 @@
         estadoC.fluxo = fluxoDoEstado(rs.fluxo || {});
         uiC.fluxoEd = null;
         if (estadoC.pre) estadoC.pre.desatualizado = true;
-        uiC.msg = voltar ? "Fluxo da proposta restaurado — gere o pré-contrato de novo." : "Fluxo salvo.";
+        uiC.msg = voltar ? "Fluxo da proposta restaurado — gere a prévia do contrato de novo." : "Fluxo salvo.";
         try { window.dispatchEvent(new CustomEvent(EVENTO_GRAVADO, { detail: detalheFluxoGravado(pageId, ed, voltar) })); }
         catch (e) { /* sem CustomEvent: o quadro do cartão só atualiza ao reabrir a unidade */ }
       } else uiC.msg = mensagemContrato(rs);
@@ -4214,7 +4214,7 @@
         if (antes.fluxo) estadoC.fluxo = antes.fluxo;              /* 29/10: os blocos do fluxo e das condições */
         if (antes.condicoes) estadoC.condicoes = antes.condicoes;  /* especiais não somem depois de gerar */
         uiC.faltas = null; uiC.campos = null;
-        var feito = aprovar ? "Contrato gerado." : "Pré-contrato gerado — abra, confira o que está grifado e clique em Conferi.";
+        var feito = aprovar ? "Contrato gerado." : "Prévia do contrato gerada — abra, confira o que está grifado e clique em Conferi.";
         if (aprovar) avisarContratoGerado(pageId, estadoC);
         /* condomínio: campos que saíram em branco ("____") não travam, mas avisam */
         uiC.msg = r.avisos && r.avisos.length ? feito + " Atenção: " + r.avisos.join("; ") + "." : feito;
@@ -4254,7 +4254,7 @@
           if (r.desatualizado && estadoC.pre && etapaContrato(estadoC) === "PRE") estadoC.pre.desatualizado = true;
         }
         uiC.contaDigitar = undefined; limparRascunhoConta();
-        uiC.msg = "Conta de recebimento salva." + (r.desatualizado ? " Gere o pré-contrato de novo." : "");
+        uiC.msg = "Conta de recebimento salva." + (r.desatualizado ? " Gere a prévia do contrato de novo." : "");
       } else uiC.msg = mensagemContrato(r);
       pintar();
     }
