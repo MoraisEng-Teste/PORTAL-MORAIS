@@ -1156,7 +1156,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
             <option value="INCOMPLETO">Cadastro incompleto</option>
             <option value="COMPLETO">Cadastro completo</option>
           </select>
-          <label class="cd-chk"><input type="checkbox" id="cd-todas" checked onchange="try{localStorage.setItem('cd_todas',this.checked?'1':'0')}catch(e){};condRender()"> Todas as colunas</label>
+          <label class="cd-chk"><input type="checkbox" id="cd-todas" onchange="try{localStorage.setItem('cd_todas',this.checked?'1':'0')}catch(e){};condRender()"> Todas as colunas</label>
           <button class="cd-bt" onclick="condCarregar(true)">↻ Atualizar</button>
           <span class="count" id="cd-count"></span>
         </div>
