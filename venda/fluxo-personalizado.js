@@ -160,7 +160,8 @@ var FluxoPersonalizado = (function () {
       }).join("");
     }
     function opDil() { return [0, 25, 50, 75, 100].map(function (p) { return '<option value="' + p + '">' + (p ? p + "%" : "não diluir") + "</option>"; }).join(""); }
-    el.innerHTML = '<div class="alt-box"><div class="alt-tit">Simular outro fluxo — sem proposta e sem dados do cliente</div>' +
+    el.innerHTML = '<div class="alt-box"><div class="sim-aviso ok" role="note" style="margin:0 0 8px">Esta tela não grava nada: serve para montar e imprimir um fluxo.</div>' +
+      '<div class="alt-tit">Simular outro fluxo — sem proposta e sem dados do cliente</div>' +
       '<div class="alt-aj" style="margin-bottom:10px">Só no portal (o corretor não tem). Nada é gravado nem enviado: sai um quadro para imprimir ou copiar.' +
       (cfg.origem ? " <b>" + esc(cfg.origem) + "</b>" : "") + "</div>" +
       '<div class="alt-grade">' +
@@ -183,6 +184,7 @@ var FluxoPersonalizado = (function () {
       '<div class="fxp-sub">Fluxo — mexa em qualquer valor: a linha fica travada 🔒 e as outras se ajustam pela régua do simulador</div>' +
       '<div class="fxp-barra"><button type="button" class="bt ghost" data-b="add">＋ Linha</button><button type="button" class="bt ghost" data-b="enc" title="Arruma as pré-chaves mês a mês, sem mês repetido nem vazio">Encaixar as pré-chaves</button>' +
       '<button type="button" class="bt ghost" data-b="solta">Destravar tudo</button><button type="button" class="bt ghost" data-b="padrao">Voltar ao fluxo padrão</button></div>' +
+      '<div data-z="desf" role="status" aria-live="polite"></div>' +
       '<div class="fxp-rol"><table class="fxp-tab"><thead><tr><th></th><th>Tipo</th><th>Valor de cada (R$)</th><th>Qtde</th><th>1ª data</th><th>Última</th><th style="text-align:right">Total</th><th>Descrição</th><th></th></tr></thead><tbody data-z="linhas"></tbody></table></div>' +
       '<div class="fxp-chips" data-z="somas"></div><div data-z="msgFluxo" style="margin-top:10px"></div>' +
       '<div class="fxp-barra"><button type="button" class="bt verde" data-b="pdf">🖨 Imprimir / salvar em PDF</button><button type="button" class="bt az" data-b="copiar">Copiar como texto</button><span class="alt-aj" data-z="msgSaida"></span></div>' +
@@ -325,10 +327,19 @@ var FluxoPersonalizado = (function () {
       fluxo.linhas = r.linhas; mudou = r.mudou || [];
     }
     function encaixar(k) { var r = F.encaixarPre(fluxo, k == null ? null : k); if (r && r.linhas) fluxo.linhas = r.linhas; }
+    /* 20/11/2026 (ux): "Tirar a linha" guarda a linha tirada e oferece Desfazer por 8 s (sem pergunta) */
+    var desf = null, desfT = 0;
+    function limparDesf() { if (desfT) { clearTimeout(desfT); desfT = 0; } desf = null; var d = z("desf"); if (d) d.innerHTML = ""; }
+    function oferecerDesf(snap) {
+      limparDesf(); desf = snap;
+      var d = z("desf"); if (d) d.innerHTML = '<div class="sim-aviso ok" style="margin:0 0 8px">Linha tirada. <button type="button" class="bt ghost" data-b="desfazer">Desfazer</button></div>';
+      desfT = setTimeout(limparDesf, 8000);
+    }
     function renumerar(fn) { var nt = {}; Object.keys(travas).forEach(function (j) { var n = fn(Number(j)); if (n !== null) nt[n] = true; }); travas = nt; }
 
     el.addEventListener("change", function (e) {
       var a = e.target, cf = a.getAttribute("data-f"), cc = a.getAttribute("data-c");
+      limparDesf();   // qualquer outra mudança encerra a chance de desfazer (senão o desfazer apagaria a mudança nova)
       if (cf) {
         if (cf === "un") {
           if (editado && !confirm("Trocar de unidade apaga os ajustes feitos no fluxo. Trocar?")) { a.value = sel ? String(sel.unidade) : ""; return; }
@@ -353,6 +364,11 @@ var FluxoPersonalizado = (function () {
     el.addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b || !el.contains(b)) return;
       var bb = b.getAttribute("data-b"), a = b.getAttribute("data-a");
+      if (bb === "desfazer") {
+        if (desf && fluxo) { fluxo.linhas = desf.linhas; travas = desf.travas; mudou = []; msgGuia = ""; editado = desf.editado; limparDesf(); desenhar(); }
+        return;
+      }
+      if (a !== "tirar") limparDesf();
       if (bb === "fechar") { if (!editado || confirm("Fechar apaga o fluxo montado (nada foi gravado). Fechar?")) { el.innerHTML = ""; if (cfg.aoFechar) cfg.aoFechar(); } return; }
       if (bb === "finmax") { f("fin").value = din(res.finMax); recalcular(true); return; }
       if (!fluxo) return;
@@ -382,7 +398,7 @@ var FluxoPersonalizado = (function () {
       var k = Number(tr.getAttribute("data-k"));
       if (a === "trava") { if (travas[k]) delete travas[k]; else travas[k] = true; guiar(); }
       else if (a === "absorver") { var r = F.redistribuir(fluxo, k); if (r.erro) msgGuia = r.erro; else { fluxo.linhas = r.linhas; mudou = [k]; msgGuia = ""; } }
-      else if (a === "tirar") { fluxo.linhas.splice(k, 1); renumerar(function (j) { return j < k ? j : j > k ? j - 1 : null; }); guiar(); }
+      else if (a === "tirar") { oferecerDesf({ linhas: JSON.parse(JSON.stringify(fluxo.linhas)), travas: JSON.parse(JSON.stringify(travas)), editado: editado }); fluxo.linhas.splice(k, 1); renumerar(function (j) { return j < k ? j : j > k ? j - 1 : null; }); guiar(); }
       editado = true; desenhar();
     });
 

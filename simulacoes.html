@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Simulações · Reserva dos Ipês — Morais</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <style>
 :root{color-scheme:light}
@@ -150,6 +152,18 @@ html[data-tema="escuro"] .hist-email .hist-corpo.email{background:#fdfdfb}
 .an-det{margin-top:14px;border-top:1px solid var(--border2);padding-top:12px}
 .fluxo .dia span{font-size:10px;color:var(--text4);margin-top:4px;white-space:nowrap}
 #sim-mapa svg{width:100%;height:auto;min-width:760px}
+/* 20/11/2026 (ux) — mapa da Análise: no celular rola de lado dentro do próprio contêiner, sem esticar a página */
+#tab-analise .card{min-width:0}
+#an-mapa{max-width:100%}
+@media(max-width:600px){#an-mapa svg{width:100%;height:auto;min-width:760px}}
+.leg-bt{display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;background:none;border-radius:999px;padding:4px 10px;margin:0 2px;
+  font:inherit;font-size:12px;color:var(--text3);cursor:pointer}
+.leg-bt:hover{border-color:var(--border)}
+.leg-bt.on{border-color:var(--azul);background:var(--bg3);color:var(--text);font-weight:700}
+.an-disp{margin-top:10px}
+.an-disp summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--azul);min-height:32px}
+.an-disp-lista{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+@media(max-width:600px){.leg-bt,.disp-item{min-height:44px}.an-disp summary{min-height:44px;display:flex;align-items:center}}
 @media(max-width:720px){.detalhe-media .faixa{grid-template-columns:1fr;gap:2px}}
 html[data-tema="escuro"] .kpi .val.vermelho{color:#f3a29a}
 html[data-tema="escuro"] .kpi .val.verde{color:#8ce0a5}
@@ -203,6 +217,10 @@ thead th{background:var(--azul);color:#fff;text-align:center;padding:9px 11px;fo
   font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.3}
 thead th:last-child{border-right:0}
 thead th:hover{background:var(--azul-esc)}
+#prop-tab thead th:not(.ord){cursor:default}   /* só "Criada" ordena */
+#prop-tab thead th:not(.ord):hover{background:var(--azul)}
+@media(max-width:600px){.sim-ad-bt{min-height:44px;min-width:44px}}
+.prop-maiscol{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text3);align-self:center;min-height:44px;cursor:pointer}
 thead th .arr{opacity:.55;font-size:10px;margin-left:3px;color:#fff}
 thead th.sortA .arr,thead th.sortD .arr{opacity:1}
 thead th:first-child{text-align:left}
@@ -577,7 +595,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
 
     <div id="conteudo" class="hide">
       <div class="tabs-outer"><div class="tabs">
-        <button class="tab on" data-tab="painel" onclick="trocarTab('painel')">Painel</button>
+        <button class="tab on" data-tab="painel" onclick="trocarTab('painel')">Indicadores</button>
         <button class="tab" data-tab="recebidas" onclick="trocarTab('recebidas')">Simulações Recebidas</button>
         <button class="tab" data-tab="propostas" onclick="trocarTab('propostas')">Propostas</button>
         <button class="tab" data-tab="analise" onclick="trocarTab('analise')">Análise de vendas</button>
@@ -703,6 +721,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           <span style="font-size:12px;color:var(--text3)" id="an-legenda"></span></div>
         <div class="card">
           <div id="an-mapa" style="overflow:auto"></div>
+          <div id="an-disp"></div>
           <div id="an-detalheUn" class="an-det"></div>
           <div id="an-diverg" style="margin-top:10px"></div>
         </div>
@@ -773,6 +792,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
             <div class="fcampo"><label>Correspondente</label>
               <select id="prop-corr-f" onchange="propRender()"><option value="">Todos</option></select></div>
             <button class="bt ghost" onclick="propCarregar(true,this)">↻ Atualizar agora</button>
+            <label class="prop-maiscol"><input type="checkbox" id="prop-maiscol" onchange="try{localStorage.setItem('prop_maiscol',this.checked?'1':'0')}catch(e){};propRender()"> Mais colunas</label>
             <div class="fcampo"><label>Ordem</label>
               <div class="seg" id="seg-ordem">
                 <button class="seg-bt on" data-po="asc" onclick="propOrdenar('asc')" title="Padrão: a que chegou primeiro fica no topo">↑ Mais antigas primeiro</button>
@@ -929,17 +949,60 @@ function simNet(on){
 addEventListener("online",()=>simNet(true));
 addEventListener("offline",()=>simNet(false));
 
-function trocarTab(nome){
+/* 20/11/2026 (ux) — a aba aberta lembra a última usada; na primeira vez abre em Propostas (o trabalho do dia) */
+const SIM_ABA_KEY="morais_sim_aba";
+const SIM_ABAS=["painel","recebidas","propostas","analise","unidades","servidores"];
+/* Endereço e botão Voltar: a aba vai no hash (#propostas, #indicadores…) e a ficha aberta ganha um passo
+   (#propostas/ficha) para o Voltar fechá-la em vez de sair da página. Nunca vai id de proposta nem dado de pessoa. */
+const SIM_HASH={painel:"indicadores",recebidas:"recebidas",propostas:"propostas",analise:"analise",unidades:"unidades",servidores:"servidores"};
+function simAbaDeHash(h){
+  const t=String(h||"").replace(/^#/,"").split("/")[0];
+  return SIM_ABAS.find(n=>SIM_HASH[n]===t)||"";
+}
+let _abaAtual="", _fichaHist=false, _fichaHash="";
+function simHistAba(nome, semHist, inicial){
+  _abaAtual=nome;
+  const h="#"+SIM_HASH[nome];
+  try{
+    if(inicial) history.replaceState(null,"",h);
+    else if(!semHist && location.hash!==h) history.pushState(null,"",h);
+  }catch(e){}
+}
+function simHistFicha(){
+  if(_fichaHist) return;                 // já há um passo da ficha: não empilha outro
+  try{ _fichaHash="#"+(SIM_HASH[_abaAtual]||"propostas")+"/ficha"; history.pushState(null,"",_fichaHash); _fichaHist=true; }catch(e){}
+}
+addEventListener("popstate",function(){
+  const h=location.hash, sub=h.replace(/^#/,"").split("/")[1]||"", nome=simAbaDeHash(h);
+  const m=document.getElementById("sim-modal"), aberta=!!m && !m.classList.contains("hide");
+  if(aberta && _fichaHist && sub!=="ficha"){ simPedirFechar(true); return; }   // Voltar com a ficha aberta: fecha (pergunta do e-mail incluída)
+  if(aberta && !_fichaHist) simFecharDet(true);
+  if(sub==="ficha" && !_fichaHist){ try{ history.replaceState(null,"","#"+SIM_HASH[nome||"propostas"]); }catch(e){} }   // a ficha não se refaz pelo Avançar
+  if(!nome || nome===_abaAtual) return;
+  const bt=document.querySelector('.tab[data-tab="'+nome+'"]'); if(!bt||bt.classList.contains("hide")) return;
+  trocarTab(nome,true);
+});
+function simAbaInicial(){
+  let a=simAbaDeHash(location.hash);
+  if(!a){ try{ a=localStorage.getItem(SIM_ABA_KEY)||""; }catch(e){} }
+  if(SIM_ABAS.indexOf(a)<0) a="propostas";
+  if(a==="servidores" && String((S&&S.tipo)||"").toUpperCase()!=="ADM") a="propostas";
+  return a;
+}
+function trocarTab(nome, semHist, inicial){
+  try{ localStorage.setItem(SIM_ABA_KEY, nome); }catch(e){}
+  simHistAba(nome, semHist, inicial);
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.tab===nome));
   /* set/26 r5 — a aba "Nova proposta" saiu: o preenchimento é pelo mapa
      (proposta.html), do mesmo jeito que a simulação. Aqui o portal só
      DECIDE sobre proposta que já chegou. */
   ["painel","recebidas","propostas","analise","unidades","servidores"].forEach(n=>document.getElementById("tab-"+n).classList.toggle("hide", n!==nome));
-  if(nome==="unidades" && !UNS.length) simCarregarUnidades();
+  /* na abertura da página o iniciar() já pede propostas e unidades: não repete o pedido */
+  if(nome==="unidades" && !UNS.length && !inicial) simCarregarUnidades();
   clearInterval(window._srvTimer);
   if(nome==="servidores"){ srvCarregar(); window._srvTimer=setInterval(()=>{ if(!document.hidden) srvCarregar(); }, 20000); }
-  if(nome==="propostas") propCarregar();   // r40 — revalida toda vez (respeita o TTL)
-  if(nome==="analise"){ propCarregar(); anCarregarPlanilha(true); if(!UNS.length) simCarregarUnidades(); else analiseRender(); }   // 03/11: planilha relida a cada abertura
+  if(nome==="propostas" && !inicial) propCarregar();   // r40 — revalida toda vez (respeita o TTL)
+  if(nome==="analise"){ if(!inicial) propCarregar(); anCarregarPlanilha(true); if(!UNS.length){ if(!inicial) simCarregarUnidades(); } else analiseRender(); }   // 03/11: planilha relida a cada abertura
 }
 
 /* ---------- boot ---------- */
@@ -974,6 +1037,7 @@ function iniciar(){
        terminou: as três listas vão juntas e a barra anda de verdade. */
     var tarefas=[["Simulações",simCarregar()],["Propostas",propCarregar()],["Unidades",simCarregarUnidades()]];
     var prontas=0;
+    trocarTab(simAbaInicial(), true, true);   // 20/11/2026: abre na última aba usada (1ª vez: Propostas)
     portalCarga(0, tarefas.map(function(t){return t[0];}).join(", "));
     tarefas.forEach(function(t){
       Promise.resolve(t[1]).catch(function(){}).then(function(){
@@ -989,7 +1053,9 @@ function iniciar(){
          MESMA fila (uma requisição por vez), e a fila nunca alcançava. */
       if(window._simRodando) return;
       window._simRodando = true;
-      Promise.all([simCarregar(true), propCarregar(true), simCarregarUnidades(true)].map(p=>Promise.resolve(p).catch(()=>{})))
+      /* 20/11/2026 (ux): com campo da aba Unidades em foco ou gravação pendente, não relê as unidades agora
+         (redesenharia a tabela por cima da edição) — fica para a próxima volta */
+      Promise.all([simCarregar(true), propCarregar(true), simUnidadesOcupada() ? null : simCarregarUnidades(true)].map(p=>Promise.resolve(p).catch(()=>{})))
         .then(()=>{ window._simRodando = false; });
     }, POLL_SIM_MS, _pollSim);
   }catch(e){
@@ -1188,7 +1254,7 @@ function simRenderVgv(){
   const med = arr => arr.length ? arr.reduce((a,u)=>a+val(u),0)/arr.length : 0;
   const cards=[
     ["VGV total", simBRL(UNS.reduce((a,u)=>a+val(u),0)), qtd(UNS.length,"unidade","unidades"), null],
-    ["VGV vendido", simBRL(vendidas.reduce((a,u)=>a+val(u),0)), qtd(vendidas.length,"vendida","vendidas"), null],
+    ["VGV · contrato gerado", simBRL(vendidas.reduce((a,u)=>a+val(u),0)), qtd(vendidas.length,"vendida","vendidas"), null, "Conta as unidades marcadas como vendidas na base de unidades."],
     ["VGV em estoque", simBRL(estoque.reduce((a,u)=>a+val(u),0)), qtd(estoque.length,"disponível ou reservada","disponíveis ou reservadas"), null],
     ["Preço médio · vendidas", simBRL(med(vendidas)), null, med(vendidas)],
     ["Preço médio · estoque", simBRL(med(estoque)), null, med(estoque)],
@@ -1201,6 +1267,7 @@ function simRenderVgv(){
       const bom = dif>=0;
       sub = `<div class="sub ${bom?"meta-ok":"meta-ruim"}">${bom?"▲":"▼"} ${simBRL(Math.abs(dif))} ${bom?"acima":"abaixo"} da meta de ${simBRL(VGV_META)}</div>`;
     }
+    if(k[4]) sub += `<div class="sub" style="font-size:11px">${esc(k[4])}</div>`;
     return `<div class="kpi"><div class="lab">${k[0]}</div><div class="val">${k[1]}</div>${sub}</div>`;
   }).join("");
 }
@@ -1322,6 +1389,8 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
   }
   const cor={vendida:"#C0392B", reservada:"#1F6FB2", preferencia:"#7B4FA0", disponivel:"#1a6b40", indisponivel:"#9aa8b2"};
   let c={vendida:0,reservada:0,preferencia:0,disponivel:0,indisponivel:0};
+  const dispLista=[];   // disponíveis que passam nos filtros (lista abaixo do mapa da Análise)
+  MAPA_CFG[alvo]={leg:alvoLegenda, clicavel:clicavel};
   UNS.forEach(u=>{
     const id=String(u.unidade||"").trim();
     const pol=svg.querySelector('[id="'+id+'"]') || svg.querySelector('[id="'+id.padStart(2,"0")+'"]');
@@ -1339,13 +1408,16 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
     /* 03/11 (dono) — no mapa da Análise de vendas manda a PLANILHA CASAS CONDOMÍNIO */
     const pl=clicavel ? anPlanilhaDaUnidade(id) : null;
     if(pl && pl.estado) e=pl.estado;
-    c[e]++;
+    /* 20/11/2026 (ux): a legenda conta só o que passa nos filtros Tipo/Rua (os da Análise) */
+    const passa = !clicavel || anPassaF(u);
+    if(passa){ c[e]++; if(e==="disponivel") dispLista.push(u); }
+    pol.dataset.e=e; pol.dataset.u=String(u.unidade||"").trim();
     pol.setAttribute("fill", cor[e]);
     pol.setAttribute("fill-opacity","0.62");
     pol.setAttribute("stroke","#fff");
     pol.setAttribute("stroke-width","6");
-    pol.style.cursor = clicavel ? "pointer" : "default";
-    if(clicavel){ pol.onclick=function(){ anDetalhe(id); }; }
+    pol.style.cursor = "pointer";
+    pol.onclick=function(){ anDetalhe(id); };   // o resumo da unidade abre nas duas telas (Análise e Unidades)
     let t=pol.querySelector("title");
     if(!t){ t=document.createElementNS("http://www.w3.org/2000/svg","title"); pol.appendChild(t); }
     t.textContent="Un. "+id+" · T"+(u.tipo||"—")+" · "+simBRL(Number(u.valorVenda)||0)+" · "+
@@ -1353,12 +1425,43 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
       (pl && pl.cliente ? " para "+pl.cliente : "");
   });
   const leg=document.getElementById(alvoLegenda);
+  const sel=MAPA_SIT[alvo]||"";
+  const bt=(e,txt,mostrar)=> mostrar===false ? "" :
+    `<button type="button" class="leg-bt${sel===e?" on":""}" aria-pressed="${sel===e}" onclick="mapaSitClicar('${alvo}','${e}')" title="Mostrar só: ${esc(txt.replace(/^\d+ /,""))} (clique de novo para limpar)"><b style="color:${cor[e]}">■</b> ${txt}</button>`;
   if(leg) leg.innerHTML=
-    `<b style="color:${cor.disponivel}">■</b> ${qtd(c.disponivel,"disponível","disponíveis")} · `+
-    `<b style="color:${cor.reservada}">■</b> ${qtd(c.reservada,"reservada","reservadas")} · `+
-    (c.preferencia ? `<b style="color:${cor.preferencia}">■</b> ${qtd(c.preferencia,"reserva paga","reservas pagas")} · ` : ``)+
-    `<b style="color:${cor.vendida}">■</b> ${qtd(c.vendida,"vendida","vendidas")} · `+
-    `<b style="color:${cor.indisponivel}">■</b> ${c.indisponivel} em breve`;
+    bt("disponivel",qtd(c.disponivel,"disponível","disponíveis"))+
+    bt("reservada",qtd(c.reservada,"reservada","reservadas"))+
+    bt("preferencia",qtd(c.preferencia,"reserva paga","reservas pagas"),c.preferencia>0||sel==="preferencia")+
+    bt("vendida",qtd(c.vendida,"vendida (assinada)","vendidas (assinadas)"))+
+    bt("indisponivel",c.indisponivel+" em breve");
+  mapaFiltroAplicar(alvo);
+  if(clicavel) anDispLista(dispLista);
+}
+/* situação escolhida na legenda de cada mapa ("" = todas); clicar na mesma situação limpa */
+const MAPA_SIT={}, MAPA_CFG={};
+function mapaSitClicar(alvo,e){
+  MAPA_SIT[alvo]=(MAPA_SIT[alvo]===e)?"":e;
+  const cfg=MAPA_CFG[alvo]; if(cfg) pintarMapa(alvo,cfg.leg,cfg.clicavel);
+}
+/* apaga no mapa o que não passa no filtro de situação (e, na Análise, Tipo/Rua) */
+function mapaFiltroAplicar(alvo){
+  const svg=document.querySelector("#"+alvo+" svg"); if(!svg) return;
+  const sel=MAPA_SIT[alvo]||"", cfg=MAPA_CFG[alvo]||{};
+  svg.querySelectorAll("[data-e]").forEach(pol=>{
+    let ok=!sel || pol.dataset.e===sel;
+    if(ok && cfg.clicavel){ const u=UNS.find(x=>String(x.unidade||"").trim()===pol.dataset.u); if(u && !anPassaF(u)) ok=false; }
+    pol.style.opacity=ok?"":"0.15";
+  });
+}
+/* lista recolhível das disponíveis, abaixo do mapa da Análise */
+function anDispLista(lista){
+  const el=document.getElementById("an-disp"); if(!el) return;
+  const ant=el.querySelector("details"), aberto=!!(ant&&ant.open);
+  const ord=lista.slice().sort((a,b)=>(parseInt(a.unidade,10)||0)-(parseInt(b.unidade,10)||0));
+  el.innerHTML = '<details class="an-disp"'+(aberto?" open":"")+'><summary>Disponíveis ('+ord.length+')</summary><div class="an-disp-lista">'+
+    (ord.length ? ord.map(u=>'<button type="button" class="bt ghost disp-item" onclick="anDetalhe(\''+esc(String(u.unidade).trim())+'\')">Un. '+esc(String(u.unidade))+
+       ' · T'+esc(String(u.tipo||"—"))+' · '+simBRL(Number(u.valorVenda)||0)+'</button>').join("")
+      : '<span class="muted" style="font-size:12.5px">Nenhuma unidade disponível com esses filtros.</span>')+'</div></details>';
 }
 
 /* =====================================================================
@@ -1510,7 +1613,8 @@ function anTop(){
   const pct=U.length?r.acumulado.n/U.length*100:0;
   el.innerHTML=
     '<div class="kpi hero"><div class="lab">VGV vendido · '+esc(p.rotulo)+'</div><div class="val">'+simBRL(r.vgv)+'</div>'+
-      (r.ant?delta(r.vgv,r.ant.vgv,r.ant.rotulo):'<div class="sub">'+qtd(r.n,'contrato assinado','contratos assinados')+'</div>')+'</div>'+
+      (r.ant?delta(r.vgv,r.ant.vgv,r.ant.rotulo):'<div class="sub">'+qtd(r.n,'contrato assinado','contratos assinados')+'</div>')+
+      '<div class="sub" style="font-size:11px">Conta só contrato assinado por todos, no mês da assinatura.</div></div>'+
     '<div class="kpi"><div class="lab">Casas vendidas</div><div class="val">'+r.n+'</div>'+
       '<div class="sub">'+r.acumulado.n+' de '+U.length+' assinadas até hoje · ticket '+(r.n?simBRL(r.ticket):"—")+'</div><div class="an-mbar"><i style="width:'+pct.toFixed(1)+'%"></i></div></div>'+
     '<div class="kpi"><div class="lab">Em assinatura · fora do VGV</div><div class="val">'+simBRL(r.assinando.vgv)+'</div><div class="sub">'+qtd(r.assinando.n,'contrato enviado','contratos enviados')+', faltam assinaturas</div></div>'+
@@ -1518,14 +1622,7 @@ function anTop(){
     (r.semData?'<div class="sim-aviso err" style="grid-column:1/-1">'+qtd(r.semData,'contrato assinado','contratos assinados')+' sem data de assinatura válida: não entram em período nenhum. Corrija a data na Planilha Casas Condomínio.</div>':'');
 }
 /* tipo/rua: apaga no mapa as casas fora do filtro */
-function anMapaFiltro(){
-  const svg=document.querySelector("#an-mapa svg"); if(!svg) return;
-  UNS.forEach(u=>{
-    const id=String(u.unidade||"").trim();
-    const pol=svg.querySelector('[id="'+id+'"]')||svg.querySelector('[id="'+id.padStart(2,"0")+'"]');
-    if(pol) pol.style.opacity=anPassaF(u)?"":"0.15";
-  });
-}
+function anMapaFiltro(){ mapaFiltroAplicar("an-mapa"); }   // 20/11/2026: junto com o filtro de situação da legenda
 function analiseRender(){
   if(!document.getElementById("an-vgv")) return;
   /* só com a aba aberta: o Apps Script atende um pedido por vez */
@@ -2083,7 +2180,13 @@ function simParaProposta(id){
   window.open("https://moraiseng-teste.github.io/PORTAL-MORAIS/simulador/proposta.html?tipo="+encodeURIComponent(d.tipo)+
     "&unidade="+encodeURIComponent(d.unidade)+"&daSimulacao=1", "_blank");
 }
-function simFecharDet(){ document.getElementById("sim-modal").classList.add("hide"); }
+function simFecharDet(viaPop){
+  document.getElementById("sim-modal").classList.add("hide");
+  if(_fichaHist){                         // a ficha tinha um passo no histórico: desfaz esse passo (se for o do topo)
+    _fichaHist=false;
+    if(!viaPop && location.hash===_fichaHash){ try{ history.back(); }catch(e){} }
+  }
+}
 /* e-mail da ficha com texto digitado e não enviado (assunto alterado ou mensagem preenchida) */
 function simEmailPendente(){
   const ed=document.getElementById("prop-msg"), as=document.getElementById("prop-assunto");
@@ -2093,12 +2196,16 @@ function simEmailPendente(){
 }
 /* fecha a ficha; se há e-mail não enviado, pergunta antes (pergunta Sim/Não da tela, não o confirm do navegador) */
 let _simFechando=false;
-async function simPedirFechar(){
+async function simPedirFechar(viaPop){
   if(_simFechando) return;
   _simFechando=true;
   try{
-    if(simEmailPendente() && !(await propSimNao("Há um e-mail escrito e ainda não enviado. Fechar a ficha mesmo assim?"))) return;
-    simFecharDet();
+    if(simEmailPendente() && !(await propSimNao("Há um e-mail escrito e ainda não enviado. Fechar a ficha mesmo assim?"))){
+      /* disse "não" depois de apertar Voltar: o navegador já andou um passo, então refaz o passo da ficha */
+      if(viaPop===true && _fichaHist){ try{ history.pushState(null,"",_fichaHash); }catch(e){} }
+      return;
+    }
+    simFecharDet(viaPop===true);
   } finally { _simFechando=false; }
 }
 /* Esc fecha a ficha, a menos que haja outra janela por cima dela */
@@ -2801,6 +2908,108 @@ const SIM_ALTERADAS = new Set();
 const SIM_TIMERS={}, SIM_VER={}, SIM_ESTADO={};
 let SIM_FILA=[], SIM_GRAVANDO=false, SIM_ULTIMO_OK="";
 
+/* 20/11/2026 (ux) — SITUAÇÃO (STATUS MAPA e DISPONIVEL) e VALOR DE VENDA não gravam na hora: a linha mostra
+   "Unidade N: antes → depois · Desfazer (10)" e grava ao fim dos 10 s ou em "Gravar agora".
+   Cada unidade tem uma pendência só (várias mudanças da mesma linha vão juntas). Os outros campos seguem como estavam. */
+const SIM_ADIADAS={}, SIM_STASH={};
+const SIM_ADIAR_S=10;
+let SIM_ADIAR_IV=0;
+function simPendenciaUnidades(){ return !!(Object.keys(SIM_ADIADAS).length || SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length); }
+/* a revalidação automática não redesenha a tabela com campo em foco ou gravação pendente */
+function simUnidadesOcupada(){
+  if(simPendenciaUnidades()) return true;
+  const a=document.activeElement;
+  return !!(a && a.closest && a.closest("#sim-tabUn"));
+}
+function simNumTxt(v){
+  const t=String(v||"").trim(), num=/,/.test(t) ? Number(t.replace(/\./g,"").replace(",",".")) : Number(t.replace(/\.(?=\d{3}(\D|$))/g,""));
+  return isNaN(num)?0:num;
+}
+function simAdiarRotulo(c,v){
+  if(c==="vendidaCru"){ v=String(v||"NAO").toUpperCase(); return v==="SIM"?"VENDIDA":(v==="RESERVADA"?"RESERVADA":"NÃO VENDIDA"); }
+  if(c==="disponivel") return String(v)==="true"?"SIM":"NÃO";
+  return simBRL(simNumTxt(v));
+}
+function simAdiarHtml(i){
+  const d=SIM_ADIADAS[i], u=UNS[i]||{};
+  const falta=Math.max(0,Math.ceil((d.fim-Date.now())/1000));
+  const pref={vendidaCru:"",disponivel:"Disponível ",valorVenda:"Valor de venda "};
+  const txt=Object.keys(d.mud).map(c=>pref[c]+simAdiarRotulo(c,d.mud[c].antes)+" → "+simAdiarRotulo(c,d.mud[c].depois)).join("; ");
+  return '<div style="white-space:normal;min-width:230px">Unidade '+esc(String(u.unidade||""))+': '+esc(txt)+' · '+
+    '<button type="button" class="bt ghost sim-ad-bt" style="padding:3px 8px;font-size:11px" onclick="simAdiarDesfazer('+i+')">Desfazer (<span id="sim-ad-n-'+i+'">'+falta+'</span>)</button> '+
+    '<button type="button" class="bt az sim-ad-bt" style="padding:3px 8px;font-size:11px" onclick="simAdiarGravar('+i+')">Gravar agora</button></div>';
+}
+function simAdiar(i,c){
+  const u=UNS[i]; const el=document.querySelector('.sim-edit[data-i="'+i+'"][data-c="'+c+'"]'); if(!u||!el) return;
+  let d=SIM_ADIADAS[i];
+  if(!d){ d=SIM_ADIADAS[i]={mud:{}, fim:0, eraAlterada:SIM_ALTERADAS.has(i), estadoAntes:SIM_ESTADO[i]}; }
+  if(!d.mud[c]){
+    const antes = c==="vendidaCru" ? (["NAO","RESERVADA","SIM"].includes(String(u.vendidaCru||"NAO").toUpperCase())?String(u.vendidaCru||"NAO").toUpperCase():"NAO")
+                : (c==="disponivel" ? String(!!u.disponivel) : String(u.valorVenda==null?"":u.valorVenda));
+    d.mud[c]={antes:antes, depois:el.value};
+  }
+  d.mud[c].depois=el.value;
+  const igual = c==="valorVenda" ? simNumTxt(d.mud[c].antes)===simNumTxt(el.value) : d.mud[c].antes===el.value;
+  if(igual) delete d.mud[c];                 // voltou ao valor de antes: nada a gravar
+  if(!Object.keys(d.mud).length){ simAdiarLimpar(i); return; }
+  d.fim=Date.now()+SIM_ADIAR_S*1000;
+  SIM_ALTERADAS.add(i); if(SIM_ESTADO[i]!=="salvando") SIM_ESTADO[i]="pendente";
+  simPintarLinha(i); simMarcarContador();
+  if(!SIM_ADIAR_IV) SIM_ADIAR_IV=setInterval(simAdiarTick,1000);
+}
+function simAdiarTick(){
+  const ks=Object.keys(SIM_ADIADAS);
+  if(!ks.length){ clearInterval(SIM_ADIAR_IV); SIM_ADIAR_IV=0; return; }
+  ks.forEach(k=>{
+    const d=SIM_ADIADAS[k]; if(!d) return;
+    const falta=Math.ceil((d.fim-Date.now())/1000);
+    if(falta<=0){ simAdiarGravar(+k); return; }
+    const s=document.getElementById("sim-ad-n-"+k); if(s) s.textContent=falta;
+  });
+}
+function simAdiarLimpar(i){
+  const d=SIM_ADIADAS[i]; delete SIM_ADIADAS[i];
+  if(d){
+    if(!d.eraAlterada && !SIM_TIMERS[i] && !SIM_FILA.includes(i) && SIM_ESTADO[i]!=="salvando" && SIM_ESTADO[i]!=="erro") SIM_ALTERADAS.delete(i);
+    if(SIM_ESTADO[i]==="pendente" && !SIM_TIMERS[i]) SIM_ESTADO[i]=d.estadoAntes;
+  }
+  simPintarLinha(i); simMarcarContador();
+}
+function simAdiarDesfazer(i){
+  const d=SIM_ADIADAS[i]; if(!d) return;
+  Object.keys(d.mud).forEach(c=>{
+    const el=document.querySelector('.sim-edit[data-i="'+i+'"][data-c="'+c+'"]'); if(el) el.value=d.mud[c].antes;
+    if(c==="vendidaCru") simEspelharStatusInterno(i);   // o status interno volta junto
+  });
+  simAdiarLimpar(i);
+  simAvisoUn("ok","Alteração desfeita: nada foi gravado.");
+}
+/* grava a pendência da unidade: guarda os campos agora (a linha pode sumir da tela por causa da busca) e enfileira */
+function simAdiarGravar(i){
+  const d=SIM_ADIADAS[i]; if(!d) return;
+  const u=UNS[i]; const campos={};
+  Object.keys(d.mud).forEach(c=>{
+    const el=document.querySelector('.sim-edit[data-i="'+i+'"][data-c="'+c+'"]');
+    simAplicarCampo(u,c,el?el.value:d.mud[c].depois,campos);
+  });
+  if(d.mud.vendidaCru){
+    const si=document.querySelector('.sim-edit[data-i="'+i+'"][data-c="statusInterno"]');
+    if(si) simAplicarCampo(u,"statusInterno",si.value,campos);
+  }
+  SIM_STASH[i]=Object.assign(SIM_STASH[i]||{}, campos);
+  delete SIM_ADIADAS[i];
+  simAoEditar(i,true);
+}
+function simAdiarGravarTodas(){ Object.keys(SIM_ADIADAS).forEach(k=>simAdiarGravar(+k)); }
+function simAdiarReaplicar(){   // depois de redesenhar a tabela: o que está pendente continua na tela
+  Object.keys(SIM_ADIADAS).forEach(k=>{
+    const d=SIM_ADIADAS[k];
+    Object.keys(d.mud).forEach(c=>{ const el=document.querySelector('.sim-edit[data-i="'+k+'"][data-c="'+c+'"]'); if(el) el.value=d.mud[c].depois; });
+    if(d.mud.vendidaCru) simEspelharStatusInterno(+k);
+    simPintarLinha(+k);
+  });
+}
+
 function simMarcarContador(){
   const el=document.getElementById("sim-alteradas");
   const bt=document.getElementById("sim-btSalvarTudo");
@@ -2808,26 +3017,32 @@ function simMarcarContador(){
   const falhas=[...SIM_ALTERADAS].filter(i=>SIM_ESTADO[i]==="erro").length;
   const salvando=SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length;
   if(el) el.textContent = falhas ? (qtd(falhas,"unidade não salvou","unidades não salvaram")+" — veja as linhas em vermelho")
-                        : (salvando ? "salvando no Notion…" : (SIM_ULTIMO_OK ? "tudo salvo · "+SIM_ULTIMO_OK : ""));
+                        : (Object.keys(SIM_ADIADAS).length ? "alteração aguardando: desfaça ou grave"
+                        : (salvando ? "salvando no Notion…" : (SIM_ULTIMO_OK ? "tudo salvo · "+SIM_ULTIMO_OK : "")));
   if(bt){ bt.style.display = falhas ? "" : "none"; bt.disabled = !falhas; }
 }
 
 /* Lê os campos de UMA linha (do DOM) de volta para o objeto em UNS e devolve
    o mapa {COLUNA_NOTION: valor} pronto para gravar. Centralizado porque tanto
    o salvar-um quanto o salvar-tudo precisam da mesma conversão de tipo. */
+function simAplicarCampo(u,c,v,campos){
+  if(c==="vendidaCru"){ u.vendidaCru=v; u.vendido=(v==="SIM"); u.reservado=(v==="RESERVADA");
+                        campos[SIM_NOME_NOTION[c]]=(v==="NAO"?"NÃO":v); }
+  else if(["decorado","disponivel"].includes(c)){ u[c]=(v==="true"); campos[SIM_NOME_NOTION[c]]= u[c]?"SIM":"NÃO"; }
+  else if(["valorVenda","avaliacao","tipo"].includes(c)){
+    /* 02/10 (item 4) — o campo virou texto (sem as setinhas): aceita 305000, 305.000 ou 305.000,00 */
+    u[c]=simNumTxt(v); campos[SIM_NOME_NOTION[c]]=u[c]; }
+  else { u[c]=v; campos[SIM_NOME_NOTION[c]]=v; }
+}
 function simColetarLinha(i){
   const u=UNS[i]; const campos={};
+  const d=SIM_ADIADAS[i];   // mudança ainda na janela dos 10 s: fica de fora (grava só ao fim dela)
   document.querySelectorAll(`.sim-edit[data-i="${i}"]`).forEach(el=>{
-    const c=el.dataset.c, v=el.value;
-    if(c==="vendidaCru"){ u.vendidaCru=v; u.vendido=(v==="SIM"); u.reservado=(v==="RESERVADA");
-                          campos[SIM_NOME_NOTION[c]]=(v==="NAO"?"NÃO":v); }
-    else if(["decorado","disponivel"].includes(c)){ u[c]=(v==="true"); campos[SIM_NOME_NOTION[c]]= u[c]?"SIM":"NÃO"; }
-    else if(["valorVenda","avaliacao","tipo"].includes(c)){
-      /* 02/10 (item 4) — o campo virou texto (sem as setinhas): aceita 305000, 305.000 ou 305.000,00 */
-      const t=String(v||"").trim(), num=/,/.test(t) ? Number(t.replace(/\./g,"").replace(",",".")) : Number(t.replace(/\.(?=\d{3}(\D|$))/g,""));
-      u[c]=isNaN(num)?0:num; campos[SIM_NOME_NOTION[c]]=u[c]; }
-    else { u[c]=v; campos[SIM_NOME_NOTION[c]]=v; }
+    const c=el.dataset.c;
+    if(d && (d.mud[c] || (c==="statusInterno" && d.mud.vendidaCru))) return;
+    simAplicarCampo(u,c,el.value,campos);
   });
+  if(SIM_STASH[i]){ Object.assign(campos,SIM_STASH[i]); delete SIM_STASH[i]; }
   return campos;
 }
 
@@ -2845,13 +3060,13 @@ function simRenderUnidades(){
       if(tipo==="ro") return `<td><b>${esc(String(v==null?"":v))}</b></td>`;
       if(tipo==="v3"){
         const atual=String(v||"NAO").toUpperCase();
-        return `<td><select class="sim-edit" data-i="${i}" data-c="${campo}" style="min-width:132px" onchange="simEspelharStatusInterno(${i});simAoEditar(${i},true)">
+        return `<td><select class="sim-edit" data-i="${i}" data-c="${campo}" style="min-width:132px" onchange="simEspelharStatusInterno(${i});simAdiar(${i},'vendidaCru')">
           <option value="NAO"${atual==="NAO"?" selected":""}>NÃO VENDIDA</option>
           <option value="RESERVADA"${atual==="RESERVADA"?" selected":""}>RESERVADA</option>
           <option value="SIM"${atual==="SIM"?" selected":""}>VENDIDA</option></select></td>`;
       }
       if(tipo==="area") return `<td><textarea class="sim-edit" rows="2" data-i="${i}" data-c="${campo}" oninput="simAoEditar(${i})" onblur="simSairDoCampo(${i})" style="width:100%;min-width:220px;resize:vertical;font-family:inherit;font-size:13px;line-height:1.4">${esc(String(v==null?"":v))}</textarea></td>`;
-      if(tipo==="sn") return `<td><select class="sim-edit" data-i="${i}" data-c="${campo}" onchange="simAoEditar(${i},true)">
+      if(tipo==="sn") return `<td><select class="sim-edit" data-i="${i}" data-c="${campo}" onchange="${campo==='disponivel'?`simAdiar(${i},'disponivel')`:`simAoEditar(${i},true)`}">
           <option value="true"${v?" selected":""}>SIM</option>
           <option value="false"${!v?" selected":""}>NÃO</option></select></td>`;
       if(tipo==="si"){   // 02/10 (item 6) — STATUS INTERNO
@@ -2870,6 +3085,8 @@ function simRenderUnidades(){
           (txt.trim() ? "📝 "+esc(txt.split("\n")[0].slice(0,40))+(txt.length>40||txt.indexOf("\n")>=0?"…":"") : '<span style="color:#9fb3bf">+ observação</span>')+`</button></td>`;
       }
       /* 02/10 (item 4) — números como texto: sem as setinhas de subir/descer o valor */
+      /* VALOR DE VENDA: só vira alteração ao confirmar o campo (sair ou Enter), com janela de desfazer */
+      if(campo==="valorVenda") return `<td><input class="sim-edit" type="text" inputmode="decimal" data-i="${i}" data-c="${campo}" value="${esc(String(v==null?"":v))}" onchange="simAdiar(${i},'valorVenda')"></td>`;
       return `<td><input class="sim-edit" type="text"${tipo==="num"?' inputmode="decimal"':''} data-i="${i}" data-c="${campo}" value="${esc(String(v==null?"":v))}" oninput="simAoEditar(${i})" onblur="simSairDoCampo(${i})"></td>`;
     }).join("");
     // linha alterada ganha um destaque suave para não perder a edição de vista
@@ -2879,7 +3096,10 @@ function simRenderUnidades(){
   }).join("");
   // +1 coluna (o marcador de "alterada") no cabeçalho
   const cab2 = cab.replace('<thead><tr>', '<thead><tr><th></th>').replace('<th></th></tr></thead>', '<th>Notion</th></tr></thead>');
+  /* pendência dos 10 s de uma unidade que a busca vai esconder: grava antes de redesenhar (os valores saem do DOM de agora) */
+  Object.keys(SIM_ADIADAS).forEach(k=>{ if(!vis.includes(UNS[k])) simAdiarGravar(+k); });
   document.getElementById("sim-tabUn").innerHTML=cab2+"<tbody>"+corpo+"</tbody>";
+  simAdiarReaplicar();
   simMarcarContador();
 }
 
@@ -2937,6 +3157,7 @@ function simCorStatusInterno(i){
   tr.dataset.si=k; if(!SIM_ALTERADAS.has(i) && SIM_ESTADO[i]!=="erro") tr.style.background=SIM_COR_SI[k]||"";
 }
 function simStatusHtml(i){
+  if(SIM_ADIADAS[i]) return simAdiarHtml(i);
   const e=SIM_ESTADO[i];
   if(e==="salvando") return '<span style="color:#7A6A2E">⏳ salvando…</span>';
   if(e==="pendente") return '<span style="color:#9a8a50">● alterado</span>';
@@ -3010,7 +3231,7 @@ async function simGravarAuto(i){
   simPintarLinha(i); simMarcarContador();
 }
 window.addEventListener("beforeunload", e=>{
-  if(SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length){ e.preventDefault(); e.returnValue=""; }
+  if(SIM_GRAVANDO || SIM_FILA.length || Object.keys(SIM_TIMERS).length || Object.keys(SIM_ADIADAS).length){ e.preventDefault(); e.returnValue=""; }
 });
 
 async function simSalvarUnidade(i){
@@ -3074,6 +3295,7 @@ async function simConferirGravacao(u, campos){
 async function simSalvarTudo(){
   /* 02/10 — com o salvar automático, este botão só aparece quando alguma
      linha falhou: manda de novo todas as que ainda estão pendentes. */
+  simAdiarGravarTodas();
   const ids=[...SIM_ALTERADAS];
   if(!ids.length){ simAvisoUn("ok","Nada pendente — tudo já está salvo."); return; }
   ids.forEach(i=>{ if(SIM_TIMERS[i]){ clearTimeout(SIM_TIMERS[i]); delete SIM_TIMERS[i]; } simEnfileirar(i); });
@@ -3185,7 +3407,7 @@ async function propVarrerContratosEnviados(){
     aoTerminar: async n=>{
       const mostrar=()=>{ if(msgs.length) propAviso(msgs.some(m=>m.indexOf("⚠")===0)?"err":"ok","<b>Vendas × mapa</b><br>"+msgs.join("<br>")); else propAviso("ok",""); };
       mostrar();
-      if(n){ await propCarregar(true); mostrar(); try{ UNS=[]; simCarregarUnidades(true); }catch(e){} }
+      if(n){ await propCarregar(true); mostrar(); try{ if(!simUnidadesOcupada()){ UNS=[]; simCarregarUnidades(true); } }catch(e){} }
     }});
 }
 /* 04/11/2026 (dono): o servidor põe VENDIDA = SIM na unidade quando a proposta vira VENDIDA; no mapa ela fica
@@ -3199,7 +3421,7 @@ async function propCorrigirMapaUnidade(un){
   const ids=r.linhas.filter(l=>so((l.v||{})["UNIDADE"]||(l.v||{})[r.titulo])===alvo).map(l=>l.id);
   if(!ids.length) return;
   await ContratoVendida.rodar(r.linhas, r.titulo, ids, { chamar: chamar, forcar: true,
-    aoTerminar: async n=>{ if(n){ try{ UNS=[]; simCarregarUnidades(true); }catch(e){} } } });
+    aoTerminar: async n=>{ if(n){ try{ if(!simUnidadesOcupada()){ UNS=[]; simCarregarUnidades(true); } }catch(e){} } } });
 }
 function propAviso(t,m){
   const a=document.getElementById("prop-aviso");
@@ -3442,15 +3664,20 @@ function propRender(){
   propEstiloEditor();
   /* 28/10 — ordem: proposta · unidade · crédito · sinal · cliente · corretor · valor · entrada · resto
      06/11 — correspondente, cliente e CPF do cliente juntos, depois o corretor */
-  const cab='<thead><tr><th>Proposta</th><th>Unidade</th><th>Crédito Caixa</th><th>Sinal</th>'+
-            '<th>Correspondente</th><th>Cliente</th><th>CPF</th><th>Corretor</th>'+
-            '<th class="col-num">Crédito aprovado</th><th class="col-num">Entrada</th>'+
-            '<th class="col-num">Renda</th><th>Imobiliária</th><th>Observações</th>'+
-            '<th style="cursor:pointer" title="Clique para inverter a ordem" onclick="propOrdenar(propOrdem===\'asc\'?\'desc\':\'asc\')">'+
+  /* 20/11/2026 (ux) — abre com 8 colunas; as outras 7 entram com "Mais colunas" (guardado no navegador).
+     A busca continua olhando os mesmos campos de antes, apareçam ou não as colunas. */
+  const ckMais=document.getElementById("prop-maiscol");
+  if(ckMais && !ckMais.dataset.ini){ ckMais.dataset.ini="1"; try{ ckMais.checked=localStorage.getItem("prop_maiscol")==="1"; }catch(e){} }
+  const mais=!!(ckMais && ckMais.checked);
+  const M=(h)=>mais?h:"";
+  const cab='<thead><tr><th>Proposta</th><th>Unidade</th><th>Cliente</th>'+M('<th>CPF</th>')+'<th>Crédito Caixa</th><th>Sinal</th>'+
+            M('<th>Correspondente</th>')+'<th>Corretor</th>'+
+            M('<th class="col-num">Crédito aprovado</th><th class="col-num">Entrada</th><th class="col-num">Renda</th><th>Imobiliária</th><th>Observações</th>')+
+            '<th class="ord" style="cursor:pointer" title="Clique para inverter a ordem" onclick="propOrdenar(propOrdem===\'asc\'?\'desc\':\'asc\')">'+
             'Criada <span class="arr">'+(propOrdem==="desc"?"▼":"▲")+'</span></th><th>Status</th></tr></thead>';
   if(!vis.length){
     document.getElementById("prop-tab").innerHTML=cab+
-      '<tbody><tr><td colspan="15" style="text-align:center;color:var(--text3);padding:22px">Nenhuma proposta encontrada.</td></tr></tbody>';
+      '<tbody><tr><td colspan="'+(mais?15:8)+'" style="text-align:center;color:var(--text3);padding:22px">Nenhuma proposta encontrada.</td></tr></tbody>';
     return;
   }
   const corpo=vis.map(p=>{
@@ -3461,17 +3688,19 @@ function propRender(){
     return `<tr class="clicavel${res?' linha-res':''}"${estilo}${res?' title="Enviada com a unidade já reservada — só é analisada se houver desistência"':''} onclick="propVer('${p.id}')">
       <td><b>${esc(p.proposta||"—")}</b>${propEmailSelos(p)}</td>
       <td>Un. ${esc(String(p.unidade||"—"))}${propSeloInterno(p.unidade, p)}</td>
+      <td>${esc(p.cliente||"—")}</td>
+      ${M(`<td class="col-un">${esc(cpfFmt(p.cpf)||"—")}</td>`)}
       <td>${p.comCredito
             ? '<span class="pill bom">APROVADO</span>'
             : '<span class="pill ruim">SEM CARTA</span>'+propCorrCelula(p)}</td>
       <td>${propPillSinais(p)}</td>
-      <td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>
-      <td>${esc(p.cliente||"—")}</td><td class="col-un">${esc(cpfFmt(p.cpf)||"—")}</td><td>${esc(p.vendedor||"—")}</td>
-      <td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
+      ${M(`<td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>`)}
+      <td>${esc(p.vendedor||"—")}</td>
+      ${M(`<td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
       <td class="num">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
       <td class="num">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
       <td>${esc(p.imobiliaria||"—")}</td>
-      <td class="prop-obs-td" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>
+      <td class="prop-obs-td" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>`)}
       <td>${simData(p.criadoEm)}</td>
       <td>${propTag(p.status)}${venc?' <span style="color:#C0392B;font-weight:700">vence &lt;24h</span>':''}</td></tr>`;
   }).join("");
@@ -4290,14 +4519,25 @@ function propVer(id){
     <div id="alt-prop"></div>
     ${propResumoValores(p)}
     ${propQuadroFluxo(p)}
-    <div class="sim-grade" style="margin-top:14px">
+    <b class="sim-grupo" style="display:block;margin-top:14px;font-size:13px;color:var(--azul)">Corretor</b>
+    <div class="sim-grade" style="margin-top:6px">
       ${it("Corretor",esc(p.vendedor||""))}${it("CRECI",esc(p.creci||""))}${it("Imobiliária",esc(p.imobiliaria||""))}
       ${it("E-mail",esc(p.email||""))}${it("Celular do corretor",p.celularCorretor?simLinkTel(p.celularCorretor):"—")}${it("CPF do corretor",esc(p.cpfCorretor||"—"))}
+    </div>
+    <b class="sim-grupo" style="display:block;margin-top:6px;font-size:13px;color:var(--azul)">Crédito e renda</b>
+    <div class="sim-grade" style="margin-top:6px">
       ${it("Preço da unidade",simBRL(p.preco))}${it("Crédito aprovado",simBRL(p.creditoAprovado))}
       ${it("Valor financiado",simBRL(p.valorFinanciado))}${it("Parcela",p.parcelaFinanciamento?simBRL(p.parcelaFinanciamento):"não apurada")}
       ${it("Renda aprovada",simBRL(p.rendaAprovada))}${it("Renda total",simBRL(p.rendaTotal))}
-      ${it("FGTS",simBRL(p.fgts))}${it("Subsídio",simBRL(p.subsidio))}${it("Valor para entrada",simBRL(p.valorEntrada))}
+      ${it("FGTS",simBRL(p.fgts))}${it("Subsídio",simBRL(p.subsidio))}
+    </div>
+    <b class="sim-grupo" style="display:block;margin-top:6px;font-size:13px;color:var(--azul)">Entrada</b>
+    <div class="sim-grade" style="margin-top:6px">
+      ${it("Valor para entrada",simBRL(p.valorEntrada))}
       ${it("Prazo da entrada",p.prazoEntrada?p.prazoEntrada+" meses":"não informado")}${it("Fiadores",propFiadorDispensado((p.dados||{}).prazoEntrada, p.comissaoPct, p.prazoEntrada)?"não necessário (24x, sem pós-chaves)":"obrigatórios (2)")}${it("Comissão do corretor",p.comissaoValor?simBRL(p.comissaoValor)+" ("+((Number(p.comissaoPct)||0)*100).toLocaleString("pt-BR",{minimumFractionDigits:2})+"%)":"não informada")}
+    </div>
+    <b class="sim-grupo" style="display:block;margin-top:6px;font-size:13px;color:var(--azul)">Observações</b>
+    <div class="sim-grade" style="margin-top:6px;grid-template-columns:minmax(0,1fr)">
       ${it("Observações",esc(p.observacoes||""))}
     </div>
 
@@ -4324,9 +4564,11 @@ function propVer(id){
     ${podeGravar?`
     <div style="margin-top:16px"><b style="font-size:13px;color:var(--azul)">Decisão</b>
       <!-- 30/09: o botão do status atual fica em destaque e os outros apagados; o resultado aparece logo abaixo -->
-      <div class="prop-dec ${PROP_NORM(p.status)?'tem-status':''}" style="display:flex;gap:9px;margin-top:8px;flex-wrap:wrap">
-        <button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
-        <button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
+      <div class="prop-dec ${PROP_NORM(p.status)?'tem-status':''}" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:1 1 220px;min-width:0"><button class="bt az ${PROP_NORM(p.status)==='RESERVADA'?'atual':''}" onclick="propStatus('${p.id}','RESERVADA')">Reservar</button>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">Reservar: segura a unidade por ${PROP_RESERVA_DIAS} dias e manda ao corretor o link para completar os dados.</div></div>
+        <div style="flex:1 1 220px;min-width:0"><button class="bt vermelho ${PROP_NORM(p.status)==='NEGADA'?'atual':''}" onclick="propStatus('${p.id}','NEGADA')">Negar</button>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">Negar: libera a unidade agora.</div></div>
       </div>
       ${PROP_NORM(p.status)==='RESERVADA'?`<div style="margin-top:8px"><button class="bt" style="background:#7B4FA0;color:#fff" onclick="propPreReservaDaUnidade('${p.id}')">Termo de reserva</button></div>`:""}
       ${PROP_NORM(p.status)==='RESERVADA'&&window.AtualizarVendaUI?AtualizarVendaUI.botaoHtml(p.id,'prop','bt'):""}<!-- 07/11: Atualizar venda pela proposta (venda/atualizar-venda.js) -->
@@ -4335,14 +4577,14 @@ function propVer(id){
       <!-- 02/10 (item 10) -->
       <div style="margin-top:10px"><button class="bt" style="background:#B7791F;color:#fff" onclick="propAlerta('${p.id}')">📣 Enviar alerta de pendências ao corretor</button>
         <div id="prop-alertaInfo" class="sim-aviso" style="margin-top:6px"></div></div>
-      <div style="font-size:12px;color:var(--text3);margin-top:6px">
+      <details style="font-size:12px;color:var(--text3);margin-top:8px"><summary style="cursor:pointer;font-weight:700">Como funciona a reserva</summary><div style="margin-top:6px">
         <b>Reservar</b> marca a unidade ${esc(String(p.unidade||""))} como RESERVADA no mapa, cria a venda no
         lista de vendas do condomínio e manda ao corretor o link para completar os dados e documentos.
         A reserva vale <b>${PROP_RESERVA_DIAS} dias corridos</b> — com termo de reserva, até a <b>data limite do termo</b>: sem contrato gerado nesse prazo ela cai sozinha
         (a unidade volta a disponível e a venda vai para distratos). <b>Negar</b> faz o mesmo na hora.
         A proposta vira <b>VENDIDA</b> sozinha quando o contrato é gerado — e só então o corretor recebe o e-mail de venda.
         ${propReservaPrazoHtml(p)}
-      </div>
+      </div></details>
     </div>
     ${propSIBloco(p)}
 
@@ -4415,6 +4657,7 @@ function propVer(id){
     <div style="display:flex;gap:9px;margin-top:16px"><button class="bt" onclick="simPedirFechar()">Fechar</button></div>
     ${podeGravar?'':'<div id="prop-detAviso" class="sim-aviso" style="margin-top:10px"></div>'}`;
   document.getElementById("sim-modal").classList.remove("hide");
+  simHistFicha();   // Voltar do navegador fecha a ficha
   const asu=document.getElementById("prop-assunto"); if(asu) asu.dataset.orig=asu.value;
   const ed=document.getElementById("prop-msg");
   if(ed){
@@ -4603,7 +4846,7 @@ function propPintarDetalhe(id, r){
   const campos = r.campos || {};
   const linhas = Object.keys(campos).sort().map(k=>
     `<tr><td style="color:var(--text3);width:38%">${esc(k)}</td><td>${esc(campos[k])}</td></tr>`).join("");
-  const cxCampos = '<details style="margin-top:14px"><summary style="cursor:pointer;font-size:13px;'+
+  const cxCampos = String((S&&S.tipo)||"").toUpperCase()!=="ADM" ? "" : '<details style="margin-top:14px"><summary style="cursor:pointer;font-size:13px;'+
     'font-weight:700;color:var(--azul)">Todos os campos gravados ('+Object.keys(campos).length+')</summary>'+
     '<div class="tbl-wrap" style="max-height:320px;margin-top:6px"><table><tbody>'+linhas+
     '</tbody></table></div></details>';
