@@ -1121,13 +1121,18 @@ function simAtualizarTudo(bt){
 
 /* O 404 do Notion tem uma causa só e uma solução só — mostrar o texto cru
    da API deixava a pessoa achando que era bug do portal. */
+/* Erro em duas partes: uma frase para quem usa a tela + o detalhe técnico (para o suporte) recolhido */
+function detTec(html){
+  return '<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer">Detalhe técnico</summary>'+html+'</details>';
+}
+const MSG_SERVIDOR_FALHOU='<b>O servidor do portal não respondeu direito.</b> Tente de novo em 1 minuto; se continuar, avise o suporte.';
 function simErroAmigavel(erro){
   const t = String(erro||"");
   if(t.indexOf("404") >= 0 || t.toLowerCase().indexOf("shared with your integration") >= 0){
-    return '<b>A base do Ipês ainda não foi compartilhada com a integração do portal.</b><br>' +
-           'No Notion, abra a base <b>SIMULAÇÕES – RESERVA DOS IPÊS</b> (e também a de UNIDADES) → ' +
+    return '<b>A lista de simulações ainda não foi liberada para o portal.</b> Avise o suporte.' +
+           detTec('No Notion, abra a base <b>SIMULAÇÕES – RESERVA DOS IPÊS</b> (e também a de UNIDADES) → ' +
            'menu <b>⋯</b> → <b>Conexões</b> → adicione <b>SITES MORAIS</b>.<br>' +
-           '<span style="color:var(--text4);font-size:11px">' + esc(t) + '</span>';
+           '<span style="color:var(--text4);font-size:11px">' + esc(t) + '</span>');
   }
   return esc(t) || "Não foi possível carregar.";
 }
@@ -1756,7 +1761,7 @@ function simIdade(d){ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||"")); if
   const h=new Date(); let i=h.getFullYear()-Number(m[1]); if(h.getMonth()+1<Number(m[2])||(h.getMonth()+1===Number(m[2])&&h.getDate()<Number(m[3]))) i--; return i; }
 function simPerfilHtml(s){
   const p=s.perfil||{};
-  if(!s.perfil) return `<div style="margin-top:14px;border:1.5px dashed var(--azul);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text3)"><b style="color:var(--azul)">Cliente — dados usados na simulação</b><br>Atualize a página (Ctrl+Shift+R) para carregar estes dados.</div>`;
+  if(!s.perfil) return `<div style="margin-top:14px;border:1.5px dashed var(--azul);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text3)"><b style="color:var(--azul)">Cliente — dados usados na simulação</b><br>Clique em <b>Atualizar</b> para carregar estes dados. Se continuar assim, avise o suporte.<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer">Detalhe técnico</summary>Recarregue a página sem cache (Ctrl+Shift+R).</details></div>`;
   const idade=simIdade(p.dataNascimento), dn=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(p.dataNascimento||""));
   const marca=(ok,txt)=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px;color:${ok?'var(--azul-esc)':'var(--text3)'}">`+
     `<span style="display:inline-flex;width:18px;height:18px;border-radius:4px;align-items:center;justify-content:center;font-size:12px;font-weight:800;`+
@@ -2731,8 +2736,8 @@ async function simCarregarUnidades(forcar, bt){
   else {
     const a=document.getElementById("sim-avisoUn"); a.className="sim-aviso err";
     a.innerHTML = (String(r&&r.erro||"")==="ERRO_API")
-      ? '<b>O servidor respondeu, mas não em JSON (ERRO_API).</b><br>' +
-        'Isso é implantação, não Notion. Clique em <b>🩺 Diagnóstico</b> aqui do lado para ver a resposta crua.'
+      ? '<b>O servidor do portal não respondeu direito.</b> Clique em <b>Atualizar</b>. Se continuar, avise o suporte.' +
+        detTec('ERRO_API: o servidor respondeu, mas não em JSON. Isso é implantação, não Notion (a função simDiagRede, no console, mostra a resposta crua).')
       : simErroAmigavel(r&&r.erro);
   }
 }
@@ -3203,17 +3208,17 @@ function propErro(e){
     /* r60 — a causa real (22/09/2026): as funções das simulações não estão
        no projeto que respondeu. Elas moram no Simulacoes.gs, que precisa
        estar nos DOIS projetos (leitura e escrita), publicado como Nova versão. */
-    return '<b>Este projeto do Apps Script não tem o Simulacoes.gs.</b><br>' +
+    return MSG_SERVIDOR_FALHOU +
+           detTec('Este projeto do Apps Script não tem o Simulacoes.gs.<br>' +
            'Adicione o arquivo <b>Simulacoes.gs</b> (e o Code.gs r44) nos <b>dois</b> projetos do portal — ' +
            'leitura e escrita — e publique cada um em <b>Implantar → Gerenciar implantações → ✏️ → ' +
            'Nova versão</b>. Salvar o arquivo não publica.<br>' +
-           'Para conferir: <code>?action=ping</code> tem que responder <code>2026-09-22 r44</code>.';
+           'Para conferir: <code>?action=ping</code> tem que responder <code>2026-09-22 r44</code>.');
   }
   if(t.indexOf("SIM_DB_PROPOSTAS_NAO_CONFIGURADO")>=0){
-    return '<b>A base de PROPOSTAS ainda não está ligada.</b><br>' +
-           'No Apps Script do portal: <b>Configurações do projeto → Propriedades do script</b> → ' +
-           'adicione <code>SIM_DB_PROPOSTAS</code> com o id da base. Depois, na aba Unidades, ' +
-           'use <b>🩺 Diagnóstico</b> para conferir as colunas.';
+    return '<b>A lista de propostas ainda não está ligada ao portal.</b> Avise o suporte.' +
+           detTec('SIM_DB_PROPOSTAS_NAO_CONFIGURADO. No Apps Script do portal: <b>Configurações do projeto → Propriedades do script</b> → ' +
+           'adicione <code>SIM_DB_PROPOSTAS</code> com o id da base. Depois confira as colunas da base.');
   }
   return simErroAmigavel(e);
 }
@@ -4538,8 +4543,8 @@ function propPintarDetalhe(id, r){
         ? 'Ainda não achei a conversa desta proposta no Gmail (ela pode ter saído antes desta versão). '+
           'A mensagem daqui sai como um e-mail novo.'
         : (hist.motivo==="SEM_ACESSO"
-            ? 'A conversa está em outra conta Google, então não consigo abri-la aqui. '+
-              'Confira a propriedade <b>SIM_SEGREDO</b> no Apps Script do portal.'
+            ? 'Não consegui abrir a conversa desta proposta aqui. Avise o suporte.'+
+              detTec('A conversa está em outra conta Google. Confira a propriedade <b>SIM_SEGREDO</b> no Apps Script do portal.')
             : 'Não consegui carregar a conversa de e-mail agora.'))+
       ' <button class="bt ghost" style="margin-left:8px;padding:4px 10px" '+
       'onclick="propCarregarDetalhe(\''+id+'\')">↻ Tentar de novo</button></div>';
@@ -5023,8 +5028,8 @@ async function propEnviarCorresp(id, chave, nome, email){
     const e=String(r&&r.erro||"");
     info.innerHTML='<span style="color:#C0392B">'+
       (e==="MODO_TESTE" ? "Perfil TESTES não envia e-mail."
-       : e==="SEM_PERMISSAO_EMAIL" ? "O Apps Script do portal ainda não tem permissão de enviar e-mail: rode <b>autorizarEnvioDeEmail</b> no editor (uma vez)."
-       : e==="CORRESPONDENTE_INVALIDO" ? "Correspondente não reconhecido pelo servidor — publique a versão nova do Simulacoes.gs."
+       : e==="SEM_PERMISSAO_EMAIL" ? "O portal ainda não tem permissão para enviar e-mail. Avise o suporte."+detTec("No editor do Apps Script, rode <b>autorizarEnvioDeEmail</b> (uma vez).")
+       : e==="CORRESPONDENTE_INVALIDO" ? "O servidor não reconheceu o correspondente. Avise o suporte."+detTec("Publique a versão nova do Simulacoes.gs.")
        : e.indexOf("ACAO_DESCONHECIDA")>=0 ? propErro(e)
        : "Não enviou: "+esc(e||"erro desconhecido"))+'</span>';
     return;
@@ -5344,7 +5349,7 @@ async function propPreReservaDaUnidade(id, o){
   const val=(l,nome)=>{ const v=(l&&l.v)||{}; if(v[nome]!==undefined) return v[nome];
     const k=Object.keys(v).find(x=>PROP_NORM(x)===PROP_NORM(nome)); return k===undefined?null:v[k]; };
   const achadas=(r.linhas||[]).filter(l=>un && so(val(l,"UNIDADE"))===un);
-  if(!achadas.length){ if(av){ av.className="sim-aviso err"; av.textContent="A unidade "+(p.unidade||"")+" não tem linha no BANCO DE DADOS VENDAS CONDOMÍNIO. Marque PAGOU PREFERÊNCIA de novo para criar."; } return; }
+  if(!achadas.length){ if(av){ av.className="sim-aviso err"; av.textContent="A unidade "+(p.unidade||"")+" não tem linha na lista de vendas do condomínio. Clique em Reservar de novo para criar a venda."; } return; }
   if(achadas.length>1){ if(av){ av.className="sim-aviso err"; av.textContent="A unidade "+(p.unidade||"")+" tem "+achadas.length+" linhas no banco de vendas — abra pela Planilha Casas Condomínio."; } return; }
   if(av){ av.className=avAntes[0]; av.innerHTML=avAntes[1]; }
   propAbrirPreReserva(String(achadas[0].id), o);
@@ -5376,6 +5381,10 @@ async function propStatus(id, status){
   if(status==="RESERVADA" && !confirm("Reservar esta proposta?\n\n• a unidade fica RESERVADA no mapa;\n• a venda é criada no BANCO DE DADOS VENDAS CONDOMÍNIO;\n• o corretor recebe o link para completar dados e documentos;\n• prazo de "+PROP_RESERVA_DIAS+" dias corridos para gerar o contrato — sem contrato, a reserva cai sozinha.")) return;
   if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)==="RESERVADA" &&
      !confirm("Negar esta proposta reservada?\n\nA unidade volta a disponível e a venda criada na reserva vai para DISTRATOS CONDOMÍNIO.")) return;
+  if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)!=="RESERVADA"){
+    const pn=PROPS.find(x=>x.id===id)||{};
+    if(!(await propSimNao("Negar a proposta de "+(pn.cliente||"este cliente")+"? A unidade "+(pn.unidade||"")+" fica livre."))) return;
+  }
   const av=document.getElementById("prop-detAviso");
   av.className="sim-aviso ok"; av.textContent="Salvando…";
   const pararProg=propProgresso(av, status);
@@ -5555,7 +5564,7 @@ async function propEmail(id){
   /* retorno ao lado do botão E no bloco Decisão: av.className / av.textContent / av.innerHTML escrevem nos dois */
   const av={ set className(v){ av0.className=v; if(ret) ret.className="prop-emailRet "+(/err/.test(v)?"err":"ok"); },
              set textContent(v){ av0.textContent=v; if(ret) ret.textContent=v; },
-             set innerHTML(v){ av0.innerHTML=v; if(ret) ret.textContent=av0.textContent; } };
+             set innerHTML(v){ av0.innerHTML=v; if(ret){ const t=document.createElement("div"); t.innerHTML=v; t.querySelectorAll("details").forEach(d=>d.remove()); ret.textContent=t.textContent; } } };
   const ed=document.getElementById("prop-msg");
   if(!ed){ av.className="sim-aviso err"; av.textContent="Editor do e-mail não encontrado. Feche e abra a proposta."; return; }
   let html, texto;
@@ -5606,10 +5615,10 @@ async function propEmail(id){
   }
   else if(r && r.erro==="SEM_PERMISSAO_EMAIL"){
     av.className="sim-aviso err";
-    av.innerHTML="<b>O Apps Script ainda não tem permissão para enviar e-mail.</b><br>"+
-      "Abra o projeto do Apps Script, selecione a função <code>autorizarEnvioDeEmail</code> "+
+    av.innerHTML="<b>O portal ainda não tem permissão para enviar e-mail.</b> Avise o suporte."+
+      detTec("Abra o projeto do Apps Script, selecione a função <code>autorizarEnvioDeEmail</code> "+
       "na barra de cima e clique em <b>Executar</b>. O Google vai pedir a permissão — aceite. "+
-      "Publicar nova versão não pede permissão nenhuma; quem pede é a execução no editor.";
+      "Publicar nova versão não pede permissão nenhuma; quem pede é a execução no editor.");
   }
   else { av.className="sim-aviso err"; av.textContent=(r&&r.mensagem) || propErro(r&&r.erro); }
 }
