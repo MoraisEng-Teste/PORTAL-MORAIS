@@ -89,6 +89,14 @@
   #pop .acoes a{flex:1;text-align:center;padding:8px 4px}
   #pop .est{display:inline-block;font-size:11px;font-weight:800;color:#fff;border-radius:5px;padding:2px 7px;margin-left:4px;vertical-align:middle}
   #pop .aviso{margin-top:8px;font-size:11px;color:#1F6FB2;background:#EAF2FA;border:1px solid #BBD5EC;border-radius:6px;padding:6px 8px}
+  /* celular: campo com 16 px (o iPhone não dá zoom) e alvo de toque de pelo menos 44 px */
+  @media(max-width:640px){
+    .fgts input,td.fin input{font-size:16px}
+    .bt,.bt-mini,.seg button{min-height:44px}
+    a.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:6px 12px}
+    .zoom button{width:44px;height:44px}
+    #pop .x{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;top:0;right:0;font-size:24px}
+  }
   @media print{header .bts,#st{display:none}body{background:#fff}.wrap{border:0}th{position:static}.zoom,#pop{display:none!important}#mapScroll{max-height:none;overflow:visible}}
 </style>
 </head>

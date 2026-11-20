@@ -354,21 +354,21 @@
       <h2>Enviar simulação</h2>
       <div class="resumo" id="resumoEnvio">Vamos simular na CAIXA as linhas selecionadas e enviar o resultado por e-mail, no papel timbrado da Morais, com o fluxo de entrada e a comissão. O processamento leva alguns minutos.</div><br>
       <div class="linha">
-        <div class="campo"><label>Corretor<span class="obrig">*</span></label><input type="text" name="corretor" data-padrao="texto" required></div>
-        <div class="campo"><label>Imobiliária</label><input type="text" name="imobiliaria" data-padrao="texto"></div>
+        <div class="campo"><label>Corretor<span class="obrig">*</span></label><input autocomplete="name" type="text" name="corretor" data-padrao="texto" required></div>
+        <div class="campo"><label>Imobiliária</label><input autocomplete="organization" type="text" name="imobiliaria" data-padrao="texto"></div>
       </div>
       <div class="linha">
-        <div class="campo"><label>Celular do corretor<span class="obrig">*</span></label><input type="tel" name="celularCorretor" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000" required data-data="1"
+        <div class="campo"><label>Celular do corretor<span class="obrig">*</span></label><input autocomplete="tel" type="tel" name="celularCorretor" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000" required data-data="1"
           oninput="var d=this.value.replace(/\D/g,'').slice(0,11);this.value=d.length>10?'('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7):(d.length>6?'('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6):(d.length>2?'('+d.slice(0,2)+') '+d.slice(2):d));"></div>
       </div>
       <div class="linha">
-        <div class="campo"><label>Nome do cliente<span class="obrig">*</span></label><input type="text" name="nomeCliente" data-padrao="texto" required></div>
-        <div class="campo"><label>CPF do cliente<span class="obrig">*</span></label><input type="text" name="cpfCliente" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" required>
+        <div class="campo"><label>Nome do cliente<span class="obrig">*</span></label><input autocomplete="off" type="text" name="nomeCliente" data-padrao="texto" required></div>
+        <div class="campo"><label>CPF do cliente<span class="obrig">*</span></label><input autocomplete="off" type="text" name="cpfCliente" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" required>
           <span class="ajuda" id="cpfAviso" style="display:none;color:#8A2E17;">CPF inválido — confira os números.</span></div>
       </div>
       <div class="campo full">
         <label>E-mail do corretor (recebe o resultado)<span class="obrig">*</span></label>
-        <input type="email" name="emailDestino" required placeholder="email.do.corretor@exemplo.com">
+        <input autocomplete="email" type="email" name="emailDestino" required placeholder="email.do.corretor@exemplo.com">
         <span class="ajuda"><b>Coloque o e-mail do CORRETOR</b>, não o do cliente — é para ele que a simulação é enviada.</span>
       </div>
       <div class="campo full" style="margin-top:12px;">

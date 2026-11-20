@@ -21,7 +21,7 @@
   h2{font-size:15px;color:var(--marrom);margin:0 0 4px}
   .sub{font-size:13px;color:var(--texto-suave);margin:0 0 14px}
   .grade{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:680px){.grade{grid-template-columns:1fr}}
+  @media(max-width:680px){.grade{grid-template-columns:1fr} input,select,textarea{font-size:16px}}   /* 16 px: o iPhone não dá zoom ao tocar no campo */
   /* 06/10 — celular: campos (inclusive data) do tamanho da tela */
   .grade input,.grade select{box-sizing:border-box;max-width:100%;min-width:0}
   .grade > *{min-width:0}
