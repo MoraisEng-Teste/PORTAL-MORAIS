@@ -87,7 +87,9 @@
   .tcard.esqueleto:hover{transform:none;box-shadow:none;}
   @keyframes brilho{0%{background-position:100% 0}100%{background-position:-100% 0}}
   .zoom button{width:34px;height:34px;border-radius:6px;border:1px solid var(--borda);background:#fff;color:var(--marrom);font-size:18px;font-weight:700;cursor:pointer;}
-  #mapScroll{overflow:auto;max-height:74vh;overscroll-behavior:contain;touch-action:pan-x pan-y pinch-zoom;-webkit-user-select:none;user-select:none;}
+  /* a roda só fica presa no mapa quando ele está ampliado (classe ligada pelo aplicarZoom) */
+  #mapScroll{overflow:auto;max-height:74vh;overscroll-behavior:auto;touch-action:pan-x pan-y pinch-zoom;-webkit-user-select:none;user-select:none;}
+  #mapScroll.ampliado{overscroll-behavior:contain;}
   #mapScroll svg{display:block;height:auto;}
   #mapScroll svg *{-webkit-user-drag:none;}
   #mapScroll polygon{stroke:var(--marrom2);stroke-width:3;cursor:pointer;transition:fill .1s;}
@@ -98,6 +100,9 @@
   .aviso-mapa .miudo{font-size:11px;color:var(--texto-suave);}
   @media(max-width:640px){ .aviso-mapa{font-size:12px;padding:10px 11px;} }
   .legenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--texto-suave);}
+  /* espaço reservado à direita e embaixo: o selo do condomínio (.marca-mapa) fica ali e não cobre os itens */
+  .legenda{padding-right:150px;min-height:58px;box-sizing:border-box;}
+  @media(max-width:640px){.legenda{padding-right:84px;gap:8px 12px;}}
   .legenda span{display:flex;align-items:center;gap:6px;}
   .legenda i{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.15);}
   .tabela{background:#fff;border:1px solid var(--borda);border-radius:10px;overflow:hidden;}
@@ -595,6 +600,7 @@
 
     var fator=novoNivel/zLevel; zLevel=novoNivel;
     svg.style.width=(zLevel*100)+'%';
+    wrap.classList.toggle('ampliado', zLevel>1);
 
     // depois do zoom, recoloca o mesmo ponto embaixo do cursor
     wrap.scrollLeft=fx*svg.offsetWidth-px;
