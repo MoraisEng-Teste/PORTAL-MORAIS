@@ -101,6 +101,19 @@
     if (c.desatualizado && !ehTermo(c)) return false;   /* 03/11: fluxo/condições depois do contrato — gerar de novo antes */
     return !e.envelope || REENVIAVEL.indexOf(situacaoDe(e)) >= 0;
   }
+  /* Onda 2 (ux): por que o "Enviar para assinatura" está apagado — texto visível ao lado do botão (estilo .dz-motivo, no CSS do
+     venda-dossie.js). "" quando o botão está liberado. */
+  function motivoEnviar(c) {
+    var e = c.estado, termo = ehTermo(c);
+    if (!e || podeEnviar(c)) return "";
+    if (c.testes) return "Perfil TESTES só consulta.";
+    if (c.ocupado) return "Aguarde: outra ação está em andamento.";
+    if (!c.contratoGerado) return "Gere o " + (termo ? "termo de reserva" : "contrato") + " antes de enviar.";
+    if (c.desatualizado && !termo) return "Os dados mudaram depois do contrato: gere o contrato de novo antes de enviar.";
+    if (e.envelope) return "Já enviado: para enviar de novo, cancele o envio atual.";
+    return "";
+  }
+  function motivoHtml(texto) { return texto ? ' <span class="dz-motivo" role="note">' + esc(texto) + "</span>" : ""; }
   /* 03/11/2026 (dono): envelope do contrato ABERTO — rascunho, enviado ou aguardando (situação vazia). A aba Contrato fica
    * só leitura (venda-dossie.js htmlContratoLeitura); cancelado/recusado/expirado destrava; assinado tem a tela própria. */
   function envelopeAberto(c) {
@@ -423,8 +436,12 @@
     if (base === "a-reenviar") n = await reenviarLink(ct, d2);
     else if (base === "a-trocar-email") n = await trocarEmail(ct, d2);
     else if (base === "a-cancelar" || base === "a-descartar") {
-      if (!deps.confirmar(base === "a-cancelar" ? "Cancelar o envio para assinatura dos termos de confissão na Clicksign? O contrato não muda; ninguém mais assina estes termos."
-                                                 : "Descartar o rascunho dos termos na Clicksign? Nada foi enviado aos assinantes.")) return c;
+      var okT = (base === "a-cancelar" && typeof deps.caixa === "function")
+        ? await deps.caixa({ titulo: "Cancelar o envio para assinatura dos termos de confissão?", perigo: true, ok: "Cancelar envio", cancelar: "Manter",
+            itens: ["O contrato não muda.", "Ninguém mais assina estes termos.", "As assinaturas já feitas deixam de valer."] })
+        : deps.confirmar(base === "a-cancelar" ? "Cancelar o envio para assinatura dos termos de confissão na Clicksign? O contrato não muda; ninguém mais assina estes termos."
+                                                : "Descartar o rascunho dos termos na Clicksign? Nada foi enviado aos assinantes.");
+      if (!okT) return c;
       if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "cancelar", msg: "" }));
       var r = await chamarSeguro(deps, { action: "assinaturaCancelar", pageId: deps.pageId, doc: "TERMOS", descartar: base === "a-descartar" ? true : undefined });
       if (!r.ok) return copia(c, { ocupado: null, msg: mensagemAssinatura(r) });
@@ -503,7 +520,7 @@
       h += ' <button type="button" class="bt ghost bt-mini perigo" data-acao="' + x + 'descartar"' + (podeDescartar(c) ? "" : " disabled") + ">Descartar rascunho</button>";
     /* só leitura: o perfil TESTES também vê */
     if (podeVerAssinado(c)) h += ' <button type="button" class="bt bt-mini" data-acao="' + x + 'ver-assinado"' + (c.ocupado ? " disabled" : "") + ">Ver " + (termo ? "termo" : "contrato") + " assinado</button>";
-    h += "</div>";
+    h += motivoHtml(motivoEnviar(c)) + "</div>";
     if (c.msg) h += '<div class="dz-msg">' + esc(c.msg) + "</div>";
     return h;
   }
@@ -685,7 +702,13 @@
     var s = ((c.estado && c.estado.signatarios) || []).filter(function (x) { return x.id && x.id === deps.alvo; })[0];
     if (!s || sitSignatario(s) !== "pendente") return c;
     var quem = (s.nome ? s.nome + " (" + s.papel + ")" : s.papel);
-    var novo = deps.perguntar("E-mail certo de " + quem + ":", s.email || "");
+    /* Onda 2 (ux): caixa na própria tela (deps.caixa) no lugar do prompt do navegador; mostra o e-mail atual e valida na hora.
+       Sem deps.caixa (testes, tela antiga) cai no perguntar de antes. */
+    var novo = typeof deps.caixa === "function"
+      ? await deps.caixa({ titulo: "Trocar o e-mail do assinante", ok: "Continuar", cancelar: "Voltar",
+          campo: { rotulo: "E-mail certo de " + quem, tipo: "email", valor: s.email || "", nota: "E-mail atual: " + (s.email || "não informado"), obrigatorio: true,
+                   validar: function (v) { return EMAIL_OK.test(String(v).trim().toLowerCase()) ? "" : MSG.EMAIL_INVALIDO; } } })
+      : deps.perguntar("E-mail certo de " + quem + ":", s.email || "");
     if (novo === null || novo === undefined) return c;
     novo = String(novo).trim().toLowerCase();
     if (!EMAIL_OK.test(novo)) return copia(c, { msg: MSG.EMAIL_INVALIDO });
@@ -709,8 +732,13 @@
   async function cancelarEnvelope(c, deps) {
     if (!podeCancelar(c)) return c;
     var oque = ehTermo(c) ? "termo de reserva" : "contrato";
-    if (!deps.confirmar("Cancelar o envio para assinatura do " + oque + " na Clicksign? Ninguém mais consegue assinar este envio para assinatura " +
-                        "e as assinaturas já feitas nele deixam de valer. Depois dá para enviar de novo.")) return c;
+    /* Onda 2 (ux): caixa própria (Manter / Cancelar envio) no lugar do confirm() do navegador */
+    var okCancelar = typeof deps.caixa === "function"
+      ? await deps.caixa({ titulo: "Cancelar o envio para assinatura do " + oque + "?", perigo: true, ok: "Cancelar envio", cancelar: "Manter",
+          itens: ["Ninguém mais consegue assinar este envio.", "As assinaturas já feitas deixam de valer.", "Depois dá para enviar de novo."] })
+      : deps.confirmar("Cancelar o envio para assinatura do " + oque + " na Clicksign? Ninguém mais consegue assinar este envio para assinatura " +
+                       "e as assinaturas já feitas nele deixam de valer. Depois dá para enviar de novo.");
+    if (!okCancelar) return c;
     if (typeof deps.pintar === "function") deps.pintar(copia(c, { ocupado: "cancelar", msg: "" }));
     var r;
     try { r = await deps.chamar(comDoc(c, { action: "assinaturaCancelar", pageId: deps.pageId })); }

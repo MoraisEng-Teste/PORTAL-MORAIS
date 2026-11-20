@@ -89,6 +89,12 @@
     return qtdFilhos === 1 && classesPrimeiroFilho === "vazio" && !!primeiroTemLoad;
   }
 
+  /* Onda 2 (ux): botão apagado sempre diz POR QUÊ, em texto visível ao lado (o title não aparece no toque).
+     Estilo único .dz-motivo (CSS no fim deste arquivo); texto vazio = nada. */
+  /* motivo comum de botão apagado na aba Contrato: perfil só de consulta ou outra ação em andamento */
+  function motivoTrava(u) { return u && u.testes ? "Perfil TESTES só consulta." : u && u.ocupadoContrato ? "Aguarde: outra ação está em andamento." : ""; }
+  function motivoHtml(texto) { return texto ? ' <span class="dz-motivo" role="note">' + esc(texto) + "</span>" : ""; }
+
   function html(e, ui) {
     var travado = !e.tipoCasa, ocupado = !!ui.ocupado, testes = !!ui.testes;
     var dis = function (cond) { return cond ? " disabled" : ""; };
@@ -167,7 +173,7 @@
     return '<div class="dz-linha dz-doc dz-doc-' + st + '"><span class="dz-rot"><i class="dz-st" aria-hidden="true"></i>' + esc(d.rotulo) +
       ' <small class="dz-st-txt' + (novo ? " dz-novo" : "") + '">' + txt + "</small>" +
       (ui.ocupado === d.id ? " <b>" + esc(ui.ocupadoTexto || "lendo…") + "</b>" : "") + "</span>" +
-      '<span class="dz-acoes">' + b + (extra || "") + "</span>" + lista + "</div>";
+      '<span class="dz-acoes">' + b + (extra || "") + "</span>" + motivoHtml(travado ? "Escolha o tipo de casa." : "") + lista + "</div>";
   }
   /* botão único da casa: lê comprador e imóvel juntos (uma chamada, uma escrita). Aparece no topo do
      dossiê e no fim dos documentos do imóvel; a mensagem sai junto do botão clicado (onde). */
@@ -176,7 +182,7 @@
     var h = '<div class="dz-linha dz-lote"><span class="dz-rot">' + (ui.ocupado === "lote" ? "<b>lendo " + n + (n === 1 ? " documento" : " documentos") + "… (até 3 minutos)</b>"
       : n ? n + (n === 1 ? " documento novo para ler" : " documentos novos para ler") : "Nenhum documento novo") + "</span>" +
       '<button type="button" class="bt bt-mini" data-acao="ler-todos" data-onde="' + esc(onde) + '"' + ((travado || ocupado || testes || !n) ? " disabled" : "") + ">Ler documentos" +
-      (n ? " (" + n + (n === 1 ? " novo" : " novos") + ")" : "") + "</button></div>";
+      (n ? " (" + n + (n === 1 ? " novo" : " novos") + ")" : "") + "</button>" + motivoHtml(travado ? "Escolha o tipo de casa." : "") + "</div>";
     if (ui.msgGrupo === "lote-" + onde) h += htmlMsgLote(ui);
     return h;
   }
@@ -317,7 +323,7 @@
       });
       var falta = conferirEscolhas(s);
       h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="soltar-confirmar"' + ((ocupado || testes || falta) ? " disabled" : "") +
-        ">Confirmar compradores e ler</button> " + (falta ? "<small>" + esc(falta) + "</small>" : "") + "</div>";
+        ">Confirmar compradores e ler</button>" + motivoHtml(falta) + "</div>";
     }
     return h;
   }
@@ -914,12 +920,37 @@
       (p.registrada ? "" : '<button type="button" class="bt ghost bt-mini" data-acao="c-res-nao"' + dis + ">Ainda não — gerar</button> ") +
       '<button type="button" class="bt ghost bt-mini" data-acao="c-res-cancelar">Cancelar</button></div>';
   }
+  /* Onda 2 (ux), item 9: caixa dentro da página (VendaPergunta.caixa, vendas.html) no lugar de confirm()/prompt() nativos; sem ela
+     (outra tela, teste) cai no nativo. Devolve boolean (sem campo) ou texto/null (com campo). */
+  function caixaPagina(o) {
+    if (typeof window !== "undefined" && window.VendaPergunta && typeof window.VendaPergunta.caixa === "function") return window.VendaPergunta.caixa(o);
+    if (o.campo) return Promise.resolve(window.prompt(o.campo.rotulo, o.campo.valor || ""));
+    return Promise.resolve(window.confirm([o.titulo].concat(o.itens || []).join("\n")));
+  }
+  /* Onda 2 (ux), item 5: a última lista de faltas que o servidor devolveu vai para o Resumo (vendas.html guarda em memória) */
+  function avisarFaltas(pageId, lista) {
+    try { window.dispatchEvent(new CustomEvent("venda:faltas-contrato", { detail: { pageId: pageId, faltas: lista || [] } })); } catch (e) {}
+  }
+  /* Onda 2 (ux): UMA faixa amarela no topo da aba Contrato quando a prévia ou o contrato ficou desatualizado (fluxo, fiador,
+     condição especial, cadastro). A regra do que invalida é do servidor (pre.desatualizado / envioDesatualizado); aqui só se
+     mostra, com o botão que resolve ali mesmo — o mesmo data-acao="c-pre" do botão de baixo. "" = sem faixa. */
+  function faixaDesatualizado(e, u, dis) {
+    if (!e) return "";
+    var etapa = etapaContrato(e), motivo = "";
+    if (etapa === "PRE" && e.pre && e.pre.desatualizado) motivo = "Os dados mudaram depois desta prévia do contrato (fluxo, fiador, condição especial ou cadastro).";
+    else if (etapa === "FINAL" && e.envioDesatualizado) motivo = MSG_CONTRATO.CONTRATO_DESATUALIZADO;
+    if (!motivo) return "";
+    return '<div class="dz-faixa" role="status"><b>Contrato desatualizado.</b> <span>' + esc(motivo) + "</span> " +
+      '<button type="button" class="bt bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button>" +
+      motivoHtml(dis ? motivoTrava(u) : "") + "</div>";
+  }
   function htmlContrato(e, u) {
     var ocupado = !!u.ocupadoContrato, testes = !!u.testes;
     var dis = (ocupado || testes) ? " disabled" : "";
     var h = '<div class="grp">Contrato</div>';
     if (testes) h += '<div class="dz-aviso">Perfil TESTES só consulta.</div>';
     if (!e) return h + '<div class="vazio">' + esc(u.msg || "carregando…") + "</div>";
+    h += faixaDesatualizado(e, u, dis);
     if (u.ocupadoContrato === "pre") h += '<div class="dz-linha"><b>gerando a prévia do contrato… (pode levar até 2 minutos)</b></div>';
     if (u.ocupadoContrato === "aprovar") h += '<div class="dz-linha"><b>gerando o contrato… (pode levar até 2 minutos)</b></div>';
     if (u.ocupadoContrato === "salvar") h += '<div class="dz-linha"><b>salvando os dados e gerando a prévia do contrato… (pode levar até 2 minutos)</b></div>';
@@ -951,17 +982,16 @@
       h += '<div class="dz-linha"><span class="dz-rot">Prévia do contrato: ' + esc(pre.nome || "") + "</span>" +
         '<button type="button" class="bt bt-mini" data-acao="c-ver-pre"' + (ocupado ? " disabled" : "") + ">Visualizar prévia</button></div>";
       h += '<div class="dz-msg">Confira na prévia do contrato o que está grifado: amarelo = preenchido pelo app; vermelho = ficou em branco.</div>';
-      if (velho) h += '<div class="dz-aviso">Os dados mudaram depois desta prévia do contrato — gere a prévia do contrato de novo.</div>';
       h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-aprovar"' + ((ocupado || testes || velho) ? " disabled" : "") +
         ">Conferi, está tudo certo — gerar contrato</button> " +
-        '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button></div>";
+        '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button>" +
+        motivoHtml(velho ? "Os dados mudaram: gere a prévia do contrato de novo antes de conferir." : (testes ? "Perfil TESTES só consulta." : ocupado ? "Aguarde: outra ação está em andamento." : "")) + "</div>";
       if (e.gerado) h += '<div class="dz-msg">Contrato anterior: ' + esc(e.nome) + " (será substituído ao conferir).</div>";
     } else if (etapa === "FINAL") {
       h += '<div class="dz-linha"><span class="dz-rot">Contrato gerado<span class="dz-arq-nome">: ' + esc(e.nome) + "</span></span>" +
         '<button type="button" class="bt bt-mini" data-acao="c-ver"' + dis + ">Visualizar</button> " +
         '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar de novo</button></div>";
       h += htmlReservaContrato(e.reserva);
-      if (e.envioDesatualizado) h += '<div class="dz-aviso">' + esc(MSG_CONTRATO.CONTRATO_DESATUALIZADO) + "</div>";
       (e.confissao || []).forEach(function (x) {
         h += '<div class="dz-linha"><span class="dz-rot">Termo de confissão ' + (x.tipo === "POS" ? "pós-chaves" : "pré-chaves") + ": " + esc(x.nome) + "</span>" +
           '<button type="button" class="bt ghost bt-mini" data-acao="c-ver-cfd-' + (x.tipo === "POS" ? "pos" : "pre") + '"' + dis + ">Visualizar</button></div>";
@@ -1132,7 +1162,7 @@
         /* 04/11 (dono): PDF do fluxo salvo para mandar ao cliente, antes da prévia do contrato (o mesmo do quadro do cartão) */
         (typeof window !== "undefined" && typeof window.condPdfFluxo === "function"
           ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-pdf" title="PDF do fluxo para mandar ao cliente">📄 PDF do fluxo</button>' : "") +
-        (lancada ? "" : ' <button type="button" class="bt bt-mini" data-acao="c-fluxo-abrir"' + (dis || (f.trava ? " disabled" : "")) + ">Alterar fluxo</button>") + "</div>";
+        (lancada ? "" : ' <button type="button" class="bt bt-mini" data-acao="c-fluxo-abrir"' + (dis || (f.trava ? " disabled" : "")) + ">Alterar fluxo</button>" + (dis ? motivoHtml(motivoTrava(u)) : "")) + "</div>";
       if (f.trava && TRAVA_FLUXO[f.trava] && !lancada) h += '<div class="dz-msg">' + esc(MSG_CONTRATO[f.trava]) + "</div>";
       if (fluxoDepoisDoContrato(f, ec)) h += '<div class="dz-aviso">Fluxo alterado depois do contrato: gere o contrato de novo.</div>';
       return h;
@@ -1570,6 +1600,17 @@
     if (quando > hoje) quando.setFullYear(quando.getFullYear() - 1);   /* virada de ano */
     return hoje - quando > 10 * 60 * 1000;
   }
+  /* Onda 2 (ux), item 7: depois de pedir algo ao Mais Controle a tela confere sozinha (mesma leitura do botão Atualizar) a cada
+     20 s, por até 4 min, e para quando o estado mudar, o cartão fechar ou o prazo acabar. Aqui só as decisões (testáveis). */
+  var MC_CONFERE_MS = 20000, MC_CONFERE_MAX_MS = 4 * 60 * 1000;
+  function situacaoSemCarimbo(s) { return String(s || "").replace(/\s*\[t=\d+\]/g, "").trim(); }
+  /* "continuar" | "mudou" (o estado é outro: para) | "prazo" (4 min sem mudar: para e mostra o Atualizar) */
+  function decidirConferenciaMC(base, atual, decorridoMs) {
+    if (situacaoSemCarimbo(atual) !== situacaoSemCarimbo(base)) return "mudou";
+    return decorridoMs >= MC_CONFERE_MAX_MS ? "prazo" : "continuar";
+  }
+  function horaCurta(ms) { var d = new Date(ms), p = function (n) { return (n < 10 ? "0" : "") + n; }; return p(d.getHours()) + ":" + p(d.getMinutes()); }
+  function textoConferindoMC(inicioMs) { return "Pedido feito às " + horaCurta(inicioMs) + " · conferindo sozinho…"; }
   function htmlMC(e, u) {
     /* PROCESSANDO com mais de 15 min (carimbo [t=ms]) = o robô não respondeu: libera pedir de novo */
     var tProc = e && /\[t=(\d+)\]/.exec(e.situacao || "");
@@ -1594,6 +1635,7 @@
         '" target="_blank" rel="noopener noreferrer">Abrir no Mais Controle</a></div>';
     }
     if (processando) h += '<div class="dz-linha"><b>o Mais Controle está trabalhando… (1 a 3 minutos)</b></div>';
+    if (u.conferindo) h += '<div class="dz-linha" role="status"><span class="dz-rot">' + esc(textoConferindoMC(u.conferindo)) + "</span></div>";
     var liberaLancar = /^PR[ÉE]VIA OK/i.test(sit) && !e.vendaId;
     var d = function (x) { return (x || testes) ? " disabled" : ""; };
     h += '<div class="dz-linha">';
@@ -1608,7 +1650,9 @@
       h += '<button type="button" class="bt bt-mini" data-acao="mc-anexar"' + d(ocupado) + ">Anexar contrato no Mais Controle</button> ";
     else if (/(^|\n)Contratos \(ZIP\): (n[ãa]o (enviado|gerado|guardado)|.*N[ÃA]O pedido)/i.test(linhasSit) || pedidoParado(linhasSit, "Contratos (ZIP)"))
       h += '<button type="button" class="bt bt-mini" data-acao="mc-anexar-zip"' + d(ocupado) + ">Enviar ZIP ao Mais Controle</button> ";
-    h += '<button type="button" class="bt ghost bt-mini" data-acao="mc-atualizar"' + (u.ocupado ? " disabled" : "") + ">Atualizar</button></div>";
+    h += '<button type="button" class="bt ghost bt-mini" data-acao="mc-atualizar"' + (u.ocupado ? " disabled" : "") + ">Atualizar</button>" +
+      /* Onda 2 (ux): "Lançar" apagado diz por quê, ao lado */
+      motivoHtml(e.vendaId ? "" : testes ? "Perfil TESTES só consulta." : ocupado ? "Aguarde: o Mais Controle está trabalhando." : !liberaLancar ? "Veja a prévia primeiro." : "") + "</div>";
     if (u.msg) h += '<div class="dz-msg">' + esc(u.msg) + "</div>";
     return h;
   }
@@ -1780,7 +1824,7 @@
                    htmlSoltar: htmlSoltar, pessoasDoEnvio: pessoasDoEnvio, conferirEscolhas: conferirEscolhas,
                    destinosDoEnvio: destinosDoEnvio, resultadoPorEspaco: resultadoPorEspaco,
                    resumo: resumo, escala: escala, tipoAceito: tipoAceito, painelCarregando: painelCarregando,
-                   htmlContrato: htmlContrato, htmlContratoLeitura: htmlContratoLeitura, MSG_SO_LEITURA: MSG_SO_LEITURA, htmlReservaContrato: htmlReservaContrato, MSG_RESERVA_VENCIDA: MSG_RESERVA_VENCIDA, etapaContrato: etapaContrato, estadoContrato: estadoContrato, mensagemContrato: mensagemContrato, htmlMC: htmlMC, pedidoParado: pedidoParado, mensagemMC: mensagemMC,
+                   htmlContrato: htmlContrato, htmlContratoLeitura: htmlContratoLeitura, MSG_SO_LEITURA: MSG_SO_LEITURA, htmlReservaContrato: htmlReservaContrato, MSG_RESERVA_VENCIDA: MSG_RESERVA_VENCIDA, etapaContrato: etapaContrato, estadoContrato: estadoContrato, mensagemContrato: mensagemContrato, htmlMC: htmlMC, decidirConferenciaMC: decidirConferenciaMC, textoConferindoMC: textoConferindoMC, MC_CONFERE_MS: MC_CONFERE_MS, MC_CONFERE_MAX_MS: MC_CONFERE_MAX_MS, pedidoParado: pedidoParado, mensagemMC: mensagemMC,
                    topicosMC: topicosMC, MC_URL_VENDA: MC_URL_VENDA, htmlTestemunhas: htmlTestemunhas, htmlConjugePR: htmlConjugePR,
                    htmlCampos: htmlCampos, htmlConta: htmlConta, htmlFluxo: htmlFluxo, htmlFluxoVivo: htmlFluxoVivo, htmlFluxoDesconto: htmlFluxoDesconto, htmlFluxoBem: htmlFluxoBem, aplicarCrlv: aplicarCrlv, permutaSemBem: permutaSemBem, guiarEditor: guiarEditor, fxMexeu: fxMexeu, travarLinha: travarLinha, aplicarSugestao: aplicarSugestao, limparGuia: limparGuia, travasAoApagar: travasAoApagar, faltasDoBem: faltasDoBem, campoBem: campoBem, lerNumBR: lerNumBR, contaDoEstado: contaDoEstado, pedidoCampos: pedidoCampos,
                    contaDasEntradas: contaDasEntradas, faltasDaResposta: faltasDaResposta, detalheFluxoGravado: detalheFluxoGravado,
@@ -1800,6 +1844,8 @@
   var CSS = "#dossie-wrap .dz-linha,.vb-blocos .dz-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}" +
     "#dossie-wrap .dz-rot,.vb-blocos .dz-rot{flex:1 1 200px}#dossie-wrap .on{outline:2px solid #4cd964}" +
     "#dossie-wrap .dz-aviso,.vb-blocos .dz-aviso{color:#E67E22;margin:6px 0}" +
+    ".dz-faixa{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:8px 0;padding:9px 12px;border-left:4px solid #E67E22;border-radius:6px;background:rgba(226,160,58,.16);overflow-wrap:anywhere}" +
+    ".dz-motivo{display:block;flex:1 1 100%;font-size:12px;font-weight:600;color:var(--text3,#5a6b78);margin:2px 0 0;overflow-wrap:anywhere}" +
     "#dossie-wrap .dz-msg,.vb-blocos .dz-msg{margin-top:8px;font-weight:600}" +
     "#dossie-wrap pre,.vb-blocos pre{white-space:pre-wrap;font:inherit;margin:4px 0}" +
     ".vb-blocos ul{margin:4px 0 4px 18px}.vb-blocos ul li{margin:2px 0}" +
@@ -1820,7 +1866,7 @@
     /* 04/11: Alterar fluxo guiado — translúcido serve no tema claro e no escuro; o texto usa as cores do tema */
     ".vb-blocos tr[data-fx-ajustada]{background:rgba(255,193,7,.14);transition:background .8s}.vb-blocos tr.vb-fx-pisca{background:rgba(255,193,7,.34)}" +
     ".vb-blocos .dz-nota.vb-fx-ok{color:var(--verde,#2a9d5c);font-weight:700}.vb-blocos .dz-nota.vb-fx-sug{font-style:italic}" +
-    emCada(">.dz-linha") + "{margin:6px 22px}" + emCada(">.dz-aviso") + "{margin:6px 22px}" +
+    emCada(">.dz-linha") + "{margin:6px 22px}" + emCada(">.dz-aviso") + "{margin:6px 22px}" + emCada(">.dz-motivo") + "{margin:2px 22px 6px}" + emCada(">.dz-faixa") + "{margin:8px 22px}" +
     emCada(">.dz-msg") + "{margin:8px 22px 0}" + emCada(">pre") + "{margin:4px 22px}" +
     emCada(">ul") + "{margin:4px 22px;padding-left:18px}" +
     ".vb-mc .mc-sub{list-style:circle;margin-left:14px;color:var(--text3,#555)}" +
@@ -2085,7 +2131,8 @@
       return depoisDeGravar(pageId, r, nomeDossie + " marcado como conferido.", false, grupo);
     }
     if (acao === "devolver") {
-      var motivo = window.prompt("Motivo da devolução (o que falta ou está errado):");
+      var motivo = await caixaPagina({ titulo: "Devolver o " + (grupo === "imovel" ? "dossiê do imóvel" : "dossiê do comprador"), ok: "Devolver", cancelar: "Voltar",
+        campo: { rotulo: "Motivo da devolução (o que falta ou está errado)", tipo: "area", obrigatorio: true } });
       if (!motivo || !motivo.trim()) return;
       ui.ocupado = "devolver"; pintar();
       r = await chamarVenda({ action: "devolver", pageId: pageId, motivo: motivo, grupo: grupo });
@@ -2250,7 +2297,7 @@
    * resposta de um conjunto que saiu da tela é descartada. Ao abrir, os três estados são
    * pedidos em paralelo, uma vez só: redesenhar a tela (anexar de novo) não pede outra vez. */
   function novoUiC() { return { ocupadoContrato: null, faltas: null, campos: null, rascunho: {}, msg: "", testes: perfilTestes() }; }
-  function novoUiM() { return { ocupado: null, msg: "", testes: perfilTestes() }; }
+  function novoUiM() { return { ocupado: null, msg: "", conferindo: null, testes: perfilTestes() }; }
   /* ---- 27/10/2026: Termo de Pré-Reserva (só no condomínio, antes do contrato) ----
    * e = { conta, gerado, nome, valor, dataLimite } (preReservaEstado); u = { msg, faltas, ocupado, testes }.
    * Comandos: pr-salvar-conta (grava a conta para devolução na linha), pr-gerar, pr-ver (PDF pelo portal). */
@@ -3565,6 +3612,7 @@
         pageId: pageId,
         alvo: b ? b.getAttribute("data-sig") : "",   /* 03/11: Trocar e-mail */
         perguntar: function (t, v) { return window.prompt(t, v); },
+        caixa: caixaPagina,
         confirmar: function (t) { return window.confirm(t); },
         lerPrazo: function () { return prazoDaTela(b); },
         chamar: function (p) { return chamarVenda(p, ESPERA_ASSINATURA); },
@@ -3649,6 +3697,7 @@
           abrirPdf(w, { ok: true, base64: b64 }, ctxA, function () { return ""; });
         },
         perguntar: function (t, v) { return window.prompt(t, v); },
+        caixa: caixaPagina,
         mostrarPrevia: function (prev) { return window.RubricasVenda ? window.RubricasVenda.mostrarPrevia(prev, janelaPrevia) : null; },
         confirmar: function (t) { return window.confirm(t); },
         lerPrazo: function () { return prazoDaTela(b); },
@@ -3672,25 +3721,34 @@
       pintarM();
       return r;
     }
-    function acompanharMC(voltas) {
+    /* uma conferência por vez (o pedido novo troca a anterior); sem laço sem fim: 20 s × até 4 min */
+    function conferirSozinhoMC(inicio, base) {
       if (esperaM) clearTimeout(esperaM);
+      uiM.conferindo = inicio; pintarM();
       esperaM = setTimeout(async function () {
         esperaM = null;
         if (!vivo()) return;
         var r = await carregarMC();
-        if (r && r.ok && /^PROCESSANDO/.test(r.situacao || "") && voltas > 1) acompanharMC(voltas - 1);
-      }, 10000);
+        if (!vivo()) return;
+        var d = decidirConferenciaMC(base, r && r.ok ? r.situacao : base, Date.now() - inicio);
+        if (d === "continuar") { conferirSozinhoMC(inicio, base); return; }
+        uiM.conferindo = null;
+        if (d === "prazo") uiM.msg = "O Mais Controle ainda não respondeu. Clique em Atualizar para conferir de novo.";
+        pintarM();
+      }, MC_CONFERE_MS);
     }
     async function aoClicarMC(acao) {
       if (uiM.ocupado) return;
-      if (acao === "mc-atualizar") { uiM.msg = ""; await carregarMC(); return; }
+      if (acao === "mc-atualizar") { uiM.msg = ""; await carregarMC(); return; }   /* o laço automático, se estiver rodando, segue sozinho */
       if (acao === "mc-anexar" || acao === "mc-anexar-zip") {   /* 03/11: AnexosMC.gs */
         uiM.ocupado = acao; uiM.msg = ""; pintarM();
         var ra = await chamarVenda({ action: "mcAnexar", pageId: pageId, zip: acao === "mc-anexar-zip" });
         if (!vivo()) return;
         uiM.ocupado = null;
-        uiM.msg = ra.ok ? "Pedido ao Mais Controle — em 1 a 3 minutos clique em Atualizar." : mensagemMC(ra);
+        uiM.msg = ra.ok ? "Pedido ao Mais Controle feito." : mensagemMC(ra);
+        var inicioA = Date.now();
         await carregarMC();
+        if (ra.ok && vivo() && estadoM) conferirSozinhoMC(inicioA, estadoM.situacao);
         return;
       }
       var aplicar = acao === "mc-lancar";
@@ -3700,8 +3758,9 @@
       if (!vivo()) return;
       uiM.ocupado = null;
       uiM.msg = r.ok ? (aplicar ? "Lançamento pedido ao Mais Controle." : "Prévia pedida ao Mais Controle.") : mensagemMC(r);
+      var inicioL = Date.now();
       await carregarMC();
-      if (r.ok) acompanharMC(24);
+      if (r.ok && vivo() && estadoM) conferirSozinhoMC(inicioL, estadoM.situacao);
     }
 
     /* Contrato. seqC: sobe a cada ação; resposta com seq diferente do capturado é descartada.
@@ -4286,7 +4345,7 @@
         if (antes.conta) estadoC.conta = antes.conta;
         if (antes.fluxo) estadoC.fluxo = antes.fluxo;              /* 29/10: os blocos do fluxo e das condições */
         if (antes.condicoes) estadoC.condicoes = antes.condicoes;  /* especiais não somem depois de gerar */
-        uiC.faltas = null; uiC.campos = null;
+        uiC.faltas = null; uiC.campos = null; avisarFaltas(pageId, []);
         var feito = aprovar ? "Contrato gerado." : "Prévia do contrato gerada — abra, confira o que está grifado e clique em Conferi.";
         if (aprovar) avisarContratoGerado(pageId, estadoC);
         /* condomínio: campos que saíram em branco ("____") não travam, mas avisam */
@@ -4298,7 +4357,7 @@
         uiC.msg = mensagemContrato(r);
       } else if (r.erro === "FALTAM_DADOS" && r.faltas && r.faltas.length) {
         var fr = faltasDaResposta(r);
-        uiC.faltas = fr.faltas; uiC.campos = fr.campos;
+        uiC.faltas = fr.faltas; uiC.campos = fr.campos; avisarFaltas(pageId, r.faltas.map(String));
         if (r.salvos && r.salvos.length) uiC.msg = "Dados salvos. Ainda falta o que está abaixo.";
       } else {
         if (r.erro === "MODELO_COM_MARCADOR_SOBRANDO" && typeof console !== "undefined") console.warn("contrato: marcadores sobrando", r.marcadores);
@@ -4570,7 +4629,7 @@
        Carrega mesmo sem o painel da casa: o cartão do condomínio também usa. */
     /* 30/10: leitor das rubricas do comprador (pdf.js só carrega na hora de enviar) */
     var sr = document.createElement("script"); sr.src = "venda/RubricasVenda.js?v=9"; document.head.appendChild(sr);
-    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=32";
+    var sa = document.createElement("script"); sa.src = "venda/assinatura-ui.js?v=33";
     sa.onload = function () { [blocosCasa, blocosCond, blocosPR].forEach(function (b) { if (b) b.pintarAssinatura(); }); };
     document.head.appendChild(sa);
     var body = document.getElementById("pn-body"); if (!body) return;
