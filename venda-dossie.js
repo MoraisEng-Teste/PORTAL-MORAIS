@@ -920,12 +920,26 @@
       (p.registrada ? "" : '<button type="button" class="bt ghost bt-mini" data-acao="c-res-nao"' + dis + ">Ainda não — gerar</button> ") +
       '<button type="button" class="bt ghost bt-mini" data-acao="c-res-cancelar">Cancelar</button></div>';
   }
+  /* Onda 2 (ux): UMA faixa amarela no topo da aba Contrato quando a prévia ou o contrato ficou desatualizado (fluxo, fiador,
+     condição especial, cadastro). A regra do que invalida é do servidor (pre.desatualizado / envioDesatualizado); aqui só se
+     mostra, com o botão que resolve ali mesmo — o mesmo data-acao="c-pre" do botão de baixo. "" = sem faixa. */
+  function faixaDesatualizado(e, u, dis) {
+    if (!e) return "";
+    var etapa = etapaContrato(e), motivo = "";
+    if (etapa === "PRE" && e.pre && e.pre.desatualizado) motivo = "Os dados mudaram depois desta prévia do contrato (fluxo, fiador, condição especial ou cadastro).";
+    else if (etapa === "FINAL" && e.envioDesatualizado) motivo = MSG_CONTRATO.CONTRATO_DESATUALIZADO;
+    if (!motivo) return "";
+    return '<div class="dz-faixa" role="status"><b>Contrato desatualizado.</b> <span>' + esc(motivo) + "</span> " +
+      '<button type="button" class="bt bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button>" +
+      motivoHtml(dis ? motivoTrava(u) : "") + "</div>";
+  }
   function htmlContrato(e, u) {
     var ocupado = !!u.ocupadoContrato, testes = !!u.testes;
     var dis = (ocupado || testes) ? " disabled" : "";
     var h = '<div class="grp">Contrato</div>';
     if (testes) h += '<div class="dz-aviso">Perfil TESTES só consulta.</div>';
     if (!e) return h + '<div class="vazio">' + esc(u.msg || "carregando…") + "</div>";
+    h += faixaDesatualizado(e, u, dis);
     if (u.ocupadoContrato === "pre") h += '<div class="dz-linha"><b>gerando a prévia do contrato… (pode levar até 2 minutos)</b></div>';
     if (u.ocupadoContrato === "aprovar") h += '<div class="dz-linha"><b>gerando o contrato… (pode levar até 2 minutos)</b></div>';
     if (u.ocupadoContrato === "salvar") h += '<div class="dz-linha"><b>salvando os dados e gerando a prévia do contrato… (pode levar até 2 minutos)</b></div>';
@@ -957,7 +971,6 @@
       h += '<div class="dz-linha"><span class="dz-rot">Prévia do contrato: ' + esc(pre.nome || "") + "</span>" +
         '<button type="button" class="bt bt-mini" data-acao="c-ver-pre"' + (ocupado ? " disabled" : "") + ">Visualizar prévia</button></div>";
       h += '<div class="dz-msg">Confira na prévia do contrato o que está grifado: amarelo = preenchido pelo app; vermelho = ficou em branco.</div>';
-      if (velho) h += '<div class="dz-aviso">Os dados mudaram depois desta prévia do contrato — gere a prévia do contrato de novo.</div>';
       h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-aprovar"' + ((ocupado || testes || velho) ? " disabled" : "") +
         ">Conferi, está tudo certo — gerar contrato</button> " +
         '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button>" +
@@ -968,7 +981,6 @@
         '<button type="button" class="bt bt-mini" data-acao="c-ver"' + dis + ">Visualizar</button> " +
         '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar de novo</button></div>";
       h += htmlReservaContrato(e.reserva);
-      if (e.envioDesatualizado) h += '<div class="dz-aviso">' + esc(MSG_CONTRATO.CONTRATO_DESATUALIZADO) + "</div>";
       (e.confissao || []).forEach(function (x) {
         h += '<div class="dz-linha"><span class="dz-rot">Termo de confissão ' + (x.tipo === "POS" ? "pós-chaves" : "pré-chaves") + ": " + esc(x.nome) + "</span>" +
           '<button type="button" class="bt ghost bt-mini" data-acao="c-ver-cfd-' + (x.tipo === "POS" ? "pos" : "pre") + '"' + dis + ">Visualizar</button></div>";
@@ -1809,6 +1821,7 @@
   var CSS = "#dossie-wrap .dz-linha,.vb-blocos .dz-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}" +
     "#dossie-wrap .dz-rot,.vb-blocos .dz-rot{flex:1 1 200px}#dossie-wrap .on{outline:2px solid #4cd964}" +
     "#dossie-wrap .dz-aviso,.vb-blocos .dz-aviso{color:#E67E22;margin:6px 0}" +
+    ".dz-faixa{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:8px 0;padding:9px 12px;border-left:4px solid #E67E22;border-radius:6px;background:rgba(226,160,58,.16);overflow-wrap:anywhere}" +
     ".dz-motivo{display:block;flex:1 1 100%;font-size:12px;font-weight:600;color:var(--text3,#5a6b78);margin:2px 0 0;overflow-wrap:anywhere}" +
     "#dossie-wrap .dz-msg,.vb-blocos .dz-msg{margin-top:8px;font-weight:600}" +
     "#dossie-wrap pre,.vb-blocos pre{white-space:pre-wrap;font:inherit;margin:4px 0}" +
@@ -1830,7 +1843,7 @@
     /* 04/11: Alterar fluxo guiado — translúcido serve no tema claro e no escuro; o texto usa as cores do tema */
     ".vb-blocos tr[data-fx-ajustada]{background:rgba(255,193,7,.14);transition:background .8s}.vb-blocos tr.vb-fx-pisca{background:rgba(255,193,7,.34)}" +
     ".vb-blocos .dz-nota.vb-fx-ok{color:var(--verde,#2a9d5c);font-weight:700}.vb-blocos .dz-nota.vb-fx-sug{font-style:italic}" +
-    emCada(">.dz-linha") + "{margin:6px 22px}" + emCada(">.dz-aviso") + "{margin:6px 22px}" + emCada(">.dz-motivo") + "{margin:2px 22px 6px}" +
+    emCada(">.dz-linha") + "{margin:6px 22px}" + emCada(">.dz-aviso") + "{margin:6px 22px}" + emCada(">.dz-motivo") + "{margin:2px 22px 6px}" + emCada(">.dz-faixa") + "{margin:8px 22px}" +
     emCada(">.dz-msg") + "{margin:8px 22px 0}" + emCada(">pre") + "{margin:4px 22px}" +
     emCada(">ul") + "{margin:4px 22px;padding-left:18px}" +
     ".vb-mc .mc-sub{list-style:circle;margin-left:14px;color:var(--text3,#555)}" +
