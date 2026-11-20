@@ -577,7 +577,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
 
     <div id="conteudo" class="hide">
       <div class="tabs-outer"><div class="tabs">
-        <button class="tab on" data-tab="painel" onclick="trocarTab('painel')">Painel</button>
+        <button class="tab on" data-tab="painel" onclick="trocarTab('painel')">Indicadores</button>
         <button class="tab" data-tab="recebidas" onclick="trocarTab('recebidas')">Simulações Recebidas</button>
         <button class="tab" data-tab="propostas" onclick="trocarTab('propostas')">Propostas</button>
         <button class="tab" data-tab="analise" onclick="trocarTab('analise')">Análise de vendas</button>
@@ -929,17 +929,29 @@ function simNet(on){
 addEventListener("online",()=>simNet(true));
 addEventListener("offline",()=>simNet(false));
 
-function trocarTab(nome){
+/* 20/11/2026 (ux) — a aba aberta lembra a última usada; na primeira vez abre em Propostas (o trabalho do dia) */
+const SIM_ABA_KEY="morais_sim_aba";
+const SIM_ABAS=["painel","recebidas","propostas","analise","unidades","servidores"];
+function simAbaInicial(){
+  let a="";
+  try{ a=localStorage.getItem(SIM_ABA_KEY)||""; }catch(e){}
+  if(SIM_ABAS.indexOf(a)<0) a="propostas";
+  if(a==="servidores" && String((S&&S.tipo)||"").toUpperCase()!=="ADM") a="propostas";
+  return a;
+}
+function trocarTab(nome, semHist, inicial){
+  try{ localStorage.setItem(SIM_ABA_KEY, nome); }catch(e){}
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.tab===nome));
   /* set/26 r5 — a aba "Nova proposta" saiu: o preenchimento é pelo mapa
      (proposta.html), do mesmo jeito que a simulação. Aqui o portal só
      DECIDE sobre proposta que já chegou. */
   ["painel","recebidas","propostas","analise","unidades","servidores"].forEach(n=>document.getElementById("tab-"+n).classList.toggle("hide", n!==nome));
-  if(nome==="unidades" && !UNS.length) simCarregarUnidades();
+  /* na abertura da página o iniciar() já pede propostas e unidades: não repete o pedido */
+  if(nome==="unidades" && !UNS.length && !inicial) simCarregarUnidades();
   clearInterval(window._srvTimer);
   if(nome==="servidores"){ srvCarregar(); window._srvTimer=setInterval(()=>{ if(!document.hidden) srvCarregar(); }, 20000); }
-  if(nome==="propostas") propCarregar();   // r40 — revalida toda vez (respeita o TTL)
-  if(nome==="analise"){ propCarregar(); anCarregarPlanilha(true); if(!UNS.length) simCarregarUnidades(); else analiseRender(); }   // 03/11: planilha relida a cada abertura
+  if(nome==="propostas" && !inicial) propCarregar();   // r40 — revalida toda vez (respeita o TTL)
+  if(nome==="analise"){ if(!inicial) propCarregar(); anCarregarPlanilha(true); if(!UNS.length){ if(!inicial) simCarregarUnidades(); } else analiseRender(); }   // 03/11: planilha relida a cada abertura
 }
 
 /* ---------- boot ---------- */
@@ -974,6 +986,7 @@ function iniciar(){
        terminou: as três listas vão juntas e a barra anda de verdade. */
     var tarefas=[["Simulações",simCarregar()],["Propostas",propCarregar()],["Unidades",simCarregarUnidades()]];
     var prontas=0;
+    trocarTab(simAbaInicial(), true, true);   // 20/11/2026: abre na última aba usada (1ª vez: Propostas)
     portalCarga(0, tarefas.map(function(t){return t[0];}).join(", "));
     tarefas.forEach(function(t){
       Promise.resolve(t[1]).catch(function(){}).then(function(){
