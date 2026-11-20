@@ -144,6 +144,11 @@ select:focus,input:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0
 table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:12.5px}
 thead th{background:var(--azul);color:#fff;text-align:center;padding:9px 11px;font-size:10px;letter-spacing:.4px;text-transform:uppercase;position:sticky;top:0;white-space:nowrap;z-index:2;font-weight:700;border-right:1px solid rgba(255,255,255,.22)}
 thead th.stick{left:0;z-index:3}
+.faltas-box:not(:empty){margin:10px 22px;padding:9px 12px;border-left:4px solid var(--orange,#E67E22);border-radius:6px;background:rgba(226,160,58,.14);font-size:13px}
+.cd-cardbox .faltas-box:not(:empty){margin:8px 0}
+.faltas-box ul{margin:6px 0 0 18px;padding:0}.faltas-box small{font-weight:500;color:var(--text3)}
+.faltas-ir{background:none;border:0;padding:2px 0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer;text-align:left}
+@media(max-width:700px){.faltas-ir{min-height:44px;padding:10px 0}}
 thead th.th-rot{text-transform:none;letter-spacing:.2px;font-size:11px}
 /* cabeçalho ordenável (clique para ordenar) */
 thead th.ord{cursor:pointer}
@@ -2502,6 +2507,7 @@ function condAbrir(id){
     '<div data-sec="resumo">'+
     '<div class="cd-kpis" id="cd-kpis">'+condKpisHtml(l,fx)+'</div>'+
     (g("PENDÊNCIAS")&&g("PENDÊNCIAS")!=="nenhuma"?'<div class="cd-falta" style="margin-top:8px"><b>Pendências do cadastro:</b> '+esc(g("PENDÊNCIAS"))+'</div>':'')+
+    faltasContratoBox(l.id,"cond")+
     condLinkVendaHtml(l)+
     condAtualizarVendaHtml(l)+
     condDistratoHtml(l)+
@@ -2891,6 +2897,57 @@ function condCopiar(idEl,bt){
   const t=el.value; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{ el.select(); document.execCommand("copy"); });
   if(bt){ const o=bt.textContent; bt.textContent="✓ Copiado"; setTimeout(()=>bt.textContent=o,1500); }
 }
+/* Onda 2 (ux), item 5: "Faltam N dados para o contrato" no Resumo, antes de clicar em gerar. O navegador NÃO tem como
+   calcular a lista (quem sabe o que falta é o servidor, no gerador do contrato — venda/ContratoVenda.js não roda aqui), então
+   guarda a última lista que o servidor devolveu (evento "venda:faltas-contrato", disparado pelo venda-dossie.js ao tentar
+   gerar) e, no condomínio, também a que o servidor manda ao abrir (faltasCliente: só comprador/fiador/cônjuge). */
+const FALTAS_CONTRATO={};
+const faltaSemT=x=>String(x||"").replace(/-/g,"").toLowerCase();
+function faltasContratoInner(pid){
+  const m=FALTAS_CONTRATO[faltaSemT(pid)]; if(!m||!m.lista.length) return "";
+  const n=m.lista.length, dado=n===1?"dado":"dados";
+  const tit=m.origem==="tentativa"
+    ? 'Faltam '+n+' '+dado+' para o contrato <small>(da última tentativa de gerar)</small>'
+    : 'Faltam '+n+' '+dado+' de compradores e fiadores para o contrato';
+  return '<b>'+tit+':</b><ul>'+m.lista.map((f,i)=>'<li><button type="button" class="faltas-ir" data-fc-i="'+i+'">'+esc(f)+'</button></li>').join("")+'</ul>';
+}
+function faltasContratoBox(pid,modo){
+  return '<div class="faltas-box" data-faltas-pid="'+esc(String(pid))+'" data-modo="'+modo+'">'+faltasContratoInner(pid)+'</div>';
+}
+function faltasContratoRepintar(pid){
+  document.querySelectorAll(".faltas-box").forEach(b=>{ if(faltaSemT(b.getAttribute("data-faltas-pid"))===faltaSemT(pid)) b.innerHTML=faltasContratoInner(pid); });
+}
+function faltasContratoGuardar(pid,lista,origem){
+  const k=faltaSemT(pid), ant=FALTAS_CONTRATO[k];
+  if(origem==="cadastro" && ant && ant.origem==="tentativa") return;   /* a lista completa da tentativa vale mais que o recorte do cadastro */
+  FALTAS_CONTRATO[k]={lista:(lista||[]).map(String),origem:origem};
+  faltasContratoRepintar(pid);
+}
+window.addEventListener("venda:faltas-contrato",ev=>{ const d=ev.detail||{}; if(d.pageId&&Array.isArray(d.faltas)) faltasContratoGuardar(d.pageId,d.faltas,"tentativa"); });
+window.addEventListener("venda:faltas-cliente",ev=>{ const d=ev.detail||{}; if(d.pageId&&Array.isArray(d.faltas)) faltasContratoGuardar(d.pageId,d.faltas,"cadastro"); });
+/* clique num item: vai para a aba (e o campo, quando é coluna da própria venda) onde se resolve */
+function faltasContratoIr(btn){
+  const box=btn.closest(".faltas-box"); if(!box) return;
+  const pid=box.getAttribute("data-faltas-pid"), m=FALTAS_CONTRATO[faltaSemT(pid)]; if(!m) return;
+  const falta=m.lista[Number(btn.getAttribute("data-fc-i"))]; if(falta==null) return;
+  if(box.getAttribute("data-modo")==="cond"){
+    condTrocarAba("contrato");
+    const alvo=document.getElementById("cd-venda"); if(alvo) alvo.scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+  let cols=[]; try{ cols=window.PainelCasa.colunasDaFalta(falta); }catch(e){}
+  const col=cols[0]||"";
+  pnTrocarAba(!col?"contrato":(RESUMO_NORM.indexOf(normNome(col))>=0?"resumo":pnAbaDoCampo(col)));
+  if(!col) return;
+  const rot=rotuloRua(col);
+  setTimeout(()=>{
+    const lab=Array.from(document.querySelectorAll("#pn-body .campo label, #pn-body .ri .k")).find(x=>x.offsetParent&&x.textContent.trim().indexOf(rot)===0);
+    const campo=lab&&lab.closest(".campo, .ri"); if(!campo) return;
+    campo.scrollIntoView({behavior:"smooth",block:"center"});
+    const inp=campo.querySelector("input,select,textarea"); if(inp) try{ inp.focus({preventScroll:true}); }catch(e){}
+  },60);
+}
+document.addEventListener("click",ev=>{ const b=ev.target.closest&&ev.target.closest(".faltas-ir"); if(b) faltasContratoIr(b); });
 /* 02/10 (item 25) — andamento do "Salvar e recalcular": etapas e tempo, em vez de só "Calculando…" */
 function condProgresso(ativo){
   const el=document.getElementById("cd-prog"); if(!el) return ()=>{};
@@ -4926,6 +4983,7 @@ function renderPainel(V,pageId,sensPendente){
 
   /* 09/11/2026 (dono): resumo do processo no topo — só leitura; clicar num item abre o Andamento (onde se edita) */
   sec.resumo+=pnResumoProcesso(V,pageId,sensPendente);
+  sec.resumo+=faltasContratoBox(pageId,"rua");   /* Onda 2: "Faltam N dados para o contrato" (última lista do servidor) */
 
   // resumo venda/cliente — agora editável/selecionável igual ao Notion (item 4)
   sec.resumo+='<div class="grp">Dados da Venda</div><div class="resumo">'+RESUMO.map(n=>{

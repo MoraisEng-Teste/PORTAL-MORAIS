@@ -920,6 +920,10 @@
       (p.registrada ? "" : '<button type="button" class="bt ghost bt-mini" data-acao="c-res-nao"' + dis + ">Ainda não — gerar</button> ") +
       '<button type="button" class="bt ghost bt-mini" data-acao="c-res-cancelar">Cancelar</button></div>';
   }
+  /* Onda 2 (ux), item 5: a última lista de faltas que o servidor devolveu vai para o Resumo (vendas.html guarda em memória) */
+  function avisarFaltas(pageId, lista) {
+    try { window.dispatchEvent(new CustomEvent("venda:faltas-contrato", { detail: { pageId: pageId, faltas: lista || [] } })); } catch (e) {}
+  }
   /* Onda 2 (ux): UMA faixa amarela no topo da aba Contrato quando a prévia ou o contrato ficou desatualizado (fluxo, fiador,
      condição especial, cadastro). A regra do que invalida é do servidor (pre.desatualizado / envioDesatualizado); aqui só se
      mostra, com o botão que resolve ali mesmo — o mesmo data-acao="c-pre" do botão de baixo. "" = sem faixa. */
@@ -4309,7 +4313,7 @@
         if (antes.conta) estadoC.conta = antes.conta;
         if (antes.fluxo) estadoC.fluxo = antes.fluxo;              /* 29/10: os blocos do fluxo e das condições */
         if (antes.condicoes) estadoC.condicoes = antes.condicoes;  /* especiais não somem depois de gerar */
-        uiC.faltas = null; uiC.campos = null;
+        uiC.faltas = null; uiC.campos = null; avisarFaltas(pageId, []);
         var feito = aprovar ? "Contrato gerado." : "Prévia do contrato gerada — abra, confira o que está grifado e clique em Conferi.";
         if (aprovar) avisarContratoGerado(pageId, estadoC);
         /* condomínio: campos que saíram em branco ("____") não travam, mas avisam */
@@ -4321,7 +4325,7 @@
         uiC.msg = mensagemContrato(r);
       } else if (r.erro === "FALTAM_DADOS" && r.faltas && r.faltas.length) {
         var fr = faltasDaResposta(r);
-        uiC.faltas = fr.faltas; uiC.campos = fr.campos;
+        uiC.faltas = fr.faltas; uiC.campos = fr.campos; avisarFaltas(pageId, r.faltas.map(String));
         if (r.salvos && r.salvos.length) uiC.msg = "Dados salvos. Ainda falta o que está abaixo.";
       } else {
         if (r.erro === "MODELO_COM_MARCADOR_SOBRANDO" && typeof console !== "undefined") console.warn("contrato: marcadores sobrando", r.marcadores);

@@ -48,3 +48,24 @@ test("item 4: contrato final com envio desatualizado mostra a faixa; ocupado apa
   assert.match(o, /<div class="dz-faixa"[^>]*>.*data-acao="c-pre" disabled>Gerar prévia do contrato de novo<\/button> <span class="dz-motivo"/);
   assert.doesNotMatch(D.htmlContrato({ gerado: true, nome: "C.pdf", etapa: "FINAL" }, uic()), /dz-faixa/);
 });
+
+import fs from "node:fs";
+const vendas = fs.readFileSync(new URL("../../vendas.html", import.meta.url), "utf8");
+const dossie = fs.readFileSync(new URL("../../venda-dossie.js", import.meta.url), "utf8");
+
+test("item 5: Resumo (rua e condomínio) tem a caixa 'Faltam N dados' alimentada pela última lista do servidor", () => {
+  assert.match(vendas, /faltasContratoBox\(l\.id,"cond"\)/);
+  assert.match(vendas, /sec\.resumo\+=faltasContratoBox\(pageId,"rua"\)/);
+  assert.match(dossie, /avisarFaltas\(pageId, r\.faltas\.map\(String\)\)/);
+  assert.match(dossie, /avisarFaltas\(pageId, \[\]\)/, "contrato gerado limpa a lista");
+  const i = vendas.indexOf("const FALTAS_CONTRATO={}"), j = vendas.indexOf("function faltasContratoRepintar");
+  assert.ok(i > 0 && j > i);
+  const f = new Function("esc", vendas.slice(i, j) + "\nreturn { FALTAS_CONTRATO, faltasContratoBox };")((s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"));
+  assert.equal(f.faltasContratoBox("abc-1", "rua"), '<div class="faltas-box" data-faltas-pid="abc1" data-modo="rua"></div>'.replace("abc1", "abc-1"));
+  f.FALTAS_CONTRATO["abc1"] = { lista: ["Comprador 1: CPF", "Imóvel: matrícula individual"], origem: "tentativa" };
+  const h = f.faltasContratoBox("abc-1", "rua");
+  assert.match(h, /Faltam 2 dados para o contrato <small>\(da última tentativa de gerar\)<\/small>/);
+  assert.equal((h.match(/class="faltas-ir"/g) || []).length, 2);
+  f.FALTAS_CONTRATO["abc1"] = { lista: ["Fiador 1: nome"], origem: "cadastro" };
+  assert.match(f.faltasContratoBox("abc-1", "cond"), /Faltam 1 dado de compradores e fiadores para o contrato/);
+});
