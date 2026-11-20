@@ -424,6 +424,17 @@ html[data-tema="escuro"] .bt.ghost.perigo,html[data-tema="escuro"] .cd-bt.perigo
 .cd-and label{display:block;font-size:11px;font-weight:700;color:var(--text3,#5b6b78);margin-bottom:3px}
 .cd-and select,.cd-and input{width:100%;box-sizing:border-box;height:36px}   /* 31/10: data e select na mesma altura */
 .cd-and .st{font-size:11px;margin-top:2px;min-height:14px;overflow-wrap:anywhere}
+.cd-etapa>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cd-etapa>summary::-webkit-details-marker{display:none}
+.cd-etapa>summary::before{content:"▸";font-size:13px;color:var(--azul,#2B5A7A)}
+.cd-etapa[open]>summary::before{content:"▾"}
+.cd-etapa[open]>summary{margin-bottom:10px}
+.cd-etapa>summary:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.cd-et-t{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--azul,#2B5A7A);letter-spacing:.3px}
+.cd-et-n{font-size:12px;font-weight:600;color:var(--text3,#5b6b78)}
+.cd-et-ok[hidden]{display:none}
+.cd-et-barra{margin:0 0 10px;text-align:right}
+@media (max-width:680px){ .cd-etapa>summary{min-height:44px} }
 .cd-prog{margin-top:8px;font-size:12.5px;color:var(--azul,#2B5A7A)}
 .cd-prog .barra{height:6px;border-radius:4px;background:rgba(43,90,122,.15);overflow:hidden;margin-top:4px}
 .cd-prog .barra i{display:block;height:100%;width:0;background:var(--verde-btn,#4CD964);transition:width .4s}
@@ -530,6 +541,15 @@ html[data-tema="escuro"] .proc-it.nao .proc-val{color:#ff8a7a}
 .pn-grade>.pn-par>.campo{padding:0 11px}
 .pn-grade>.campo:has(.msgrid),.pn-grade>.campo:has(textarea){grid-column:1/-1}
 .pn-vazio{margin:18px 22px;color:var(--text3);font-size:13px}
+.pn-etapa>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pn-etapa>summary::-webkit-details-marker{display:none}
+.pn-etapa>summary::before{content:"▸";font-size:13px;color:var(--text3)}
+.pn-etapa[open]>summary::before{content:"▾"}
+.pn-etapa>summary:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.pn-et-t{flex:1;min-width:0}
+.pn-et-n{font-family:Inter,sans-serif;font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text3)}
+.pn-et-barra{padding:10px 22px 0;text-align:right}
+@media (max-width:680px){ .pn-etapa>summary{min-height:44px} }
 @media (max-width:600px){ .pn-grade{grid-template-columns:1fr} .pn-abas .tab{padding:8px 2px;font-size:11px} }
 /* 31/10/2026 (dono quer o cartão bom no celular): abaixo de 600 px as 6 abas ficam em 3 x 2 (nenhuma escondida) e as
    tabelas da conferência e das parcelas viram blocos empilhados — cada célula com o nome do campo (data-rot), os
@@ -2307,7 +2327,7 @@ async function condSalvar(id,prop,valor){
 /* ---- card da unidade ---- */
 /* UX onda 1: com algo digitado e não salvo, pergunta antes de fechar (✕ Fechar, clique no fundo e Esc) */
 let _condSairJa=false;
-function condFechar(){ if(!_condSairJa&&window.VendaBlocos&&VendaBlocos.temNaoSalvo&&VendaBlocos.temNaoSalvo()&&window.VendaPergunta){ VendaPergunta.sairSemSalvar(()=>{ _condSairJa=true; try{ condFechar(); }finally{ _condSairJa=false; } }); return; } COND_ABERTA=null; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; navFechouOverlay("card"); }
+function condFechar(){ if(!_condSairJa&&window.VendaBlocos&&VendaBlocos.temNaoSalvo&&VendaBlocos.temNaoSalvo()&&window.VendaPergunta){ VendaPergunta.sairSemSalvar(()=>{ _condSairJa=true; try{ condFechar(); }finally{ _condSairJa=false; } }); return; } COND_ABERTA=null; CD_ET={id:null,abertas:{}}; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; navFechouOverlay("card"); }
 /* pergunta simples dentro da página (sem confirm() nativo): Esc ou "Continuar editando" voltam; "Sair sem salvar" segue */
 window.VendaPergunta={
   sairSemSalvar(seguir){
@@ -2923,7 +2943,8 @@ function cdRotuloTela(n){ return rotuloDe(n,"cond"); }
 function condAndamentoHtml(l){
   const cols=condAndamentoCols(); if(!cols.length) return "";
   const campos=cols.map((c,k)=>{
-    const v=cdVal(l,c.nome), idc="cd-and-"+k, ak=' data-and-key="'+esc(l.id+"|"+c.nome)+'"';
+    const v=cdVal(l,c.nome), idc="cd-and-"+k, ak=' data-and-key="'+esc(l.id+"|"+c.nome)+'"'+
+      (c.tipo==="checkbox"?' data-cb="1"':(c.tipo==="date"||(c.tipo!=="url"&&(!(c.opcoes&&c.opcoes.length)||ehSimNao(c.opcoes)))?' data-dec="1"':""));   /* Onda 3: sim/não e data decidem o selo "concluída" */
     let ctl;
     if(c.tipo==="date") ctl='<input type="date" id="'+idc+'"'+ak+' value="'+esc(v?String(v).slice(0,10):"")+'">';
     else if(c.tipo==="url") ctl='<input type="url" id="'+idc+'"'+ak+' placeholder="https://…" value="'+esc(v||"")+'">';
@@ -2939,6 +2960,7 @@ function condAndamentoHtml(l){
       const el=document.getElementById("cd-and-"+k); if(!el) return;
       el.addEventListener("change",()=>condAndSalvar(l.id,c.nome,el.value,"cd-and-"+k+"-st"));
     });
+    condEtapasIniciar(l);
   },0);
   /* 31/10/2026 (dono): os campos separados por quem cuida, cada grupo numa caixa; coluna nova cai em OUTROS */
   const grupos=CD_AND_GRUPOS.map(g=>({nome:g[0],itens:[]})).concat([{nome:"OUTROS",itens:[]}]);
@@ -2946,8 +2968,56 @@ function condAndamentoHtml(l){
     const i=CD_AND_GRUPOS.findIndex(g=>g[1].test(cdNorm(c.nome)));
     grupos[i<0?grupos.length-1:i].itens.push(campos[k]);
   });
-  return '<div class="cd-dica">Cada mudança salva sozinha no Notion.</div>'+grupos.filter(g=>g.itens.length).map(g=>
-    '<div class="cd-and"><h4>'+esc(g.nome)+'</h4><div class="grid">'+g.itens.join("")+'</div></div>').join("");
+  const cheios=grupos.filter(g=>g.itens.length);
+  return '<div class="cd-dica">Cada mudança salva sozinha no Notion.</div>'+
+    (cheios.length>1?'<div class="cd-et-barra"><button type="button" class="cd-bt" id="cd-et-todas" onclick="condEtapasTodas()">Abrir todas</button></div>':"")+
+    cheios.map(g=>
+    '<details class="cd-and cd-etapa" data-etapa="'+esc(g.nome)+'"><summary class="cd-et-s"><span class="cd-et-t">'+esc(g.nome)+'</span><span class="cd-et-n"></span>'+
+    '<span class="chip ok cd-et-ok" hidden>concluída</span></summary><div class="grid">'+g.itens.join("")+'</div></details>').join("");
+}
+/* Onda 3 (ux): os grupos do Andamento viram blocos recolhíveis com "3 de 5" e o selo "concluída" (sim/não e data todos preenchidos).
+   Ao abrir a unidade ficam abertos o primeiro grupo não concluído e o seguinte; OUTROS fica fechado. O que a pessoa abre/fecha fica
+   lembrado até o cartão fechar ou outra unidade abrir. A contagem lê as caixas da tela (muda na hora, sem redesenhar o cartão). */
+let CD_ET={id:null,abertas:{}};
+function condEtapaContar(d){
+  let n=0,total=0,dec=0,falta=0;
+  d.querySelectorAll("[data-and-key]").forEach(el=>{
+    total++;
+    const cheio=el.hasAttribute("data-cb")?el.value==="SIM":String(el.value||"").trim()!=="";
+    if(cheio) n++;
+    if(el.hasAttribute("data-dec")){ dec++; if(!cheio) falta++; }
+  });
+  const concl=dec>0&&falta===0;
+  d.dataset.concl=concl?"1":"";
+  const t=d.querySelector(".cd-et-n"); if(t) t.textContent=n+" de "+total;
+  const ok=d.querySelector(".cd-et-ok"); if(ok) ok.hidden=!concl;
+}
+function condEtapasRotulo(){
+  const b=document.getElementById("cd-et-todas"), raiz=document.querySelector('#cd-card [data-sec="andamento"]'); if(!b||!raiz) return;
+  b.textContent=[...raiz.querySelectorAll("details.cd-etapa")].some(d=>d.open)?"Fechar todas":"Abrir todas";
+}
+function condEtapasTodas(){
+  const raiz=document.querySelector('#cd-card [data-sec="andamento"]'); if(!raiz) return;
+  const ds=[...raiz.querySelectorAll("details.cd-etapa")], abrir=!ds.some(d=>d.open);
+  ds.forEach(d=>{ d.open=abrir; });
+  condEtapasRotulo();
+}
+function condEtapasIniciar(l){
+  const raiz=document.querySelector('#cd-card [data-sec="andamento"]'); if(!raiz) return;
+  const ds=[...raiz.querySelectorAll("details.cd-etapa")];
+  ds.forEach(condEtapaContar);
+  if(CD_ET.id!==l.id){
+    CD_ET={id:l.id,abertas:{}};
+    const reg=ds.filter(d=>d.dataset.etapa!=="OUTROS"), ini=reg.findIndex(d=>!d.dataset.concl);
+    if(ini>=0){ CD_ET.abertas[reg[ini].dataset.etapa]=true; if(reg[ini+1]) CD_ET.abertas[reg[ini+1].dataset.etapa]=true; }
+  }
+  ds.forEach(d=>{ d.open=!!CD_ET.abertas[d.dataset.etapa]; });
+  condEtapasRotulo();
+  if(!raiz._cdEt){
+    raiz._cdEt=true;
+    raiz.addEventListener("toggle",e=>{ const d=e.target; if(d&&d.classList&&d.classList.contains("cd-etapa")){ CD_ET.abertas[d.dataset.etapa]=d.open; condEtapasRotulo(); } },true);
+    raiz.addEventListener("change",e=>{ const d=e.target&&e.target.closest&&e.target.closest("details.cd-etapa"); if(d) condEtapaContar(d); });
+  }
 }
 /* 01/11/2026 (H7): o Andamento salva em segundo plano. A célula já mostra o valor novo; o envio não trava a tela e,
    no sucesso, o cartão NÃO é redesenhado (só o estado local). Por célula só um envio de cada vez: mudanças enquanto ele
@@ -5082,6 +5152,58 @@ function pnPorEtapa(nomes){
   try{ if(window.PainelCasa&&window.PainelCasa.porEtapa) return window.PainelCasa.porEtapa(nomes); }catch(e){}
   return nomes.length?[{titulo:"Preenchimento",campos:nomes}]:[];
 }
+/* Onda 3 (ux): cada etapa do Andamento é um bloco recolhível (<details>) com "3 de 5" e o selo "concluída". Ao abrir a obra ficam abertas
+   a primeira etapa não concluída e a seguinte; o resto fecha; "OUTROS CAMPOS" fecha sempre. O que a pessoa abre/fecha fica lembrado
+   (PN_ET) até o painel fechar ou outra obra abrir. Só a tela muda: campos, gravação e ordem são os de antes. */
+let PN_ET={pageId:null,abertas:{}};
+const PN_ET_OUTROS="OUTROS CAMPOS";
+function pnEtapaCheio(v){
+  if(v==null||v===""||v===false) return false;
+  if(Array.isArray(v)) return v.length>0;
+  return String(v).trim()!=="";
+}
+/* campos: nomes. concluída = há campo de sim/não ou data e todos estão preenchidos (campo ainda carregando conta como vazio) */
+function pnEtapaResumo(campos,V,sensPendente){
+  let n=0,total=0,decisivos=0,faltam=0;
+  campos.forEach(nome=>{
+    const c=campoPorNome(nome); if(!c) return;
+    total++;
+    const cheio=!(c.sensivel&&sensPendente) && pnEtapaCheio(getV(V,nome));
+    if(cheio) n++;
+    if(c.tipo==="date"||((c.tipo==="select"||c.tipo==="status")&&ehSimNao(c.opcoes))){ decisivos++; if(!cheio) faltam++; }
+  });
+  return {preenchidos:n,total:total,concluida:decisivos>0&&faltam===0};
+}
+function pnEtapasRotulo(){
+  const b=document.getElementById("pn-et-todas"), body=document.getElementById("pn-body"); if(!b||!body) return;
+  b.textContent=[...body.querySelectorAll("details.pn-etapa")].some(d=>d.open)?"Fechar todas":"Abrir todas";
+}
+function pnEtapasTodas(){
+  const body=document.getElementById("pn-body"); if(!body) return;
+  const ds=[...body.querySelectorAll("details.pn-etapa")], abrir=!ds.some(d=>d.open);
+  ds.forEach(d=>{ d.open=abrir; });
+  pnEtapasRotulo();
+}
+function pnEtapasHtml(grupos,gradeDe,V,pageId,sensPendente){
+  if(!grupos.length) return "";
+  const chave=g=>g.etapa||g.titulo;
+  const res=grupos.map(g=>pnEtapaResumo(g.campos,V,sensPendente));
+  if(PN_ET.pageId!==pageId){
+    PN_ET={pageId:pageId,abertas:{}};
+    const reg=grupos.map((g,i)=>i).filter(i=>chave(grupos[i])!==PN_ET_OUTROS);
+    const ini=reg.find(i=>!res[i].concluida);
+    if(ini!==undefined){ PN_ET.abertas[chave(grupos[ini])]=true; const prox=reg.find(i=>i>ini); if(prox!==undefined) PN_ET.abertas[chave(grupos[prox])]=true; }
+  }
+  const body=document.getElementById("pn-body");
+  if(body&&!body._pnEt){ body._pnEt=true; body.addEventListener("toggle",e=>{ const d=e.target; if(d&&d.classList&&d.classList.contains("pn-etapa")){ PN_ET.abertas[d.getAttribute("data-etapa")]=d.open; pnEtapasRotulo(); } },true); }
+  const algumaAberta=grupos.some(g=>PN_ET.abertas[chave(g)]);
+  return (grupos.length>1?'<div class="pn-et-barra"><button type="button" class="bt ghost bt-mini" id="pn-et-todas" onclick="pnEtapasTodas()">'+(algumaAberta?"Fechar todas":"Abrir todas")+'</button></div>':"")+
+    grupos.map((g,i)=>{
+      const k=chave(g), r=res[i];
+      return `<details class="pn-etapa" data-etapa="${esc(k)}"${PN_ET.abertas[k]?" open":""}><summary class="grp"><span class="pn-et-t">${esc(g.titulo)}</span>`+
+        `<span class="pn-et-n">${r.preenchidos} de ${r.total}</span>${r.concluida?'<span class="chip ok">concluída</span>':""}</summary>${gradeDe(g.campos)}</details>`;
+    }).join("");
+}
 /* 04/11/2026 (dono): o que falta para gerar o contrato da casa vira a caixa do campo dentro da aba Contrato
    (venda-dossie.js chama window.PainelFaltaCampo(pageId, frase)). Mesma caixa e mesmo salvar do painel
    (campoHtml → editar → updateVenda), então grava na coluna certa. Coluna protegida que ainda não chegou do
@@ -5189,7 +5311,8 @@ function renderPainel(V,pageId,sensPendente){
   /* 12/11/2026 (dono): pares (ASSINOU E ARMAZENOU… + a data) ficam num bloco só, um em cima do outro (venda/painel-casa.js, PARES) */
   const pnCampo=n=>campoHtml(campoPorNome(n),getV(V,n),pageId,sensPendente);
   const pnItens=nomes=>{ try{ if(window.PainelCasa&&window.PainelCasa.agruparPares) return window.PainelCasa.agruparPares(nomes); }catch(e){} return nomes; };
-  const blocoTitulado=(nomes,titulo,antes)=>(nomes.length||antes)?`<div class="grp">${esc(titulo)}</div><div class="pn-grade">`+(antes||"")+pnItens(nomes).map(it=>Array.isArray(it)?`<div class="pn-par">`+it.map(pnCampo).join("")+`</div>`:pnCampo(it)).join("")+`</div>`:"";
+  const gradeDe=(nomes,antes)=>`<div class="pn-grade">`+(antes||"")+pnItens(nomes).map(it=>Array.isArray(it)?`<div class="pn-par">`+it.map(pnCampo).join("")+`</div>`:pnCampo(it)).join("")+`</div>`;
+  const blocoTitulado=(nomes,titulo,antes)=>(nomes.length||antes)?`<div class="grp">${esc(titulo)}</div>`+gradeDe(nomes,antes):"";
   /* 05/11/2026 (dono): Comprador 1 mostra nome, CPF, WhatsApp e e-mail do Resumo — a MESMA coluna (venda/painel-casa.js,
      ESPELHO_COMPRADOR1); o COMPRADOR 1 - E-MAIL antigo só aparece se tiver algo diferente do Email */
   const espC1=pnEspelhoComprador1(V,pageId,sensPendente);
@@ -5208,7 +5331,7 @@ function renderPainel(V,pageId,sensPendente){
   sec.compradores+=porGrupo(porAba.compradores,"Compradores",true);
   sec.contrato+=porGrupo(porAba.contrato,"Contrato — outros dados");
   sec.documentos+=blocoTitulado(porAba.documentos,"Dossiê — observações");
-  sec.andamento+=pnPorEtapa(porAba.andamento).map(g=>blocoTitulado(g.campos,g.titulo)).join("");
+  sec.andamento+=pnEtapasHtml(pnPorEtapa(porAba.andamento),gradeDe,V,pageId,sensPendente);
   /* 09/11/2026 (dono): aba Links — layout, fotos e localização da casa num lugar só */
   if(porAba.links.length){
     sec.links+=blocoTitulado(porAba.links,"Links da casa")+
@@ -5534,7 +5657,7 @@ async function confirmarDistrato(pageId){
   }
 }
 
-function fecharObra(){ const estava=document.getElementById("painel").classList.contains("on"); OBRA_ABERTA=null; document.getElementById("overlay").classList.remove("on"); document.getElementById("painel").classList.remove("on"); if(estava){ pnModalFechar(); navFechouOverlay("painel"); } }
+function fecharObra(){ PN_ET={pageId:null,abertas:{}}; const estava=document.getElementById("painel").classList.contains("on"); OBRA_ABERTA=null; document.getElementById("overlay").classList.remove("on"); document.getElementById("painel").classList.remove("on"); if(estava){ pnModalFechar(); navFechouOverlay("painel"); } }
 /* 05/11/2026 (dono): o painel da casa de rua é um modal central (igual ao cartão do condomínio). Ao abrir: a página
    de trás para de rolar, o foco vai para o "✕ Fechar" e o Tab fica preso dentro; Esc ou clique fora (#overlay)
    fecham e o foco volta para quem abriu. Reabrir a casa com o painel já aberto (recarregar) não mexe em nada. */
