@@ -159,6 +159,13 @@
   #modal .un-chip .cta2 button{flex:1;padding:5px 4px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;}
   #modal .un-chip .cta2 .s{background:var(--amarelo);color:var(--marrom);border:none;}
   #modal .un-chip .cta2 .p{background:#27AE60;color:#fff;border:1px solid #1E8449;font-weight:800;}
+  /* celular: alvo de toque de pelo menos 44 px */
+  @media(max-width:640px){
+    .btn-sim,.btn-prop,#pop button,#modal .un-chip .cta2 button{min-height:44px;}
+    .un-pil{min-height:44px;min-width:44px;}
+    .zoom button{width:44px;height:44px;font-size:22px;}
+    #pop .x,#modal .x{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;top:0;right:0;font-size:26px;}
+  }
   #modal .un-chip .cta2 .p:hover{background:#1E8449;color:#fff;}
 </style>
 </head>
