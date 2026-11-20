@@ -906,6 +906,7 @@
 </main>
 
 <script src="acessibilidade.js"></script>
+<script src="rascunho.js"></script>
 <script src="base-offline.js?v=r97a"></script>
 <script src="regras-tela.js?v=t1101"></script>
 <script src="diluir-ui.js"></script>
@@ -3904,128 +3905,35 @@
 })();
 </script>
 <script>
-/* ===== Onda 2 (item 1) — RASCUNHO DA PROPOSTA neste aparelho ===========================
-   Guarda no localStorage os valores dos campos (nunca arquivos), por unidade, com data e
-   validade de 7 dias. Só restaura se a pessoa escolher "Continuar". Apaga ao enviar. */
+/* Onda 2 (item 1) — RASCUNHO DA PROPOSTA neste aparelho. Onda 3: a peça é a mesma do simulador (rascunho.js). */
 (function(){
-  var PFX='rascunhoProposta:', VALIDADE=7*864e5, timer=null, parado=false, enviado=false, un0='';
-  function ls(){ try{ return window.localStorage; }catch(e){ return null; } }
-  function unidadeSel(){ var f=F(); return (f && f.unidade) ? String(f.unidade.value||'') : ''; }
-  function campos(){
-    var f=F(), cont={}, out=[];
-    [].forEach.call(f.elements, function(el){
-      var t=String(el.type||'').toLowerCase(), nome=el.name||'';
-      if(!nome || nome==='unidade') return;
-      if(t==='file'||t==='button'||t==='submit'||t==='reset'||t==='password'||t==='image'||t==='hidden') return;
-      if(el.closest('#listaDependentes,#fluxo')) return;
-      var i=cont[nome]||0; cont[nome]=i+1;
-      out.push({k:nome+'#'+i, el:el, t:t});
-    });
-    return out;
-  }
-  function ler(un){
-    var s=ls(); if(!s||!un) return null;
-    try{
-      var d=JSON.parse(s.getItem(PFX+un)||'null');
-      if(!d || !d.ts || !d.v) return null;
-      if(Date.now()-d.ts>VALIDADE){ s.removeItem(PFX+un); return null; }
-      return d;
-    }catch(e){ return null; }
-  }
-  function apagar(un){ var s=ls(); try{ if(s&&un) s.removeItem(PFX+un); }catch(e){} }
-  function varrerVelhos(){
-    var s=ls(); if(!s) return;
-    try{
-      var ks=[]; for(var i=0;i<s.length;i++){ var k=s.key(i); if(k && k.indexOf(PFX)===0) ks.push(k); }
-      ks.forEach(function(k){ try{ var d=JSON.parse(s.getItem(k)||'null'); if(!d||!d.ts||Date.now()-d.ts>VALIDADE) s.removeItem(k); }catch(e){ s.removeItem(k); } });
-    }catch(e){}
-  }
-  function salvar(){
-    if(parado||enviado) return;
-    var s=ls(), un=unidadeSel(); if(!s||!un) return;
-    try{
-      var v={}, tem=false;
-      campos().forEach(function(c){
-        if(c.t==='checkbox'||c.t==='radio'){ if(c.el.checked){ v[c.k]=1; tem=true; } }
-        else if(String(c.el.value||'')!==''){ v[c.k]=c.el.value; tem=true; }
-      });
-      if(!tem) return;
-      var dil=null; try{ dil=DIL_PROP.slice(); }catch(e){}
-      s.setItem(PFX+un, JSON.stringify({ts:Date.now(), un:un, v:v, dil:dil}));
-    }catch(e){}
-  }
-  function agendar(e){
-    if(e && e.isTrusted===false) return;   // só mudança feita pela pessoa (não a do próprio código)
-    clearTimeout(timer); timer=setTimeout(salvar, 800);
-  }
-  function p2(n){ return (n<10?'0':'')+n; }
-  function restaurar(d, faixa){
-    parado=true;
-    function disp(el,ev){ try{ el.dispatchEvent(new Event(ev,{bubbles:true})); }catch(e){} }
-    function passada(){
-      campos().forEach(function(c){
-        var el=c.el, ch=(c.t==='checkbox'||c.t==='radio');
-        if(ch){
-          var q=!!d.v[c.k]; if(c.t==='radio' && !q) return;
-          if(el.checked===q) return; el.checked=q;
-        } else {
-          if(!(c.k in d.v) || el.value===d.v[c.k]) return;
-          el.value=d.v[c.k];
-          if(el.tagName==='SELECT' && el.value!==d.v[c.k]) return;
-        }
-        disp(el,'input'); disp(el,'change');
-      });
-    }
-    function fim(){
-      try{ if(d.dil && d.dil.length===2) DIL_PROP=[Number(d.dil[0])||0, Number(d.dil[1])||0]; }catch(e){}
+  var enviado=false;
+  var R=criarRascunho({
+    form:F, prefixo:'rascunhoProposta:', rotulo:'proposta', textoRestaurado:'Os documentos precisam ser anexados de novo.',
+    unidade:function(){ var f=F(); return (f && f.unidade) ? String(f.unidade.value||'') : ''; },
+    unidadeEl:function(){ var f=F(); return f && f.unidade; },
+    pronto:function(){ return !!UNIDADES.length; },
+    excluir:'#listaDependentes,#fluxo',
+    vindoDeFora:function(){ return param('daSimulacao')==='1'; },   // vindo da simulação, os dados dela valem
+    extra:function(){ return {dil:DIL_PROP.slice()}; },
+    aplicarExtra:function(x, d){
+      try{ var dil=x.dil||d.dil; if(dil && dil.length===2) DIL_PROP=[Number(dil[0])||0, Number(dil[1])||0]; }catch(e){}
       try{ if(d.v['valorEntrada#0']) ENTRADA_EDITADA_P=true; }catch(e){}
+    },
+    fim:function(d){
       ['somarRenda','verConjuge','verCredito','atualizarComissao','atualizarFiadorExigido','montarFluxo'].forEach(function(fn){
         try{ window[fn](); }catch(e){} });
-      try{ var fe=F().valorEntrada; if(fe && d.v['valorEntrada#0']){ fe.value=d.v['valorEntrada#0']; disp(fe,'input'); } }catch(e){}
-    }
-    passada();
-    setTimeout(function(){ passada(); fim(); }, 450);
-    setTimeout(function(){ passada(); parado=false; }, 1000);
-    faixa.innerHTML='<b>Rascunho restaurado.</b> Os documentos precisam ser anexados de novo.';
-  }
-  function oferecer(d){
-    var faixa=document.getElementById('faixaRascunho'); if(!faixa) return;
-    var dt=new Date(d.ts);
-    faixa.innerHTML='Você começou uma proposta da unidade <b>'+esc_(d.un)+'</b> em '+p2(dt.getDate())+'/'+p2(dt.getMonth()+1)+
-      ' às '+p2(dt.getHours())+':'+p2(dt.getMinutes())+'.<div class="acoes">'+
-      '<button type="button" class="btn-primario" id="btRascCont">Continuar de onde parou</button>'+
-      '<button type="button" class="btn-secundario" id="btRascZero">Começar do zero</button></div>';
-    faixa.style.display='block';
-    document.getElementById('btRascCont').onclick=function(){ restaurar(d, faixa); };
-    document.getElementById('btRascZero').onclick=function(){ apagar(d.un); faixa.style.display='none'; };
-  }
-  function iniciar(){
-    varrerVelhos();
-    var lk=document.getElementById('lnkApagarRascunho');
-    if(lk) lk.onclick=function(e){
-      e.preventDefault();
-      apagar(unidadeSel()); apagar(un0);
-      var fx=document.getElementById('faixaRascunho'); if(fx) fx.style.display='none';
-      mostrar('ok','Rascunho apagado deste aparelho.');
-    };
-    var f=F(); f.addEventListener('input', agendar); f.addEventListener('change', agendar);
-    /* vindo da simulação, os dados dela valem e o rascunho não é oferecido */
-    if(param('daSimulacao')==='1') return;
-    var t0=Date.now();
-    (function esperar(){
-      var un=unidadeSel();
-      if(un && UNIDADES.length){ un0=un; var d=ler(un); if(d) oferecer(d); return; }
-      if(Date.now()-t0<45000) setTimeout(esperar, 400);
-    })();
-  }
-  window.rascunhoPropostaEnviada=function(){ enviado=true; clearTimeout(timer); apagar(unidadeSel()); apagar(un0); };
+      try{ var fe=F().valorEntrada; if(fe && d.v['valorEntrada#0']){ fe.value=d.v['valorEntrada#0']; fe.dispatchEvent(new Event('input',{bubbles:true})); } }catch(e){}
+    },
+    faixaId:'faixaRascunho', apagarId:'lnkApagarRascunho', avisar:mostrar
+  });
+  window.rascunhoPropostaEnviada=function(){ enviado=true; R.enviado(); };
   /* aviso ao sair só quando há arquivo escolhido e ainda não enviado */
   window.addEventListener('beforeunload', function(e){
     if(enviado) return;
     var n=0; try{ n=arquivosAnexados().length; }catch(x){}
     if(n>0){ e.preventDefault(); e.returnValue=''; return ''; }
   });
-  iniciar();
 })();
 </script>
 <script>

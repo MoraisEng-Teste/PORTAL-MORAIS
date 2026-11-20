@@ -47,6 +47,9 @@
   .btn-secundario{background:var(--branco);color:var(--marrom);border:1px solid var(--borda);}
   .btn-secundario:hover{border-color:var(--marrom2);}
   .oculto{display:none;}
+  .aviso-rascunho{margin:0 0 14px;padding:12px 14px;border:2px solid var(--amarelo);border-radius:10px;background:#FFFBEF;color:var(--marrom);font-size:13px;line-height:1.5;}
+  .aviso-rascunho .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .aviso-rascunho button{min-height:44px;}
   .prazo-opts{display:flex;gap:10px;}
   .prazo-opt{flex:1;border:1px solid var(--borda);border-radius:8px;padding:12px;text-align:center;cursor:pointer;}
   .prazo-opt:has(input:checked){border-color:var(--marrom2);background:#FBEEC8;}
@@ -191,6 +194,7 @@
   <form id="formSimulacao" novalidate>
     <section class="card etapa" data-etapa="1">
       <h2>Unidade e perfil</h2>
+      <div id="faixaRascunho" class="aviso-rascunho" style="display:none"></div>
       <div id="avisoSemUnidades" class="status erro" role="alert" aria-live="assertive" style="display:none;margin-bottom:14px"><b>Não foi possível carregar as unidades.</b> <a href="#" id="lnkRecarregarUn" style="color:inherit;text-decoration:underline;display:inline-block;padding:8px 0">Tente de novo</a></div>
       <div class="linha">
         <div class="campo"><label>Tipo<span class="obrig">*</span></label><select id="tipo" required></select></div>
@@ -264,6 +268,7 @@
       </div>
       <!-- r62 (item 2) — aviso do que falta no passo 1 -->
       <div id="avisoPasso1" class="status erro" role="alert" aria-live="assertive" style="display:none"></div>
+      <p class="ajuda" style="margin:0 0 4px"><a href="#" id="lnkApagarRascunho" style="color:inherit;text-decoration:underline;display:inline-block;padding:10px 0">Apagar rascunho deste aparelho</a></p>
       <div class="rodape"><span></span><button type="button" class="btn-primario" onclick="if(validarPasso1())irPara(2)">Continuar</button></div>
     </section>
 
@@ -449,6 +454,7 @@
 </main>
 
 <script src="acessibilidade.js"></script>
+<script src="rascunho.js"></script>
 <script src="polling.js?v=c0111"></script>
 <script src="fluxo-calc.js"></script>
 <script src="fluxo-bloco.js"></script>
@@ -1179,6 +1185,7 @@
       var r=await enviarComRetentativas(dados,3);
       if(!r.ok){mostrarStatus('erro',r.mensagem||'Não foi possível enviar.');botao.disabled=false;botao.textContent=textoBotao;return;}
       localStorage.setItem('ultimaSimulacao',r.id);
+      try{ window.rascunhoSimulacaoEnviada && window.rascunhoSimulacaoEnviada(); }catch(x){}   // Onda 3: apaga o rascunho deste aparelho
       try{ window.lembrarCorretor && window.lembrarCorretor(); }catch(x){}   // Onda 2: lembra o corretor neste aparelho
       try{ await guardarParaProposta(r.id); }catch(x){}   // 31/10 — para o botão "Transformar em proposta" do enviado.html
       /* r62 — a confirmação abre na página própria (enviado.html), que
@@ -1380,6 +1387,30 @@
       }
     }
   }catch(e){}
+})();
+</script>
+<script>
+/* Onda 3 (item 2) — RASCUNHO DA SIMULAÇÃO neste aparelho (mesma peça da proposta: rascunho.js) */
+(function(){
+  var f=document.getElementById('formSimulacao'); if(!f || !window.criarRascunho) return;
+  var R=criarRascunho({
+    form:function(){ return f; }, prefixo:'rascunhoSimulacao:', rotulo:'simulação', textoRestaurado:'O print da aprovação da CAIXA, se houver, precisa ser anexado de novo.',
+    unidade:function(){ return String((document.getElementById('unidade')||{}).value||''); },
+    unidadeEl:function(){ return document.getElementById('unidade'); },
+    pronto:function(){ return !!UNIDADES.length; },
+    extra:function(){ return {dil:DIL_SIM.slice()}; },
+    aplicarExtra:function(x, d){
+      try{ if(x.dil && x.dil.length===2) DIL_SIM=[Number(x.dil[0])||0, Number(x.dil[1])||0]; }catch(e){}
+      try{ if(d.v['valorEntrada#0']) ENTRADA_EDITADA=true; }catch(e){}
+    },
+    fim:function(d){
+      ['verSubcampos','credSimMudou','desejSimMudou','somarRendaSim','atualizarComissao','estimar','pintarFluxoSim'].forEach(function(fn){
+        try{ window[fn](); }catch(e){} });
+      try{ var fe=f.valorEntrada; if(fe && d.v['valorEntrada#0']){ fe.value=d.v['valorEntrada#0']; fe.dispatchEvent(new Event('input',{bubbles:true})); } }catch(e){}
+    },
+    faixaId:'faixaRascunho', apagarId:'lnkApagarRascunho', avisar:function(t,m){ mostrarStatus(t,m); }
+  });
+  window.rascunhoSimulacaoEnviada=function(){ R.enviado(); };
 })();
 </script>
 </body>
