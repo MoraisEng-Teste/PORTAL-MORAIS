@@ -99,7 +99,7 @@ test("coluna Última: vencimento da última parcela; vazio em linha de uma parce
 test("texto para o cliente: só unidade, valores e datas — nenhum campo de pessoa", () => {
   const r = gerar();
   const t = P.resumo(r.padrao, "Unidade 99 · Tipo 2", "14/11/2026").texto;
-  assert.match(t, /\*Reserva do Ipês — Unidade 99 · Tipo 2\*/);
+  assert.match(t, /\*Reserva dos Ipês — Unidade 99 · Tipo 2\*/);
   assert.match(t, /Pré-chaves: 11 × R\$ 938,18 — de 10\/12\/2026 a 10\/10\/2027/);
   assert.match(t, /Financiamento: R\$ 244\.800,00/);
   assert.doesNotMatch(t, /CPF|cliente:|nome/i);
