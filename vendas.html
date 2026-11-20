@@ -1123,7 +1123,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
            a incluir também ⏳ (sit1, >20 dias) — antes só mostrava sit2/sit3 e por isso
            parecia "não mostrar todos" comparado à Planilha com os 3 filtros marcados -->
       <div id="st-atrasados" style="display:none">
-        <div id="at-lista"><div class="vazio">Abra a Planilha uma vez pra carregar a situação do processo.</div></div>
+        <div id="at-lista"><div class="vazio">Carregando a situação do processo…</div></div>
       </div>
 
       <div id="st-planilha" style="display:none">
@@ -1906,7 +1906,7 @@ function abaSetor(t){
   if(t==="planilha" && (!DADOS.set.length || PLANILHA_SETOR!==SETOR_ATUAL)) carregarPlanilha("set");
   if(t==="condominio") abrirCondominio();
   if(t==="alertas") renderAlertas();
-  if(t==="atrasados") renderAtrasados();
+  if(t==="atrasados"){ renderAtrasados(); if(!(DADOS.set.length||DADOS.hub.length)) Promise.resolve(carregarPlanilha("set")).then(()=>renderAtrasados()); }   /* UX: abre carregando sozinha, sem pedir para abrir a Planilha antes */
   if(t==="modelo") abrirCasasModelo();
   if(t==="semtipo") abrirSemTipo();
   if(t==="estoque"){ if(DOCS_OK) renderEstoque(); else carregarDocumentos().then(renderEstoque); }
@@ -3710,7 +3710,7 @@ function campoAlvoDoAlerta(textoAlerta){
 function renderAtrasados(){
   const box=document.getElementById("at-lista");
   const dados = DADOS.set.length?DADOS.set:DADOS.hub;
-  if(!dados.length){ box.innerHTML='<div class="vazio">Abra a Planilha uma vez para carregar a situação do processo.</div>'; return; }
+  if(!dados.length){ box.innerHTML='<div class="vazio"><span class="load"></span> Carregando a situação do processo… <button type="button" class="bt ghost" style="margin-left:8px" onclick="Promise.resolve(carregarPlanilha(\'set\')).then(renderAtrasados)">Carregar</button></div>'; return; }
   const ORDEM={sit3:0, sit2:1, sit1:2}; // mais urgente primeiro
   const COR={sit1:"#E8CE5A", sit2:"#c0392b", sit3:"#E67E22"};   // 06/11: ⚠️ e 🚨 trocaram de cor
   const TXT={sit1:"⏳ Tempo corrido > 20 dias", sit2:"⚠️ Tempo corrido > 45 dias", sit3:"🚨 Tempo corrido > 45 dias e não recebeu"};
