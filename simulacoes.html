@@ -681,6 +681,9 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
             </span>
           </div>
           <div id="sim-avisoErros" class="sim-aviso" style="margin:0 0 10px"></div>
+          <div class="leg-cores" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin:4px 0 6px">
+            <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FFF3C4;border:1px solid #E8C860;vertical-align:-2px"></i> nova (chegou nas últimas 24 h)</span>
+          </div>
           <div class="tbl-wrap alta"><table id="sim-tabRec"></table></div>
         </div>
       </section>
@@ -776,9 +779,6 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
                 <button class="seg-bt" data-po="desc" onclick="propOrdenar('desc')">↓ Mais novas primeiro</button>
               </div></div>
             <span style="font-size:12px;color:var(--text3);align-self:center">
-              <span style="display:inline-block;width:10px;height:10px;background:#F6D6D2;border:1px solid #D98A80;border-radius:2px;vertical-align:middle"></span>
-              linha vermelha = reserva vence em menos de 24 h (prazo de 5 dias para gerar o contrato)
-              &nbsp;·&nbsp;
               <span class="leg-res"></span>
               linha azul = proposta enviada com a unidade já <b>reservada</b> (só é analisada se houver desistência)
             </span>
@@ -787,7 +787,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
           <div id="prop-aviso" class="sim-aviso"></div>
           <div class="leg-cores" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin:4px 0 6px">
             <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FFF3C4;border:1px solid #E8C860;vertical-align:-2px"></i> nova (recebida, ainda sem decisão)</span>
-            <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#F6D6D2;border:1px solid #E2A493;vertical-align:-2px"></i> reserva vencida</span>
+            <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#F6D6D2;border:1px solid #E2A493;vertical-align:-2px"></i> reserva vence em menos de 24 h (ou já venceu; o prazo é de 5 dias para gerar o contrato)</span>
           </div>
           <div class="tbl-wrap alta"><table id="prop-tab"></table></div>
         </div>
@@ -813,9 +813,10 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
             <span id="sim-alteradas" style="font-size:12px;color:var(--text3);align-self:center"></span>
           </div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin:4px 0 6px">
-            <b style="color:var(--text2)">Cor da linha = STATUS MAPA:</b>
+            <b style="color:var(--text3)">Cor da linha = situação da unidade:</b>
             <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#E3F4E8;border:1px solid #9BD3AE;vertical-align:-2px"></i> disponível</span>
             <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#E1ECF8;border:1px solid #9CC3E4;vertical-align:-2px"></i> reservada</span>
+            <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EDE3F6;border:1px solid #B79AD6;vertical-align:-2px"></i> reserva paga</span>
             <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FBE1E1;border:1px solid #E7A3A3;vertical-align:-2px"></i> vendida</span>
           </div>
           <div class="tbl-wrap alta"><table id="sim-tabUn"></table></div>
@@ -2051,7 +2052,6 @@ function simVerDet(id){
       <button class="bt" style="background:#2a9d5c;color:#fff;border-color:#2a9d5c" onclick="simParaProposta('${s.id}')">📄 Transformar em proposta</button>
       <button class="bt" onclick="simPedirFechar()">Fechar</button>
     </div>
-    <div id="sim-detAviso" class="sim-aviso" style="margin-top:10px"></div>
     <div id="sim-detAviso" class="sim-aviso" style="margin-top:10px"></div>`;
   document.getElementById("sim-modal").classList.remove("hide");
 }
@@ -2901,7 +2901,7 @@ function simObsAbrir(i){
   if(!m){
     m=document.createElement("div"); m.id="sim-obsModal";
     m.style.cssText="position:fixed;inset:0;background:rgba(10,25,35,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
-    m.innerHTML='<div style="background:#fff;border-radius:12px;max-width:620px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.25)">'+
+    m.innerHTML='<div style="background:var(--sup);color:var(--text);border-radius:12px;max-width:620px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.25)">'+
       '<b id="sim-obsTit" style="font-size:15px;color:var(--azul)"></b>'+
       '<textarea id="sim-obsTxt" rows="10" style="width:100%;box-sizing:border-box;margin-top:10px;font-family:inherit;font-size:14px;line-height:1.5;resize:vertical"></textarea>'+
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">'+
@@ -4978,7 +4978,7 @@ function propHistCorresp(txt){
         nomes.map(k=>esc(env[k].nome)+' — '+esc(env[k].email)+' — em <b>'+esc(env[k].quando)+'</b>'+
           (env[k].vezes>1?' (enviada '+env[k].vezes+' vezes)':'')).join('<br>')+'</div>'
     : '';
-  return destaque+'<div style="margin-top:6px"><b style="color:var(--text2)">Histórico de envios:</b><br>'+linhas.slice(0,6).map(esc).join("<br>")+
+  return destaque+'<div style="margin-top:6px"><b style="color:var(--text3)">Histórico de envios:</b><br>'+linhas.slice(0,6).map(esc).join("<br>")+
          (linhas.length>6?'<br><span style="color:var(--text3)">+ '+qtd(linhas.length-6,'envio antigo','envios antigos')+'</span>':'')+'</div>';
 }
 async function propEnviarCorresp(id, chave, nome, email){
