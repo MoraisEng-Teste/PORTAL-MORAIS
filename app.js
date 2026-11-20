@@ -1340,7 +1340,7 @@ sair = function(){
 document.addEventListener("keydown",e=>{
   if(e.ctrlKey&&e.shiftKey&&(e.key==="L"||e.key==="l")){
     e.preventDefault();
-    if(confirm("Apagar os dados guardados neste navegador e recarregar do servidor?\n(Você continua logado; gravações pendentes são mantidas.)")) limparDadosLocais();
+    moraisConfirmar("Apagar os dados guardados", "Apagar os dados guardados neste navegador e recarregar do servidor?\n(Você continua logado; gravações pendentes são mantidas.)", "Apagar e recarregar", true).then(ok=>{ if(ok) limparDadosLocais(); });
   }
 });
 

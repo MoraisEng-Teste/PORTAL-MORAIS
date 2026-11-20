@@ -314,8 +314,8 @@
     el.querySelectorAll("[data-up]").forEach(b=>b.addEventListener("click",()=>mover(st,b.getAttribute("data-up"),-1)));
     el.querySelectorAll("[data-dn]").forEach(b=>b.addEventListener("click",()=>mover(st,b.getAttribute("data-dn"),1)));
     ligarArrasto(st);
-    el.querySelectorAll("[data-ed]").forEach(b=>b.addEventListener("click",()=>{
-      if(!confirm("Editar este trecho? A formatação dele (negrito, links) vira texto simples.")) return;
+    el.querySelectorAll("[data-ed]").forEach(b=>b.addEventListener("click",async()=>{
+      if(!await moraisConfirmar("Editar o trecho", "Editar este trecho? A formatação dele (negrito, links) vira texto simples.", "Editar trecho")) return;
       const bl=acha(st.blocos,b.getAttribute("data-ed")); if(!bl) return; bl._plano=true; pintar(st);
       const n=st.el.querySelector(`[data-t="${bl.id}"]`); if(n) n.focus(); }));
     el.querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>novo(st,b.getAttribute("data-add"),null,"",true)));
@@ -622,7 +622,7 @@
   async function apagar(st,id,focarAnterior){
     const onde=paiDe(st.blocos,id); if(!onde) return;
     const i=onde.lista.findIndex(b=>b.id===id), b=onde.lista[i];
-    if(!focarAnterior && b && b.texto && !confirm("Apagar este item?")) return;
+    if(!focarAnterior && b && b.texto && !await moraisConfirmar("Apagar o item", "Apagar este item?", "Apagar item", true)) return;
     onde.lista.splice(i,1); pintar(st);
     if(focarAnterior&&i>0){ const ant=st.el.querySelector(`[data-t="${onde.lista[i-1].id}"]`); if(ant){ ant.focus(); document.getSelection().selectAllChildren(ant); document.getSelection().collapseToEnd(); } }
     /* v13: item recém-criado — espera o id do Notion e apaga lá também

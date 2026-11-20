@@ -190,7 +190,7 @@
     });
   }
   async function tirar(st,respId,id){
-    if(!confirm("Tirar este anexo da resposta?")) return;
+    if(!await moraisConfirmar("Tirar o anexo", "Tirar este anexo da resposta?", "Tirar anexo", true)) return;
     stat(st,respId,"tirando…");
     const r=await pedir({action:"obraAtvTirar",pageId:st.pageId,blockId:id},45000);
     if(!(r&&r.ok)){ stat(st,respId,"⚠ não tirou: "+errTxt(r),true); return; }

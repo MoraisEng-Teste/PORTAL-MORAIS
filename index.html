@@ -895,7 +895,7 @@ async function muralMarcar(atvId, blockId, f, el){
     delete p2[blockId]; muralPendGravar(p2);
     it.f=antes; try{ cacheSet("atv_mural",_MURAL); }catch(e){}
     pintarMural(_MURAL);
-    alert("Não marquei o item: "+(typeof erroTexto==="function"?erroTexto(r.erro):r.erro));
+    moraisAviso("Não marcou o item", "Não marquei o item: "+(typeof erroTexto==="function"?erroTexto(r.erro):r.erro));
     return;
   }
   /* sem resposta: vai para a fila de envios (sobe sozinho quando a conexão voltar) */

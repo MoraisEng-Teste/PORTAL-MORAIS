@@ -1310,7 +1310,7 @@ function atualizarSelInfo(){
     n===0 ? "Nenhuma obra selecionada." : n+" obra"+(n>1?"s":"")+" selecionada"+(n>1?"s":"")+".";
 }
 async function analisarSelecao(){
-  if(_sel.size===0){ alert("Marque ao menos uma obra."); return; }
+  if(_sel.size===0){ moraisAviso("Nenhuma obra marcada", "Marque ao menos uma obra."); return; }
   document.getElementById("resultado-obra").classList.remove("hide");
   document.getElementById("kpis-obra").innerHTML='<div class="vazio" style="grid-column:1/-1"><span class="load"></span> Carregando…</div>';
   document.getElementById("t-detalhe").innerHTML='';
