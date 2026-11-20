@@ -1353,7 +1353,7 @@ async function alterarEndereco(id){
   const o=obraDe(id); if(!o) return;
   const novo=(prompt("Endereço novo da obra (padrão RUA QD XX LT XX, ex.: TB 21 QD 51 LT 34):",o.titulo||"")||"").toUpperCase().replace(/\s+/g," ").trim();
   if(!novo||N(novo)===N(o.titulo)) return;
-  if(!confirm("Trocar o endereço\n\nDE: "+o.titulo+"\nPARA: "+novo+"\n\nO endereço novo vai também para DOCUMENTOS, VENDAS, PÓS OBRA, LIGAÇÕES, o nome das atividades e o Mais Controle.")) return;
+  if(!await moraisConfirmar("Trocar o endereço", "DE: "+o.titulo+"\nPARA: "+novo+"\n\nO endereço novo vai também para DOCUMENTOS, VENDAS, PÓS OBRA, LIGAÇÕES, o nome das atividades e o Mais Controle.", "Trocar endereço")) return;
   toast("Alterando o endereço e levando para as outras bases…");
   let r; try{ r=await chamar({action:"obraUpdate",pageId:id,prop:"Projeto",valor:novo},180000); }catch(e){ r={ok:false,erro:"sem conexão"}; }
   if(r&&r.ok){
@@ -2375,7 +2375,7 @@ async function carregarArquivos(){
   }
 }
 async function tirarAnexo(respId,id){
-  if(!confirm("Tirar este anexo da resposta?")) return;
+  if(!await moraisConfirmar("Tirar o anexo", "Tirar este anexo da resposta?", "Tirar anexo", true)) return;
   const pid=ATV, blocos=CONT&&CONT.blocos; if(!pid||!blocos) return;
   respSt(respId,"tirando…");
   let r; try{ r=await chamar({action:"obraAtvTirar",pageId:pid,blockId:id},45000,true); }catch(e){ r={ok:false,erro:"sem conexão"}; }
@@ -2410,7 +2410,7 @@ function acoesHtml(a){
 async function executarAcao(atvId,acao,bt){
   const cfg=ACOES_POR_TIPO.find(x=>x.id===acao), a=D.atividades.find(x=>x.id===atvId);
   if(!cfg||!a) return;
-  if(!confirm(`${cfg.rotulo}: criar "${cfg.cria.titulo}" para ${(obraDe(a.obra_id)||{}).titulo||"esta obra"}?`)) return;
+  if(!await moraisConfirmar(cfg.rotulo, `${cfg.rotulo}: criar "${cfg.cria.titulo}" para ${(obraDe(a.obra_id)||{}).titulo||"esta obra"}?`, "Criar")) return;
   const op=novoOpId(); bt.disabled=true; const txt=bt.textContent; bt.innerHTML='<span class="load"></span> Criando…';
   let r=null;
   for(let t=0;t<2&&!(r&&(r.ok||r.erro));t++){ try{ r=await chamar({action:"obraAtvAcao",pageId:atvId,acao:acao,opId:op},60000); }catch(e){ r=null; } }
@@ -2428,7 +2428,7 @@ async function executarAcao(atvId,acao,bt){
 async function criarLigacoes(n,esgoto,bt,forcar){
   const o=obraDe(OBRA); if(!o) return;
   const rot=`${n} ${n===1?"casa":"casas"}${esgoto?" c/ esgoto":""}`;
-  if(!forcar&&!confirm(`Criar ligações e vendas para ${o.titulo} — ${rot}?\n\n${n*(esgoto?3:2)} linhas em Ligações e ${n} em Vendas.`)) return;
+  if(!forcar&&!await moraisConfirmar("Criar ligações e vendas", `Criar ligações e vendas para ${o.titulo} — ${rot}?\n\n${n*(esgoto?3:2)} linhas em Ligações e ${n} em Vendas.`, "Criar")) return;
   const op=novoOpId(), txt=bt.textContent; bt.disabled=true; bt.innerHTML='<span class="load"></span> Criando…';
   let r=null;
   for(let t=0;t<2&&!(r&&(r.ok||r.erro));t++){ try{ r=await chamar({action:"obraLigacoes",pageId:o.id,casas:n,esgoto:esgoto,forcar:!!forcar,opId:op},120000); }catch(e){ r=null; } }
@@ -2437,7 +2437,7 @@ async function criarLigacoes(n,esgoto,bt,forcar){
     toast(`Criadas ${r.ligacoes} ligações (${r.modelos||""}) e ${r.vendas} vendas`+(r.responsavel?` — responsável: ${r.responsavel}`:"")+
     (r.semResponsavel?` — não achei a pessoa "${r.semResponsavel}", RESPONSÁVEL ficou vazio`:"")+"."); return; }
   if(r&&r.erro==="JA_EXISTEM"){
-    if(confirm(`Esta obra já tem ${r.ligacoes} ligações e ${r.vendas} vendas. Criar mesmo assim?`)) return criarLigacoes(n,esgoto,bt,true);
+    if(await moraisConfirmar("Já existem ligações", `Esta obra já tem ${r.ligacoes} ligações e ${r.vendas} vendas. Criar mesmo assim?`, "Criar mesmo assim")) return criarLigacoes(n,esgoto,bt,true);
     return;
   }
   toast("Não criou: "+(r?errMsg(r):"sem resposta do servidor — confira em Ligações antes de tentar de novo"));
