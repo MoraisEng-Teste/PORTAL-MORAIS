@@ -5186,7 +5186,7 @@ async function arquivarLigacao(){
   const l = LINHA_ABERTA;
   if (!l) return;
   const nome = l.obra || "(sem endereço)";
-  if (!confirm("Arquivar a linha \"" + nome + "\"?\n\nEla some da base para todos. Dá para restaurar pela lixeira do Notion em até 30 dias.")) return;
+  if (!await moraisConfirmar("Arquivar a linha", "Arquivar a linha \"" + nome + "\"?\n\nEla some da base para todos. Dá para restaurar pela lixeira do Notion em até 30 dias.", "Arquivar linha", true)) return;
   const r = await escrever({action:"ligExcluir", pageId: l.id}, "Arquivar ligação: " + nome);
   if (!r.ok){ toast("Não arquivou: " + erroTexto(r.erro)); return; }
   if (r.enfileirado){ toast("Sem internet — vai ser arquivada quando reconectar."); return; }

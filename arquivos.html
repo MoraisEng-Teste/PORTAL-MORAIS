@@ -491,7 +491,7 @@ async function alternarCat(c,bt){
   else cacheSet(TXT.ck,D);
 }
 async function arquivar(){
-  const p=proc(ABERTO); if(!p||!confirm(`Arquivar "${p.titulo}"? Vai para a lixeira do Notion.`)) return;
+  const p=proc(ABERTO); if(!p||!await moraisConfirmar("Arquivar", `Arquivar "${p.titulo}"? Vai para a lixeira do Notion.`, "Arquivar", true)) return;
   const r=await chamar({action:"procUpdate",base:BASE,pageId:p.id,excluir:true},45000,true);
   if(r&&r.ok){ D.processos=D.processos.filter(x=>x.id!==p.id); cacheSet(TXT.ck,D); fechar(); pintar(); toast(TXT.Um+" arquivado."); }
   else toast("Não arquivou: "+((r&&r.erro)||"erro"));
