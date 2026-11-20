@@ -1397,6 +1397,13 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
 /* claro/escuro — a escolha vale só para quem clicou, no navegador dele.
    Mesma chave (morais_tema) das outras páginas do portal. */
 const TEMA_KEY="morais_tema";
+/* Onda 3 (ux): valores fixos do condomínio RESERVA DOS IPÊS que estavam escritos pela tela (rótulo do balão, sinal do texto do
+   FGTS/subsídio e data da entrega). Só reúne num lugar — não muda regra nem valor; quem calcula de verdade é o servidor/contrato. */
+const CONDOMINIO_PADRAO={
+  balaoRotulo:"Balão dez/2027",   /* 1º balão do fluxo (coluna DATA 1º BALÃO (12/27)) */
+  sinal:10000,                    /* sinal fixo: o FGTS e o subsídio nunca abatem este valor */
+  entrega:"2028-11-30"            /* entrega das chaves — contrato, item 8 a */
+};
 function temaAtual(){ return document.documentElement.dataset.tema==="escuro"?"escuro":"claro"; }
 function aplicarTema(t){
   const escuro=(t==="escuro");
@@ -2444,7 +2451,7 @@ function condFluxo(l){
   const n2=Number(g("Nº PARCELAS 2º PARTE PRÉ CHAVES"))||0, d2=g("DATA 2º PARTE PRÉ CHAVES");
   add("2ª parte pré-chaves",n2,g("VALOR 2º PARTE PRÉ CHAVES"), d2?dt("DATA 2º PARTE PRÉ CHAVES")+" a "+cdDia(cdAddMes(d2,n2-1,dia)):"—");
   L.push({grupo:"BALÕES"});
-  add("Balão dez/2027",1,g("VALOR 1º BALÃO"),dt("DATA 1º BALÃO (12/27)"));
+  add(CONDOMINIO_PADRAO.balaoRotulo,1,g("VALOR 1º BALÃO"),dt("DATA 1º BALÃO (12/27)"));
   add("Balão da entrega (25ª parcela)",1,g("VALOR BALÃO ENTREGA DE CHAVES"),dt("DATA 2º BALÃO (25º PARCELA)"));
   L.push({grupo:"PÓS-CHAVES"});
   const nP=Number(g("Nº PARCELAS PÓS CHAVES"))||0, dP=g("DATA PÓS CHAVES");
@@ -2490,7 +2497,7 @@ function condAbatimentos(l,fx){
     linha("Subsídio usado na entrada",sub,true)+
     '</tbody></table>';
   if(abat>0 && esperado!=null){
-    h+='<p>O <b>FGTS</b> e o <b>subsídio</b> abatem a entrada (nunca o sinal de R$ 10.000,00). Por isso o pro soluto fica menor: entrada '+cdBRL(entrada)+
+    h+='<p>O <b>FGTS</b> e o <b>subsídio</b> abatem a entrada (nunca o sinal de '+cdBRL(CONDOMINIO_PADRAO.sinal)+'). Por isso o pro soluto fica menor: entrada '+cdBRL(entrada)+
        ' − '+cdBRL(abat)+' = <b>'+cdBRL(esperado)+'</b>'+(Math.abs(esperado-totalFluxo)>1?' (o fluxo abaixo soma '+cdBRL(totalFluxo)+').':'.')+'</p>';
   } else if(entrada!=null){
     h+='<p>Sem FGTS nem subsídio informados: o pro soluto é a entrada inteira.</p>';
@@ -2696,7 +2703,7 @@ function condAbrir(id){
     '<div class="cd-ent">'+
       '<div><label>Data de assinatura do contrato</label><input type="date" id="cd-ass" value="'+esc(ass?String(ass).slice(0,10):"")+'"></div>'+
       '<div><label>Dia de pagamento (cliente escolhe)</label><select id="cd-dia"><option value="">—</option>'+Array.from({length:27},(_,i)=>'<option value="'+(i+5)+'"'+(String(dia)===String(i+5)?" selected":"")+'>Dia '+(i+5)+'</option>').join("")+'</select></div>'+
-      '<div><label>Data da entrega</label><input type="date" id="cd-ent" value="'+COND_ENTREGA_PADRAO+'" disabled title="Fixa para todo o condomínio (contrato, item 8 a): 30/11/2028"></div>'+
+      '<div class="muted" title="Fixa para todo o condomínio (contrato, item 8 a)">Entrega: <b>'+cdDia(CONDOMINIO_PADRAO.entrega)+'</b></div>'+
       '<button class="cd-bt pri" id="cd-calc" onclick="condCalcular(\''+esc(id)+'\')">Salvar e recalcular o fluxo</button>'+
       '<div class="cd-prog" id="cd-prog" style="display:none;flex-basis:100%"></div>'+
     '</div>'+
@@ -3208,7 +3215,7 @@ function condProgresso(ativo){
 }
 /* 27/10 (dono): unidade sem DATA DA ENTREGA abre com a data prevista do contrato do condomínio
    (Quadro Resumo, item 8 a: "conclusão da obra e entrega das chaves: 30/11/2028"); salvar grava. */
-const COND_ENTREGA_PADRAO="2028-11-30";
+const COND_ENTREGA_PADRAO=CONDOMINIO_PADRAO.entrega;   /* Onda 3 (ux): vem do CONDOMINIO_PADRAO (topo do script) */
 async function condCalcular(id){
   const bt=document.getElementById("cd-calc"); bt.disabled=true; bt.textContent="Calculando…";
   const fimProg=condProgresso(true);
