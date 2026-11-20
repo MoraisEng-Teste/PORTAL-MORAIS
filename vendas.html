@@ -144,6 +144,7 @@ select:focus,input:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0
 table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:12.5px}
 thead th{background:var(--azul);color:#fff;text-align:center;padding:9px 11px;font-size:10px;letter-spacing:.4px;text-transform:uppercase;position:sticky;top:0;white-space:nowrap;z-index:2;font-weight:700;border-right:1px solid rgba(255,255,255,.22)}
 thead th.stick{left:0;z-index:3}
+thead th.th-rot{text-transform:none;letter-spacing:.2px;font-size:11px}
 /* cabeçalho ordenável (clique para ordenar) */
 thead th.ord{cursor:pointer}
 thead th.ord:hover{background:rgba(0,0,0,.18)}
@@ -212,6 +213,7 @@ tbody tr.sit1:hover td,tbody tr.sit2:hover td,tbody tr.sit3:hover td{filter:brig
 .grp.sub{color:var(--orange);border-bottom-color:var(--orange);font-size:13.5px}
 .campo{padding:0 22px;margin-bottom:13px}
 .campo label{display:block;font-size:11px;font-weight:700;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px}
+#painel .campo label,#painel .ri .k{text-transform:none;letter-spacing:.1px}
 .campo input,.campo select{width:100%}
 /* checkboxes de multi_select (ex.: Análise de Reparos) — item "marcadores bugados":
    cada opção numa célula de grid própria, com o checkbox sempre colado ao texto
@@ -410,7 +412,7 @@ html[data-tema="escuro"] .bt.ghost.perigo,html[data-tema="escuro"] .cd-bt.perigo
 .cd-and{margin:0 0 16px;border:1.5px solid var(--azul,#2B5A7A);border-radius:10px;padding:12px}
 .cd-and h4{margin:0 0 10px;font-size:13px;color:var(--azul,#2B5A7A);letter-spacing:.3px}
 .cd-and .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;align-items:end}   /* 31/10: rótulo de 2 linhas não desalinha o campo */
-.cd-and label{display:block;font-size:11px;font-weight:700;color:var(--text3,#5b6b78);margin-bottom:3px;text-transform:uppercase}
+.cd-and label{display:block;font-size:11px;font-weight:700;color:var(--text3,#5b6b78);margin-bottom:3px}
 .cd-and select,.cd-and input{width:100%;box-sizing:border-box;height:36px}   /* 31/10: data e select na mesma altura */
 .cd-and .st{font-size:11px;margin-top:2px;min-height:14px;overflow-wrap:anywhere}
 .cd-prog{margin-top:8px;font-size:12.5px;color:var(--azul,#2B5A7A)}
@@ -1610,9 +1612,97 @@ const RESUMO_NORM=RESUMO.map(normNome);
 /* 12/11/2026 (dono): as duas datas de assinatura com nome que diz qual contrato é. Só na TELA — a coluna do Notion
    continua com o nome antigo (robôs, Apps Script e site de vendas leem por ele). Casa de rua (VENDAS): a compra e venda
    com a construtora é a DATA DA VENDA; a DATA DE ASSINATURA DO CONTRATO é a da Caixa (fica ~28 dias depois). */
-const ROTULO_DATA_CV="DATA DA ASSINATURA – COMPRA E VENDA (CONSTRUTORA)", ROTULO_DATA_CAIXA="DATA DA ASSINATURA – CONTRATO CAIXA";
-const ROTULOS_RUA={[normNome("DATA DA VENDA")]:ROTULO_DATA_CV,[normNome("DATA DE ASSINATURA DO CONTRATO")]:ROTULO_DATA_CAIXA};
-function rotuloRua(nome){ return ROTULOS_RUA[normNome(nome)]||String(nome||"").trim().replace(/CORESSPONDENTE/g,"CORRESPONDENTE").replace(/\bENTEGOU\b/g,"ENTREGOU"); }
+const ROTULO_DATA_CV="Data da assinatura – compra e venda (construtora)", ROTULO_DATA_CAIXA="Data da assinatura – contrato Caixa";
+/*ROTULOS:ini*/
+/* Onda 2 (ux): UM dicionário de rótulos para o que a pessoa LÊ (painel da casa, Andamento do condomínio e cabeçalho das
+   duas planilhas). A CHAVE de leitura/gravação continua sendo o nome da coluna do Notion; aqui só muda o texto da tela.
+   ROTULOS: coluna (sem acento/caixa, sem "?" final) -> [rótulo, dica]. A dica só entra quando o significado é certo
+   pelo código; sigla que não se sabe explicar fica como está (sem inventar). ROTULOS_CTX: o mesmo nome de coluna que
+   quer dizer coisa diferente na casa de rua ("rua") e no condomínio ("cond"). O "?" do fim do nome é devolvido sozinho. */
+const ROTULOS_LISTA={
+  "VALOR DE COMPRA E VENDA NO CONTRATO (VENDIDA)":["Valor da compra e venda no contrato","Valor na mão + comissão = valor do contrato."],
+  "VALOR NA MÃO":["Valor na mão"],
+  "COMISSÃO":["Comissão"],
+  "EMITIU RCPM":["Emitiu o RCPM"],
+  "MANDOU P/ CONFORMIDADE":["Mandou para a conformidade"],
+  "MANDOU TODOS OS DOCS. P/ CORRESPONDENTE":["Mandou todos os documentos para o correspondente"],
+  "ASSINOU E ARMAZENOU CONTRATO DO BANCO":["Assinou e armazenou o contrato do banco"],
+  "GEROU E ARMAZENOU GCAP":["Gerou e armazenou o GCAP"],
+  "PAGOU GCAP":["Pagou o GCAP"],
+  "ITBI GERADO":["ITBI gerado"],
+  "ITBI PAGO":["ITBI pago"],
+  "CONTRATO - CRI DA MATRÍCULA":["Cartório de registro de imóveis (CRI) da matrícula","CRI = Cartório de Registro de Imóveis onde a matrícula está registrada."],
+  "CONTRATO - MATRÍCULA INDIVIDUAL":["Matrícula individual"],
+  "CONTRATO - ÁREA DO LOTE (M²)":["Área do lote (m²)"],
+  "CONTRATO - ALVARÁ Nº":["Alvará nº"],
+  "CONTRATO - ALVARÁ DATA":["Alvará · data"],
+  "CONTRATO - HABITE-SE Nº":["Habite-se nº"],
+  "CONTRATO - HABITE-SE DATA":["Habite-se · data"],
+  "CONTRATO - CONFRONTAÇÕES":["Confrontações"],
+  "CONTRATO - CONDIÇÕES ESPECIAIS":["Condições especiais"],
+  "CONTRATO - SINAL VALOR":["Sinal · valor"],
+  "CONTRATO - SINAL DATA":["Sinal · data"],
+  "CONTRATO - ENTRADA VALOR":["Entrada · valor"],
+  "CONTRATO - ENTRADA VENCIMENTO":["Entrada · vencimento"],
+  "CONTRATO - INTERMEDIÁRIA VALOR":["Intermediária · valor"],
+  "CONTRATO - INTERMEDIÁRIA VENCIMENTO":["Intermediária · vencimento"],
+  "CONTRATO - FORMA DE PAGAMENTO":["Forma de pagamento"],
+  "VALOR DE VENDA":["Valor de venda"],
+  "VALOR DO CRÉDITO":["Valor do crédito"],
+  "DIA PAGAMENTO PARCELAS":["Dia de pagamento das parcelas"],
+  "DATA SINAL 30 DIAS":["Data do sinal (30 dias)"],
+  "DATA SINAL 60 DIAS":["Data do sinal (60 dias)"],
+  "DATA SINAL 90 DIAS":["Data do sinal (90 dias)"],
+  "DATA 1º PARTE PRÉ CHAVES":["Data da 1ª parte pré-chaves"],
+  "Nº PARCELAS 1º PARTE PRÉ CHAVES":["Nº de parcelas da 1ª parte pré-chaves"],
+  "VALOR 1º PARTE PRÉ CHAVES":["Valor da 1ª parte pré-chaves","Valor de cada parcela (o servidor grava por parcela)."],
+  "DATA 2º PARTE PRÉ CHAVES":["Data da 2ª parte pré-chaves"],
+  "Nº PARCELAS 2º PARTE PRÉ CHAVES":["Nº de parcelas da 2ª parte pré-chaves"],
+  "VALOR 2º PARTE PRÉ CHAVES":["Valor da 2ª parte pré-chaves","Valor de cada parcela (o servidor grava por parcela)."],
+  "DATA 1º BALÃO (12/27)":["Data do 1º balão (12/27)"],
+  "VALOR 1º BALÃO":["Valor do 1º balão"],
+  "DATA 2º BALÃO (25º PARCELA)":["Data do 2º balão (25ª parcela)"],
+  "VALOR BALÃO ENTREGA DE CHAVES":["Valor do balão na entrega das chaves"],
+  "DATA PÓS CHAVES":["Data do pós-chaves"],
+  "Nº PARCELAS PÓS CHAVES":["Nº de parcelas do pós-chaves"],
+  "VALOR PÓS CHAVES":["Valor do pós-chaves"]
+};
+const ROTULOS_CTX={
+  rua:{"DATA DA VENDA":[ROTULO_DATA_CV],"DATA DE ASSINATURA DO CONTRATO":[ROTULO_DATA_CAIXA]},
+  cond:{"DATA DE ASSINATURA DO CONTRATO":[ROTULO_DATA_CV],"DATA DE ASSINATURA DO CONTRATO NO BANCO":[ROTULO_DATA_CAIXA]}
+};
+const _ROT_CH=s=>normNome(s).replace(/\s*\?$/,"");
+const ROTULOS=(function(){ const m={}; Object.keys(ROTULOS_LISTA).forEach(k=>{ m[_ROT_CH(k)]=ROTULOS_LISTA[k]; }); return m; })();
+const ROTULOS_CTX_N=(function(){ const m={}; Object.keys(ROTULOS_CTX).forEach(c=>{ m[c]={}; Object.keys(ROTULOS_CTX[c]).forEach(k=>{ m[c][_ROT_CH(k)]=ROTULOS_CTX[c][k]; }); }); return m; })();
+/* siglas que ficam em maiúsculas; nomes próprios com a grafia certa */
+const ROT_SIGLAS={CPF:"CPF",RG:"RG",CEP:"CEP",FGTS:"FGTS",ITBI:"ITBI",CRI:"CRI",GCAP:"GCAP",RCPM:"RCPM",CRECI:"CRECI",CNPJ:"CNPJ",UF:"UF",ID:"ID",NF:"NF",PF:"PF",PJ:"PJ",CAIXA:"Caixa",WHATSAPP:"WhatsApp",PIX:"Pix"};
+/* regra automática (o que não está no dicionário): tira o prefixo técnico e põe em "Primeira maiúscula" */
+function rotuloAuto(nome){
+  let s=String(nome||"").trim().replace(/\s+/g," ").replace(/CORESSPONDENTE/g,"CORRESPONDENTE").replace(/\bENTEGOU\b/g,"ENTREGOU");
+  let pre="";
+  const PREF=[[/^CONTRATO - /i,""],[/^PR[ÉE]-RESERVA - /i,"Reserva · "],[/^MC - /i,"Mais Controle · "],[/^ASSINATURA - /i,"Assinatura · "]];
+  for(const p of PREF){ if(p[0].test(s)){ s=s.replace(p[0],""); pre=p[1]; break; } }
+  const cap=t=>t.replace(/^([^\p{L}\p{N}]*)(\p{L})/u,(m,a,b)=>a+b.toUpperCase());
+  if(/\p{Ll}/u.test(s)) return pre+cap(s);   /* já tem minúscula (ex.: "Nº Whatsapp"): não mexe */
+  s=s.toLowerCase().replace(/[\p{L}\p{N}º°ª²]+/gu,w=>ROT_SIGLAS[w.toUpperCase()]||w);
+  s=cap(s).replace(/( [-–·] )(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+  return pre+s;
+}
+function _rotEntrada(nome,ctx){
+  const k=_ROT_CH(String(nome||"").replace(/CORESSPONDENTE/g,"CORRESPONDENTE").replace(/\bENTEGOU\b/g,"ENTREGOU"));
+  return (ctx&&ROTULOS_CTX_N[ctx]&&ROTULOS_CTX_N[ctx][k])||ROTULOS[k]||null;
+}
+/* o texto que a pessoa lê para a coluna; ctx = "rua" | "cond" (opcional) */
+function rotuloDe(nome,ctx){
+  const e=_rotEntrada(nome,ctx);
+  if(e){ const q=/\?\s*$/.test(String(nome||""))&&!/\?$/.test(e[0]); return e[0]+(q?"?":""); }
+  return rotuloAuto(nome);
+}
+/* a dica de uma linha (title) — "" quando não há */
+function dicaDe(nome,ctx){ const e=_rotEntrada(nome,ctx); return (e&&e[1])||""; }
+/*ROTULOS:fim*/
+function rotuloRua(nome){ return rotuloDe(nome,"rua"); }
+function dicaAttr(nome){ const d=dicaDe(nome,"rua"); return d?` title="${esc(d)}"`:""; }
 function camposBase(onde){ return SCHEMA.filter(c=>c.tipo!=="rollup"&&c.tipo!=="relation"&&!nomeExcluido(c.nome,onde)&&c.nome!=="ENDEREÇO"&&RESUMO_NORM.indexOf(normNome(c.nome))<0); }
 function ordemColunas(){
   // Setor com lista própria (COLUNAS_SETOR): mostra só aquilo, na ordem pedida.
@@ -2041,7 +2131,7 @@ function condRender(){
   }).sort((a,b)=>String(cdVal(a,tit)||"").localeCompare(String(cdVal(b,tit)||""),"pt-BR",{numeric:true}));
   document.getElementById("cd-count").textContent=linhas.length+" unidade(s)";
   if(!COND.linhas.length){ document.getElementById("cd-wrap").innerHTML='<div class="vazio">Nenhuma venda no banco ainda. Marque uma proposta como <b>VENDIDA</b> em Simulações → Propostas para ela aparecer aqui.</div>'; return; }
-  let h='<table><thead><tr>'+cols.map((c,i)=>'<th title="'+esc(c.nome)+'">'+esc(cdRotuloTela(c.nome))+'</th>'+(i===0?'<th>Etapa</th>':'')).join("")+'</tr></thead><tbody>';
+  let h='<table><thead><tr>'+cols.map((c,i)=>'<th class="th-rot" title="'+esc(dicaDe(c.nome,"cond")||c.nome)+'">'+esc(cdRotuloTela(c.nome))+'</th>'+(i===0?'<th>Etapa</th>':'')).join("")+'</tr></thead><tbody>';
   linhas.forEach(l=>{
     h+='<tr data-id="'+esc(l.id)+'">'+cols.map((c,i)=>{
       const v=cdVal(l,c.nome), ed=cdEditavel(c)&&i>0;
@@ -2660,8 +2750,7 @@ const CD_AND_GRUPOS=[
 ];
 /* 31/10/2026: erros de digitação dos nomes de coluna do Notion só na tela (a coluna não é renomeada) */
 /* 12/11/2026: no condomínio a DATA DE ASSINATURA DO CONTRATO é a compra e venda e a "… NO BANCO" é a da Caixa (só tela) */
-const ROTULOS_COND={[normNome("DATA DE ASSINATURA DO CONTRATO")]:ROTULO_DATA_CV,[normNome("DATA DE ASSINATURA DO CONTRATO NO BANCO")]:ROTULO_DATA_CAIXA};
-function cdRotuloTela(n){ if(ROTULOS_COND[normNome(n)]) return ROTULOS_COND[normNome(n)]; return String(n||"").replace(/CORESSPONDENTE/g,"CORRESPONDENTE").replace(/\bENTEGOU\b/g,"ENTREGOU"); }
+function cdRotuloTela(n){ return rotuloDe(n,"cond"); }
 function condAndamentoHtml(l){
   const cols=condAndamentoCols(); if(!cols.length) return "";
   const campos=cols.map((c,k)=>{
@@ -2674,7 +2763,7 @@ function condAndamentoHtml(l){
       let ops=(c.opcoes&&c.opcoes.length)?c.opcoes.slice():["SIM","NÃO"];
       ctl='<select id="'+idc+'"'+ak+'><option value="">—</option>'+ops.map(o=>'<option'+(o===v?" selected":"")+'>'+esc(o)+'</option>').join("")+'</select>';
     }
-    return '<div><label title="'+esc(c.nome)+'">'+esc(cdRotuloTela(c.nome))+'</label>'+ctl+'<div class="st" id="'+idc+'-st" data-and-st="'+esc(l.id+"|"+c.nome)+'"></div></div>';
+    return '<div><label title="'+esc(dicaDe(c.nome,"cond")||c.nome)+'">'+esc(cdRotuloTela(c.nome))+'</label>'+ctl+'<div class="st" id="'+idc+'-st" data-and-st="'+esc(l.id+"|"+c.nome)+'"></div></div>';
   });
   setTimeout(()=>{
     cols.forEach((c,k)=>{
@@ -3933,7 +4022,8 @@ function setaOrd(ctx, colNome){
 /* <th> ordenável: mantém o "stick" da 1ª coluna, guarda o nome em data-col */
 function thCol(c, i, ctx){
   const cls=(i===0?"stick ":"")+"ord"+(ORDEM_TAB[ctx]&&normNome(ORDEM_TAB[ctx].col)===normNome(c.nome)?" ord-ativa":"");
-  return `<th class="${cls}" data-col="${esc(c.nome)}" title="Ordenar por ${esc(c.nome.trim())}">${esc(rotuloRua(c.nome))}${setaOrd(ctx,c.nome)}</th>`;
+  const dica=dicaDe(c.nome,"rua");
+  return `<th class="${cls} th-rot" data-col="${esc(c.nome)}" title="Ordenar por ${esc(c.nome.trim())}${dica?" — "+esc(dica):""}">${esc(rotuloRua(c.nome))}${setaOrd(ctx,c.nome)}</th>`;
 }
 function atualizarSetas(ctx){
   document.querySelectorAll("#"+ctx+"-wrap thead th.ord").forEach(th=>{
@@ -4648,22 +4738,22 @@ async function editarToggle(pageId,prop,btn){
    Travado de propósito: input vazio e editável convidaria a digitar por cima e
    apagar o dado real no Notion. */
 function sensPendenteHtml(c){
-  return `<div class="campo"><label>${esc(rotuloRua(c.nome))}</label><div class="sens-ro">••• carregando…</div></div>`;
+  return `<div class="campo"><label${dicaAttr(c.nome)}>${esc(rotuloRua(c.nome))}</label><div class="sens-ro">••• carregando…</div></div>`;
 }
 function sensPendenteResumoHtml(c){
-  return `<div class="ri"><div class="k">${esc(rotuloRua(c.nome))}</div><div class="sens-ro">•••</div></div>`;
+  return `<div class="ri"><div class="k"${dicaAttr(c.nome)}>${esc(rotuloRua(c.nome))}</div><div class="sens-ro">•••</div></div>`;
 }
 function campoHtml(c,valor,pageId,sensPendente){
   if(c.sensivel && sensPendente) return sensPendenteHtml(c);
-  if(bloqueadoParaMim(c)) return `<div class="campo"><label>${esc(rotuloRua(c.nome))} <span style="color:var(--text4);font-weight:500">(somente leitura)</span></label><div class="ro">${esc(valor||"—")}</div></div>`;
+  if(bloqueadoParaMim(c)) return `<div class="campo"><label${dicaAttr(c.nome)}>${esc(rotuloRua(c.nome))} <span style="color:var(--text4);font-weight:500">(somente leitura)</span></label><div class="ro">${esc(valor||"—")}</div></div>`;
   /* Endereço (nome da obra): 05/11/2026 (dono) ninguém muda pelo painel, ADM inclusive — saiu do Resumo; se algum
      caminho ainda pedir a caixa, ela vem só leitura */
-  if(normNome(c.nome)==="ENDERECO") return `<div class="campo"><label>${esc(rotuloRua(c.nome))} <span style="color:var(--text4);font-weight:500">(somente leitura)</span></label><div class="ro">${esc(valor||"—")}</div></div>`;
-  return `<div class="campo"><label>${esc(rotuloRua(c.nome))}</label>${inputControl(c,valor,pageId)}</div>`;
+  if(normNome(c.nome)==="ENDERECO") return `<div class="campo"><label${dicaAttr(c.nome)}>${esc(rotuloRua(c.nome))} <span style="color:var(--text4);font-weight:500">(somente leitura)</span></label><div class="ro">${esc(valor||"—")}</div></div>`;
+  return `<div class="campo"><label${dicaAttr(c.nome)}>${esc(rotuloRua(c.nome))}</label>${inputControl(c,valor,pageId)}</div>`;
 }
 function campoResumoHtml(c,valor,pageId,sensPendente){
   if(c.sensivel && sensPendente) return sensPendenteResumoHtml(c);
-  return `<div class="ri"><div class="k">${esc(rotuloRua(c.nome))}</div>${inputControl(c,valor,pageId)}</div>`;
+  return `<div class="ri"><div class="k"${dicaAttr(c.nome)}>${esc(rotuloRua(c.nome))}</div>${inputControl(c,valor,pageId)}</div>`;
 }
 /* 05/11/2026 (dono): a mesma coluna em duas abas (Resumo e Compradores → Comprador 1). Cada caixa leva
    data-espelho=<nome normalizado>; ao editar uma, pnEspelhar põe o valor novo nas outras — nunca duas caixas
@@ -4928,7 +5018,7 @@ function renderPainel(V,pageId,sensPendente){
   try{ if(window.PainelCasa){ const ord=window.PainelCasa.ordenarArquivos(files.map(c=>c.nome)); files=ord.map(n=>files.find(c=>c.nome===n)); } }catch(e){}
   if(files.length){ sec.documentos+=`<div class="grp">${window.VendaBlocos?"Outros arquivos":"Arquivos"}</div>`;
     files.forEach(c=>{
-      sec.documentos+=`<div class="campo"><label>${esc(c.nome.trim())}</label>`;
+      sec.documentos+=`<div class="campo"><label${dicaAttr(c.nome)}>${esc(rotuloRua(c.nome))}</label>`;
       if(sensPendente){
         sec.documentos+=`<div class="sens-ro">••• carregando anexos…</div>`;
       } else {

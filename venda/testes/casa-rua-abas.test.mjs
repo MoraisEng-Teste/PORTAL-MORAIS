@@ -246,18 +246,31 @@ test("resumo do processo acha as colunas pelo nome e pelo padrão", () => {
 test("datas de assinatura: rótulo de tela na casa de rua e no condomínio; Notion com o nome antigo; Caixa no Andamento", () => {
   const trecho = (ini, fim) => { const i = vendas.indexOf(ini); assert.ok(i >= 0, ini); return vendas.slice(i, vendas.indexOf(fim, i) + fim.length); };
   const fonte = [trecho("const _NORM_CACHE=", "\n"), trecho("function _normNomeBruto(", "\n"), trecho("function normNome(s){", "\n}"),
-    trecho("const ROTULO_DATA_CV=", "\n"), trecho("const ROTULOS_RUA=", "\n"), trecho("function rotuloRua(", "\n"),
-    trecho("const ROTULOS_COND=", "\n"), trecho("function cdRotuloTela(", "\n")].join("\n");
-  const f = new Function(fonte + "\nreturn { rotuloRua, cdRotuloTela };")();
-  assert.equal(f.rotuloRua("DATA DA VENDA"), "DATA DA ASSINATURA – COMPRA E VENDA (CONSTRUTORA)");
-  assert.equal(f.rotuloRua("data de assinatura do contrato "), "DATA DA ASSINATURA – CONTRATO CAIXA");
-  assert.equal(f.rotuloRua("ITBI PAGO "), "ITBI PAGO");
-  assert.equal(f.cdRotuloTela("DATA DE ASSINATURA DO CONTRATO"), "DATA DA ASSINATURA – COMPRA E VENDA (CONSTRUTORA)");
-  assert.equal(f.cdRotuloTela("DATA DE ASSINATURA DO CONTRATO NO BANCO"), "DATA DA ASSINATURA – CONTRATO CAIXA");
-  assert.equal(f.cdRotuloTela("MANDOU P/ CORESSPONDENTE?"), "MANDOU P/ CORRESPONDENTE?");
+    trecho("const ROTULO_DATA_CV=", "\n"), trecho("/*ROTULOS:ini*/", "/*ROTULOS:fim*/"), trecho("function rotuloRua(", "\n"),
+    trecho("function cdRotuloTela(", "\n")].join("\n");
+  const f = new Function(fonte + "\nreturn { rotuloRua, cdRotuloTela, rotuloDe, dicaDe };")();
+  assert.equal(f.rotuloRua("DATA DA VENDA"), "Data da assinatura – compra e venda (construtora)");
+  assert.equal(f.rotuloRua("data de assinatura do contrato "), "Data da assinatura – contrato Caixa");
+  assert.equal(f.rotuloRua("ITBI PAGO "), "ITBI pago");
+  assert.equal(f.cdRotuloTela("DATA DE ASSINATURA DO CONTRATO"), "Data da assinatura – compra e venda (construtora)");
+  assert.equal(f.cdRotuloTela("DATA DE ASSINATURA DO CONTRATO NO BANCO"), "Data da assinatura – contrato Caixa");
+  assert.equal(f.cdRotuloTela("MANDOU P/ CORESSPONDENTE?"), "Mandou p/ correspondente?");
   assert.match(vendas, /"Email","DATA DA VENDA","VALOR DE COMPRA/, "Resumo: só a compra e venda; a da Caixa fica no Andamento, junto do assinou e armazenou (dono 12/11)");
-  assert.equal(f.rotuloRua("MANDOU TODOS OS DOCS. P/ CORESSPONDENTE?"), "MANDOU TODOS OS DOCS. P/ CORRESPONDENTE?");
-  assert.match(vendas, /data-col="\$\{esc\(c\.nome\)\}" title="Ordenar por \$\{esc\(c\.nome\.trim\(\)\)\}">\$\{esc\(rotuloRua\(c\.nome\)\)\}/, "planilha: data-col segue o nome do Notion");
+  assert.equal(f.rotuloRua("MANDOU TODOS OS DOCS. P/ CORESSPONDENTE?"), "Mandou todos os documentos para o correspondente?");
+  assert.match(vendas, /data-col="\$\{esc\(c\.nome\)\}" title="Ordenar por \$\{esc\(c\.nome\.trim\(\)\)\}.{0,60}">\$\{esc\(rotuloRua\(c\.nome\)\)\}/, "planilha: data-col segue o nome do Notion");
+  /* Onda 2: dicionário único + regra automática */
+  assert.equal(f.rotuloDe("VALOR DE COMPRA E VENDA NO CONTRATO (VENDIDA)"), "Valor da compra e venda no contrato");
+  assert.equal(f.rotuloDe("EMITIU RCPM?"), "Emitiu o RCPM?");
+  assert.equal(f.rotuloDe("GEROU E ARMAZENOU GCAP?"), "Gerou e armazenou o GCAP?");
+  assert.equal(f.rotuloDe("DATA 1º BALÃO (12/27)"), "Data do 1º balão (12/27)");
+  assert.equal(f.rotuloDe("PRÉ-RESERVA - VALOR"), "Reserva · Valor");
+  assert.equal(f.rotuloDe("MC - SITUAÇÃO"), "Mais Controle · Situação");
+  assert.equal(f.rotuloDe("ASSINATURA - PROGRESSO"), "Assinatura · Progresso");
+  assert.equal(f.rotuloDe("CONTRATO - ENTRADA FOO"), "Entrada foo");
+  assert.equal(f.rotuloDe("TEVE FGTS?"), "Teve FGTS?");
+  assert.equal(f.rotuloDe("Nº Whatsapp"), "Nº Whatsapp", "nome já em caixa mista não é mexido");
+  assert.ok(f.dicaDe("CONTRATO - CRI DA MATRÍCULA").length > 0);
+  assert.equal(f.dicaDe("EMITIU RCPM"), "", "sigla sem significado certo: sem dica");
 });
 
 test("pares: ASSINOU E ARMAZENOU + data da Caixa num bloco só, um em cima do outro (12/11)", () => {
