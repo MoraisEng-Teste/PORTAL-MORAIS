@@ -132,8 +132,20 @@
   .bt-cal{flex:0 0 46px;padding:0;background:#fff;border:1px solid var(--borda);border-radius:6px;font-size:18px;line-height:1;cursor:pointer;}
   input.data-invalida{border-color:#B0431F !important;box-shadow:0 0 0 3px rgba(176,67,31,.18) !important;}
   /* 31/10 — botão "Transformar em proposta" (verde, igual ao SUBIR PASTA do mapa) */
-  .btn-proposta{background:#2a9d5c;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer}
-  .btn-proposta:hover{background:#1a6b40}
+  /* Onda 2 (item 8): passo 3 com um só botão principal (Enviar simulação); "Transformar em proposta" é secundário (contorno) */
+  .btn-proposta{background:#fff;color:#1a6b40;border:2px solid #2a9d5c;border-radius:8px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer}
+  .btn-proposta:hover{background:#EEF8F1}
+  .btn-voltar-disc{background:none;border:0;color:var(--texto-suave);text-decoration:underline;font-weight:600;font-size:14px;padding:11px 8px;cursor:pointer}
+  .acoes3{display:flex;gap:14px;align-items:flex-start;justify-content:flex-end;flex-wrap:wrap}
+  .acoes3 .alt-proposta{display:flex;flex-direction:column;gap:4px;max-width:230px}
+  .acoes3 .alt-proposta small{font-size:11.5px;color:var(--texto-suave);line-height:1.35}
+  @media(max-width:640px){
+    .rodape3{flex-direction:column-reverse;align-items:stretch;gap:8px}
+    .acoes3{flex-direction:column;align-items:stretch}
+    .acoes3 .alt-proposta{max-width:none}
+    .acoes3 .btn-primario{order:-1}
+    .acoes3 button,.btn-voltar-disc{min-height:44px}
+  }
   .btn-proposta:disabled{opacity:.6;cursor:wait}
   /* comissão do corretor: escondida por padrão (o cliente pode estar olhando a tela); botão mostra/esconde */
   body:not(.com-ver) .com-info{display:none!important;}
@@ -170,13 +182,14 @@
     at();if(window.MutationObserver)new MutationObserver(at).observe(ps,{subtree:true,attributes:true,attributeFilter:['class']});});</script>
   <div class="passos">
     <div class="passo ativo" data-passo="1" onclick="voltarPasso(1)">1. Unidade e perfil</div>
-    <div class="passo" data-passo="2" onclick="voltarPasso(2)">2. Condições</div>
+    <div class="passo" data-passo="2" onclick="voltarPasso(2)">2. Entrada e fluxo</div>
     <div class="passo" data-passo="3" onclick="voltarPasso(3)">3. Enviar</div>
   </div>
 
   <form id="formSimulacao" novalidate>
     <section class="card etapa" data-etapa="1">
-      <h2>Unidade e perfil do proponente</h2>
+      <h2>Unidade e perfil</h2>
+      <div id="avisoSemUnidades" class="status erro" style="display:none;margin-bottom:14px"><b>Não foi possível carregar as unidades.</b> <a href="#" id="lnkRecarregarUn" style="color:inherit;text-decoration:underline;display:inline-block;padding:8px 0">Tente de novo</a></div>
       <div class="linha">
         <div class="campo"><label>Tipo<span class="obrig">*</span></label><select id="tipo" required></select></div>
         <div class="campo"><label>Unidade<span class="obrig">*</span></label><select id="unidade" required></select></div>
@@ -214,7 +227,7 @@
           <span class="ajuda">Soma da renda de todos que compram: proponente, cônjuge e demais compradores.</span></div>
       </div>
       <!-- r96d (20/10/26) — condições de financiamento e FGTS no passo 1 (a base offline precisa delas) -->
-      <div class="secao-sim">Condições de financiamento</div>
+      <div class="secao-sim">Financiamento na CAIXA</div>
       <div class="linha">
         <div class="campo">
           <label>Prazo do financiamento (meses)<span class="obrig">*</span></label>
@@ -253,7 +266,7 @@
     </section>
 
     <section class="card etapa oculto" data-etapa="2">
-      <h2>Financiamento e entrada</h2>
+      <h2>Entrada e fluxo</h2>
       <!-- r96f (21/10/26) — ORDEM DO PASSO 2: 1) financiamento · 2) valor para o sinal
            · 3) composição do fluxo · 4) prazo de parcelamento · 5) forma do sinal · 6) fluxo de pagamento
            · 7) diluição dos balões -->
@@ -306,6 +319,7 @@
         </div>
       </div>
       <div class="secao-sim">3. Composição do fluxo de pagamento</div>
+      <span class="ajuda" style="display:block;margin:-4px 0 8px;font-size:11.5px"><b>Pré-chaves:</b> parcelas pagas durante a obra · <b>pós-chaves:</b> parcelas depois da entrega · <b>balão:</b> parcela maior em data marcada · <b>entrada restante:</b> o que falta da entrada depois do sinal.</span>
       <div id="composicaoSim" style="margin-bottom:16px"><span class="ajuda">Aguardando o cálculo do financiamento…</span></div>
       <div class="secao-sim">4. Prazo de parcelamento da entrada</div>
       <div class="campo full" style="margin-bottom:16px;">
@@ -336,8 +350,8 @@
       <div class="secao-sim">6. Fluxo de pagamento</div>
       <div id="fluxoSim" style="margin-bottom:6px"><span class="ajuda">Aguardando o cálculo do financiamento…</span></div>
       <span class="ajuda" id="notaFluxoSim" style="display:block;margin-bottom:16px">Este é o fluxo que vai no e-mail.</span>
-      <div class="secao-sim">7. Diluição dos balões</div>
-      <div id="diluirSim" style="margin-bottom:16px"><span class="ajuda">Sem balões neste fluxo.</span></div>
+      <details id="detDiluirSim" style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:800;color:var(--marrom);font-size:14px;padding:10px 0;min-height:44px;box-sizing:border-box">Ajuste fino: diluir os balões nas parcelas</summary>
+      <div id="diluirSim"><span class="ajuda">Sem balões neste fluxo.</span></div></details>
       <!-- r64 — TESTE do sistema offline -->
       <div class="linha">
         <div class="campo" style="display:none">
@@ -413,11 +427,14 @@
           proposta para ela <b>só será analisada caso haja desistência</b> da reserva atual.
         </label>
       </div>
-      <div class="rodape">
-        <button type="button" class="btn-secundario" onclick="irPara(2)">Voltar</button>
-        <!-- 31/10 — leva tudo o que foi preenchido aqui para a proposta; lá só se completa o resto -->
-        <button type="button" class="btn-proposta" id="btTransformar" onclick="transformarEmProposta()">📄 Transformar em proposta</button>
-        <button type="submit" class="btn-primario">Enviar simulação</button>
+      <div class="rodape rodape3">
+        <button type="button" class="btn-voltar-disc" onclick="irPara(2)">‹ Voltar</button>
+        <div class="acoes3">
+          <!-- 31/10 — leva tudo o que foi preenchido aqui para a proposta; lá só se completa o resto -->
+          <div class="alt-proposta"><button type="button" class="btn-proposta" id="btTransformar" onclick="transformarEmProposta()">📄 Transformar em proposta</button>
+            <small>leva estes dados para a proposta, sem enviar a simulação</small></div>
+          <button type="submit" class="btn-primario">Enviar simulação</button>
+        </div>
       </div>
       <div id="statusEnvio" class="status" style="display:none;"></div>
     </section>
@@ -452,7 +469,6 @@
   var COMISSAO = { '24':0.05, '36':0.0475, '48':0.045 };
 
   var UNIDADES=[];
-  var FALLBACK=(function(){var a=[];for(var n=1;n<=62;n++)a.push({unidade:n,tipo:'1',valorVenda:305000,avaliacao:306000,planta:'',informacoes:(n===1?'Decorado':''),decorado:(n===1)});return a;})();
 
   /* ===== PADRONIZAÇÃO DO QUE VAI PARA O NOTION (set/26) ==================
      Sem isto, "Felipe", "FELIPE" e "Felipe " viram TRÊS corretores diferentes
@@ -679,6 +695,8 @@
     cComp.innerHTML=fpHtml_(c, {parte:'composicao', notaFinanciado:nota});
     cFl.innerHTML=fpHtml_(c, {parte:'fluxo', mudou:DiluirUI.mudou(g.fluxo)});
     cDil.innerHTML=DiluirUI.html(g, DIL_SIM, 'dilSim') || '<span class="ajuda">Sem balões neste fluxo.</span>';
+    /* Onda 2 (item 7a): o ajuste fino fica recolhido e abre sozinho se já houver diluição escolhida */
+    try{ var dd=document.getElementById('detDiluirSim'); if(dd && (DIL_SIM[0]||DIL_SIM[1])) dd.open=true; }catch(e){}
   }
 
   var PROD_COM=['SBPE SFH - TR - UNIDADE PF VINCULADA A EMPREENDIMENTO FINANCIADO NA CAIXA'];   // 28/10 — linha vinculada ao empreendimento (80% no PRICE e no SAC)
@@ -700,7 +718,7 @@
     var aj=document.getElementById('produtosAjuda');
     if(aj) aj.innerHTML = (document.querySelector('[name="possuiImovelCidade"]').checked
       ? 'Cliente <b>com</b> imóvel: a linha simulada é o <b>SBPE</b>.'
-      : 'Cliente <b>sem</b> imóvel: a linha simulada é o <b>NPMCMV</b>.') +
+      : 'Cliente <b>sem</b> imóvel: a linha simulada é o <b>NPMCMV</b> (linha de financiamento da CAIXA, Minha Casa Minha Vida).') +
       ' A linha é definida automaticamente, por isso já vai marcada.';
     var av=document.getElementById('produtosAviso'); if(av) av.style.display='none';
   }
@@ -1156,6 +1174,7 @@
       var r=await enviarComRetentativas(dados,3);
       if(!r.ok){mostrarStatus('erro',r.mensagem||'Não foi possível enviar.');botao.disabled=false;botao.textContent=textoBotao;return;}
       localStorage.setItem('ultimaSimulacao',r.id);
+      try{ window.lembrarCorretor && window.lembrarCorretor(); }catch(x){}   // Onda 2: lembra o corretor neste aparelho
       try{ await guardarParaProposta(r.id); }catch(x){}   // 31/10 — para o botão "Transformar em proposta" do enviado.html
       /* r62 — a confirmação abre na página própria (enviado.html), que
          acompanha a simulação e tem o botão de voltar ao mapa. */
@@ -1296,9 +1315,15 @@
     if(t){ document.getElementById('tipo').value=t; preencherUnidades(); }
     if(u){ document.getElementById('unidade').value=u; aoTrocarUnidade(); }
   }
-  buscarLocal().then(function(d){aplicarUnidades(d);})
-    .catch(function(){aplicarUnidades(FALLBACK);})
-    .then(function(){ buscarAoVivo().then(function(d){aplicarUnidades(d);}).catch(function(){}); });
+  /* Onda 2 (item 3): sem lista reserva inventada — se nem o arquivo nem o servidor responderem, a tela avisa */
+  function carregarUnidades(){
+    var av=document.getElementById('avisoSemUnidades'); if(av) av.style.display='none';
+    buscarLocal().then(function(d){aplicarUnidades(d);}).catch(function(){})
+      .then(function(){ return buscarAoVivo().then(function(d){aplicarUnidades(d);}).catch(function(){}); })
+      .then(function(){ if(!UNIDADES.length && av) av.style.display='block'; });
+  }
+  (function(){ var l=document.getElementById('lnkRecarregarUn'); if(l) l.onclick=function(e){ e.preventDefault(); carregarUnidades(); }; })();
+  carregarUnidades();
   verificarServico(); pollSoVisivel(verificarServico,120000);   // 01/11 (cota): só com a aba visível
 
 </script>
@@ -1309,6 +1334,47 @@
 (function(){
   var h=new Date(), red=Math.max(0,(h.getFullYear()-2026)*12+(h.getMonth()+1)-11);
   document.querySelectorAll('.prazo-n').forEach(function(b){ b.textContent=(Number(b.dataset.base)-red)+' meses'; });
+})();
+</script>
+<script>
+/* Onda 2 (item 2) — dados do corretor lembrados neste aparelho (nome, imobiliária, celular, e-mail, CRECI; nunca o CPF).
+   Gravados quando uma simulação/proposta é enviada; preenchem só campos vazios; "não sou eu" limpa. */
+(function(){
+  var CHAVE='corretorLembrado', F_=document.getElementById('formSimulacao')||document.getElementById('formProposta'), MAPA={nome:"corretor",imobiliaria:"imobiliaria",celular:"celularCorretor",email:"emailDestino"};
+  function ls(){ try{ return window.localStorage; }catch(e){ return null; } }
+  function campo(n){ return F_ && F_.elements[n] && F_.elements[n].tagName ? F_.elements[n] : null; }
+  function ler(){ var s=ls(); try{ return JSON.parse((s&&s.getItem(CHAVE))||'null')||{}; }catch(e){ return {}; } }
+  window.lembrarCorretor=function(){
+    var s=ls(); if(!s||!F_) return;
+    try{
+      var d=ler();
+      Object.keys(MAPA).forEach(function(k){ var el=campo(MAPA[k]); if(el){ var v=String(el.value||'').trim(); if(v) d[k]=v; } });
+      s.setItem(CHAVE, JSON.stringify(d));
+    }catch(e){}
+  };
+  function limpar(){
+    try{ var s=ls(); if(s) s.removeItem(CHAVE); }catch(e){}
+    Object.keys(MAPA).forEach(function(k){ var el=campo(MAPA[k]); if(el && el.dataset.lembrado){ el.value=''; delete el.dataset.lembrado; } });
+    var a=document.getElementById('avisoCorretorLembrado'); if(a) a.style.display='none';
+  }
+  try{
+    if(!F_) return;
+    var d=ler(), preencheu=false;
+    Object.keys(MAPA).forEach(function(k){
+      var el=campo(MAPA[k]); if(!el || !d[k] || String(el.value||'').trim()) return;
+      el.value=d[k]; el.dataset.lembrado='1'; preencheu=true;
+      try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+    });
+    if(preencheu){
+      var ref=campo(MAPA.nome), linha=ref && ref.closest('.linha');
+      if(linha){
+        var p=document.createElement('p'); p.id='avisoCorretorLembrado'; p.className='ajuda'; p.style.margin='-4px 0 10px';
+        p.innerHTML='Dados do corretor lembrados neste aparelho. <a href="#" style="color:inherit;text-decoration:underline;display:inline-block;padding:10px 0">não sou eu — limpar</a>';
+        p.querySelector('a').onclick=function(e){ e.preventDefault(); limpar(); };
+        linha.parentNode.insertBefore(p, linha.nextSibling);
+      }
+    }
+  }catch(e){}
 })();
 </script>
 </body>

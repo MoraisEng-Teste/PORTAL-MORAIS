@@ -96,7 +96,26 @@
     a.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:6px 12px}
     .zoom button{width:44px;height:44px}
     #pop .x{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;top:0;right:0;font-size:24px}
+    /* Onda 2 (item 6) — cada unidade vira um cartão empilhado ("rótulo: valor"); PDF e Excel não mudam */
+    .ordenar-cel{display:flex}
+    .ordenar-cel select{font:inherit;font-size:16px;min-height:44px;border:1.5px solid var(--marrom);border-radius:9px;background:#fff;color:var(--texto);padding:0 10px}
+    .wrap{border:0;background:transparent;overflow-x:visible}
+    table#tab{min-width:0;display:block;background:transparent}
+    table#tab thead{display:none}
+    table#tab tbody{display:block}
+    table#tab tr{display:block;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:6px 12px 12px;margin:0 0 12px}
+    table#tab tr:nth-child(even) td:not(.fin){background:transparent}
+    table#tab td{display:flex;justify-content:space-between;align-items:center;gap:10px;white-space:normal;text-align:right;border-bottom:1px solid #F1E8D8;padding:7px 0}
+    table#tab td::before{content:attr(data-rot);font-size:11.5px;font-weight:700;color:var(--suave);text-align:left;text-transform:none}
+    table#tab td.un,table#tab td[data-k="preco"]{font-size:17px;font-weight:800;color:var(--marromEsc)}
+    table#tab td.un{text-align:right}
+    table#tab td.fin{background:var(--lilasClaro);border-radius:6px;padding-left:6px;padding-right:6px}
+    table#tab td.fin input{width:140px}
+    table#tab td.ac{display:block;padding:8px 0 0;border-bottom:0;text-align:center}
+    table#tab td.ac::before{content:none}
+    table#tab td.ac a.btn{display:flex;width:100%;min-height:44px}
   }
+  .ordenar-cel{display:none}
   @media print{header .bts,#st{display:none}body{background:#fff}.wrap{border:0}th{position:static}.zoom,#pop{display:none!important}#mapScroll{max-height:none;overflow:visible}}
 </style>
 </head>
@@ -119,6 +138,8 @@
     <div class="grp"><label class="t" for="finGeral">Financiamento (todas as unidades)</label>
       <div class="fgts"><span>R$</span><input id="finGeral" inputmode="numeric" placeholder="80% da avaliação" autocomplete="off"></div></div>
     <div class="grp"><label class="t">&nbsp;</label><button type="button" class="bt-mini" id="bFin80">Voltar a 80%</button></div>
+    <div class="grp ordenar-cel"><label class="t" for="ordSel">Ordenar por</label>
+      <select id="ordSel"><option value="unidade:a">Unidade (menor primeiro)</option><option value="unidade:d">Unidade (maior primeiro)</option><option value="preco:a">Valor (menor primeiro)</option><option value="preco:d">Valor (maior primeiro)</option><option value="aval:a">Avaliação (menor primeiro)</option><option value="aval:d">Avaliação (maior primeiro)</option></select></div>
     <div class="dica">Clique em UNIDADE, VALOR ou AVALIAÇÃO para ordenar (de novo inverte). O financiamento vai até 80% da avaliação: dá para mudar aqui para todas ou na própria linha da unidade. Tudo recalcula na hora, e o PDF e o Excel saem como está na tela (o Excel com uma aba para cada prazo).</div>
   </div>
   <p class="sub" id="sub"></p>
@@ -161,6 +182,9 @@
     var on=OP.ordem===c.k, seta=on?(OP.desc?'▼':'▲'):'⇅';
     return '<th class="ord'+(on?' on':'')+'" data-ord="'+c.k+'" title="Ordenar por '+esc(c.t.toLowerCase())+'">'+esc(c.t)+'<span class="seta">'+seta+'</span></th>';
   }
+  document.getElementById('ordSel').addEventListener('change', function(){
+    var p=this.value.split(':'); OP.ordem=p[0]; OP.desc=(p[1]==='d'); pintar();
+  });
   document.addEventListener('click', function(e){
     var th=e.target.closest && e.target.closest('th[data-ord]'); if(!th) return;
     var k=th.dataset.ord;
@@ -223,6 +247,7 @@
     if(!UNIDADES.length) return;
     var D = await tabelaDisponibilidadesDados(UNIDADES, OP);
     ULT_D = D; pintarMapa();
+    try{ document.getElementById('ordSel').value=OP.ordem+':'+(OP.desc?'d':'a'); }catch(e){}
     try{ var q=new URLSearchParams(location.search); q.set('prazo',OP.prazo);
          if(OP.fgts>0) q.set('fgts',OP.fgts); else q.delete('fgts'); if(OP.fin>0) q.set('fin',OP.fin); else q.delete('fin');
          history.replaceState(null,'',location.pathname+'?'+q.toString()); }catch(e){}
@@ -255,9 +280,9 @@
     var h = '<table id="tab"><thead><tr>'+D.cols.map(cabCol).join('')+'<th>Simular</th><th>Enviar proposta</th></tr></thead><tbody>';
     D.lista.forEach(function(l){
       h += '<tr>'+D.cols.map(function(c){
-        return '<td class="'+(c.k==='unidade'?'un':(c.destaque?'fin':''))+'">'+celula(c, l)+'</td>';
+        return '<td class="'+(c.k==='unidade'?'un':(c.destaque?'fin':''))+'" data-k="'+esc(c.k)+'" data-rot="'+esc(c.t)+'">'+celula(c, l)+'</td>';
       }).join('')+
-        '<td class="ac"><a class="btn sim" target="_blank" rel="noopener" href="'+esc(D.link('simulador.html',l))+'">SIMULAR</a></td>'+
+        '<td class="ac"><a class="btn sim" target="_blank" rel="noopener" href="'+esc(D.link('simulador.html',l))+'">Simular</a></td>'+
         '<td class="ac"><a class="btn prop" target="_blank" rel="noopener" href="'+esc(D.link('proposta.html',l))+'">Enviar proposta</a></td></tr>';
     });
     tab.outerHTML = h+'</tbody></table>';
