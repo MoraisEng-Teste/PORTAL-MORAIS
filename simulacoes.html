@@ -203,6 +203,9 @@ thead th{background:var(--azul);color:#fff;text-align:center;padding:9px 11px;fo
   font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.3}
 thead th:last-child{border-right:0}
 thead th:hover{background:var(--azul-esc)}
+#prop-tab thead th:not(.ord){cursor:default}   /* só "Criada" ordena */
+#prop-tab thead th:not(.ord):hover{background:var(--azul)}
+.prop-maiscol{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text3);align-self:center;min-height:44px;cursor:pointer}
 thead th .arr{opacity:.55;font-size:10px;margin-left:3px;color:#fff}
 thead th.sortA .arr,thead th.sortD .arr{opacity:1}
 thead th:first-child{text-align:left}
@@ -773,6 +776,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
             <div class="fcampo"><label>Correspondente</label>
               <select id="prop-corr-f" onchange="propRender()"><option value="">Todos</option></select></div>
             <button class="bt ghost" onclick="propCarregar(true,this)">↻ Atualizar agora</button>
+            <label class="prop-maiscol"><input type="checkbox" id="prop-maiscol" onchange="try{localStorage.setItem('prop_maiscol',this.checked?'1':'0')}catch(e){};propRender()"> Mais colunas</label>
             <div class="fcampo"><label>Ordem</label>
               <div class="seg" id="seg-ordem">
                 <button class="seg-bt on" data-po="asc" onclick="propOrdenar('asc')" title="Padrão: a que chegou primeiro fica no topo">↑ Mais antigas primeiro</button>
@@ -3496,15 +3500,20 @@ function propRender(){
   propEstiloEditor();
   /* 28/10 — ordem: proposta · unidade · crédito · sinal · cliente · corretor · valor · entrada · resto
      06/11 — correspondente, cliente e CPF do cliente juntos, depois o corretor */
-  const cab='<thead><tr><th>Proposta</th><th>Unidade</th><th>Crédito Caixa</th><th>Sinal</th>'+
-            '<th>Correspondente</th><th>Cliente</th><th>CPF</th><th>Corretor</th>'+
-            '<th class="col-num">Crédito aprovado</th><th class="col-num">Entrada</th>'+
-            '<th class="col-num">Renda</th><th>Imobiliária</th><th>Observações</th>'+
-            '<th style="cursor:pointer" title="Clique para inverter a ordem" onclick="propOrdenar(propOrdem===\'asc\'?\'desc\':\'asc\')">'+
+  /* 20/11/2026 (ux) — abre com 8 colunas; as outras 7 entram com "Mais colunas" (guardado no navegador).
+     A busca continua olhando os mesmos campos de antes, apareçam ou não as colunas. */
+  const ckMais=document.getElementById("prop-maiscol");
+  if(ckMais && !ckMais.dataset.ini){ ckMais.dataset.ini="1"; try{ ckMais.checked=localStorage.getItem("prop_maiscol")==="1"; }catch(e){} }
+  const mais=!!(ckMais && ckMais.checked);
+  const M=(h)=>mais?h:"";
+  const cab='<thead><tr><th>Proposta</th><th>Unidade</th><th>Cliente</th>'+M('<th>CPF</th>')+'<th>Crédito Caixa</th><th>Sinal</th>'+
+            M('<th>Correspondente</th>')+'<th>Corretor</th>'+
+            M('<th class="col-num">Crédito aprovado</th><th class="col-num">Entrada</th><th class="col-num">Renda</th><th>Imobiliária</th><th>Observações</th>')+
+            '<th class="ord" style="cursor:pointer" title="Clique para inverter a ordem" onclick="propOrdenar(propOrdem===\'asc\'?\'desc\':\'asc\')">'+
             'Criada <span class="arr">'+(propOrdem==="desc"?"▼":"▲")+'</span></th><th>Status</th></tr></thead>';
   if(!vis.length){
     document.getElementById("prop-tab").innerHTML=cab+
-      '<tbody><tr><td colspan="15" style="text-align:center;color:var(--text3);padding:22px">Nenhuma proposta encontrada.</td></tr></tbody>';
+      '<tbody><tr><td colspan="'+(mais?15:8)+'" style="text-align:center;color:var(--text3);padding:22px">Nenhuma proposta encontrada.</td></tr></tbody>';
     return;
   }
   const corpo=vis.map(p=>{
@@ -3515,17 +3524,19 @@ function propRender(){
     return `<tr class="clicavel${res?' linha-res':''}"${estilo}${res?' title="Enviada com a unidade já reservada — só é analisada se houver desistência"':''} onclick="propVer('${p.id}')">
       <td><b>${esc(p.proposta||"—")}</b>${propEmailSelos(p)}</td>
       <td>Un. ${esc(String(p.unidade||"—"))}${propSeloInterno(p.unidade, p)}</td>
+      <td>${esc(p.cliente||"—")}</td>
+      ${M(`<td class="col-un">${esc(cpfFmt(p.cpf)||"—")}</td>`)}
       <td>${p.comCredito
             ? '<span class="pill bom">APROVADO</span>'
             : '<span class="pill ruim">SEM CARTA</span>'+propCorrCelula(p)}</td>
       <td>${propPillSinais(p)}</td>
-      <td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>
-      <td>${esc(p.cliente||"—")}</td><td class="col-un">${esc(cpfFmt(p.cpf)||"—")}</td><td>${esc(p.vendedor||"—")}</td>
-      <td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
+      ${M(`<td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>`)}
+      <td>${esc(p.vendedor||"—")}</td>
+      ${M(`<td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
       <td class="num">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
       <td class="num">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
       <td>${esc(p.imobiliaria||"—")}</td>
-      <td class="prop-obs-td" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>
+      <td class="prop-obs-td" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>`)}
       <td>${simData(p.criadoEm)}</td>
       <td>${propTag(p.status)}${venc?' <span style="color:#C0392B;font-weight:700">vence &lt;24h</span>':''}</td></tr>`;
   }).join("");
