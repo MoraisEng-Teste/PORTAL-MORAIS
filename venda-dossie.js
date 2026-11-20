@@ -2786,6 +2786,22 @@
   function criarBlocosVenda(pageId, ativo, opts) {
     var eu = { pageId: pageId }, comRec = !!(opts && opts.recebimentos);
     var raiz = null, seqC = 0, carregandoC = false, estadoC = null, uiC = novoUiC();
+    /* UX onda 1: o que a pessoa digitou e só grava por botão. Cada grupo liga ao digitar e desliga quando o seu salvar dá certo. */
+    var sujoC = {};
+    eu.temNaoSalvo = function () {
+      return Object.keys(sujoC).some(function (k) { return sujoC[k]; }) || !!(uiC.fluxoEd && uiC.fluxoEd.mexido);
+    };
+    eu.fluxoNaoSalvo = function () { return !!(uiC.fluxoEd && uiC.fluxoEd.mexido); };
+    function marcarSujo(alvo) {
+      if (!alvo || !alvo.hasAttribute) return;
+      if (alvo.hasAttribute("data-fia-col")) { if (String(alvo.value) !== String(alvo.getAttribute("data-fia-orig") || "")) sujoC.fia = true; }
+      else if (alvo.hasAttribute("data-conta-campo")) sujoC.conta = true;
+      else if (alvo.hasAttribute("data-com-campo")) sujoC.com = true;
+      else if (alvo.hasAttribute("data-campo")) sujoC.campos = true;
+      else if (alvo.hasAttribute("data-rec-data")) sujoC.rec = true;
+      else if (alvo.classList && (alvo.classList.contains("vb-condesp") || alvo.classList.contains("vb-condesp-pedido"))) sujoC.condesp = true;
+      else if (uiC.fluxoEd && (alvo.hasAttribute("data-fx") || alvo.hasAttribute("data-fxb"))) uiC.fluxoEd.mexido = true;
+    }
     var estadoM = null, uiM = novoUiM(), esperaM = null, ctxA = novoCtxA();
     var estadoR = null, uiR = novoUiR(), esperaR = null;
     var estadoF = null, uiF = { filtro: "todas", todas: false, msg: "", carregando: false };   /* 31/10: aba Financeiro */
@@ -2876,14 +2892,14 @@
       });
       return l;
     }
-    function limparRascunhoFia() { Object.keys(uiC.rascunho).forEach(function (k) { if (/^fia\|/.test(k)) delete uiC.rascunho[k]; }); }
+    function limparRascunhoFia() { sujoC.fia = false; Object.keys(uiC.rascunho).forEach(function (k) { if (/^fia\|/.test(k)) delete uiC.rascunho[k]; }); }
     function contaDigitadaNaTela() {
       if (!raiz) return null;
       var v = {};
       raiz.querySelectorAll("[data-conta-campo]").forEach(function (x) { v[x.getAttribute("data-conta-campo")] = x.value; });
       return contaDasEntradas(v);
     }
-    function limparRascunhoConta() { Object.keys(uiC.rascunho).forEach(function (k) { if (/^conta\|/.test(k)) delete uiC.rascunho[k]; }); }
+    function limparRascunhoConta() { sujoC.conta = false; Object.keys(uiC.rascunho).forEach(function (k) { if (/^conta\|/.test(k)) delete uiC.rascunho[k]; }); }
     function pintar() {
       if (!raiz) return;
       guardarRascunho();
@@ -3129,7 +3145,7 @@
       }
       var r = await chamarVenda(payload, 150000);
       if (!vivo()) return;
-      if (r.ok) { delete uiR.arquivos[id]; delete uiR.rascunho[id]; delete uiR.valores[id]; }
+      if (r.ok) { delete uiR.arquivos[id]; delete uiR.rascunho[id]; delete uiR.valores[id]; sujoC.rec = false; }
       depoisR(r, function (x) { return mensagemRec(x, x.ok ? it.rotulo : ""); });
     }
     async function removerRec(b) {
@@ -3786,7 +3802,7 @@
         r = await chamarVenda({ action: "salvarCamposContrato", pageId: pageId, campos: pedido.campos, conta: pedido.conta }, 150000);
         if (seq !== seqC || !vivo()) return;
         if (r.conta && estadoC) { estadoC.conta = contaDoEstado(r.conta); uiC.contaDigitar = undefined; limparRascunhoConta(); }
-        if (r.ok) uiC.rascunho = {};
+        if (r.ok) { uiC.rascunho = {}; sujoC.campos = false; sujoC.conta = false; }
         return tratarGeracao(r, false);
       }
       if (acao === "c-com-salvar") {
@@ -3804,6 +3820,7 @@
         if (seq !== seqC || !vivo()) return;
         uiC.ocupadoContrato = null;
         if (r.ok) {
+          sujoC.com = false;
           Object.keys(uiC.rascunho).forEach(function (k) { if (/^com\|/.test(k)) delete uiC.rascunho[k]; });
           await carregarContrato();   /* relê o bloco e o aviso de pré-contrato desatualizado */
           uiC.msg = "Dados de pagamento salvos no cadastro do corretor.";
@@ -3897,7 +3914,7 @@
       uiC.ocupadoContrato = null;
       if (rs.ok) {
         estadoC.condicoes = { coluna: true, texto: rs.condicoes.texto, por: rs.condicoes.por, em: rs.condicoes.em, max: rs.condicoes.max || c.max };
-        uiC.condRasc = null; uiC.condIA = ""; uiC.condPedido = "";
+        uiC.condRasc = null; uiC.condIA = ""; uiC.condPedido = ""; sujoC.condesp = false;
         if (estadoC.pre) estadoC.pre.desatualizado = true;
         uiC.msg = "Condições especiais salvas — gere o pré-contrato de novo.";
       } else uiC.msg = mensagemContrato(rs);
@@ -3958,7 +3975,12 @@
         return;
       }
       if (!ed) return;
-      if (acao === "c-fluxo-fechar") { uiC.fluxoEd = null; pintar(); return; }
+      if (!/^c-fluxo-(fechar|salvar|voltar|ver|pdf|bem-fechar|abrir)$/.test(acao)) ed.mexido = true;
+      if (acao === "c-fluxo-fechar") {
+        var sairFluxo = function () { uiC.fluxoEd = null; pintar(); };
+        if (ed.mexido && window.VendaPergunta) { window.VendaPergunta.sairSemSalvar(sairFluxo); return; }
+        sairFluxo(); return;
+      }
       if (acao === "c-fluxo-add") { ed.linhas.push({ t: "balao", v: 0, n: 1, d: "", i: 1, x: "" }); pintar(); return; }
       if (acao === "c-fluxo-del") { if (!(FL().TIPOS[(ed.linhas[k] || {}).t] || {}).fixo) { ed.linhas.splice(k, 1); ed.bemK = null; ed.salvarDepois = false; travasAoApagar(ed, k); } pintar(); return; }
       /* 03/11 (dono): CRLV da permuta — escolhe a foto/PDF, a IA lê no servidor (lerCrlv) e a tela preenche só o vazio */
@@ -4288,6 +4310,7 @@
         /* 29/10: o que se digita nas condições especiais sobrevive a um redesenho do bloco */
         el.addEventListener("input", function (ev) {
           if (raiz !== el || el.__vbLigado !== eu || !ev.target.classList) return;
+          marcarSujo(ev.target);
           if (ev.target.hasAttribute("data-an")) { aoDigitarAnt(ev.target); return; }
           if (ev.target.hasAttribute("data-fxb")) { aoDigitarBem(ev.target); return; }   /* 03/11: formulário do bem */
           if (ev.target.hasAttribute("data-fx")) { aoDigitarFluxo(ev.target); return; }
@@ -4427,6 +4450,7 @@
   /* 31/10/2026: o cartão avisa a aba aberta — o Financeiro só lê quando abre */
   function abaCondominio(aba) { if (blocosCond) blocosCond.abrirAba(aba); }
   window.VendaBlocos = { montar: montarCondominio, soltar: soltarCondominio, montarPreReserva: montarPreReserva, soltarPreReserva: soltarPreReserva, aba: abaCondominio };
+  window.VendaBlocos.temNaoSalvo = function () { return !!(blocosCond && blocosCond.temNaoSalvo()); };   /* UX: cartão com algo digitado e não salvo */
   /* 13/11/2026: cartão Sinal pago do Resumo (vendas.html) — o mesmo retrato da aba Financeiro, sem abrir o ERP */
   window.VendaBlocos.financeiro = function (id) { return chamarVenda({ action: "financeiroEstado", pageId: id }, 60000); };
 

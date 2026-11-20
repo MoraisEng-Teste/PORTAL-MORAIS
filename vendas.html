@@ -372,6 +372,13 @@ tr.setor-detalhe td{background:var(--bg2);padding:12px 16px}
 .cd-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:800}
 .cd-tag.ok{background:#EAF6EF;color:#1D5433}.cd-tag.pend{background:#FDECEA;color:#8A2E17}
 .cd-ov{position:fixed;inset:0;background:rgba(15,30,45,.55);z-index:60;overflow:auto;padding:24px 12px}
+/* UX onda 1: pergunta "Sair sem salvar?" dentro da página (cartão do condomínio e editor de fluxo) */
+.cd-ov.cd-perg{z-index:65;display:flex;align-items:center;justify-content:center}
+.cd-ov.cd-perg .cd-cardbox{max-width:420px;margin:0}
+.cd-perg p{margin:6px 0 14px;line-height:1.45}
+.cd-perg-bts{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.cd-bt.perigo,.bt.perigo{border-color:var(--vermelho);color:var(--vermelho)}
+@media (max-width:700px){.cd-perg-bts .cd-bt{min-height:44px;flex:1 1 140px}}
 .cd-cardbox{background:var(--sup);border-radius:14px;max-width:880px;margin:0 auto;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 .cd-cardbox h3{margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--azul)}
 .cd-cardbox .sub{color:var(--text3);font-size:13px;margin:2px 0 14px}
@@ -2080,7 +2087,41 @@ async function condSalvar(id,prop,valor){
 }
 
 /* ---- card da unidade ---- */
-function condFechar(){ COND_ABERTA=null; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; }
+/* UX onda 1: com algo digitado e não salvo, pergunta antes de fechar (✕ Fechar, clique no fundo e Esc) */
+let _condSairJa=false;
+function condFechar(){ if(!_condSairJa&&window.VendaBlocos&&VendaBlocos.temNaoSalvo&&VendaBlocos.temNaoSalvo()&&window.VendaPergunta){ VendaPergunta.sairSemSalvar(()=>{ _condSairJa=true; try{ condFechar(); }finally{ _condSairJa=false; } }); return; } COND_ABERTA=null; if(window.VendaBlocos) VendaBlocos.soltar(); const c=document.getElementById("cd-card"); c.style.display="none"; c.innerHTML=""; }
+/* pergunta simples dentro da página (sem confirm() nativo): Esc ou "Continuar editando" voltam; "Sair sem salvar" segue */
+window.VendaPergunta={
+  sairSemSalvar(seguir){
+    if(document.getElementById("cd-pergunta")) return;
+    const antes=document.activeElement;
+    const ov=document.createElement("div"); ov.id="cd-pergunta"; ov.className="cd-ov cd-perg";
+    ov.setAttribute("role","alertdialog"); ov.setAttribute("aria-modal","true"); ov.setAttribute("aria-labelledby","cd-perg-t");
+    ov.innerHTML='<div class="cd-cardbox"><h3 id="cd-perg-t">Sair sem salvar?</h3>'+
+      '<p>O que você digitou e não salvou será perdido.</p>'+
+      '<div class="cd-perg-bts"><button type="button" class="cd-bt perigo" data-perg="sair">Sair sem salvar</button>'+
+      '<button type="button" class="cd-bt" data-perg="ficar">Continuar editando</button></div></div>';
+    const fechar=()=>{ ov.remove(); if(antes&&antes.focus&&document.contains(antes)) try{ antes.focus({preventScroll:true}); }catch(e){} };
+    ov.addEventListener("click",e=>{
+      const b=e.target.closest&&e.target.closest("[data-perg]");
+      if(b&&b.getAttribute("data-perg")==="sair"){ fechar(); seguir(); }
+      else if(b||e.target===ov) fechar();
+    });
+    document.body.appendChild(ov);
+    const f=ov.querySelector('[data-perg="ficar"]'); if(f) f.focus();
+  },
+  aberta(){ return !!document.getElementById("cd-pergunta"); },
+  cancelar(){ const ov=document.getElementById("cd-pergunta"); if(ov){ const b=ov.querySelector('[data-perg="ficar"]'); if(b) b.click(); } }
+};
+/* Esc fecha o cartão do condomínio (como o painel da rua), sem passar por cima de janelas abertas por cima dele */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape"||e.defaultPrevented) return;
+  if(window.VendaPergunta&&VendaPergunta.aberta()){ e.preventDefault(); VendaPergunta.cancelar(); return; }
+  const c=document.getElementById("cd-card");
+  if(!c||c.style.display==="none"||!c.innerHTML) return;
+  if(document.querySelector(".pdfoverlay.on,.av-fundo,.rp-fundo")) return;
+  e.preventDefault(); condFechar();
+});
 function condFluxo(l){
   /* 31/10/2026 (dono): venda com o fluxo alterado no portal (Alterar fluxo) — o quadro mostra a lista que vai para o
      contrato e para o Mais Controle (venda/quadro-fluxo.js), não as colunas do simulador */
