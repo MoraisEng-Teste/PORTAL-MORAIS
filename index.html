@@ -236,6 +236,17 @@ html[data-tema="escuro"] .tri-val{color:var(--teal)}
 
 .load{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--verde);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* esqueleto: blocos do tamanho dos cartões enquanto o dado não chega (a tela não pula) */
+.kpi.esq{min-height:104px;background:var(--bg3);border-color:transparent}
+.esq-nav{display:flex;flex-direction:column;gap:8px}.esq-nav i{display:block;height:56px;border-radius:10px;background:rgba(255,255,255,.08)}
+@media(max-width:860px){.esq-nav{flex-direction:row;flex-wrap:wrap}.esq-nav i{flex:1 1 140px;height:48px}}
+.esq-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){
+  .kpi.esq,.esq-nav i{background-image:linear-gradient(90deg,transparent 0,rgba(255,255,255,.35) 50%,transparent 100%);background-size:200% 100%;background-repeat:no-repeat;animation:esq-brilho 1.6s ease-in-out infinite}
+  .esq-nav i{background-image:linear-gradient(90deg,transparent 0,rgba(255,255,255,.12) 50%,transparent 100%)}
+  html[data-tema="escuro"] .kpi.esq{background-image:linear-gradient(90deg,transparent 0,rgba(255,255,255,.08) 50%,transparent 100%)}
+}
+@keyframes esq-brilho{from{background-position:200% 0}to{background-position:-100% 0}}
 .nav-btn .ext{font-size:11px;opacity:.65;margin-left:2px}
 
 /* ---------- bloco recolhível com o gráfico de evolução ----------
@@ -344,7 +355,7 @@ html[data-tema="escuro"] .logo{background:#fff}
   </header>
 
   <div class="shell">
-    <nav class="dash-nav" id="cards"><div class="vazio"><span class="load"></span> Carregando…</div></nav>
+    <nav class="dash-nav" id="cards" aria-busy="true"><span class="esq-sr">Carregando…</span><div class="esq-nav" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></nav>
     <main class="dash-main">
       <div class="nota" id="nota"></div>
       <div class="bloco" id="bloco-portal" style="display:none">
@@ -358,21 +369,21 @@ html[data-tema="escuro"] .logo{background:#fff}
       <div class="bloco">
         <div class="sec"><span class="cond">Venda de Casas</span>
           <button class="bt-graf" id="bt-g-vendas" aria-expanded="false" onclick="alternarGrafico('vendas')"><span class="seta">▶</span> Evolução anual</button></div>
-        <div class="kpis" id="kpi-vendas"><div class="kpi"><div class="lab">Carregando</div><div class="val"><span class="load"></span></div></div></div>
+        <div class="kpis" id="kpi-vendas" aria-busy="true"><span class="esq-sr">Carregando…</span><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div></div>
         <div class="tri-wrap" id="tri-vendas"></div>
         <div class="graf-box" id="g-vendas"></div>
       </div>
       <div class="bloco">
         <div class="sec"><span class="cond">Início de Obras</span>
           <button class="bt-graf" id="bt-g-obras" aria-expanded="false" onclick="alternarGrafico('obras')"><span class="seta">▶</span> Evolução anual</button></div>
-        <div class="kpis" id="kpi-obras"></div>
+        <div class="kpis" id="kpi-obras" aria-busy="true"><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div></div>
         <div class="tri-wrap" id="tri-obras"></div>
         <div class="graf-box" id="g-obras"></div>
       </div>
       <div class="bloco">
         <div class="sec"><span class="cond">Lotes Comprados</span>
           <button class="bt-graf" id="bt-g-lotes" aria-expanded="false" onclick="alternarGrafico('lotes')"><span class="seta">▶</span> Evolução anual</button></div>
-        <div class="kpis" id="kpi-lotes"></div>
+        <div class="kpis" id="kpi-lotes" aria-busy="true"><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div><div class="kpi esq" aria-hidden="true"></div></div>
         <div class="tri-wrap" id="tri-lotes"></div>
         <div class="graf-box" id="g-lotes"></div>
       </div>
