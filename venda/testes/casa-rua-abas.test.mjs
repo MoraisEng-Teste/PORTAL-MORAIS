@@ -176,7 +176,12 @@ test("Comprador 1 espelha nome, CPF, WhatsApp e e-mail do Resumo (mesma coluna)"
   assert.deepEqual(P.ESPELHO_COMPRADOR1.map(x => x.coluna), ["CLIENTES", "CPF", "Nº Whatsapp", "Email"]);
   const resumo = (vendas.match(/const RESUMO=\[([^\]]*)\]/) || [])[1] || "";
   P.ESPELHO_COMPRADOR1.forEach(x => assert.ok(resumo.includes('"' + x.coluna + '"'), x.coluna + " está no RESUMO"));
-  assert.match(RENDER, /pnMarcarEspelho\(campoResumoHtml\(/, "a caixa do Resumo leva a marca do espelho");
+  assert.match(RENDER, /pnMarcarEspelho\(pnResumoHtml\(/, "a caixa do Resumo leva a marca do espelho");
+  /* Onda 3 (ux): a EDIÇÃO fica só na aba Compradores; no Resumo é texto + atalho */
+  assert.match(vendas, /function pnResumoHtml\(c,valor,pageId,sensPendente\)\{\s*if\(!pnEhEspelho\(c\.nome\)\) return campoResumoHtml\(/, "coluna fora do espelho segue editável no Resumo");
+  assert.match(vendas, /class="ro ro-esp"/, "no Resumo o comprador 1 é texto");
+  assert.match(vendas, /editar em Compradores/);
+  assert.match(vendas, /function pnEditarEmCompradores\(k\)\{\s*pnTrocarAba\("compradores"\);/);
   assert.match(RENDER, /c2&&g\.titulo==="Comprador 1"\?espC1/, "as caixas entram no grupo Comprador 1");
   assert.match(vendas, /aplicarLocal\(pageId,prop,valor\);\s*try\{ pnEspelhar\(prop,valor,el\); \}/, "editar uma atualiza a outra");
 });

@@ -27,7 +27,7 @@ test("anexar sem ler: cada espaço tem Anexar/Trocar/Ler de novo e marca o que �
   assert.match(h, /data-acao="anexar" data-espaco="C1_IDENTIDADE"/);
   assert.doesNotMatch(h, /data-acao="enviar"/, "o Enviar e ler saiu da tela");
   assert.match(h, /identidade \(CNH ou RG\) <small class="dz-st-txt dz-novo">1 arquivo · novo, não lido/);   /* 04/11: situação numa etiqueta só */
-  assert.equal((h.match(/data-acao="ler-todos"/g) || []).length, 2, "no topo e no fim do imóvel");
+  assert.equal((h.match(/data-acao="ler-todos"/g) || []).length, 1, "um só: o do topo (o do fim do imóvel fazia a mesma leitura e saiu na Onda 3)");
   assert.match(botao(h, "ler-todos"), /data-onde="topo"/);
   assert.match(h, />Ler documentos \(2 novos\)</);
   assert.doesNotMatch(botao(h, "ler-todos"), /disabled/);

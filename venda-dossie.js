@@ -433,8 +433,9 @@
     h += htmlObservacao(im.observacao);
     h += htmlLoteamento(ui.loteamento);
     if (ui.msg && ui.msgGrupo === "imovel") h += '<div class="dz-msg">' + esc(ui.msg) + "</div>";
-    /* 04/11: o segundo "Ler documentos" (fim do imóvel) só aparece quando há o que ler; o do topo fica sempre */
-    return h + (pendentesDe(e).length || ui.msgGrupo === "lote-imovel" ? htmlLerTodos(e, ui, "imovel") : "");
+    /* Onda 3 (ux): o "Ler documentos" do fim do imóvel saiu — fazia exatamente a mesma leitura do botão do topo (a ação ler-todos lê
+       comprador e imóvel juntos, só pelo pageId; data-onde só mudava onde a mensagem aparecia). Fica UM só, o do topo do dossiê. */
+    return h;
   }
   /* entrega 13: depois de gravar no Notion, o painel da casa (vendas.html) recarrega os campos ao ouvir
      window "venda:dados-gravados" com detail { pageId, gravados? } (gravados: { coluna: valor } quando há) */
@@ -1192,16 +1193,16 @@
       var carta = l.t === "fin" ? F.tetoFinanciamento(ed.padrao) : 0;
       if (tp.fixo && carta > 0) {
         h += '<tr data-fx-linha="' + k + '"><td><b>' + esc(tp.nome) + '</b><div class="dz-nota">até ' + esc(F.moeda(carta)) + " (carta de aprovação)</div></td><td></td>" +
-          '<td><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right"' +
+          '<td data-rot="Valor de cada (R$)"><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right"' +
           ' aria-label="Valor do financiamento, até ' + esc(F.moeda(carta)) + '">' +
-          "</td><td>" + esc(l.n) + "</td><td>—</td><td></td><td></td><td></td>" +
-          '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
+          "</td><td data-rot=\"Qtde\">" + esc(l.n) + "</td><td data-rot=\"1ª data\">—</td><td data-rot=\"A cada (meses)\"></td><td data-rot=\"Última\"></td><td data-rot=\"Descrição\"></td>" +
+          '<td class="vb-fx-tot" data-rot="Total" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
         return;
       }
       if (tp.fixo) {
         h += '<tr data-fx-linha="' + k + '"><td><b>' + esc(tp.nome) + '</b><div class="dz-nota">' + (l.t === "prereserva" ? "já recebida — abate o sinal" : "fixo — vem da proposta") + '</div></td><td></td>' +
-          '<td style="text-align:right">' + esc(numBR(l.v)) + "</td><td>" + esc(l.n) + "</td><td>" + esc(l.d ? F.dataBR(l.d) : "—") + "</td><td></td><td></td><td></td>" +
-          '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
+          '<td data-rot="Valor de cada (R$)" style="text-align:right">' + esc(numBR(l.v)) + "</td><td data-rot=\"Qtde\">" + esc(l.n) + "</td><td data-rot=\"1ª data\">" + esc(l.d ? F.dataBR(l.d) : "—") + "</td><td data-rot=\"A cada (meses)\"></td><td data-rot=\"Última\"></td><td data-rot=\"Descrição\"></td>" +
+          '<td class="vb-fx-tot" data-rot="Total" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td><td></td></tr>";
         return;
       }
       var guiada = ajustavelFx(l), trav = guiada && !!(ed.travadas || {})[k];
@@ -1211,30 +1212,30 @@
         '</select><div class="dz-nota">' + (tp.reajuste ? "reajuste " + esc(tp.reajuste) : "sem correção") + "</div></td>" +
         /* 30/10 (arquivo 17, item 2): o Redistribuir virou ícone, entre o tipo e o valor */
         '<td><button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-red" data-k="' + k + '"' + dis +
-        ' title="Redistribuir: joga a diferença inteira nesta linha" aria-label="Redistribuir a diferença nesta linha">↻</button></td>' +
-        '<td><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right">' +
+        ' title="Redistribuir: joga a diferença inteira nesta linha" aria-label="Redistribuir a diferença nesta linha">↻<span class="bt-txt"> Redistribuir</span></button></td>' +
+        '<td data-rot="Valor de cada (R$)"><input type="text" inputmode="decimal" data-fx="v" data-k="' + k + '" value="' + esc(numBR(l.v)) + '"' + dis + ' style="width:7.5em;text-align:right">' +
         '<div class="dz-nota vb-fx-ult" data-k="' + k + '"' + (l.u && l.n > 1 ? ">última: " + esc(numBR(l.u)) : ' style="display:none">') + "</div>" +
         /* 04/11 (dono): "ajustado pelo simulador" ou a sugestão do que esta linha precisaria para fechar */
         (guiada ? '<div class="vb-fx-guia" data-k="' + k + '">' + htmlGuiaLinha(ed, k) + "</div>" : "") + "</td>" +
         /* 07/11 (dono): pré-chaves mês a mês — o campo não passa do que cabe até out/2028 sem cair no mês da outra parte */
         (function () {
           var cab = l.t === "pre" ? F.cabemPre({ valor: ed.valor, entrega: ed.entrega, linhas: ed.linhas }, k) : null;
-          return '<td><input type="number" min="1"' + (cab ? ' max="' + cab + '"' : "") + ' data-fx="n" data-k="' + k + '" value="' + esc(l.n) + '"' + dis + ' style="width:4.5em">' +
+          return '<td data-rot="Qtde"><input type="number" min="1"' + (cab ? ' max="' + cab + '"' : "") + ' data-fx="n" data-k="' + k + '" value="' + esc(l.n) + '"' + dis + ' style="width:4.5em">' +
             (cab !== null ? '<div class="dz-nota vb-fx-cab" data-k="' + k + '">cabem ' + cab + "</div>" : "") + "</td>";
         })() +
-        '<td><input type="date" data-fx="d" data-k="' + k + '" value="' + esc(l.d) + '"' + dis + "></td>" +
-        '<td><input type="number" min="1" max="24" data-fx="i" data-k="' + k + '" value="' + esc(l.i || 1) + '"' + dis + ' style="width:4em"></td>' +
+        '<td data-rot="1ª data"><input type="date" data-fx="d" data-k="' + k + '" value="' + esc(l.d) + '"' + dis + "></td>" +
+        '<td data-rot="A cada (meses)"><input type="number" min="1" max="24" data-fx="i" data-k="' + k + '" value="' + esc(l.i || 1) + '"' + dis + ' style="width:4em"></td>' +
         /* 14/11 (dono): coluna "Última" — o vencimento da última parcela da linha (1ª data + (qtde − 1) × intervalo) */
-        '<td class="vb-fx-fim" data-k="' + k + '" style="white-space:nowrap">' + esc(ultimaDataFx(l)) + "</td>" +
+        '<td class="vb-fx-fim" data-rot="Última" data-k="' + k + '" style="white-space:nowrap">' + esc(ultimaDataFx(l)) + "</td>" +
         /* 03/11: na permuta, a descrição é o resumo do bem (formulário "Dados do bem") */
-        (l.t === "permuta" && l.b ? '<td style="min-width:10em">' + esc(F.resumoBem(F.normalizarBem(l.b)) || l.x || "") + "</td>"
-          : '<td><input type="text" maxlength="120" data-fx="x" data-k="' + k + '" value="' + esc(l.x || "") + '"' + dis +
+        (l.t === "permuta" && l.b ? '<td data-rot="Descrição" style="min-width:10em">' + esc(F.resumoBem(F.normalizarBem(l.b)) || l.x || "") + "</td>"
+          : '<td data-rot="Descrição"><input type="text" maxlength="120" data-fx="x" data-k="' + k + '" value="' + esc(l.x || "") + '"' + dis +
             ' placeholder="' + (l.t === "permuta" ? "resumo (os dados vão no Dados do bem)" : "opcional") + '" style="min-width:10em"></td>') +
-        '<td class="vb-fx-tot" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td>" +
-        '<td style="white-space:nowrap">' +
+        '<td class="vb-fx-tot" data-rot="Total" data-k="' + k + '" style="white-space:nowrap;text-align:right">' + esc(F.moeda(F.totalLinha(l))) + "</td>" +
+        '<td class="vb-fx-acoes" style="white-space:nowrap">' +
         (l.t === "permuta" ? '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-bem" data-k="' + k + '"' + dis + ">Dados do bem</button> " : "") +
         (guiada ? htmlTrava(k, trav, dis) + " " : "") +
-        '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-del" data-k="' + k + '"' + dis + ' aria-label="Apagar linha">✕</button></td></tr>';
+        '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-del" data-k="' + k + '"' + dis + ' title="Tirar esta linha" aria-label="Tirar a linha ' + (k + 1) + '">✕<span class="bt-txt"> Tirar</span></button></td></tr>';
     });
     h += "</tbody></table></div>";
     h += '<div class="dz-nota">Mexeu no valor ou na quantidade de uma pré-chaves, balão ou pós-chaves: a linha trava (🔒) e o simulador ajusta as outras soltas (🔓) para a conta fechar.</div>';
@@ -1275,7 +1276,7 @@
   function htmlTrava(k, trav, dis) {
     return '<button type="button" class="bt ghost bt-mini" data-acao="c-fluxo-trava" data-k="' + k + '" aria-pressed="' + trav + '"' + dis +
       ' title="' + (trav ? "Travada: o simulador não mexe nesta linha (clique para soltar)" : "Solta: o simulador ajusta esta linha (clique para travar)") +
-      '" aria-label="' + (trav ? "Destravar a linha " : "Travar a linha ") + (k + 1) + '">' + (trav ? "🔒" : "🔓") + "</button>";
+      '" aria-label="' + (trav ? "Destravar a linha " : "Travar a linha ") + (k + 1) + '">' + (trav ? "🔒" : "🔓") + '<span class="bt-txt"> ' + (trav ? "Destravar" : "Travar") + "</span></button>";
   }
   function htmlGuiaLinha(ed, k) {
     var s = ed.sugestao;
@@ -1841,7 +1842,8 @@
    * esse recuo. Os blocos de contrato/assinatura/Mais Controle moram em .vb-blocos (.vb-ass / .vb-mc). */
   var NO_PAINEL = ["#dossie-wrap", "#pn-body .vb-blocos", "#pn-body .vb-ass", "#pn-body .vb-rec", "#pn-body .vb-mc"];
   function emCada(sufixo) { return NO_PAINEL.map(function (b) { return b + sufixo; }).join(","); }
-  var CSS = "#dossie-wrap .dz-linha,.vb-blocos .dz-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}" +
+  var CSS = ".bt-txt{display:none}@media (max-width:680px){.bt-txt{display:inline}}" +
+    "#dossie-wrap .dz-linha,.vb-blocos .dz-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}" +
     "#dossie-wrap .dz-rot,.vb-blocos .dz-rot{flex:1 1 200px}#dossie-wrap .on{outline:2px solid #4cd964}" +
     "#dossie-wrap .dz-aviso,.vb-blocos .dz-aviso{color:#E67E22;margin:6px 0}" +
     ".dz-faixa{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:8px 0;padding:9px 12px;border-left:4px solid #E67E22;border-radius:6px;background:rgba(226,160,58,.16);overflow-wrap:anywhere}" +
@@ -2118,7 +2120,8 @@
       return depoisDeGravar(pageId, r, r.ok ? resumoLote(r) : "", false, "lote-" + onde);
     }
     if (acao === "copiar-comprovante") {
-      if (!window.confirm("Usar o mesmo comprovante de endereço do comprador 1 para o comprador 2? O endereço do comprador 1 é copiado e o arquivo dele vai para o espaço do comprador 2 (substitui o que estiver lá).")) return;
+      if (!(await caixaPagina({ titulo: "Usar o comprovante de endereço do comprador 1 no comprador 2?", ok: "Copiar comprovante", cancelar: "Voltar", perigo: true,
+        itens: ["O endereço do comprador 1 é copiado.", "O arquivo dele vai para o espaço do comprador 2.", "Substitui o que estiver lá."] }))) return;
       ui.ocupado = "C2_COMPROVANTE"; ui.ocupadoTexto = "copiando…"; ui.msg = ""; ui.msgGrupo = "comprador"; pintar();
       r = await chamarVenda({ action: "copiarComprovante", pageId: pageId }, 150000);
       return depoisDeGravar(pageId, r, "Comprovante e endereço do comprador 1 copiados para o comprador 2 — confira.", false, "comprador");
@@ -2269,7 +2272,8 @@
   }
   /* Anexar (soma) ou Trocar (o 1º arquivo substitui os do espaço, os outros somam): só guarda, não lê */
   async function anexarNoEspaco(pageId, espaco, trocar) {
-    if (trocar && !window.confirm("Trocar o documento? Os arquivos atuais deste espaço serão removidos. A leitura acontece em Ler documentos.")) return;
+    if (trocar && !(await caixaPagina({ titulo: "Trocar o documento?", ok: "Trocar documento", cancelar: "Voltar", perigo: true,
+      itens: ["Os arquivos atuais deste espaço serão removidos.", "A leitura acontece em Ler documentos."] }))) return;
     var grupoEsp = grupoDoEspaco(espaco);
     ui.ocupado = espaco; ui.ocupadoTexto = "escolha o arquivo…"; ui.msg = ""; ui.msgGrupo = grupoEsp; ui.resultados = null; pintar();
     var lista = await escolherArquivo(true);
@@ -3250,9 +3254,11 @@
       var lista = it.modo === "lista";
       if (lista && !valor && !(typeof it.falta === "number" && it.falta > 0)) { uiR.msg = mensagemRec({ erro: "VALOR_INVALIDO" }); pintarR(); return; }
       var quanto = lista ? (valor ? "R$ " + valor : moedaRec(it.falta)) + " " : "";
-      if (!window.confirm("Confirmar o recebimento de " + quanto + "do " + it.rotulo + " em " + dataRec(data) + "?" +
-                          (estadoR.emailConfigurado ? " Um e-mail de aviso será enviado." : "") +
-                          (it.baixaMC && estadoR.vendaLancada ? " A baixa é dada no Mais Controle." : ""))) return;
+      var itensRec = [];
+      if (estadoR.emailConfigurado) itensRec.push("Um e-mail de aviso será enviado.");
+      if (it.baixaMC && estadoR.vendaLancada) itensRec.push("A baixa é dada no Mais Controle.");
+      if (!(await caixaPagina({ titulo: "Confirmar o recebimento de " + quanto + "do " + it.rotulo + " em " + dataRec(data) + "?", ok: "Confirmar recebimento", cancelar: "Voltar",
+        itens: itensRec }))) return;
       uiR.ocupado = id; uiR.msg = ""; pintarR();
       var payload = { action: "recebimentoConfirmar", pageId: pageId, item: id, data: data };
       if (lista && valor) payload.valor = valor;
@@ -3269,7 +3275,8 @@
     async function removerRec(b) {
       if (uiR.ocupado || !estadoR) return;
       var id = b.getAttribute("data-item"), pag = b.getAttribute("data-pag"), it = itemR(id);
-      if (!it || !window.confirm("Tirar este pagamento do " + it.rotulo + "? (só do portal)")) return;
+      if (!it || !(await caixaPagina({ titulo: "Tirar este pagamento do " + it.rotulo + "?", ok: "Tirar pagamento", cancelar: "Manter", perigo: true,
+        itens: ["Só sai do portal."] }))) return;
       uiR.ocupado = id; uiR.msg = ""; pintarR();
       var r = await chamarVenda({ action: "recebimentoRemover", pageId: pageId, item: id, pagamento: pag });
       if (!vivo()) return;
@@ -3288,8 +3295,8 @@
       var id = b.getAttribute("data-item"), it = itemR(id), v = String(uiR.esperados[id] || "").trim();
       if (!it) return;
       if (!v) { uiR.msg = "Informe o novo valor esperado do " + it.rotulo + " (0 para zerar)."; pintarR(); return; }
-      if (!window.confirm("Mudar o valor esperado do " + it.rotulo + " para R$ " + v + "?" +
-                          (/^(SINAL|FINANCIAMENTO|FGTS)$/.test(id) && estadoR.vendaLancada ? " A parcela é acertada no Mais Controle." : ""))) return;
+      if (!(await caixaPagina({ titulo: "Mudar o valor esperado do " + it.rotulo + " para R$ " + v + "?", ok: "Mudar valor", cancelar: "Voltar",
+        itens: /^(SINAL|FINANCIAMENTO|FGTS)$/.test(id) && estadoR.vendaLancada ? ["A parcela é acertada no Mais Controle."] : [] }))) return;
       uiR.ocupado = id; uiR.msg = ""; pintarR();
       var r = await chamarVenda({ action: "recebimentoValor", pageId: pageId, item: id, valor: v, rotulo: it.outro ? it.rotulo : undefined });
       if (!vivo()) return;
@@ -3311,8 +3318,9 @@
       if (uiR.ocupado || !estadoR) return;
       var f = uiR.arquivos.FIN || null, n = (estadoR.contratoFin && estadoR.contratoFin.arquivos) || 0;
       if (!f && !n) { uiR.finMsg = mensagemRec({ erro: "SEM_ARQUIVO" }); pintarR(); return; }
-      if (!window.confirm((f ? "Guardar e ler o contrato de financiamento " + f.name : "Ler de novo o último contrato de financiamento guardado") +
-                          "? O valor financiado (e o FGTS e o subsídio, se o contrato mostrar) será trocado pelo do contrato.")) return;
+      if (!(await caixaPagina({ titulo: (f ? "Guardar e ler o contrato de financiamento " + f.name : "Ler de novo o último contrato de financiamento guardado") + "?",
+        ok: "Ler contrato", cancelar: "Voltar", perigo: true,
+        itens: ["O valor financiado (e o FGTS e o subsídio, se o contrato mostrar) será trocado pelo do contrato."] }))) return;
       uiR.ocupado = "FIN"; uiR.finMsg = ""; pintarR();
       var payload = { action: "recebimentoLerContratoFin", pageId: pageId };
       if (f) {
@@ -3432,7 +3440,8 @@
         pintarD();
         return;
       }
-      if (!window.confirm("Você abriu o documento e confere que está certo (" + l.pessoa + " · " + l.rotulo + ")?")) return;
+      if (!(await caixaPagina({ titulo: "Está certo? " + l.pessoa + " · " + l.rotulo, ok: "Confirmar conferência", cancelar: "Voltar",
+        itens: ["Você abriu o documento e confere que está certo."] }))) return;
       uiD.ocupado = "ok"; pintarD();
       var ro = await chamarVenda({ action: "confirmarConferencia", pageId: pageId, indice: i });
       if (!vivo()) return;
@@ -3588,7 +3597,8 @@
         return;
       }
       if (acao === "pr-gerar") {
-        if (estadoP.gerado && !window.confirm("Gerar o termo de novo? O termo anterior fica no histórico da coluna; envie o novo para assinatura.")) return;
+        if (estadoP.gerado && !(await caixaPagina({ titulo: "Gerar o termo de reserva de novo?", ok: "Gerar termo", cancelar: "Voltar",
+          itens: ["O termo anterior fica no histórico da coluna.", "Envie o novo para assinatura."] }))) return;
         uiP.ocupado = "gerar"; uiP.msg = ""; uiP.faltas = null; pintarP();
         var rg = await chamarVenda({ action: "gerarTermoPreReserva", pageId: pageId }, 150000);
         if (!vivo()) return;
@@ -3752,7 +3762,8 @@
         return;
       }
       var aplicar = acao === "mc-lancar";
-      if (aplicar && !window.confirm("Lançar esta venda no Mais Controle? Será criado o cliente (se não existir) e a venda com as parcelas da prévia.")) return;
+      if (aplicar && !(await caixaPagina({ titulo: "Lançar esta venda no Mais Controle?", ok: "Lançar no Mais Controle", cancelar: "Voltar", perigo: true,
+        itens: ["Será criado o cliente (se não existir).", "Será criada a venda com as parcelas da prévia."] }))) return;
       uiM.ocupado = acao; uiM.msg = ""; pintarM();
       var r = await chamarVenda({ action: "mcLancar", pageId: pageId, aplicar: aplicar });
       if (!vivo()) return;
@@ -3911,8 +3922,10 @@
       if (acao === "c-pre" || acao === "c-aprovar") {
         var aprovar = acao === "c-aprovar";
         if (!aprovar && etapaContrato(estadoC) === "FINAL" &&
-            !window.confirm("Gerar de novo? Primeiro sai uma prévia do contrato para conferir; o contrato atual só é substituído quando você conferir.")) return;
-        if (aprovar && !window.confirm("Você conferiu a prévia do contrato e está tudo certo? O contrato final será gerado (sem grifos).")) return;
+            !(await caixaPagina({ titulo: "Gerar o contrato de novo?", ok: "Gerar prévia", cancelar: "Voltar",
+              itens: ["Primeiro sai uma prévia do contrato para conferir.", "O contrato atual só é substituído quando você conferir."] }))) return;
+        if (aprovar && !(await caixaPagina({ titulo: "A prévia do contrato está certa?", ok: "Gerar contrato", cancelar: "Voltar",
+          itens: ["Você conferiu a prévia e está tudo certo.", "O contrato final será gerado (sem grifos)."] }))) return;
         uiC.ocupadoContrato = aprovar ? "aprovar" : "pre"; uiC.msg = ""; uiC.faltas = null; uiC.campos = null; uiC.link = null; pintar();
         seq = ++seqC;
         r = await chamarVenda({ action: aprovar ? "aprovarPreContrato" : "gerarPreContrato", pageId: pageId }, 150000);
@@ -3983,7 +3996,8 @@
         if (!valores) { uiC.msg = "Nada mudou — preencha ou corrija um campo antes de salvar."; pintar(); return; }
         pedido = { action: "salvarFiadores", pageId: pageId, valores: valores };
       } else {
-        if (!window.confirm(perguntaConjugeFiador2(b))) return;
+        if (!(await caixaPagina({ titulo: "Cônjuge do Fiador 1 como Fiador 2?", ok: "Trocar fiador", cancelar: "Voltar", perigo: true,
+          itens: [perguntaConjugeFiador2(b)] }))) return;
         pedido = { action: "conjugeEhFiador2", pageId: pageId };
       }
       if (troca) pedido.modoTroca = true;
@@ -4038,8 +4052,9 @@
       }
       var texto = String(uiC.condRasc || "");
       if (texto.trim() === c.texto.trim()) { uiC.msg = "Nada mudou nas condições especiais."; pintar(); return; }
-      if (!window.confirm(texto.trim() ? "Salvar estas condições especiais no contrato desta venda? A prévia do contrato precisa ser gerada de novo." :
-                                         "Apagar as condições especiais desta venda? O contrato volta a sair com \"Não há.\".")) return;
+      if (!(await caixaPagina(texto.trim()
+        ? { titulo: "Salvar estas condições especiais no contrato?", ok: "Salvar condições", cancelar: "Voltar", itens: ["A prévia do contrato precisa ser gerada de novo."] }
+        : { titulo: "Apagar as condições especiais desta venda?", ok: "Apagar condições", cancelar: "Manter", perigo: true, itens: ["O contrato volta a sair com \"Não há.\"."] }))) return;
       uiC.ocupadoContrato = "condesp"; pintar();
       var rs = await chamarVenda({ action: "salvarCondicoesEspeciais", pageId: pageId, texto: texto });
       if (!vivo()) return;
@@ -4233,8 +4248,10 @@
         pintar(); rolarAteBem();
         return;
       }
-      if (!window.confirm(voltar ? "Voltar ao fluxo da proposta (simulador)? A alteração fica guardada no histórico."
-                                 : "Salvar este fluxo? A prévia do contrato precisa ser gerada de novo e fica registrado quem alterou e o motivo.")) return;
+      if (!(await caixaPagina(voltar
+        ? { titulo: "Voltar ao fluxo da proposta (simulador)?", ok: "Voltar ao simulador", cancelar: "Manter", perigo: true, itens: ["A alteração fica guardada no histórico."] }
+        : { titulo: "Salvar este fluxo?", ok: "Salvar fluxo", cancelar: "Voltar", perigo: true,
+            itens: ["A prévia do contrato precisa ser gerada de novo.", "Fica registrado quem alterou e o motivo."] }))) return;
       uiC.ocupadoContrato = "fluxo-salvar"; pintar();
       var rs = await chamarVenda(voltar ? { action: "salvarFluxo", pageId: pageId, voltar: true, motivo: ed.motivo }
         : { action: "salvarFluxo", pageId: pageId, fluxo: ed.semComissao ? { valor: ed.valor, linhas: ed.linhas, semComissao: true } : { valor: ed.valor, linhas: ed.linhas },
