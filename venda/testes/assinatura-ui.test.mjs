@@ -142,7 +142,7 @@ test("mensagens amigáveis por código", () => {
   assert.match(m({ erro: "SEM_CONTRATO_GERADO" }), /Gere o contrato/);
   assert.match(m({ erro: "FALTAM_DADOS", faltas: ["a"] }), /Complete os dados/);
   assert.equal(m({ erro: "CLICKSIGN_FALHOU", passo: "requisitos", http: 422, detalhe: "role inválido" }),
-               "A Clicksign recusou o envio (passo: requisitos, código 422: role inválido). Nada foi enviado aos assinantes — avise o desenvolvedor.");
+               "A Clicksign recusou o envio (passo: requisitos, código 422: role inválido). Nada foi enviado aos assinantes — peça ajuda a quem cuida do sistema.");
   assert.match(m({ erro: "CLICKSIGN_FALHOU", passo: "envelope", http: 0, detalhe: "" }), /não respondeu/);
   assert.match(m({ erro: "GRAVACAO_FALHOU", envelopeId: "env-1" }), /env-1.*Atualizar situação.*não envie de novo/);
   assert.match(m({ erro: "GRAVACAO_FALHOU", rascunhoApagado: true }), /Nada foi enviado.*tente de novo/);

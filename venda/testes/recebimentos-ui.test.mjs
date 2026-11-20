@@ -39,7 +39,7 @@ test("vários pagamentos: falta, lista com situação do MC, baixado sem botão 
 
 test("coluna faltando fica só no item; sobra aparece; outro recebimento e contrato de financiamento têm seus campos", () => {
   const h = D.htmlRecebimentos(E(), uir());
-  assert.match(h, /<b>FGTS<\/b>[\s\S]*A base não tem a coluna RECEBIMENTO - FGTS PAGAMENTOS[\s\S]*este item não grava/);
+  assert.match(h, /<b>FGTS<\/b>[\s\S]*a base não tem a coluna RECEBIMENTO - FGTS PAGAMENTOS[\s\S]*este item não grava/);
   assert.doesNotMatch(h, /data-item="FGTS">Confirmar/);
   assert.match(h, /<span class="rec-sobra">Recebido R\$\s1\.500,00 — passa R\$\s300,00 do esperado<\/span>/);
   assert.match(h, /data-acao="r-confirmar" data-item="OUTRO:0a0b0c0d"/);

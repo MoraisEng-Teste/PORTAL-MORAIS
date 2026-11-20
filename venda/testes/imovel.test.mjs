@@ -333,7 +333,7 @@ test("tela: casa de condomínio só avisa (o imóvel vem da linha do condomínio
 test("tela: servidor antigo (sem imovel) não mostra a seção; coluna faltando vira aviso", () => {
   assert.equal(D.htmlImovel(Object.assign({}, base, { imovel: undefined }), ui()), "");
   const h = D.htmlImovel(Object.assign({}, base, { imovel: { erro: "COLUNA_FALTANDO: IMÓVEL - ALVARÁ" } }), ui());
-  assert.match(h, /A base não tem a coluna IMÓVEL - ALVARÁ — avise o desenvolvedor/);
+  assert.match(h, /a base não tem a coluna IMÓVEL - ALVARÁ\.\)/);
 });
 
 test("tela: condomínio/loteamento lido aparece (gravado na venda), escapado; mensagem do imóvel fica na seção dele", () => {

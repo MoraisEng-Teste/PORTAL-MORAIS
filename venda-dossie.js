@@ -37,7 +37,7 @@
     GRAVACAO_FALHOU: "Não consegui gravar no Notion — tente de novo.",
     LEITURA_FALHOU: "Não consegui ler agora — tente de novo.",
     /* 29/10: condições especiais e "Redigir com IA" */
-    COLUNA_FALTANDO: "Falta a coluna CONTRATO - CONDIÇÕES ESPECIAIS na base de vendas — avise o administrador.",
+    COLUNA_FALTANDO: "As condições especiais ainda não podem ser salvas aqui — peça ajuda a quem cuida do sistema. (Detalhe técnico: falta a coluna CONTRATO - CONDIÇÕES ESPECIAIS na base de vendas.)",
     CHAVE_IA_FALTANDO: "A IA ainda não foi ligada neste ambiente (falta a chave da OpenAI).",
     IA_SO_OPENAI: "O Redigir com IA só funciona com a OpenAI ligada.",
     MODELO_NAO_CONFIGURADO: "O modelo do contrato do condomínio não está configurado.",
@@ -61,8 +61,8 @@
     if (arquivoGuardado) return "Arquivo guardado; a leitura falhou — use Ler de novo.";
     if (e === "SEM_RESPOSTA" && foiLerDocumento)
       return "O servidor demorou a responder — o arquivo pode ter sido guardado. Use Ler de novo antes de enviar outra vez.";
-    if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "A base não tem a coluna " + e.slice(17) + " — avise o desenvolvedor.";
-    if (e.indexOf("TIPO_DE_COLUNA_ERRADO: ") === 0) return "A coluna " + e.slice(23) + " está com o tipo errado no Notion — avise o desenvolvedor.";
+    if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "Falta um campo na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a base não tem a coluna " + e.slice(17) + ".)";
+    if (e.indexOf("TIPO_DE_COLUNA_ERRADO: ") === 0) return "Um campo está configurado errado na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a coluna " + e.slice(23) + " está com o tipo errado no Notion.)";
     return MSG[e] || "Algo deu errado (" + e + ") — tente de novo.";
   }
   function resumo(r) {
@@ -475,7 +475,7 @@
     MODELO_COM_MARCADOR_SOBRANDO: "O modelo do contrato tem um campo sem preenchimento — avise o suporte.",
     FALTAM_DADOS: "Faltam dados para gerar o contrato.",
     PRECONTRATO_FALTANDO: "Gere a prévia do contrato e confira antes de gerar o contrato.",
-    PRECONTRATO_GRANDE: "A prévia do contrato ficou grande demais para abrir pelo portal — avise o desenvolvedor.",
+    PRECONTRATO_GRANDE: "A prévia do contrato ficou grande demais para abrir pelo portal — peça ajuda a quem cuida do sistema.",
     PRECONTRATO_DESATUALIZADO: "Os dados mudaram depois da prévia do contrato — gere a prévia do contrato de novo e confira.",
     PRECONTRATO_REFAZER: "Não consegui gerar o contrato — gere a prévia do contrato de novo, confira e tente outra vez.",   /* 01/11 */
     NOTION_OCUPADO: "O sistema está ocupado — espere 1 minuto e tente de novo.",
@@ -497,7 +497,7 @@
     /* 30/10: desconto "isentar a comissão" (venda direta) */
     FLUXO_ISENCAO_AGUARDANDO_MODELO: "Isentar a comissão ainda não está liberado: o contrato do advogado não tem o texto de venda sem corretor. Use desconto em R$ ou %.",
     MODELO_CNPJ_VENDEDOR_DIFERENTE: "O CNPJ do vendedor no cadastro (VENDEDORES – CONTRATO) não é o que está escrito no modelo do contrato — o contrato não foi gerado. Confira o cadastro ou avise o suporte.",
-    MODELO_SEM_BLOCO_SEM_COMISSAO: "Esta venda é sem comissão (venda direta), mas o modelo do contrato ainda não tem esse texto — o contrato não foi gerado. Avise o desenvolvedor.",
+    MODELO_SEM_BLOCO_SEM_COMISSAO: "Esta venda é sem comissão (venda direta), mas o modelo do contrato ainda não tem esse texto — o contrato não foi gerado. Peça ajuda a quem cuida do sistema.",
     FLUXO_PRECO_SEM_PERMISSAO: "Seu login não pode mudar o valor da unidade — os nomes de quem pode aparecem no campo Valor da unidade."
   };
   /* Nunca inclui nomes de marcador do modelo (resposta.marcadores): esses vão só para o console.
@@ -663,7 +663,7 @@
     h += '<div class="dz-linha"><span class="dz-rot">No contrato: ' + (cc.forma ? esc(cc.forma) : "<i>em branco (sem dados de pagamento)</i>") +
       (cc.formaLegada ? " <small>(da coluna antiga CONTRATO - COMISSÃO FORMA)</small>" : "") + "</span></div>";
     if (cc.colunasFaltando.length)
-      h += '<div class="dz-aviso">A base CORRETORES – CONTRATO não tem a coluna ' + esc(cc.colunasFaltando.join(", ")) + " — avise o desenvolvedor.</div>";
+      h += '<div class="dz-aviso">Falta um campo no cadastro dos corretores — peça ajuda a quem cuida do sistema.<details><summary>Detalhe técnico</summary>A base CORRETORES – CONTRATO não tem a coluna ' + esc(cc.colunasFaltando.join(", ")) + ".</details></div>";
     var disB = dis || (u.ocupadoContrato === "comissao" ? " disabled" : "");
     cc.campos.forEach(function (c) {
       var k = "com|" + c.coluna, v = k in rasc ? rasc[k] : c.valor;
@@ -774,7 +774,7 @@
       h += '<div class="dz-linha"><b>Fiador ' + f.n + '</b></div><div class="dz-linha dz-fia">' + f.campos.map(campo).join("") + "</div>";
     });
     if (b.conjuge) h += '<div class="dz-linha"><b>Cônjuge do comprador 1</b></div><div class="dz-linha dz-fia">' + b.conjuge.campos.map(campo).join("") + "</div>";
-    if (b.semColuna.length) h += '<div class="dz-aviso">A base não tem a coluna ' + esc(b.semColuna.join(", ")) + " — avise o desenvolvedor.</div>";
+    if (b.semColuna.length) h += '<div class="dz-aviso">Falta um campo na base de dados — peça ajuda a quem cuida do sistema.<details><summary>Detalhe técnico</summary>A base não tem a coluna ' + esc(b.semColuna.join(", ")) + ".</details></div>";
     var rot = b.precisa && b.conjuge ? "Salvar fiadores e cônjuge" : b.precisa ? "Salvar fiadores" : "Salvar cônjuge";
     h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-fia-salvar"' + dis + ">" + rot + "</button>" +
       (b.botaoConjuge ? ' <button type="button" class="bt ghost bt-mini" data-acao="c-fia-conjuge"' + dis + ">O cônjuge do Fiador 1 é o Fiador 2</button>" : "") + "</div>";
@@ -1363,7 +1363,7 @@
     var m = p.preenchidos.length ? "Preenchido pelo CRLV — confira: " + nomes(p.preenchidos) + "." : "Nenhum campo vazio para preencher — o formulário ficou como estava.";
     if (p.diferentes.length) m += " O CRLV diz diferente em: " + nomes(p.diferentes) + " — não troquei o que já estava digitado; confira.";
     if (r.guardado) m += " CRLV guardado na venda.";
-    else m += r.motivo === "SEM_COLUNA" ? " O arquivo não foi guardado: a venda ainda não tem a coluna PERMUTA - CRLV (avise o desenvolvedor)."
+    else m += r.motivo === "SEM_COLUNA" ? " O arquivo não foi guardado: falta um campo na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a venda ainda não tem a coluna PERMUTA - CRLV.)"
                                        : " O arquivo não foi guardado (falha ao enviar); o que foi lido está no formulário.";
     ed.crlv = { k: k, campos: p.preenchidos, msg: m };
     return m;
@@ -1658,8 +1658,8 @@
     var e = String(r.erro || "");
     if (!e) {
       var feito = "Recebimento" + (rotulo ? " do " + rotulo : "") + " confirmado", mc = MC_PEDIDO[r.mcPedido] || "";
-      if (r.aviso === "EMAIL_NAO_CONFIGURADO") return feito + ", mas o e-mail de aviso não está configurado (RECEBIMENTO_EMAILS) — avise o administrador." + mc;
-      if (r.aviso === "EMAIL_FALHOU") return feito + ", mas o e-mail de aviso não saiu — avise o administrador." + mc;
+      if (r.aviso === "EMAIL_NAO_CONFIGURADO") return feito + ", mas o e-mail de aviso não está configurado — peça ajuda a quem cuida do sistema. (Detalhe técnico: RECEBIMENTO_EMAILS.)" + mc;
+      if (r.aviso === "EMAIL_FALHOU") return feito + ", mas o e-mail de aviso não saiu — peça ajuda a quem cuida do sistema." + mc;
       return feito + (r.emails ? " — e-mail de aviso enviado." : ".") + mc;
     }
     if (e === "GRAVACAO_FALHOU" && r.arquivoGuardado) return "O comprovante foi guardado, mas a data não — confirme de novo.";
@@ -2628,8 +2628,8 @@
               MODO_INVALIDO: "Jeito de antecipar inválido. Escolha um dos cinco jeitos.",
               RETRATO_PROCESSANDO: "A leitura da venda já está em andamento.",
               SEM_RETRATO: "A venda ainda não foi lida do Mais Controle. Clique em Ler de novo do Mais Controle.",
-              FILA_NAO_CONFIGURADA: "A fila de leitura do Mais Controle ainda não está ligada neste ambiente — avise o desenvolvedor.",
-              BASE_ANTECIPACOES_NAO_CONFIGURADA: "A base ANTECIPAÇÕES ainda não está ligada neste ambiente — avise o desenvolvedor.",
+              FILA_NAO_CONFIGURADA: "A leitura no Mais Controle ainda não está ligada neste ambiente — peça ajuda a quem cuida do sistema.",
+              BASE_ANTECIPACOES_NAO_CONFIGURADA: "A lista de antecipações ainda não está ligada neste ambiente — peça ajuda a quem cuida do sistema. (Detalhe técnico: base ANTECIPAÇÕES.)",
               REGISTRO_FALHOU: "Não consegui registrar a simulação no Notion — tente de novo.",
               ANEXO_FALHOU: "Não consegui guardar o PDF — tente de novo.",
               TRAVA: "Esse jeito não passa nas travas do fiador.",
@@ -2812,7 +2812,7 @@
     var M = { FORMA_CONTA: "Escolha PIX ou dados bancários.", PIX_SEM_CHAVE: "Digite a chave PIX completa.", SEM_BANCO: "Informe o banco.",
               AGENCIA_INVALIDA: "Agência: só números (e hífen, se tiver dígito).", CONTA_INVALIDA: "Conta: números com o dígito (ex.: 12345-6).",
               TIPO_CONTA_INVALIDO: "Escolha o tipo de conta.", CONTA_LONGA: "A chave ou o banco ficou longo demais.",
-              MODELO_NAO_CONFIGURADO: "O modelo do termo (MODELO_PRE_RESERVA_ID) não está configurado — avise o desenvolvedor.",
+              MODELO_NAO_CONFIGURADO: "O modelo do termo de reserva não está configurado — peça ajuda a quem cuida do sistema. (Detalhe técnico: MODELO_PRE_RESERVA_ID.)",
               SEM_TERMO_GERADO: "Ainda não há termo gerado.", SO_CONDOMINIO: "O termo de reserva é só do condomínio.",
               PR_VALOR_INVALIDO: "Valor da reserva inválido.", PR_DATA_INVALIDA: "Informe a data do pagamento.",
               PR_DATA_FUTURA: "A data do pagamento não pode ser depois de hoje. Informe o dia em que o cliente pagou.",
@@ -2820,7 +2820,7 @@
               PR_LIMITE_INVALIDA: "Informe a data limite do termo.", PR_LIMITE_PASSADA: "A data limite não pode ser antes de hoje.",
               PR_LIMITE_ANTES_DO_PAGAMENTO: "A data limite não pode ser antes da data do pagamento.",
               SEM_PERMISSAO_TESTES: "Perfil TESTES não gera nem grava.", SEM_RESPOSTA: "O servidor não respondeu — tente de novo." };
-    if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "A base não tem a coluna " + e.slice(17) + " — avise o desenvolvedor.";
+    if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "Falta um campo na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a base não tem a coluna " + e.slice(17) + ".)";
     return M[e] || (e ? mensagemContrato(r) : "");
   }
 
@@ -3953,7 +3953,7 @@
         pintar();
         return;
       }
-      uiC.msg = r.erro === "COLUNA_FALTANDO" && r.faltas ? "A base não tem a coluna " + r.faltas.join(", ") + " — avise o desenvolvedor." : mensagemContrato(r);
+      uiC.msg = r.erro === "COLUNA_FALTANDO" && r.faltas ? "Falta um campo na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a base não tem a coluna " + r.faltas.join(", ") + ".)" : mensagemContrato(r);
       pintar();
     }
     /* 29/10: condições especiais — Redigir com IA (só sugere) e Salvar (grava na venda) */

@@ -30,34 +30,34 @@
     /* 01/11/2026 (revisão final, I3): o envio sem resposta pode ter dado certo (o servidor repete a Clicksign por até 180 s) */
     SEM_RESPOSTA_ENVIO: "A Clicksign está demorando. O envio pode ter dado certo — espere 1 minuto e clique em Atualizar situação antes de tentar de novo.",
     PORTAL_VENDA_NAO_CONFIGURADO: "A assinatura ainda não foi ligada neste ambiente.",
-    CLICKSIGN_SEM_TOKEN: "A assinatura ainda não foi ligada neste ambiente (falta o token da Clicksign) — avise o administrador.",
-    CLICKSIGN_URL_INVALIDA: "O endereço da Clicksign está errado nas configurações — avise o administrador.",
+    CLICKSIGN_SEM_TOKEN: "A assinatura ainda não foi ligada neste ambiente — peça ajuda a quem cuida do sistema. (Detalhe técnico: falta o token da Clicksign.)",
+    CLICKSIGN_URL_INVALIDA: "A ligação com a Clicksign está errada nas configurações — peça ajuda a quem cuida do sistema. (Detalhe técnico: endereço da Clicksign inválido.)",
     RASCUNHO_NAO_APAGADO: "A Clicksign não apagou o rascunho — tente Descartar rascunho de novo em 1 minuto.",
     ENVELOPE_ABERTO: "Este contrato já está com a Clicksign — use Atualizar situação.",
     PRAZO_INVALIDO: "A data limite para assinar tem de ficar entre amanhã e 89 dias à frente.",
     SEM_CONTRATO_GERADO: "Gere o contrato antes de enviar para assinatura.",
     FALTAM_DADOS: "Complete os dados abaixo e envie de novo.",
-    CADASTRO_NAO_CONFIGURADO: "Os cadastros do contrato não estão configurados — avise o administrador.",
+    CADASTRO_NAO_CONFIGURADO: "Os cadastros do contrato não estão configurados — peça ajuda a quem cuida do sistema.",
     CONTRATO_ILEGIVEL: "Não consegui abrir o PDF do contrato gerado — gere o contrato de novo.",
     DOWNLOAD_ASSINADO_FALHOU: "Não consegui baixar o PDF assinado da Clicksign — tente Atualizar situação daqui a pouco.",
     UPLOAD_FALHOU: "Não consegui guardar o PDF assinado na venda — tente Atualizar situação de novo.",
-    CLICKSIGN_ENVELOPE_SEM_DOCUMENTO: "O envio para assinatura na Clicksign está sem documento — avise o desenvolvedor.",
+    CLICKSIGN_ENVELOPE_SEM_DOCUMENTO: "O envio para assinatura na Clicksign está sem documento — peça ajuda a quem cuida do sistema.",
     SEM_ENVELOPE: "Este contrato ainda não foi enviado para assinatura.",
     NINGUEM_PENDENTE: "Todos já assinaram — não há link para reenviar. Use Atualizar situação.",
     ENVELOPE_NAO_ATIVO: "O envio para assinatura não está mais aguardando assinaturas — use Atualizar situação.",
     /* entrega 14: Ver contrato assinado */
     SEM_ASSINADO: "O PDF assinado ainda não está na casa — use Atualizar situação.",
-    ASSINADO_ILEGIVEL: "Não consegui abrir o PDF assinado guardado na venda — use Atualizar situação ou avise o desenvolvedor.",
+    ASSINADO_ILEGIVEL: "Não consegui abrir o PDF assinado guardado na venda — use Atualizar situação ou peça ajuda a quem cuida do sistema.",
     ASSINADO_GRANDE: "O PDF assinado ficou grande demais para abrir pelo portal — abra pelo Notion.",
     /* 30/10: rubricas do comprador e documentos só dele (memorial, projeto aprovado) */
     RUBRICAS_FALTANDO: "A tela está desatualizada — recarregue a página (Ctrl+F5) e envie de novo.",
     RUBRICAS_DE_OUTRO_PDF: "O contrato mudou enquanto a tela lia o PDF — envie de novo.",
-    RUBRICAS_INVALIDAS: "As posições das rubricas saíram erradas — gere o contrato de novo ou avise o desenvolvedor.",
-    RUBRICAS_NAO_ACHADAS: "Não achei no contrato os campos “ASSINATURA: ____” que o comprador rubrica — gere o contrato de novo ou avise o desenvolvedor.",
+    RUBRICAS_INVALIDAS: "As posições das rubricas saíram erradas — gere o contrato de novo ou peça ajuda a quem cuida do sistema.",
+    RUBRICAS_NAO_ACHADAS: "Não achei no contrato os campos “ASSINATURA: ____” que o comprador rubrica — gere o contrato de novo ou peça ajuda a quem cuida do sistema.",
     RUBRICAS_SEM_LEITOR: "Não consegui abrir o leitor de PDF do navegador — confira a internet e tente de novo.",
-    MEMORIAL_NAO_CONFIGURADO: "O modelo do memorial descritivo não abre — avise o administrador.",
-    MEMORIAL_FALHOU: "Não consegui gerar o memorial descritivo — tente de novo ou avise o desenvolvedor.",
-    PROJETO_NAO_CONFIGURADO: "O PDF do projeto aprovado não abre — avise o administrador.",
+    MEMORIAL_NAO_CONFIGURADO: "O modelo do memorial descritivo não abre — peça ajuda a quem cuida do sistema.",
+    MEMORIAL_FALHOU: "Não consegui gerar o memorial descritivo — tente de novo ou peça ajuda a quem cuida do sistema.",
+    PROJETO_NAO_CONFIGURADO: "O PDF do projeto aprovado não abre — peça ajuda a quem cuida do sistema.",
     /* 01/11/2026 (plano 23 A): depois de assinado por todos, só visualizar */
     NAO_ASSINADO: "Ainda não foi assinado por todos — use Atualizar situação.",
     DOCUMENTO_NAO_ENCONTRADO: "Esse documento não está mais no envio para assinatura — recarregue a página.",
@@ -155,9 +155,9 @@
     if ((e === "CONTRATO_DESATUALIZADO" || e === "ENVELOPE_ABERTO") && typeof r.mensagem === "string" && r.mensagem) return r.mensagem;
     if (!e) {
       if (r.aviso === "NOTIFICACAO_FALHOU")
-        return "Enviado, mas o e-mail de aviso falhou — use Atualizar situação; se ninguém receber, avise o desenvolvedor.";
+        return "Enviado, mas o e-mail de aviso falhou — use Atualizar situação; se ninguém receber, peça ajuda a quem cuida do sistema.";
       if (r.aviso === "ASSINATURAS_INCOMPLETAS")
-        return "A Clicksign finalizou o envio para assinatura, mas não registrou a assinatura de todos — confira o PDF assinado e avise o desenvolvedor.";
+        return "A Clicksign finalizou o envio para assinatura, mas não registrou a assinatura de todos — confira o PDF assinado e peça ajuda a quem cuida do sistema.";
       return "";
     }
     if (e === "CLICKSIGN_FALHOU") {
@@ -171,7 +171,7 @@
         (consulta ? " — tente Atualizar situação daqui a pouco." : (sobra ? "." + sobra : ". Nada foi enviado aos assinantes — tente de novo em alguns minutos."));
       return "A Clicksign recusou " + (consulta ? "a consulta" : "o envio") + " (passo: " + r.passo + ", código " + r.http +
         (r.detalhe ? ": " + r.detalhe : "") + ")." +
-        (consulta ? " Avise o desenvolvedor." : (sobra || " Nada foi enviado aos assinantes — avise o desenvolvedor."));
+        (consulta ? " Peça ajuda a quem cuida do sistema." : (sobra || " Nada foi enviado aos assinantes — peça ajuda a quem cuida do sistema."));
     }
     if (e === "GRAVACAO_FALHOU" && r.envelopeId)
       return "O envio para assinatura " + r.envelopeId + " foi enviado aos assinantes, mas o portal não conseguiu anotar na venda — use Atualizar situação daqui a pouco; não envie de novo.";
@@ -179,13 +179,13 @@
       return "Não consegui anotar o envio para assinatura na venda, então ele foi desfeito. Nada foi enviado aos assinantes — tente de novo.";
     if (e === "GRAVACAO_FALHOU") return "Não consegui gravar a situação na venda — tente Atualizar situação de novo.";
     if (e.indexOf("CLICKSIGN_SEM_LINK_ASSINADO") === 0)
-      return "A Clicksign diz que terminou, mas não entregou o link do PDF assinado — avise o desenvolvedor.";
+      return "A Clicksign diz que terminou, mas não entregou o link do PDF assinado — peça ajuda a quem cuida do sistema.";
     if (e.indexOf("CLICKSIGN_STATUS_DESCONHECIDO") === 0)
-      return "A Clicksign devolveu uma situação que o portal não conhece — avise o desenvolvedor.";
+      return "A Clicksign devolveu uma situação que o portal não conhece — peça ajuda a quem cuida do sistema.";
     if (e === "REENVIO_RECENTE")
       return "O link já foi reenviado há pouco — espere " + (Number(r.minutos) || 10) + " minuto" + (Number(r.minutos) === 1 ? "" : "s") + " para reenviar de novo.";
-    if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "A base não tem a coluna " + e.slice(17) + " — avise o desenvolvedor.";
-    if (e.indexOf("TIPO_DE_COLUNA_ERRADO: ") === 0) return "A coluna " + e.slice(23) + " está com o tipo errado no Notion — avise o desenvolvedor.";
+    if (e.indexOf("COLUNA_FALTANDO: ") === 0) return "Falta um campo na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a base não tem a coluna " + e.slice(17) + ".)";
+    if (e.indexOf("TIPO_DE_COLUNA_ERRADO: ") === 0) return "Um campo está configurado errado na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a coluna " + e.slice(23) + " está com o tipo errado no Notion.)";
     return MSG[e] || "Algo deu errado (" + e + ") — tente de novo.";
   }
 

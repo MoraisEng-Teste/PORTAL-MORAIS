@@ -66,7 +66,7 @@ test("mensagens de erro em português, com o caso do arquivo guardado", () => {
   assert.equal(D.mensagemDeErro("LEITURA_FALHOU", true), "Arquivo guardado; a leitura falhou — use Ler de novo.");
   assert.equal(D.mensagemDeErro("NAO_AUTORIZADO"), "Sua sessão expirou — entre de novo no portal.");
   assert.equal(D.mensagemDeErro("TIPO_DE_ARQUIVO_NAO_SUPORTADO"), "Formato não suportado — envie foto em JPG ou PNG, ou PDF. (Foto de iPhone em HEIC: tire um print ou exporte como JPG.)");
-  assert.equal(D.mensagemDeErro("COLUNA_FALTANDO: VALOR DO SUBSÍDIO"), "A base não tem a coluna VALOR DO SUBSÍDIO — avise o desenvolvedor.");
+  assert.equal(D.mensagemDeErro("COLUNA_FALTANDO: VALOR DO SUBSÍDIO"), "Falta um campo na base de dados — peça ajuda a quem cuida do sistema. (Detalhe técnico: a base não tem a coluna VALOR DO SUBSÍDIO.)");
   assert.equal(D.mensagemDeErro("XPTO"), "Algo deu errado (XPTO) — tente de novo.");
   assert.equal(D.mensagemDeErro("TROCAR_SEM_ARQUIVO"), "Escolha o arquivo novo para trocar.");
 });
