@@ -50,7 +50,9 @@
   .prazo-opts{display:flex;gap:10px;}
   .prazo-opt{flex:1;border:1px solid var(--borda);border-radius:8px;padding:12px;text-align:center;cursor:pointer;}
   .prazo-opt:has(input:checked){border-color:var(--marrom2);background:#FBEEC8;}
-  .prazo-opt input{display:none;}
+  .prazo-opt{position:relative;}
+  .prazo-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none;}
+  .prazo-opt:has(input:focus-visible){outline:3px solid var(--marrom2);outline-offset:2px;}
   .prazo-opt b{display:block;font-size:16px;color:var(--marrom);}
   .prazo-opt small{color:var(--texto-suave);}
   .produtos{display:flex;flex-direction:column;gap:8px;}
@@ -172,7 +174,9 @@
   #composicaoProp h3,#resumoEntrada h3{display:none}
   .prazo-opt{flex:1;min-width:120px;border:1px solid var(--borda);border-radius:8px;padding:12px;text-align:center;cursor:pointer;background:#fff;}
   .prazo-opt:has(input:checked){border-color:var(--marrom);background:#FBEEC8;}
-  .prazo-opt input{display:none;}
+  .prazo-opt{position:relative;}
+  .prazo-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none;}
+  .prazo-opt:has(input:focus-visible){outline:3px solid var(--marrom2);outline-offset:2px;}
   .prazo-opt b{display:block;font-size:16px;color:var(--marrom);}
   .prazo-opt small{color:var(--texto-suave);}
   .leitor{background:#FFFDF7;border:1px dashed var(--borda);border-radius:8px;padding:12px 14px;margin-bottom:14px;}
@@ -241,7 +245,7 @@
 </head>
 <body>
 
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
 <div id="avisoOffline" class="aviso-offline">
   <strong>Serviço temporariamente indisponível.</strong>
@@ -294,7 +298,7 @@
       </div>
     </div>
 
-    <div id="avisoUnidade" class="status erro" style="display:none;margin-bottom:14px"></div>
+    <div id="avisoUnidade" class="status erro" role="alert" aria-live="assertive" style="display:none;margin-bottom:14px"></div>
     <p class="ajuda" style="margin:-6px 0 12px"><a href="#" id="lnkApagarRascunho" style="color:inherit;text-decoration:underline">Apagar rascunho deste aparelho</a></p>
 
     <div class="linha" style="margin-bottom:6px">
@@ -361,7 +365,7 @@
         <input autocomplete="off" type="text" name="cliente" data-pad="1" required></div>
       <div class="campo"><label>CPF<span class="obrig">*</span></label>
         <input autocomplete="off" type="text" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required>
-        <span class="ajuda" id="cpfAviso" style="display:none;color:#8A2E17">CPF inválido — confira os números.</span></div>
+        <span class="ajuda" id="cpfAviso" role="alert" aria-live="assertive" style="display:none;color:#8A2E17">CPF inválido — confira os números.</span></div>
       <div class="campo"><label>Identidade</label><input type="text" name="identidade" data-pad="1"></div>
       <div class="campo"><label>Estado civil<span class="obrig">*</span></label>
         <select name="estadoCivil" onchange="verConjuge();montarAnexos();montarFluxo();">
@@ -890,7 +894,7 @@
       <button type="submit" class="btn-primario" id="btEnviar">Enviar proposta</button>
     </div>
 
-    <div id="status" class="status" style="display:none"></div>
+    <div id="status" class="status" role="alert" aria-live="assertive" style="display:none"></div>
   </section>
 
   </form>
@@ -901,6 +905,7 @@
   </p>
 </main>
 
+<script src="acessibilidade.js"></script>
 <script src="base-offline.js?v=r97a"></script>
 <script src="regras-tela.js?v=t1101"></script>
 <script src="diluir-ui.js"></script>
@@ -3147,12 +3152,15 @@
     var el=document.getElementById('status'); if(el) el.style.display='none';
     var t=document.getElementById('toast'); if(t) t.classList.remove('visivel');
     document.querySelectorAll('.faltando').forEach(function(x){ x.classList.remove('faltando'); });
+    document.querySelectorAll('[aria-invalid]').forEach(function(x){ x.removeAttribute('aria-invalid'); });
   }
   function erro(m, campo){
     mostrar('erro', m);
     if(campo){
       document.querySelectorAll('.faltando').forEach(function(x){ x.classList.remove('faltando'); });
+      document.querySelectorAll('[aria-invalid]').forEach(function(x){ x.removeAttribute('aria-invalid'); });
       campo.classList.add('faltando');
+      try{ marcarInvalido(campo); }catch(e){}
       try{ campo.scrollIntoView({block:'center',behavior:'smooth'}); campo.focus({preventScroll:true}); }catch(e){}
       campo.addEventListener('input', function limpa(){ campo.classList.remove('faltando'); campo.removeEventListener('input', limpa); });
     }
@@ -3167,7 +3175,7 @@
     if(el){ el.style.display='block'; el.className='status '+tipo; el.innerHTML=msg; }
     var t=document.getElementById('toast');
     t.className='toast '+tipo;
-    t.innerHTML=msg+'<span class="fecha" onclick="this.parentNode.classList.remove(\'visivel\')">×</span>';
+    t.innerHTML=msg+'<span class="fecha" role="button" tabindex="0" aria-label="Fechar aviso" onclick="this.parentNode.classList.remove(\'visivel\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}">×</span>';
     t.classList.add('visivel');
     clearTimeout(t._t);
     if(tipo!=='erro') t._t=setTimeout(function(){ t.classList.remove('visivel'); }, 6000);

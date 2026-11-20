@@ -50,7 +50,9 @@
   .prazo-opts{display:flex;gap:10px;}
   .prazo-opt{flex:1;border:1px solid var(--borda);border-radius:8px;padding:12px;text-align:center;cursor:pointer;}
   .prazo-opt:has(input:checked){border-color:var(--marrom2);background:#FBEEC8;}
-  .prazo-opt input{display:none;}
+  .prazo-opt{position:relative;}
+  .prazo-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none;}
+  .prazo-opt:has(input:focus-visible){outline:3px solid var(--marrom2);outline-offset:2px;}
   .prazo-opt b{display:block;font-size:16px;color:var(--marrom);}
   .prazo-opt small{color:var(--texto-suave);}
   .secao-sim{margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--borda);font-weight:800;color:var(--marrom);font-size:14px;}
@@ -189,7 +191,7 @@
   <form id="formSimulacao" novalidate>
     <section class="card etapa" data-etapa="1">
       <h2>Unidade e perfil</h2>
-      <div id="avisoSemUnidades" class="status erro" style="display:none;margin-bottom:14px"><b>Não foi possível carregar as unidades.</b> <a href="#" id="lnkRecarregarUn" style="color:inherit;text-decoration:underline;display:inline-block;padding:8px 0">Tente de novo</a></div>
+      <div id="avisoSemUnidades" class="status erro" role="alert" aria-live="assertive" style="display:none;margin-bottom:14px"><b>Não foi possível carregar as unidades.</b> <a href="#" id="lnkRecarregarUn" style="color:inherit;text-decoration:underline;display:inline-block;padding:8px 0">Tente de novo</a></div>
       <div class="linha">
         <div class="campo"><label>Tipo<span class="obrig">*</span></label><select id="tipo" required></select></div>
         <div class="campo"><label>Unidade<span class="obrig">*</span></label><select id="unidade" required></select></div>
@@ -261,7 +263,7 @@
           <span class="ajuda">Opcional.</span></div>
       </div>
       <!-- r62 (item 2) — aviso do que falta no passo 1 -->
-      <div id="avisoPasso1" class="status erro" style="display:none"></div>
+      <div id="avisoPasso1" class="status erro" role="alert" aria-live="assertive" style="display:none"></div>
       <div class="rodape"><span></span><button type="button" class="btn-primario" onclick="if(validarPasso1())irPara(2)">Continuar</button></div>
     </section>
 
@@ -302,7 +304,7 @@
         <label>Linhas de financiamento que serão simuladas</label>
         <div class="produtos" id="produtos"></div>
         <span class="ajuda" id="produtosAjuda"></span>
-        <div id="produtosAviso" style="display:none;margin-top:8px;padding:9px 12px;border-radius:6px;background:#FBEDEA;border:1px solid #E2A493;color:#8A2E17;font-size:13px;">Selecione ao menos uma linha de financiamento.</div>
+        <div id="produtosAviso" role="alert" aria-live="assertive" style="display:none;margin-top:8px;padding:9px 12px;border-radius:6px;background:#FBEDEA;border:1px solid #E2A493;color:#8A2E17;font-size:13px;">Selecione ao menos uma linha de financiamento.</div>
       </div>
       <div class="secao-sim">2. Valor para o sinal</div>
       <div class="linha">
@@ -310,7 +312,7 @@
           <label>Valor para o Sinal (R$)<span class="obrig">*</span></label>
           <input type="text" name="valorEntrada" inputmode="numeric" placeholder="10.000,00" value="10.000,00">
           <span class="ajuda" id="ajudaEntradaMin">Mínimo: o valor do sinal desta unidade.</span>
-          <div id="avisoEntradaMin" style="display:none;margin-top:6px;padding:8px 11px;border-radius:6px;background:#FBEDEA;border:1px solid #E2A493;color:#8A2E17;font-size:12px;"></div>
+          <div id="avisoEntradaMin" role="alert" aria-live="assertive" style="display:none;margin-top:6px;padding:8px 11px;border-radius:6px;background:#FBEDEA;border:1px solid #E2A493;color:#8A2E17;font-size:12px;"></div>
         </div>
         <div class="campo" style="display:none">
           <label>Data de referência (teste)</label>
@@ -386,7 +388,7 @@
       <div class="linha">
         <div class="campo"><label>Nome do cliente<span class="obrig">*</span></label><input autocomplete="off" type="text" name="nomeCliente" data-padrao="texto" required></div>
         <div class="campo"><label>CPF do cliente<span class="obrig">*</span></label><input autocomplete="off" type="text" name="cpfCliente" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" required>
-          <span class="ajuda" id="cpfAviso" style="display:none;color:#8A2E17;">CPF inválido — confira os números.</span></div>
+          <span class="ajuda" id="cpfAviso" role="alert" aria-live="assertive" style="display:none;color:#8A2E17;">CPF inválido — confira os números.</span></div>
       </div>
       <div class="campo full">
         <label>E-mail do corretor (recebe o resultado)<span class="obrig">*</span></label>
@@ -436,7 +438,7 @@
           <button type="submit" class="btn-primario">Enviar simulação</button>
         </div>
       </div>
-      <div id="statusEnvio" class="status" style="display:none;"></div>
+      <div id="statusEnvio" class="status" role="alert" aria-live="assertive" style="display:none;"></div>
     </section>
   </form>
 
@@ -446,6 +448,7 @@
   </p>
 </main>
 
+<script src="acessibilidade.js"></script>
 <script src="polling.js?v=c0111"></script>
 <script src="fluxo-calc.js"></script>
 <script src="fluxo-bloco.js"></script>
@@ -603,10 +606,12 @@
     if(!falta && !(parseMoeda(f.rendaIndividual.value)>0)) falta={msg:'Informe a <b>renda total</b>.', campo:f.rendaIndividual};
     if(falta){
       av.style.display='block'; av.innerHTML=falta.msg;
+      try{ marcarInvalido(falta.campo); }catch(e){}
       try{ falta.campo.scrollIntoView({block:'center',behavior:'smooth'}); falta.campo.focus({preventScroll:true}); }catch(e){}
       return false;
     }
     av.style.display='none';
+    document.querySelectorAll('#formSimulacao [aria-invalid]').forEach(function(x){ x.removeAttribute('aria-invalid'); });
     return true;
   }
   function aoTrocarUnidade(){var u=unidadeAtual();avisarReservaSim();if(!u)return;
