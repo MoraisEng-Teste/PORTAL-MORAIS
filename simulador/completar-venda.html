@@ -547,38 +547,15 @@ function prepararLeitura(file){
     img.src=url;
   });
 }
-function normCmp(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,''); }
-function sugerirDoDocumento(el, v){
-  var velha=el.parentNode.querySelector('.sug-doc[data-para="'+el.id+'"]'); if(velha) velha.remove();
-  var d=document.createElement('div'); d.className='sug-doc'; d.setAttribute('data-para', el.id);
-  d.style.cssText='font-size:12.5px;margin:4px 0 0;color:#6B5A45;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
-  d.innerHTML='<span>O documento diz: <b></b></span><button type="button" style="min-height:44px;padding:0 12px;border:1px solid #1a4d6b;background:#fff;color:#1a4d6b;border-radius:8px;font-weight:700;cursor:pointer">usar este</button>';
-  d.querySelector('b').textContent=v;
-  d.querySelector('button').onclick=function(){
-    el.value=v; mascarar(el); el.classList.add('lido'); delete el.dataset.digitado; d.remove();
-    try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(x){}
-    atualizarTrava();
-  };
-  el.insertAdjacentElement('afterend', d);
-}
 function preencher(chave, campos){
-  var mapa=MAPA_LEITURA[chave]||mapaEndereco(chave), n=0, sug=0;
+  var mapa=MAPA_LEITURA[chave]||mapaEndereco(chave), n=0;
   Object.keys(mapa).forEach(function(k){
     var v=campos[k]; if(!v) return;
     var el=document.getElementById('f-'+mapa[k]);
     if(!el) return;
-    /* Onda 2 (item 11c): se o campo já tem valor diferente do lido (digitado ou já cadastrado), o valor da pessoa fica
-       e o do documento aparece embaixo, com "usar este". Campo vazio ou preenchido só por leitura anterior: o documento corrige. */
-    var atual=String(el.value||'').trim();
-    /* DESLIGADO na junta da Onda 2: a regra do dono de 06/10 é "a leitura SEMPRE corrige o campo".
-       Trocar por "manter o digitado e sugerir" é decisão dele; até lá fica como era. */
-    if(false && el.tagName!=='SELECT' && atual && normCmp(atual)!==normCmp(v) && (el.dataset.digitado || !el.classList.contains('lido'))){
-      sugerirDoDocumento(el, v); sug++; return;
-    }
-    var velha=el.parentNode && el.parentNode.querySelector('.sug-doc[data-para="'+el.id+'"]'); if(velha) velha.remove();
+    /* regra do dono (06/10): a leitura do documento SEMPRE corrige o campo */
     el.value=v; mascarar(el); el.classList.add('lido'); n++;
   });
-  preencher.sugeridos=sug;
   /* comprovante de quem só tem o campo de endereço inteiro: monta a linha */
   if(/^end/.test(chave) && !n){
     var cap=chave.slice(3), un=document.getElementById('f-endereco'+cap);
@@ -606,9 +583,7 @@ function aoArquivo(chave, sub, tipoLeitura, input){
     if(r && r.ok && r.lido){
       var n=preencher(chave, r.campos||{});
       st.className='lst ok';
-      var sg=preencher.sugeridos||0;
-      st.textContent = (n ? '✓ Documento lido — '+n+' campo(s) preenchido(s). Confira.' : (sg ? '✓ Documento lido.' : '✓ Documento lido — os campos já estavam preenchidos.'))+
-        (sg ? ' '+sg+' campo(s) já tinham outro valor: mantive o seu — veja "O documento diz" abaixo do campo.' : '');
+      st.textContent = n ? '✓ Documento lido — '+n+' campo(s) preenchido(s). Confira.' : '✓ Documento lido — os campos já estavam preenchidos.';
     } else {
       st.className='lst err';
       st.textContent='Não consegui identificar as informações do documento — preencha os dados manualmente.';
@@ -726,7 +701,38 @@ function atualizarTrava(){
 }
 
 /* ---------------- envio ---------------- */
-function enviar(){
+function confirmarEnvioParcial(docs, campos, aoConfirmar){
+  var velha=document.getElementById('dlgEnvioParcial'); if(velha) velha.remove();
+  var ant=document.activeElement;
+  var ov=document.createElement('div'); ov.id='dlgEnvioParcial';
+  ov.style.cssText='position:fixed;inset:0;z-index:90;background:rgba(42,33,24,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML='<div role="dialog" aria-modal="true" aria-labelledby="dlgEnvioTit" style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:20px;box-shadow:0 10px 36px rgba(0,0,0,.3)">'+
+    '<h2 id="dlgEnvioTit" style="margin:0 0 8px;font-size:17px">Enviar o que já tem?</h2>'+
+    '<p style="margin:0 0 6px;font-size:14px">Ainda falta:</p>'+
+    '<ul style="margin:0 0 12px 18px;padding:0;font-size:14px;line-height:1.5">'+
+      (docs.length?'<li><b>Documentos ('+docs.length+'):</b> '+docs.map(esc).join(' · ')+'</li>':'')+
+      (campos.length?'<li><b>Dados ('+campos.length+'):</b> '+campos.map(esc).join(' · ')+'</li>':'')+'</ul>'+
+    '<p style="margin:0 0 16px;font-size:13.5px;color:#6B5A45">O que você enviar agora fica guardado. Depois é só abrir o mesmo link e completar.</p>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+      '<button type="button" class="primario" id="dlgVoltar" style="flex:1 1 180px">Voltar e completar</button>'+
+      '<button type="button" id="dlgAssim" style="flex:1 1 180px;background:#fff;color:#7A4A16;border:1px solid #E7DCC7">Enviar assim mesmo</button></div></div>';
+  document.body.appendChild(ov);
+  function fechar(){ document.removeEventListener('keydown', tecla, true); ov.remove(); try{ if(ant && ant.focus) ant.focus(); }catch(e){} }
+  function tecla(e){
+    if(e.key==='Escape'){ e.preventDefault(); fechar(); return; }
+    if(e.key==='Tab'){   /* o foco fica dentro da caixa */
+      var bs=ov.querySelectorAll('button'), a=bs[0], b=bs[bs.length-1];
+      if(e.shiftKey && document.activeElement===a){ e.preventDefault(); b.focus(); }
+      else if(!e.shiftKey && document.activeElement===b){ e.preventDefault(); a.focus(); }
+    }
+  }
+  document.addEventListener('keydown', tecla, true);
+  document.getElementById('dlgVoltar').onclick=fechar;
+  document.getElementById('dlgAssim').onclick=function(){ fechar(); aoConfirmar(); };
+  ov.addEventListener('click', function(e){ if(e.target===ov) fechar(); });
+  document.getElementById('dlgVoltar').focus();
+}
+function enviar(confirmado){
   var av=document.getElementById('avisoEnvio'), bt=document.getElementById('btEnviar');
   if(TRAVADO || ENVIANDO) return;          // um clique só: o botão fica bloqueado depois do envio
   function erro(m, el){ av.style.display='block'; av.className='aviso erro'; av.innerHTML=m; if(el){ el.focus(); } }
@@ -759,8 +765,8 @@ function enviar(){
   var pd=pendencias(), faltaTela=pd.docs.concat(pd.campos);
   if(faltaTela.length){
     atualizarTrava();
-    if(!window.confirm('Enviar o que já tem?\n\nAinda faltam: '+faltaTela.join(' · ')+
-                       '\n\nO que você enviar agora fica guardado. Depois é só abrir o mesmo link e completar.')) return;
+    /* Onda 3 (item 6): caixa na própria página (antes era window.confirm). "Enviar assim mesmo" chama enviar(true). */
+    if(!confirmado){ confirmarEnvioParcial(pd.docs, pd.campos, function(){ enviar(true); }); return; }
   }
 
   ENVIANDO=true; bt.disabled=true; bt.textContent='Enviando…';
