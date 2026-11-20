@@ -129,6 +129,18 @@ function guardarVolta(){
   }catch(e){}
 }
 function irParaLogin(){ guardarVolta(); localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); location.href=LOGIN; }
+/* 20/11/26 — sessão vencida com a pessoa digitando: em vez de redirecionar em 3,5 s
+   (e perder o texto sem aviso), a página avisa e só vai para o login no clique.
+   A volta ao mesmo lugar já é guardada por irParaLogin(). */
+let _avisoSessao=false;
+function _avisarSessaoVencida(){
+  if(_avisoSessao) return; _avisoSessao=true;
+  const ir=()=>irParaLogin();
+  if(typeof window.moraisPerguntar!=="function"){ setTimeout(ir,3500); return; }
+  window.moraisPerguntar({titulo:"Sua sessão venceu",
+    texto:"Sua sessão venceu. Copie o que estiver digitando antes de continuar — o que não foi salvo se perde.",
+    sim:"Entrar de novo", nao:""}).then(ir,ir);
+}
 function exigirSessao(){ const s=sessao(); if(!s||!s.token||sessaoVencida(s)){ irParaLogin(); } return s; }
 /* MASTER vê TODOS os sistemas do hub (Vendas etc.), como o ADM — é um perfil
    de diretor. O que ele não pode é MEXER: não edita endereço nem dá baixa em
@@ -731,7 +743,7 @@ async function escrever(payload, rotulo){
          sozinha, como os outros soluços do servidor. */
       if(r && r.erro==="NAO_AUTORIZADO"){
         const valida = await confirmarSessao(payload.action);
-        if(!valida){ setTimeout(irParaLogin, 3500); return { ok:false, erro:"NAO_AUTORIZADO" }; }
+        if(!valida){ _avisarSessaoVencida(); return { ok:false, erro:"NAO_AUTORIZADO" }; }
       }
       /* BACKEND_OCUPADO / BACKEND_SEM_CONFIG: o servidor engasgou, a gravação
          é válida. Cai pra fila e sobe sozinha depois. */
@@ -753,7 +765,7 @@ async function _escreverGuardado(payload, id){
   if(r && r.erro && !ERROS_TRANSITORIOS.includes(r.erro)){ _tirarDaFila(id); return { ok:false, erro:r.erro }; }
   if(r && r.erro==="NAO_AUTORIZADO"){
     const valida = await confirmarSessao(payload.action);
-    if(!valida){ _tirarDaFila(id); setTimeout(irParaLogin, 3500); return { ok:false, erro:"NAO_AUTORIZADO" }; }
+    if(!valida){ _tirarDaFila(id); _avisarSessaoVencida(); return { ok:false, erro:"NAO_AUTORIZADO" }; }
   }
   return { ok:true, enfileirado:true };                      // servidor engasgou: fica na fila
 }
@@ -1310,7 +1322,21 @@ function limparDadosLocais(recarregar, saindo){
 })();
 /* sair também leva as cópias embora */
 const _sairOriginal = sair;
-sair = function(){ limparDadosLocais(false, true); _sairOriginal(); };
+/* 20/11/26 — Sair com gravação pendente pergunta antes. Só quando o "Sair" vem de
+   um clique da pessoa: as telas também chamam sair() sozinhas quando o servidor
+   recusa a sessão, e aí não há o que perguntar. */
+function _sairAgora(){ limparDadosLocais(false, true); _sairOriginal(); }
+sair = function(){
+  let n=0; try{ n=fila().length; }catch(e){}
+  const ev=window.event, clique=!!(ev && ev.type==="click");
+  if(n>0 && clique && typeof window.moraisPerguntar==="function"){
+    window.moraisPerguntar({titulo:"Gravações pendentes",
+      texto:"Há "+n+(n===1?" alteração que ainda não subiu":" alterações que ainda não subiram")+". Sair agora descarta.",
+      sim:"Sair mesmo assim", nao:"Esperar", perigo:true}).then(ok=>{ if(ok) _sairAgora(); });
+    return;
+  }
+  _sairAgora();
+};
 document.addEventListener("keydown",e=>{
   if(e.ctrlKey&&e.shiftKey&&(e.key==="L"||e.key==="l")){
     e.preventDefault();
