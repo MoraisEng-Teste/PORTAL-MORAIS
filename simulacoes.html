@@ -317,6 +317,9 @@ html[data-tema="escuro"] .alt-tit{color:var(--teal)}
 html[data-tema="escuro"] .modal-tit{color:var(--teal)}
 .modal-sub{font-size:12px;color:var(--text3);margin:2px 0 14px}
 /* cabeçalho fixo da ficha: título + ✕ Fechar sempre à vista ao rolar */
+.prop-emailRet{font-size:12.5px;font-weight:600;margin-left:10px;overflow-wrap:anywhere}
+.prop-emailRet.ok{color:var(--verde-esc)}.prop-emailRet.err{color:var(--vermelho)}
+html[data-tema="escuro"] .prop-emailRet.ok{color:#8ce0a5}
 .modal-topo{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;
   background:var(--sup);margin:-20px -22px 6px;padding:12px 22px 8px}
 .modal-topo .modal-tit{min-width:0;overflow-wrap:anywhere}
@@ -2635,6 +2638,7 @@ async function propEnviarLink(id, bt){
   if(!texto){ av.innerHTML='<span style="color:var(--vermelho)">Escreva a mensagem antes de enviar.</span>'; return; }
   const html='<div style="white-space:pre-wrap">'+esc(texto).replace(
       esc(url.value), '<a href="'+esc(url.value)+'">'+esc(url.value)+'</a>')+'</div>';
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o corretor")+"?"))) return;
   bt.disabled=true; av.innerHTML='Enviando…';
   let r;
   try{ r=await chamar({action:"simsPropostaEmail", pageId:id, mensagemHtml:html, mensagem:texto,
@@ -3920,6 +3924,7 @@ function propDilEmailHtml(p){
 async function propDilEnviar(id, bt){
   const p=PROPS.find(x=>x.id===id); const st=PROP_DIL[id]||(PROP_DIL[id]={sel:{}}); if(!p) return;
   const fx=propParseEsquema(p.esquema), m=propDilAplicar(p,fx);
+  if(!(await propSimNao("Enviar o novo fluxo por e-mail para "+(p.email||"o corretor")+"?"))) return;
   const html=propDilEmailHtml(p);
   const texto="Novo fluxo de pagamento — proposta "+(p.proposta||"")+" — "+(p.cliente||"")+", unidade "+(p.unidade||"")+"\n\n"+
     fx.map((f,i)=>(f.quando||"")+" — "+(f.valor||"")+" — "+(f.forma||"")+(m.mudou.has(i)?" (novo)":"")).join("\n");
@@ -4388,6 +4393,7 @@ function propVer(id){
       <span id="prop-anexoInfo" class="prop-anexo-info"></span>
       <div style="margin-top:12px">
         <button class="bt az" id="prop-btEmail" onclick="propEmail('${p.id}')">Enviar e-mail</button>
+        <span id="prop-emailRet" class="prop-emailRet" role="status" aria-live="polite"></span>
       </div>
     </div>
     <!-- r53 — a conversa fica logo abaixo do campo de resposta -->
@@ -5091,6 +5097,7 @@ async function propEnviarLinkVenda(id, bt){
   if(!texto){ av.innerHTML='<span style="color:var(--vermelho)">Escreva a mensagem antes de enviar.</span>'; return; }
   const html='<div style="white-space:pre-wrap">'+esc(texto).replace(
       esc(url.value), '<a href="'+esc(url.value)+'">'+esc(url.value)+'</a>')+'</div>';
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o corretor")+"?"))) return;
   bt.disabled=true; av.innerHTML='Enviando…';
   let r;
   try{ r=await chamar({action:"simsPropostaEmail", pageId:id, mensagemHtml:html, mensagem:texto,
@@ -5544,7 +5551,11 @@ async function propConferirStatus(id, status){
    função. Agora o campo é um editor de verdade (contenteditable) e a
    leitura aceita os dois formatos, por garantia. */
 async function propEmail(id){
-  const av=document.getElementById("prop-detAviso");
+  const av0=document.getElementById("prop-detAviso"), ret=document.getElementById("prop-emailRet");
+  /* retorno ao lado do botão E no bloco Decisão: av.className / av.textContent / av.innerHTML escrevem nos dois */
+  const av={ set className(v){ av0.className=v; if(ret) ret.className="prop-emailRet "+(/err/.test(v)?"err":"ok"); },
+             set textContent(v){ av0.textContent=v; if(ret) ret.textContent=v; },
+             set innerHTML(v){ av0.innerHTML=v; if(ret) ret.textContent=av0.textContent; } };
   const ed=document.getElementById("prop-msg");
   if(!ed){ av.className="sim-aviso err"; av.textContent="Editor do e-mail não encontrado. Feche e abra a proposta."; return; }
   let html, texto;
@@ -5564,6 +5575,7 @@ async function propEmail(id){
   if(total>20*1048576){
     av.className="sim-aviso err"; av.textContent="Os anexos passam de 20 MB. Tire algum arquivo."; return;
   }
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o destinatário da proposta")+"?"))) return;
   av.className="sim-aviso ok"; av.textContent=arqs.length?"Preparando anexos…":"Enviando…";
   if(bt) bt.disabled=true;
   let anexos=[];
