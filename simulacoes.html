@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Simulações · Reserva dos Ipês — Morais</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <style>
 :root{color-scheme:light}
@@ -1252,7 +1254,7 @@ function simRenderVgv(){
   const med = arr => arr.length ? arr.reduce((a,u)=>a+val(u),0)/arr.length : 0;
   const cards=[
     ["VGV total", simBRL(UNS.reduce((a,u)=>a+val(u),0)), qtd(UNS.length,"unidade","unidades"), null],
-    ["VGV vendido", simBRL(vendidas.reduce((a,u)=>a+val(u),0)), qtd(vendidas.length,"vendida","vendidas"), null],
+    ["VGV · contrato gerado", simBRL(vendidas.reduce((a,u)=>a+val(u),0)), qtd(vendidas.length,"vendida","vendidas"), null, "Conta as unidades marcadas como vendidas na base de unidades."],
     ["VGV em estoque", simBRL(estoque.reduce((a,u)=>a+val(u),0)), qtd(estoque.length,"disponível ou reservada","disponíveis ou reservadas"), null],
     ["Preço médio · vendidas", simBRL(med(vendidas)), null, med(vendidas)],
     ["Preço médio · estoque", simBRL(med(estoque)), null, med(estoque)],
@@ -1265,6 +1267,7 @@ function simRenderVgv(){
       const bom = dif>=0;
       sub = `<div class="sub ${bom?"meta-ok":"meta-ruim"}">${bom?"▲":"▼"} ${simBRL(Math.abs(dif))} ${bom?"acima":"abaixo"} da meta de ${simBRL(VGV_META)}</div>`;
     }
+    if(k[4]) sub += `<div class="sub" style="font-size:11px">${esc(k[4])}</div>`;
     return `<div class="kpi"><div class="lab">${k[0]}</div><div class="val">${k[1]}</div>${sub}</div>`;
   }).join("");
 }
@@ -1429,7 +1432,7 @@ async function pintarMapa(alvo, alvoLegenda, clicavel){
     bt("disponivel",qtd(c.disponivel,"disponível","disponíveis"))+
     bt("reservada",qtd(c.reservada,"reservada","reservadas"))+
     bt("preferencia",qtd(c.preferencia,"reserva paga","reservas pagas"),c.preferencia>0||sel==="preferencia")+
-    bt("vendida",qtd(c.vendida,"vendida","vendidas"))+
+    bt("vendida",qtd(c.vendida,"vendida (assinada)","vendidas (assinadas)"))+
     bt("indisponivel",c.indisponivel+" em breve");
   mapaFiltroAplicar(alvo);
   if(clicavel) anDispLista(dispLista);
@@ -1610,7 +1613,8 @@ function anTop(){
   const pct=U.length?r.acumulado.n/U.length*100:0;
   el.innerHTML=
     '<div class="kpi hero"><div class="lab">VGV vendido · '+esc(p.rotulo)+'</div><div class="val">'+simBRL(r.vgv)+'</div>'+
-      (r.ant?delta(r.vgv,r.ant.vgv,r.ant.rotulo):'<div class="sub">'+qtd(r.n,'contrato assinado','contratos assinados')+'</div>')+'</div>'+
+      (r.ant?delta(r.vgv,r.ant.vgv,r.ant.rotulo):'<div class="sub">'+qtd(r.n,'contrato assinado','contratos assinados')+'</div>')+
+      '<div class="sub" style="font-size:11px">Conta só contrato assinado por todos, no mês da assinatura.</div></div>'+
     '<div class="kpi"><div class="lab">Casas vendidas</div><div class="val">'+r.n+'</div>'+
       '<div class="sub">'+r.acumulado.n+' de '+U.length+' assinadas até hoje · ticket '+(r.n?simBRL(r.ticket):"—")+'</div><div class="an-mbar"><i style="width:'+pct.toFixed(1)+'%"></i></div></div>'+
     '<div class="kpi"><div class="lab">Em assinatura · fora do VGV</div><div class="val">'+simBRL(r.assinando.vgv)+'</div><div class="sub">'+qtd(r.assinando.n,'contrato enviado','contratos enviados')+', faltam assinaturas</div></div>'+
