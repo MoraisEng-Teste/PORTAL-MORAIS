@@ -1364,7 +1364,11 @@ async function recarregarTela(bt){
 (function botaoRecarregar(){
   if(typeof document==="undefined") return;
   const css=document.createElement("style");
-  css.textContent="#bt-atualizar{display:none!important}"+
+  /* contraste dos cinzas de texto no tema CLARO (as páginas definem --text3/--text4 claros
+     demais para letra de 10-11 px): >= 4,5:1 sobre #fff e sobre #EAF1F3. Escuro não muda. */
+  css.textContent="html:not([data-tema=\"escuro\"]){--text3:#3f6278;--text4:#4a6e86}"+
+    "@media(max-width:680px){.bt-recarregar{min-height:44px;min-width:44px}}"+
+    "#bt-atualizar{display:none!important}"+
     ".bt-recarregar{margin-right:8px;background:transparent;border:1px solid rgba(255,255,255,.45);color:inherit;border-radius:8px;padding:6px 10px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}"+
     ".bt-recarregar:hover{background:rgba(255,255,255,.12)}.bt-recarregar:disabled{opacity:.6;cursor:wait}"+
     "#msg-recarga{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9999;background:#1d5433;color:#fff;padding:8px 14px;border-radius:10px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.2)}";
@@ -1385,6 +1389,29 @@ async function recarregarTela(bt){
     }catch(e){}
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",por); else por();
+})();
+
+/* Rótulo de voltar igual em todas as páginas: links/botões que levam ao
+   index.html com "Voltar para o Dashboard", "Voltar ao portal" ou "Portal"
+   passam a dizer "← Início". Só o texto muda (destino, classe e posição ficam). */
+(function rotuloVoltar(){
+  if(typeof document==="undefined") return;
+  const RX=/voltar para o dashboard|voltar ao portal|^←?\s*portal$/i;
+  const VAI=/(^|\/)index\.html([?#]|$)/i;
+  function aplicar(){
+    document.querySelectorAll("a[href],button[onclick]").forEach(el=>{
+      const alvo=el.tagName==="A"?(el.getAttribute("href")||""):(el.getAttribute("onclick")||"");
+      if(!VAI.test(alvo)) return;
+      if(el.tagName==="A" && /^https?:/i.test(alvo)) return;   // nunca um site de fora
+      const t=(el.textContent||"").trim();
+      if(!RX.test(t) || t==="← Início") return;
+      if(!el.children.length){ el.textContent="← Início"; return; }
+      const nos=Array.prototype.filter.call(el.childNodes,n=>n.nodeType===3&&RX.test(n.nodeValue.trim()));
+      nos.forEach(n=>{ n.nodeValue="← Início"; });
+    });
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",aplicar); else aplicar();
+  window.addEventListener("load",aplicar);
 })();
 
 /* =======================================================================
