@@ -549,6 +549,58 @@ html[data-tema="escuro"] .ent-eq b,html[data-tema="escuro"] .ent-bloco .v,html[d
   .sn-fundo>[role=dialog]{margin:auto 0;max-height:calc(100dvh - 16px);overflow-y:auto}
   .sn-fundo button{min-height:44px;flex:1}
 }
+/* 20/11/2026 (onda 3, celular) — fora das janelas: cabeçalho em uma linha, abas rolando de lado, cartões em 1/2 colunas,
+   tabelas de Propostas e de Simulações Recebidas viram lista de cartões (data-rot em cada célula, como o vendas.html),
+   alvo de toque de 44 px, input de 16 px e nenhum texto abaixo de 12 px. Desktop não muda. */
+@media(max-width:600px){
+  .wrap{padding:0 12px}
+  .hbar{flex-wrap:nowrap;gap:8px;padding:8px 0}
+  .logo{padding:3px 6px;flex:none}.logo img{height:26px}
+  .htit-cx{min-width:0;flex:1}
+  .htitle{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ht-l,.hsub,.hupd,.hspace,.user>div,.net.on{display:none}
+  .user{flex:none;gap:6px}
+  .sair,.btema{min-height:44px;min-width:44px}
+  .net,.badge{font-size:12px}
+  main{padding:12px 0 40px}
+  .crumb{gap:8px}
+  .crumb .bt,.btn-voltar{min-height:44px}
+  .tabs-outer{text-align:left;padding:8px}
+  .tabs{padding:4px}
+  .tab{min-height:44px;padding:8px 14px;font-size:14px}
+  .kpis,.kpis.k5,.kpis.an-top{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .kpi{min-width:0;padding:12px}
+  .kpi .val,.kpis.an-top .kpi .val{font-size:24px;overflow-wrap:anywhere}
+  .kpis.an-top .kpi.hero .val{font-size:30px}
+  .bt,.seg-bt,.an-per button,.an-filtros .limpar,.leg-bt{min-height:44px}
+  .seg-bt{padding:8px 16px}
+  main input:not([type=checkbox]):not([type=radio]),main select,main textarea{font-size:16px!important}
+  .an-filtros select,.an-filtros input{min-height:44px}
+  /* nenhum texto abaixo de 12 px */
+  .hsub,.net,.hupd,.badge,.kpi .lab,.kpi .sub,.an-filtros .lb,.kpis.k5 .cred-lin span,.sim-col .q,.fluxo .dia b,.fluxo .dia span,
+  .hist-email .hist-cab span,thead th,thead th .arr,.pill,.fcampo label,.un-op .st,.bl-un,.corresp-bt small,.corresp-bt .corresp-ok,
+  .chip-extr,.sim-item small,.dil-rot small,.dil-ja,.prop-resumo small,.ent-passo,.ent-eq small,.ent-qd,.ent-st{font-size:12px}
+  [style*="font-size:9px"],[style*="font-size:10px"],[style*="font-size:10.5px"],[style*="font-size:11px"],[style*="font-size:11.5px"]{font-size:12px!important}
+  /* tabelas de Propostas e de Simulações Recebidas: um cartão por linha (o cartão inteiro é clicável, como a linha) */
+  .tbl-wrap.alta:has(>#prop-tab),.tbl-wrap.alta:has(>#sim-tabRec){max-height:none;overflow:visible;border:0;border-radius:0}
+  #prop-tab,#sim-tabRec,#prop-tab tbody,#sim-tabRec tbody{display:block;width:100%}
+  #prop-tab thead,#sim-tabRec thead{display:none}
+  #prop-tab tr,#sim-tabRec tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;margin:0 0 10px;padding:10px 12px;
+    border:1px solid var(--border2);border-radius:12px;background:var(--sup);cursor:pointer}
+  #prop-tab tr[style],#sim-tabRec tr[style]{border-color:var(--border)}
+  #prop-tab td,#sim-tabRec td{display:flex;justify-content:space-between;align-items:baseline;gap:10px;grid-column:1/-1;min-width:0!important;max-width:none!important;
+    width:auto!important;padding:3px 0;border:0;white-space:normal;text-align:right;overflow-wrap:anywhere}
+  #prop-tab td[data-rot]::before,#sim-tabRec td[data-rot]::before{content:attr(data-rot);flex:none;font-size:12px;font-weight:700;color:var(--text3);text-align:left}
+  #prop-tab td[data-rot="Cliente"],#sim-tabRec td[data-rot="Cliente"]{grid-column:1;grid-row:1;justify-content:flex-start;text-align:left;font-size:15px;font-weight:800}
+  #prop-tab td[data-rot="Unidade"],#sim-tabRec td[data-rot="Unidade"]{grid-column:1;grid-row:2;justify-content:flex-start;text-align:left;font-weight:700}
+  #prop-tab td[data-rot="Status"],#sim-tabRec td[data-rot="Status"]{grid-column:2;grid-row:1 / span 2;justify-content:flex-end;align-items:flex-start}
+  #prop-tab td[data-rot="Cliente"]::before,#prop-tab td[data-rot="Unidade"]::before,#prop-tab td[data-rot="Status"]::before,
+  #sim-tabRec td[data-rot="Cliente"]::before,#sim-tabRec td[data-rot="Unidade"]::before,#sim-tabRec td[data-rot="Status"]::before{display:none}
+  #prop-tab td[colspan],#sim-tabRec td[colspan]{justify-content:center}
+  #sim-tabRec td select,#sim-tabRec td input{min-height:44px;font-size:16px!important}
+  #sim-tabRec td[data-rot="Observações"]{min-height:44px}
+}
+@media(max-width:480px){.kpis,.kpis.k5,.kpis.an-top{grid-template-columns:minmax(0,1fr)}}
 /* linha de total nas mini-tabelas do modal (fluxo de pagamento), no mesmo
    azul do cabeçalho das tabelas grandes — para lembrar o e-mail enviado */
 .sim-tot td{background:var(--azul);color:#fff;font-weight:800;border-color:rgba(255,255,255,.22)!important}
@@ -559,7 +611,7 @@ html[data-tema="escuro"] .sim-tot td{background:var(--azul-esc)}
   <header>
     <div class="wrap hbar">
       <span class="logo"><img src="img/logo.png" alt="Morais" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><b style="display:none;font-family:'Barlow Condensed';font-weight:800;font-size:16px;color:var(--azul-esc);padding:0 4px">MORAIS</b></span>
-      <div><div class="htitle">Simulações · Reserva dos Ipês</div><div class="hsub">Morais Engenharia</div></div>
+      <div class="htit-cx"><div class="htitle"><span class="ht-l">Simulações · </span>Reserva dos Ipês</div><div class="hsub">Morais Engenharia</div></div>
       <div class="hspace"></div>
       <span class="net on" id="net-status">online</span>
       <span class="hupd" id="updated"></span>
@@ -992,7 +1044,7 @@ function simAbaInicial(){
 function trocarTab(nome, semHist, inicial){
   try{ localStorage.setItem(SIM_ABA_KEY, nome); }catch(e){}
   simHistAba(nome, semHist, inicial);
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.tab===nome));
+  document.querySelectorAll(".tabs-outer .tab").forEach(t=>{ t.classList.toggle("on", t.dataset.tab===nome); if(t.dataset.tab===nome){ try{ t.scrollIntoView({inline:"center",block:"nearest"}); }catch(e){} } });   /* 20/11: só as abas principais (a ficha tem as dela); no celular a faixa rola e a aba ativa fica à vista */
   /* set/26 r5 — a aba "Nova proposta" saiu: o preenchimento é pelo mapa
      (proposta.html), do mesmo jeito que a simulação. Aqui o portal só
      DECIDE sobre proposta que já chegou. */
@@ -1938,18 +1990,18 @@ function simRenderRecebidas(){
     return;
   }
   const corpo=vis.map(s=>`<tr class="clicavel${chegouReservada(s,false)?' linha-res':''}"${chegouReservada(s,false)?' title="Simulação feita com a unidade já reservada"':''}${simNova(s)?' style="background:#FFF3C4"':''} onclick="simVerDet('${s.id}')">
-    <td>${esc(s.cliente||"—")}</td><td class="col-un">${esc(cpfFmt(s.cpf)||"—")}</td>
-    <td>${esc(s.corretor||"—")}${s.celularCorretor?`<div style="font-size:11px;color:var(--text3)">📱 ${esc(simFmtTel(s.celularCorretor))}</div>`:""}</td><td>${esc(s.imobiliaria||"—")}</td>
-    <td>Un. ${esc(String(s.unidade||"—"))} <span style="color:var(--text3)">(T${esc(String(s.tipo||"—"))})</span></td>
-    <td class="num">${s.renda?simBRL(s.renda):"—"}</td>
-    <td class="num">${s.financiado?simBRL(s.financiado):"—"}</td>
-    <td class="num">${s.entradaInformada?simBRL(s.entradaInformada):"—"}</td>
-    <td class="num">${s.entrada?simBRL(s.entrada):"—"}</td>
-    <td class="num">${s.parcela?simBRL(s.parcela):"—"}</td>
-    <td>${simData(s.criadoEm)}</td>
+    <td data-rot="Cliente">${esc(s.cliente||"—")}</td><td class="col-un" data-rot="CPF">${esc(cpfFmt(s.cpf)||"—")}</td>
+    <td data-rot="Corretor">${esc(s.corretor||"—")}${s.celularCorretor?`<div style="font-size:11px;color:var(--text3)">📱 ${esc(simFmtTel(s.celularCorretor))}</div>`:""}</td><td data-rot="Imobiliária">${esc(s.imobiliaria||"—")}</td>
+    <td data-rot="Unidade">Un. ${esc(String(s.unidade||"—"))} <span style="color:var(--text3)">(T${esc(String(s.tipo||"—"))})</span></td>
+    <td class="num" data-rot="Renda">${s.renda?simBRL(s.renda):"—"}</td>
+    <td class="num" data-rot="Financiado">${s.financiado?simBRL(s.financiado):"—"}</td>
+    <td class="num" data-rot="Valor p/ sinal">${s.entradaInformada?simBRL(s.entradaInformada):"—"}</td>
+    <td class="num" data-rot="Entrada a pagar">${s.entrada?simBRL(s.entrada):"—"}</td>
+    <td class="num" data-rot="Parcela">${s.parcela?simBRL(s.parcela):"—"}</td>
+    <td data-rot="Data">${simData(s.criadoEm)}</td>
     ${simContatoCells(s)}
-    <td>${simTagSt(s.status)}</td>
-    <td style="min-width:220px;max-width:300px;white-space:normal;font-size:12px;line-height:1.35;color:var(--text3)"
+    <td data-rot="Status">${simTagSt(s.status)}</td>
+    <td data-rot="Motivo" style="min-width:220px;max-width:300px;white-space:normal;font-size:12px;line-height:1.35;color:var(--text3)"
         title="${esc(s.mensagem||"")}">${esc(String(s.mensagem||"—").slice(0,120))}${String(s.mensagem||"").length>120?"…":""}</td></tr>`).join("");
   document.getElementById("sim-tabRec").innerHTML=cab+"<tbody>"+corpo+"</tbody>";
 }
@@ -1963,10 +2015,10 @@ function simContatoCells(s){
   const dis=ro?"disabled":"";
   const cor = c==="SIM" ? "background:#E6F4EA;border-color:#9BD3AE" : (c==="NÃO" ? "background:#FDECEA;border-color:#E2A493" : "");
   const obs=String(s.obsContato||"");
-  return `<td onclick="event.stopPropagation()" style="width:1%"><select id="sc-c-${s.id}" ${dis} style="width:74px;padding:4px 4px;border-radius:6px;border:1px solid var(--border2);font-size:12px;${cor}" onchange="simContato('${s.id}','contato',this)">
+  return `<td data-rot="Contato" onclick="event.stopPropagation()" style="width:1%"><select id="sc-c-${s.id}" ${dis} style="width:74px;padding:4px 4px;border-radius:6px;border:1px solid var(--border2);font-size:12px;${cor}" onchange="simContato('${s.id}','contato',this)">
       <option value=""${!c?" selected":""}>—</option><option${c==="SIM"?" selected":""}>SIM</option><option${c==="NÃO"?" selected":""}>NÃO</option></select></td>
-    <td onclick="event.stopPropagation()" style="width:1%"><input type="date" id="sc-d-${s.id}" value="${esc(s.dataContato||"")}" ${dis} style="width:128px;padding:3px 4px;border-radius:6px;border:1px solid var(--border2);font-size:12px" onchange="simContato('${s.id}','dataContato',this)"></td>
-    <td onclick="event.stopPropagation();${ro?"":`simRecObsAbrir('${s.id}')`}" id="sc-o-${s.id}" title="${esc(obs||"Clique para escrever o que aconteceu")}"
+    <td data-rot="Data do contato" onclick="event.stopPropagation()" style="width:1%"><input type="date" id="sc-d-${s.id}" value="${esc(s.dataContato||"")}" ${dis} style="width:128px;padding:3px 4px;border-radius:6px;border:1px solid var(--border2);font-size:12px" onchange="simContato('${s.id}','dataContato',this)"></td>
+    <td data-rot="Observações" onclick="event.stopPropagation();${ro?"":`simRecObsAbrir('${s.id}')`}" id="sc-o-${s.id}" title="${esc(obs||"Clique para escrever o que aconteceu")}"
         style="min-width:150px;max-width:220px;white-space:normal;cursor:${ro?"default":"pointer"};font-size:12px;line-height:1.3">${simObsResumo(obs)}</td>`;
 }
 function simObsResumo(obs){
@@ -3686,23 +3738,23 @@ function propRender(){
     const nova = !venc && PROP_NORM(p.status)==="RECEBIDA";      // 02/10 (item 6) — novas em destaque
     const estilo = venc ? ' style="background:#F6D6D2"' : (nova ? ' style="background:#FFF3C4"' : '');
     return `<tr class="clicavel${res?' linha-res':''}"${estilo}${res?' title="Enviada com a unidade já reservada — só é analisada se houver desistência"':''} onclick="propVer('${p.id}')">
-      <td><b>${esc(p.proposta||"—")}</b>${propEmailSelos(p)}</td>
-      <td>Un. ${esc(String(p.unidade||"—"))}${propSeloInterno(p.unidade, p)}</td>
-      <td>${esc(p.cliente||"—")}</td>
-      ${M(`<td class="col-un">${esc(cpfFmt(p.cpf)||"—")}</td>`)}
-      <td>${p.comCredito
+      <td data-rot="Proposta"><b>${esc(p.proposta||"—")}</b>${propEmailSelos(p)}</td>
+      <td data-rot="Unidade">Un. ${esc(String(p.unidade||"—"))}${propSeloInterno(p.unidade, p)}</td>
+      <td data-rot="Cliente">${esc(p.cliente||"—")}</td>
+      ${M(`<td class="col-un" data-rot="CPF">${esc(cpfFmt(p.cpf)||"—")}</td>`)}
+      <td data-rot="Crédito Caixa">${p.comCredito
             ? '<span class="pill bom">APROVADO</span>'
             : '<span class="pill ruim">SEM CARTA</span>'+propCorrCelula(p)}</td>
-      <td>${propPillSinais(p)}</td>
-      ${M(`<td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>`)}
-      <td>${esc(p.vendedor||"—")}</td>
-      ${M(`<td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
-      <td class="num">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
-      <td class="num">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
-      <td>${esc(p.imobiliaria||"—")}</td>
-      <td class="prop-obs-td" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>`)}
-      <td>${simData(p.criadoEm)}</td>
-      <td>${propTag(p.status)}${venc?' <span style="color:#C0392B;font-weight:700">vence &lt;24h</span>':''}</td></tr>`;
+      <td data-rot="Sinal">${propPillSinais(p)}</td>
+      ${M(`<td data-rot="Correspondente">${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>`)}
+      <td data-rot="Corretor">${esc(p.vendedor||"—")}</td>
+      ${M(`<td class="num" data-rot="Crédito aprovado">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
+      <td class="num" data-rot="Entrada">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
+      <td class="num" data-rot="Renda">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
+      <td data-rot="Imobiliária">${esc(p.imobiliaria||"—")}</td>
+      <td class="prop-obs-td" data-rot="Observações" onclick="event.stopPropagation();propObsAbrir('${p.id}')" title="Clique para ver o histórico e escrever">${propObsCelula(p)}</td>`)}
+      <td data-rot="Criada">${simData(p.criadoEm)}</td>
+      <td data-rot="Status">${propTag(p.status)}${venc?' <span style="color:#C0392B;font-weight:700">vence &lt;24h</span>':''}</td></tr>`;
   }).join("");
   document.getElementById("prop-tab").innerHTML=cab+"<tbody>"+corpo+"</tbody>";
 }
