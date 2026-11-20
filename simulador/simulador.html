@@ -1187,7 +1187,10 @@
       localStorage.setItem('ultimaSimulacao',r.id);
       try{ window.rascunhoSimulacaoEnviada && window.rascunhoSimulacaoEnviada(); }catch(x){}   // Onda 3: apaga o rascunho deste aparelho
       try{ window.lembrarCorretor && window.lembrarCorretor(); }catch(x){}   // Onda 2: lembra o corretor neste aparelho
-      try{ await guardarParaProposta(r.id); }catch(x){}   // 31/10 — para o botão "Transformar em proposta" do enviado.html
+      var dadosGuardados=null; try{ dadosGuardados=await guardarParaProposta(r.id); }catch(x){}
+      /* Onda 3 (item 3) — o mapa mostra "Sua última simulação" (sem nome nem CPF na linha) e reabre com estes dados */
+      try{ if(dadosGuardados) localStorage.setItem('ultimaSimulacaoInfo', JSON.stringify({id:r.id, ts:Date.now(), unidade:u.unidade, tipo:u.tipo||'', dados:dadosGuardados})); }catch(x){}
+      // 31/10 — para o botão "Transformar em proposta" do enviado.html
       /* r62 — a confirmação abre na página própria (enviado.html), que
          acompanha a simulação e tem o botão de voltar ao mapa. */
       try{ sessionStorage.setItem('envioConcluido', JSON.stringify({tipo:'simulacao', id:r.id})); }catch(x){}
@@ -1326,6 +1329,38 @@
     UNIDADES=d; preencherTipos();
     if(t){ document.getElementById('tipo').value=t; preencherUnidades(); }
     if(u){ document.getElementById('unidade').value=u; aoTrocarUnidade(); }
+    refazerDaUltima();
+  }
+  /* Onda 3 (item 3) — "abrir de novo" no mapa: a última simulação enviada volta preenchida (?refazer=1) */
+  var REFAZER_FEITO=false;
+  function refazerDaUltima(){
+    if(REFAZER_FEITO || qs('refazer')!=='1' || !UNIDADES.length) return;
+    REFAZER_FEITO=true;
+    var info=null; try{ info=JSON.parse(localStorage.getItem('ultimaSimulacaoInfo')||'null'); }catch(e){}
+    var d=info && info.dados; if(!d) return;
+    var f=document.getElementById('formSimulacao');
+    function c(n){ if(f[n]) f[n].checked=!!d[n]; }
+    function v(n,k){ if(f[n] && d[k||n]!=null) f[n].value=d[k||n]; }
+    function r(n){ var x=d[n]!=null?String(d[n]):''; var el=x && f.querySelector('[name="'+n+'"][value="'+x+'"]'); if(el) el.checked=true; }
+    try{
+      if(d.tipo){ document.getElementById('tipo').value=d.tipo; preencherUnidades(); }
+      if(d.unidade){ document.getElementById('unidade').value=d.unidade; aoTrocarUnidade(); }
+      ['possuiImovelCidade','fgts3anos','maisDeUmComprador','jaBeneficiado','relacionamentoCaixa','servidorPublico','creditoSalarioCaixa'].forEach(c);
+      if(f.creditoAprovadoSim) f.creditoAprovadoSim.checked=!!d.credito;
+      if(f.desejadoSim) f.desejadoSim.checked=!!d.desejado;
+      verSubcampos(); credSimMudou(); desejSimMudou();
+      v('dataConcessaoBeneficio'); v('dataNascimento'); v('rendaIndividual','renda'); v('prazoMeses'); v('sistemaAmortizacao'); v('seguradora');
+      v('fgtsDisponivel','fgts'); v('subsidio'); v('creditoAprovadoValor','creditoValor'); v('creditoAprovadoParcela','creditoParcela'); v('valorDesejado');
+      v('corretor'); v('imobiliaria'); v('celularCorretor'); v('nomeCliente'); v('cpfCliente'); v('emailDestino','emailCorretor');
+      r('prazoEntrada'); r('sinalParcelas');
+      if(d.diluicao && d.diluicao.length===2) DIL_SIM=[Number(d.diluicao[0])||0, Number(d.diluicao[1])||0];
+      ENTRADA_EDITADA=!!d.valorEntrada;
+      somarRendaSim(); atualizarComissao(); estimar();
+      function fimEntrada(){ if(d.valorEntrada && f.valorEntrada){ f.valorEntrada.value=d.valorEntrada; } try{ estimar(); pintarFluxoSim(); }catch(e){} }
+      setTimeout(fimEntrada,700);
+      var fx=document.getElementById('faixaRascunho');
+      if(fx){ fx.innerHTML='<b>Simulação anterior reaberta.</b> Os dados voltaram preenchidos: confira e envie de novo. O print da aprovação da CAIXA, se houver, precisa ser anexado de novo.'; fx.style.display='block'; }
+    }catch(e){}
   }
   /* Onda 2 (item 3): sem lista reserva inventada — se nem o arquivo nem o servidor responderem, a tela avisa */
   function carregarUnidades(){
@@ -1395,6 +1430,7 @@
   var f=document.getElementById('formSimulacao'); if(!f || !window.criarRascunho) return;
   var R=criarRascunho({
     form:function(){ return f; }, prefixo:'rascunhoSimulacao:', rotulo:'simulação', textoRestaurado:'O print da aprovação da CAIXA, se houver, precisa ser anexado de novo.',
+    vindoDeFora:function(){ return qs('refazer')==='1'; },   // a simulação reaberta vale e o rascunho não é oferecido
     unidade:function(){ return String((document.getElementById('unidade')||{}).value||''); },
     unidadeEl:function(){ return document.getElementById('unidade'); },
     pronto:function(){ return !!UNIDADES.length; },
