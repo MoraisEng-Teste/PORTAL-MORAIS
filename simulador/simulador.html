@@ -1156,6 +1156,7 @@
       var r=await enviarComRetentativas(dados,3);
       if(!r.ok){mostrarStatus('erro',r.mensagem||'Não foi possível enviar.');botao.disabled=false;botao.textContent=textoBotao;return;}
       localStorage.setItem('ultimaSimulacao',r.id);
+      try{ window.lembrarCorretor && window.lembrarCorretor(); }catch(x){}   // Onda 2: lembra o corretor neste aparelho
       try{ await guardarParaProposta(r.id); }catch(x){}   // 31/10 — para o botão "Transformar em proposta" do enviado.html
       /* r62 — a confirmação abre na página própria (enviado.html), que
          acompanha a simulação e tem o botão de voltar ao mapa. */
@@ -1309,6 +1310,47 @@
 (function(){
   var h=new Date(), red=Math.max(0,(h.getFullYear()-2026)*12+(h.getMonth()+1)-11);
   document.querySelectorAll('.prazo-n').forEach(function(b){ b.textContent=(Number(b.dataset.base)-red)+' meses'; });
+})();
+</script>
+<script>
+/* Onda 2 (item 2) — dados do corretor lembrados neste aparelho (nome, imobiliária, celular, e-mail, CRECI; nunca o CPF).
+   Gravados quando uma simulação/proposta é enviada; preenchem só campos vazios; "não sou eu" limpa. */
+(function(){
+  var CHAVE='corretorLembrado', F_=document.getElementById('formSimulacao')||document.getElementById('formProposta'), MAPA={nome:"corretor",imobiliaria:"imobiliaria",celular:"celularCorretor",email:"emailDestino"};
+  function ls(){ try{ return window.localStorage; }catch(e){ return null; } }
+  function campo(n){ return F_ && F_.elements[n] && F_.elements[n].tagName ? F_.elements[n] : null; }
+  function ler(){ var s=ls(); try{ return JSON.parse((s&&s.getItem(CHAVE))||'null')||{}; }catch(e){ return {}; } }
+  window.lembrarCorretor=function(){
+    var s=ls(); if(!s||!F_) return;
+    try{
+      var d=ler();
+      Object.keys(MAPA).forEach(function(k){ var el=campo(MAPA[k]); if(el){ var v=String(el.value||'').trim(); if(v) d[k]=v; } });
+      s.setItem(CHAVE, JSON.stringify(d));
+    }catch(e){}
+  };
+  function limpar(){
+    try{ var s=ls(); if(s) s.removeItem(CHAVE); }catch(e){}
+    Object.keys(MAPA).forEach(function(k){ var el=campo(MAPA[k]); if(el && el.dataset.lembrado){ el.value=''; delete el.dataset.lembrado; } });
+    var a=document.getElementById('avisoCorretorLembrado'); if(a) a.style.display='none';
+  }
+  try{
+    if(!F_) return;
+    var d=ler(), preencheu=false;
+    Object.keys(MAPA).forEach(function(k){
+      var el=campo(MAPA[k]); if(!el || !d[k] || String(el.value||'').trim()) return;
+      el.value=d[k]; el.dataset.lembrado='1'; preencheu=true;
+      try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+    });
+    if(preencheu){
+      var ref=campo(MAPA.nome), linha=ref && ref.closest('.linha');
+      if(linha){
+        var p=document.createElement('p'); p.id='avisoCorretorLembrado'; p.className='ajuda'; p.style.margin='-4px 0 10px';
+        p.innerHTML='Dados do corretor lembrados neste aparelho. <a href="#" style="color:inherit;text-decoration:underline;display:inline-block;padding:10px 0">não sou eu — limpar</a>';
+        p.querySelector('a').onclick=function(e){ e.preventDefault(); limpar(); };
+        linha.parentNode.insertBefore(p, linha.nextSibling);
+      }
+    }
+  }catch(e){}
 })();
 </script>
 </body>
