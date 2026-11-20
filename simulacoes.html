@@ -4145,13 +4145,25 @@ function propDilEsquemaNovo(txt, fluxo){
   }).filter(seg=>seg!==null).join(";");
 }
 /* barra de andamento com % (estimado pelo tempo típico) + etapas + segundos */
+/* 20/11/2026 (onda 3) — PROGRESSO VERDADEIRO. As etapas avançam por tempo estimado (o servidor não avisa), então a ÚLTIMA
+   nunca vira "✓ concluída" antes de a resposta chegar: fica "⏳ ... terminando… (N s)"; passou de 30 s, aparece o aviso
+   de que está demorando e para não fechar a tela. Só quem chama com fim=true (resposta chegou) marca tudo como feito.
+   kBruto = em que etapa o relógio estimaria estar (pode passar do total); passo = segundos estimados por etapa. */
+function propEtapasHtml(etapas, kBruto, seg, passo, fim){
+  const n=etapas.length, k=fim?n:Math.min(n-1,kBruto);
+  const term=!fim && kBruto>=n-1 && (n>1 || seg>=passo);
+  const sg=Math.round(seg);
+  return etapas.map((e,i)=>'<div style="opacity:'+(i<k?'.55':(i===k?'1':'.35'))+'">'+(i<k?'✓ ':(i===k?'⏳ ':'• '))+esc(e)+
+      (term && i===k?' — terminando… ('+sg+' s)':'')+'</div>').join("")+
+    (term && seg>30?'<div style="margin-top:4px"><b>Está demorando mais que o normal. Não feche a tela.</b></div>':'');
+}
 function propDilProg(av, etapas, estimSeg){
   const t0=Date.now(); let fim=null;
   const pintar=()=>{
     const seg=(Date.now()-t0)/1000;
     const pct = fim ? 100 : Math.min(95, Math.round(seg/estimSeg*100));
-    const k = fim ? etapas.length : Math.min(etapas.length-1, Math.floor(seg/(estimSeg/etapas.length)));
-    av.innerHTML = etapas.map((e,i)=>'<div style="opacity:'+(i<k?'.55':(i===k?'1':'.35'))+'">'+(i<k?'✓ ':(i===k?'⏳ ':'• '))+esc(e)+'</div>').join("")+
+    const passo=estimSeg/etapas.length;
+    av.innerHTML = propEtapasHtml(etapas, Math.floor(seg/passo), seg, passo, !!fim)+
       '<div class="dil-barra"><i style="width:'+pct+'%"></i></div>'+
       '<div style="font-size:11px;color:var(--text3);margin-top:3px">'+pct+'% · '+Math.round(seg)+' s'+(fim?'':' (leva uns '+estimSeg+' s)')+'</div>';
   };
@@ -5162,8 +5174,8 @@ async function propAlerta(id){
   /* 05/10 (item 6) — andamento visível, como na venda */
   const etapas=["Montando a lista do que falta…","Gerando o link de complemento…","Enviando o e-mail ao corretor (resposta na conversa da proposta)…"];
   const t0=Date.now();
-  const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000), k=Math.min(etapas.length-1,Math.floor(sg/6));
-    av.className="sim-aviso ok"; av.innerHTML=etapas.map((e2,ix)=>'<div style="opacity:'+(ix<k?'.55':(ix===k?'1':'.3'))+'">'+(ix<k?'✓ ':(ix===k?'⏳ ':'• '))+esc(e2)+'</div>').join("")+'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+sg+' s</div>'; };
+  const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000);
+    av.className="sim-aviso ok"; av.innerHTML=propEtapasHtml(etapas, Math.floor(sg/6), sg, 6, false)+'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+sg+' s</div>'; };
   pintar(); const tmA=setInterval(pintar,1000);
   let r=null; try{ r=await chamar({action:"simsPropostaStatus", pageId:id, alerta:true}, 90000, true); }catch(e){ r=null; }
   clearInterval(tmA);
@@ -5552,9 +5564,9 @@ function propProgresso(av, status){
     : ["Gravando o status "+status+" na proposta…","Atualizando a unidade no Notion…","Atualizando o mapa e as abas…"];
   const t0=Date.now();
   const pintar=()=>{
-    const seg=Math.round((Date.now()-t0)/1000), k=Math.min(etapas.length-1, Math.floor(seg/(status==="VENDIDA"?7:5)));
+    const seg=Math.round((Date.now()-t0)/1000), passo=(status==="VENDIDA"?7:5);
     av.className="sim-aviso ok";
-    av.innerHTML=etapas.map((e,i)=>'<div style="opacity:'+(i<k?'.55':(i===k?'1':'.3'))+'">'+(i<k?'✓ ':(i===k?'⏳ ':'• '))+esc(e)+'</div>').join("")+
+    av.innerHTML=propEtapasHtml(etapas, Math.floor(seg/passo), seg, passo, false)+
       '<div style="font-size:11px;color:var(--text3);margin-top:4px">'+seg+' s</div>';
   };
   pintar(); const tm=setInterval(pintar,1000);
@@ -5653,8 +5665,8 @@ async function propStatusInterno(id, nome){
         ? ["Marcando a unidade (mapa interno)…","Criando a linha na lista de vendas do condomínio…","Copiando os documentos da proposta…"]
         : ["Gravando o status interno na proposta e na unidade…"]));
   const t0=Date.now();
-  const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000), e=Math.min(etapas.length-1,Math.floor(sg/8));
-    av.className="sim-aviso ok"; av.innerHTML=etapas.map((x,i)=>'<div style="opacity:'+(i<e?'.55':(i===e?'1':'.3'))+'">'+(i<e?'✓ ':(i===e?'⏳ ':'• '))+esc(x)+'</div>').join("")+'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+sg+' s</div>'; };
+  const pintar=()=>{ const sg=Math.round((Date.now()-t0)/1000);
+    av.className="sim-aviso ok"; av.innerHTML=propEtapasHtml(etapas, Math.floor(sg/8), sg, 8, false)+'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+sg+' s</div>'; };
   pintar(); const tm=setInterval(pintar,1000);
   let r=null;
   try{ r=await chamar({action:"simsStatusInternoAcao", pageId:id, status:nome, motivo:motivo}, 240000, true); }
