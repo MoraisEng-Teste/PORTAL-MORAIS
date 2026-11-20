@@ -1122,6 +1122,11 @@ function simAtualizarTudo(bt){
 /* O 404 do Notion tem uma causa só e uma solução só — mostrar o texto cru
    da API deixava a pessoa achando que era bug do portal. */
 /* Erro em duas partes: uma frase para quem usa a tela + o detalhe técnico (para o suporte) recolhido */
+/* CPF 000.000.000-00 só na exibição (a busca aceita com ou sem pontos); outro formato fica como veio */
+function cpfFmt(v){
+  const d=String(v==null?"":v).replace(/\D/g,"");
+  return d.length===11 ? d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9) : String(v==null?"":v);
+}
 function detTec(html){
   return '<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer">Detalhe técnico</summary>'+html+'</details>';
 }
@@ -1634,7 +1639,7 @@ function anDetalhe(un){
     html+='<div class="sim-aviso" style="margin-top:12px">Nenhuma proposta ligada a esta unidade no portal.</div>';
   } else {
     html+=`<div class="sim-grade" style="margin-top:12px">
-      ${it("Cliente",esc(p.cliente||""))}${it("CPF",esc(p.cpf||""))}
+      ${it("Cliente",esc(p.cliente||""))}${it("CPF",esc(cpfFmt(p.cpf)))}
       ${it("Corretor",esc(p.vendedor||""))}${it("Imobiliária",esc(p.imobiliaria||""))}
       ${it("Situação da proposta",esc(p.status||""))}
       ${it("Crédito na CAIXA", p.comCredito?("APROVADO · "+simBRL(p.creditoAprovado)):"SEM CARTA — estimativa")}
@@ -1808,7 +1813,7 @@ function simRenderRecebidas(){
   }
   const termo=(document.getElementById("sim-busca").value||"").toLowerCase();
   let vis=SIMS.filter(s=>{
-    const alvo=`${s.cliente||""} ${s.cpf||""} ${s.corretor||""} ${s.imobiliaria||""}`.toLowerCase();
+    const alvo=`${s.cliente||""} ${s.cpf||""} ${cpfFmt(s.cpf)} ${String(s.cpf||"").replace(/\D/g,"")} ${s.corretor||""} ${s.imobiliaria||""}`.toLowerCase();
     if(!alvo.includes(termo)) return false;
     if(!simFiltroSt) return true;
     const st=simSt(s);
@@ -1831,7 +1836,7 @@ function simRenderRecebidas(){
     return;
   }
   const corpo=vis.map(s=>`<tr class="clicavel${chegouReservada(s,false)?' linha-res':''}"${chegouReservada(s,false)?' title="Simulação feita com a unidade já reservada"':''}${simNova(s)?' style="background:#FFF3C4"':''} onclick="simVerDet('${s.id}')">
-    <td>${esc(s.cliente||"—")}</td><td class="col-un">${esc(s.cpf||"—")}</td>
+    <td>${esc(s.cliente||"—")}</td><td class="col-un">${esc(cpfFmt(s.cpf)||"—")}</td>
     <td>${esc(s.corretor||"—")}${s.celularCorretor?`<div style="font-size:11px;color:var(--text3)">📱 ${esc(simFmtTel(s.celularCorretor))}</div>`:""}</td><td>${esc(s.imobiliaria||"—")}</td>
     <td>Un. ${esc(String(s.unidade||"—"))} <span style="color:var(--text3)">(T${esc(String(s.tipo||"—"))})</span></td>
     <td class="num">${s.renda?simBRL(s.renda):"—"}</td>
@@ -1972,7 +1977,7 @@ function simVerAbaixo(id){
       ${!ehSomenteLeitura(S)?`<button class="bt verde" style="margin-right:8px" onclick="simVerDet('${s.id}');setTimeout(function(){altSimAbrir('${s.id}')},60)">✎ Alterar unidade / valor</button>`:""}
       <button class="bt" style="margin-right:8px" onclick="fluxoPdf('sim','${s.id}')">📄 PDF do fluxo</button>
       <button class="bt ghost" onclick="document.getElementById('sim-detBaixo').style.display='none'">Fechar</button></div>
-    <div class="modal-sub" style="margin-bottom:10px">CPF ${esc(s.cpf||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
+    <div class="modal-sub" style="margin-bottom:10px">CPF ${esc(cpfFmt(s.cpf)||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <div class="sim-grade">
       ${it("Corretor",esc(s.corretor||""))}${it("Imobiliária",esc(s.imobiliaria||""))}${it("E-mail",esc(s.email||""))}${it("Celular do corretor",s.celularCorretor?simLinkTel(s.celularCorretor):"—")}
       ${it("Unidade","Un. "+esc(String(s.unidade||"—"))+" (Tipo "+esc(String(s.tipo||"—"))+")")}
@@ -2014,7 +2019,7 @@ function simVerDet(id){
   document.getElementById("sim-modalCx").innerHTML=`
     <div class="modal-topo"><div class="modal-tit">${esc(s.cliente||"—")}</div>
       <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
-    <div class="modal-sub">CPF ${esc(s.cpf||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
+    <div class="modal-sub">CPF ${esc(cpfFmt(s.cpf)||"—")} · ${simData(s.criadoEm)} · ${simTagSt(s.status)}</div>
     <!-- 07/11/2026 — alterar unidade / valor e PDF do fluxo: logo no topo -->
     <div class="alt-acoes">
       ${!ehSomenteLeitura(S)?`<button class="bt verde" onclick="altSimAbrir('${s.id}')">✎ Alterar unidade / valor</button>`:""}
@@ -3418,7 +3423,7 @@ function propRender(){
   try{ propRankAba(); }catch(e){}  // 30/10 — rankings abaixo da tabela
   const termo=(document.getElementById("prop-busca").value||"").toLowerCase();
   const vis=PROPS.filter(p=>{
-    const alvo=`${p.cliente||""} ${p.cpf||""} ${p.unidade||""} ${p.vendedor||""} ${p.imobiliaria||""}`.toLowerCase();
+    const alvo=`${p.cliente||""} ${p.cpf||""} ${cpfFmt(p.cpf)} ${String(p.cpf||"").replace(/\D/g,"")} ${p.unidade||""} ${p.vendedor||""} ${p.imobiliaria||""}`.toLowerCase();
     if(!alvo.includes(termo)) return false;
     if(propFiltroCredito==="SIM" && !p.comCredito) return false;
     if(propFiltroCredito==="NAO" && p.comCredito) return false;
@@ -3457,7 +3462,7 @@ function propRender(){
             : '<span class="pill ruim">SEM CARTA</span>'+propCorrCelula(p)}</td>
       <td>${propPillSinais(p)}</td>
       <td>${(c=>c.nomes.length?'<b>'+esc(c.nomes.join(" / "))+'</b><div style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(c.tipo)+'</div>':'<span style="color:var(--text3)">—</span>')(propCorrDe(p))}</td>
-      <td>${esc(p.cliente||"—")}</td><td class="col-un">${esc(p.cpf||"—")}</td><td>${esc(p.vendedor||"—")}</td>
+      <td>${esc(p.cliente||"—")}</td><td class="col-un">${esc(cpfFmt(p.cpf)||"—")}</td><td>${esc(p.vendedor||"—")}</td>
       <td class="num">${p.creditoAprovado?simBRL(p.creditoAprovado):"—"}</td>
       <td class="num">${p.valorEntrada?simBRL(p.valorEntrada):"—"}</td>
       <td class="num">${p.rendaTotal?simBRL(p.rendaTotal):"—"}</td>
@@ -4266,7 +4271,7 @@ function propVer(id){
   document.getElementById("sim-modalCx").innerHTML=`
     <div class="modal-topo"><div class="modal-tit">${esc(p.cliente||"—")} · Un. ${esc(String(p.unidade||"—"))}</div>
       <button type="button" class="bt ghost modal-x" onclick="simPedirFechar()" title="Fechar (Esc)" aria-label="Fechar">✕ Fechar</button></div>
-    <div class="modal-sub">${esc(p.proposta||"")} · CPF ${esc(p.cpf||"—")} · ${simData(p.criadoEm)} · ${propTag(p.status)}
+    <div class="modal-sub">${esc(p.proposta||"")} · CPF ${esc(cpfFmt(p.cpf)||"—")} · ${simData(p.criadoEm)} · ${propTag(p.status)}
       ${h!==null?` · reservada há ${Math.floor(h)} h`:""}</div>
     ${chegouReservada(p,true)?`<div class="aviso-res"><b>Unidade já reservada no envio.</b>
       Esta proposta chegou quando a unidade ${esc(String(p.unidade||""))} já estava reservada —
