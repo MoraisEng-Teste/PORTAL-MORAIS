@@ -128,7 +128,8 @@
   #pop .band.res::before{background:#1F6FB2;}
   #pop .acoes button:disabled{opacity:.45;cursor:not-allowed;}
   #pop.indisponivel .band, #pop .band.res, #pop .band.vend{display:block;}
-  #pop .band.vend::before{content:'VENDIDA';background:#2A2118;}
+  #pop .band.vend::before{content:'VENDIDA';background:#C1121F;}
+  #pop .msg-est{margin-top:8px;font-size:13px;font-weight:700;color:var(--marrom);display:none;}
   /* modal tipo */
   #modal{position:fixed;inset:0;background:rgba(42,33,24,.55);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
   #modal .box{background:#fff;border-radius:12px;max-width:920px;width:100%;max-height:92vh;overflow:auto;padding:26px;position:relative;}
@@ -216,15 +217,15 @@
   <div class="band"></div>
   <span class="x" onclick="fecharPop()">×</span>
   <h4 id="popTit"></h4>
+  <div class="val" id="popInfo" style="margin:0 0 6px;color:#6B5A45;white-space:pre-wrap;"></div>
   <div class="val">Valor de venda: <b id="popVal"></b></div>
-  <div class="val">Avaliação: <b id="popAval"></b></div>
-  <div class="val" id="popInfo" style="margin-top:6px;color:#6B5A45;white-space:pre-wrap;"></div>
   <img id="popImg" loading="lazy" decoding="async" width="1600" height="900"
        style="display:none;width:100%;height:auto;aspect-ratio:16/9;background:#EFE7D8;">
   <div id="popAvisoProp" style="display:none;margin-top:8px;font-size:11px;color:#1F6FB2;background:#EAF2FA;border:1px solid #BBD5EC;border-radius:6px;padding:6px 8px;"></div>
+  <div class="msg-est" id="popMsg"></div>
   <div class="acoes">
-    <button class="b1" id="popSim">Fazer simulação</button>
-    <button class="b2" id="popProp">SUBIR PASTA</button>
+    <button class="b1" id="popSim">Simular</button>
+    <button class="b2" id="popProp">Enviar proposta</button>
   </div>
 </div>
 
@@ -379,7 +380,7 @@
     tiposOrdenados=[...new Set(UNIDADES.filter(function(u){return !u.decorado;}).map(function(u){return String(u.tipo);}))];
     var html='';
     function selo(us){
-      if(us.length && us.every(vendido)) return '<span class="selo vend">VENDIDO</span>';
+      if(us.length && us.every(vendido)) return '<span class="selo vend">VENDIDA</span>';
       if(us.length && us.every(reservado)) return '<span class="selo res">RESERVADA</span>';
       if(!us.some(disponivelParaVenda)) return '<span class="selo breve">EM BREVE</span>';
       return '<span class="selo disp">'+us.filter(disponivelParaVenda).length+' disponível(is)</span>';
@@ -516,8 +517,7 @@
     if(pol){pol.classList.add('sel');pol.style.fill=rgba(corUnidade(u),0.95);selPoly=pol;}
     document.getElementById('popTit').textContent='Unidade '+u.unidade+(u.decorado?' (Decorado)':'');
     document.getElementById('popVal').textContent=fmt(u.valorVenda);
-    document.getElementById('popAval').textContent=fmt(u.avaliacao);
-    document.getElementById('popInfo').textContent=u.informacoes||'';
+    document.getElementById('popInfo').textContent='Tipo '+u.tipo+(u.informacoes?'\n'+u.informacoes:'');
     mostrarPlanta(document.getElementById('popImg'), u);
     var pop=document.getElementById('pop');
     var acoes=pop.querySelector('.acoes');
@@ -534,6 +534,9 @@
     document.getElementById('popSim').onclick=function(){simular(u.tipo,u.unidade);};
     document.getElementById('popProp').onclick=function(){proposta(u.tipo,u.unidade);};
     var avisoProp=document.getElementById('popAvisoProp');
+    var msgEst=document.getElementById('popMsg');
+    msgEst.style.display = (est==='VENDIDA'||est==='BREVE') ? 'block' : 'none';
+    msgEst.textContent = est==='VENDIDA' ? 'Unidade vendida.' : (est==='BREVE' ? 'Ainda não liberada para venda.' : '');
     if(est==='DISPONIVEL'){
       pop.classList.remove('indisponivel'); acoes.style.display='flex';
       document.getElementById('popProp').disabled=false;
