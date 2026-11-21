@@ -70,7 +70,9 @@ html[data-tema="escuro"] .sec .cond{color:var(--teal)}
 
 /* KPIs */
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:22px}
-@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+/* 20/11/2026: 1fr não encolhia abaixo do conteúdo (valor em reais não quebra) e esticava a página no celular: minmax(0,1fr) + 1 coluna abaixo de 480 px */
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi{min-width:0;overflow-wrap:anywhere}}
+@media(max-width:480px){.kpis{grid-template-columns:minmax(0,1fr)}}
 .kpi{background:var(--sup);border:1px solid var(--border2);border-radius:12px;padding:15px 16px 14px}
 .kpi .lab{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);font-weight:700}
 .kpi .val{font-family:'Barlow Condensed';font-size:30px;font-weight:800;line-height:1;margin-top:8px;color:var(--azul-esc)}
