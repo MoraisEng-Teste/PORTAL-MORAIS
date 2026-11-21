@@ -5845,7 +5845,9 @@ async function propStatus(id, status){
     propCorrigirMapaUnidade((PROPS.find(x=>x.id===id)||{}).unidade); return; }
   if(r && r.ok){
     av.className="sim-aviso ok";
-    av.innerHTML="<b>✓ Status: "+esc(r.status||status)+".</b> "+esc(r.reflexo||"")+"<br><span style='font-size:12px'>Unidade, mapa e lista de propostas já atualizados."+
+    /* 20/11/2026: visto na tela — o selo do topo da ficha continuava "RECEBIDA" depois de reservar; e o texto do servidor vinha com "->" */
+    try{ const pl=document.querySelector("#sim-modal .modal-topo .pill")||document.querySelector("#sim-modal .pill"); if(pl) pl.outerHTML=propTag(r.status||status); }catch(e){}
+    av.innerHTML="<b>✓ Status: "+esc(PROP_ROTULO[PROP_NORM(r.status||status)]||r.status||status)+".</b> "+esc(String(r.reflexo||"").replace(/\s*->\s*/g," → "))+"<br><span style='font-size:12px'>Unidade, mapa e lista de propostas já atualizados."+
       (r.emailCorretor ? (r.emailCorretor.ok ? " E-mail enviado ao corretor ("+esc(r.emailCorretor.para||"")+")." : " ⚠ E-mail ao corretor não saiu: "+esc(r.emailCorretor.erro||"")) : "")+
       (r.emailCorretor && r.emailCorretor.vence ? " Reserva vence em "+esc(new Date(r.emailCorretor.vence).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))+"." : "")+
       (r.emailCorretor && r.emailCorretor.venda ? (r.emailCorretor.venda.ok ? " Venda criada na lista de vendas do condomínio." : " ⚠ A venda não foi criada: "+esc(r.emailCorretor.venda.erro||r.emailCorretor.venda.mensagem||"")) : "")+
