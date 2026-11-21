@@ -2281,7 +2281,7 @@ async function simPedirFechar(viaPop){
   if(_simFechando) return;
   _simFechando=true;
   try{
-    if(simEmailPendente() && !(await propSimNao("Há um e-mail escrito e ainda não enviado. Fechar a ficha mesmo assim?"))){
+    if(simEmailPendente() && !(await propSimNao("Há um e-mail escrito e ainda não enviado. Fechar a ficha mesmo assim?","Fechar sem enviar",true))){
       /* disse "não" depois de apertar Voltar: o navegador já andou um passo, então refaz o passo da ficha */
       if(viaPop===true && _fichaHist){ try{ history.pushState(null,"",_fichaHash); }catch(e){} }
       return;
@@ -2840,7 +2840,7 @@ async function propEnviarLink(id, bt){
   if(!texto){ av.innerHTML='<span style="color:var(--vermelho)">Escreva a mensagem antes de enviar.</span>'; return; }
   const html='<div style="white-space:pre-wrap">'+esc(texto).replace(
       esc(url.value), '<a href="'+esc(url.value)+'">'+esc(url.value)+'</a>')+'</div>';
-  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o corretor")+"?"))) return;
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o corretor")+"?","Enviar e-mail"))) return;
   bt.disabled=true; av.innerHTML='Enviando…';
   let r;
   try{ r=await chamar({action:"simsPropostaEmail", pageId:id, mensagemHtml:html, mensagem:texto,
@@ -4260,7 +4260,7 @@ function propDilEmailHtml(p){
 async function propDilEnviar(id, bt){
   const p=PROPS.find(x=>x.id===id); const st=PROP_DIL[id]||(PROP_DIL[id]={sel:{}}); if(!p) return;
   const fx=propParseEsquema(p.esquema), m=propDilAplicar(p,fx);
-  if(!(await propSimNao("Enviar o novo fluxo por e-mail para "+(p.email||"o corretor")+"?"))) return;
+  if(!(await propSimNao("Enviar o novo fluxo por e-mail para "+(p.email||"o corretor")+"?","Enviar e-mail"))) return;
   const html=propDilEmailHtml(p);
   const texto="Novo fluxo de pagamento — proposta "+(p.proposta||"")+" — "+(p.cliente||"")+", unidade "+(p.unidade||"")+"\n\n"+
     fx.map((f,i)=>(f.quando||"")+" — "+(f.valor||"")+" — "+(f.forma||"")+(m.mudou.has(i)?" (novo)":"")).join("\n");
@@ -5504,7 +5504,7 @@ async function propEnviarLinkVenda(id, bt){
   if(!texto){ av.innerHTML='<span style="color:var(--vermelho)">Escreva a mensagem antes de enviar.</span>'; return; }
   const html='<div style="white-space:pre-wrap">'+esc(texto).replace(
       esc(url.value), '<a href="'+esc(url.value)+'">'+esc(url.value)+'</a>')+'</div>';
-  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o corretor")+"?"))) return;
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o corretor")+"?","Enviar e-mail"))) return;
   bt.disabled=true; av.innerHTML='Enviando…';
   let r;
   try{ r=await chamar({action:"simsPropostaEmail", pageId:id, mensagemHtml:html, mensagem:texto,
@@ -5707,13 +5707,15 @@ async function propStatusInterno(id, nome){
     if(r.avisoUnidade) h+="<br><span style='font-size:12px;color:var(--vermelho)'>Unidade: "+esc(r.avisoUnidade)+"</span>";
     av.className="sim-aviso ok"; av.innerHTML=h;
     if(k==="PAGOU PREFERENCIA" && r.venda && r.venda.linha &&
-       await propSimNao("Reserva paga. Gerar o termo de reserva agora?"))
+       await propSimNao("Reserva paga. Gerar o termo de reserva agora?","Gerar termo"))
       propAbrirPreReserva(String(r.venda.linha));
   }
   propSincronizarTudo();
 }
 /* 28/10 (dono): pergunta com "Sim" e "Não" iguais, nenhum destacado (o confirm do navegador realça o OK). */
-function propSimNao(msg){
+function propSimNao(msg, sim, perigo){
+  /* 20/11/2026: mesma janela do resto do portal, com o verbo da ação no botão; a caixa antiga fica de reserva */
+  if(typeof window.moraisPerguntar==="function") return window.moraisPerguntar({titulo:"Confirmar", texto:msg, sim:sim||"Sim", nao:"Voltar", perigo:!!perigo});
   return new Promise(res=>{
     const f=document.createElement("div"); f.className="sn-fundo";   /* 18/11: classe só para o CSS de celular */
     f.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px";
@@ -5743,7 +5745,7 @@ function propCaixaAviso(texto, titulo){ return propPerguntar({titulo:titulo||"Av
    (valor, data do pagamento e data limite — a data limite vira o prazo da reserva). A linha da venda vem da resposta
    do Reservar; sem ela (resposta perdida), procura pela unidade. */
 async function propOferecerTermo(id, r){
-  if(!(await propSimNao("Reserva feita. Gerar o termo de reserva agora?"))) return;
+  if(!(await propSimNao("Reserva feita. Gerar o termo de reserva agora?","Gerar termo"))) return;
   const v=r && r.emailCorretor && r.emailCorretor.venda;
   if(v && v.ok && v.linha) propAbrirPreReserva(String(v.linha), {rapido:true});
   else propPreReservaDaUnidade(id, {rapido:true});
@@ -5794,7 +5796,7 @@ async function propStatus(id, status){
      !(await propPerguntar({titulo:"Negar a proposta reservada?", texto:"• A unidade volta a ficar disponível.\n• A venda criada na reserva vai para distratos.", sim:"Negar proposta", nao:"Voltar", perigo:true}))) return;
   if(status==="NEGADA" && PROP_NORM((PROPS.find(x=>x.id===id)||{}).status)!=="RESERVADA"){
     const pn=PROPS.find(x=>x.id===id)||{};
-    if(!(await propSimNao("Negar a proposta de "+(pn.cliente||"este cliente")+"? A unidade "+(pn.unidade||"")+" fica livre."))) return;
+    if(!(await propSimNao("Negar a proposta de "+(pn.cliente||"este cliente")+"? A unidade "+(pn.unidade||"")+" fica livre.","Negar proposta",true))) return;
   }
   const av=document.getElementById("prop-detAviso");
   av.className="sim-aviso ok"; av.textContent="Salvando…";
@@ -6040,7 +6042,7 @@ async function propEmail(id){
   if(total>20*1048576){
     av.className="sim-aviso err"; av.textContent="Os anexos passam de 20 MB. Tire algum arquivo."; return;
   }
-  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o destinatário da proposta")+"?"))) return;
+  if(!(await propSimNao("Enviar este e-mail para "+((PROPS.find(x=>x.id===id)||{}).email||"o destinatário da proposta")+"?","Enviar e-mail"))) return;
   av.className="sim-aviso ok"; av.textContent=arqs.length?"Preparando anexos…":"Enviando…";
   if(bt) bt.disabled=true;
   let anexos=[];
