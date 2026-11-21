@@ -1762,7 +1762,7 @@ const GRUPOS_ORDEM=["SETORES","PROCESSOS E ARQUIVOS","AN√ÅLISES","MAPAS","REUNI√
     ".mp-dlg h2{margin:0 0 8px;font-size:17px;line-height:1.3}"+
     ".mp-dlg p{margin:0;white-space:pre-line;overflow-wrap:anywhere}"+
     ".mp-dlg-bts{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}"+
-    ".mp-dlg-bts button{min-height:40px;padding:8px 16px;border-radius:9px;font:inherit;font-weight:700;cursor:pointer;border:1px solid #295778;background:transparent;color:#295778}"+
+    ".mp-dlg-bts button{min-height:44px;padding:8px 16px;border-radius:9px;font:inherit;font-weight:700;cursor:pointer;border:1px solid #295778;background:transparent;color:#295778}"+
     ".mp-dlg-bts button.mp-sim{background:#295778;color:#fff}"+
     ".mp-dlg-bts button.mp-sim.mp-perigo{background:#c0392b;border-color:#c0392b}"+
     "html[data-tema=\"escuro\"] .mp-dlg{background:#15222c;color:#e7eff5;border-color:#2d4757}"+
