@@ -3132,7 +3132,9 @@ function simRenderUnidades(){
   const vis=UNS.filter(u=>`${u.unidade} tipo ${u.tipo}`.toLowerCase().includes(termo));
   /* 03/11/2026 (dono): a coluna STATUS INTERNO sai da vista — fica no DOM, oculta, porque acompanha o STATUS MAPA
      sozinha (simEspelharStatusInterno) e grava junto */
-  const cab='<thead><tr>'+SIM_COLS.map(c=>`<th${c[2]==="si"?' style="display:none"':''}>${c[1]}</th>`).join("")+'<th></th></tr></thead>';
+  /* 20/11/2026 (ux): o cabeçalho mostra rótulo legível; o nome da coluna do Notion (c[1]) segue como chave e vai no title */
+  const SIM_ROT={"UNIDADE":"Unidade","TIPO":"Tipo","VALOR DE VENDA":"Valor de venda","AVALIACAO":"Avaliação","INFORMACOES":"Informações","DECORADO":"Decorado","DISPONIVEL":"Disponível","STATUS MAPA":"Situação no mapa","STATUS INTERNO":"Situação interna","OBSERVACAO":"Observação"};
+  const cab='<thead><tr>'+SIM_COLS.map(c=>`<th${c[2]==="si"?' style="display:none"':''} title="Coluna ${c[1]}">${SIM_ROT[c[1]]||c[1]}</th>`).join("")+'<th></th></tr></thead>';
   const corpo=vis.map(u=>{
     const i=UNS.indexOf(u);
     const alterada = SIM_ALTERADAS.has(i);
