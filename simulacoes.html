@@ -220,6 +220,8 @@ thead th:hover{background:var(--azul-esc)}
 #prop-tab thead th:not(.ord){cursor:default}   /* só "Criada" ordena */
 #prop-tab thead th:not(.ord):hover{background:var(--azul)}
 @media(max-width:600px){.sim-ad-bt{min-height:44px;min-width:44px}}
+/* 20/11/2026: no cartão do celular, linha com white-space:nowrap embutido ("✉ não enviada ao correspondente") empurrava a página (429 px em 375) */
+@media(max-width:600px){#prop-tab td [style*="white-space:nowrap"],#sim-tab td [style*="white-space:nowrap"]{white-space:normal!important}#prop-tab td,#sim-tab td{min-width:0;overflow-wrap:anywhere}}
 .prop-maiscol{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text3);align-self:center;min-height:44px;cursor:pointer}
 thead th .arr{opacity:.55;font-size:10px;margin-left:3px;color:#fff}
 thead th.sortA .arr,thead th.sortD .arr{opacity:1}

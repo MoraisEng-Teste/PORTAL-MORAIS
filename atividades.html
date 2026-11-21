@@ -264,6 +264,8 @@ html[data-tema="escuro"] .atv.atr .nm{color:#f3a29a}
   .atv{grid-template-columns:1fr 1fr} .atv-cab{display:none} .atv .nmcol{grid-column:1/-1} .atv .k{display:block}
 }
 @media(max-width:900px){ .hupd{display:none} .resumo{grid-template-columns:1fr 1fr} }
+/* 20/11/2026: botões de visão (Lista/Kanban/Calendário) e filtros com 44 px no celular */
+@media(max-width:680px){.vis button,.flt{min-height:44px;display:inline-flex;align-items:center}.vis{flex-wrap:wrap}}
 @media(max-width:680px){
   input,select,textarea{font-size:16px}
   /* 20/11/26: alvo de toque de 44 px */
