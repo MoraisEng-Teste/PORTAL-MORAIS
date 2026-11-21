@@ -126,6 +126,23 @@
     return ordem.filter(function (d) { return caixas[d].length; })
       .map(function (d) { k++; return { titulo: k + " · " + d, etapa: d, campos: caixas[d] }; });
   }
+  /* 20/11/2026 (usabilidade): colunas da planilha de casas de rua. Sem caixa marcada = lista curta (as de CURTA_RUA,
+   * achadas pelo NOME da coluna, mais a situação do processo); "processo" = a curta + as colunas das etapas numeradas do
+   * Andamento, na ordem das etapas; "todas" = tudo que veio, a ordem recebida no fim. A 1ª (título) fica sempre. */
+  var CURTA_RUA = ["CLIENTES", "DATA DA VENDA", "VALOR DE COMPRA E VENDA NO CONTRATO (VENDIDA)", "CORRETOR", "IMOBILIÁRIA",
+                   "CORRESPONDENTE", "BANCO"];
+  function colunasRua(nomes, processo, todas) {
+    var lista = (nomes || []).slice(), out = [], usado = {};
+    if (!lista.length) return out;
+    function poe(n) { var k = norm(n); if (!usado[k]) { usado[k] = true; out.push(n); } }
+    poe(lista[0]);
+    CURTA_RUA.forEach(function (c) { var k = norm(c); for (var i = 1; i < lista.length; i++) if (norm(lista[i]) === k) { poe(lista[i]); return; } });
+    for (var i = 1; i < lista.length; i++) if (/^SITUACAO DO PROCESSO/.test(norm(lista[i]))) { poe(lista[i]); break; }
+    if (!processo && !todas) return out;
+    porEtapa(lista.slice(1)).forEach(function (g) { if (g.etapa !== ETAPA_OUTROS) g.campos.forEach(poe); });
+    if (todas) lista.forEach(poe);
+    return out;
+  }
   /* 12/11/2026 (dono): a DATA DE ASSINATURA DO CONTRATO (contrato do banco) fica no BANCO E CORRESPONDENTE, logo depois
    * do ASSINOU E ARMAZENOU CONTRATO DO BANCO? — antes caía em CONTRATO, no fim do Andamento, longe dele. */
   /* 12/11/2026 (dono): "tem que ficar na mesma lógica, um em cima do outro" — campos que andam juntos viram UM bloco da
@@ -217,7 +234,7 @@
   var api = { OCULTOS: OCULTOS, PROCESSO: PROCESSO, resolverProcesso: resolverProcesso, ESPELHO_COMPRADOR1: ESPELHO_COMPRADOR1, EMAIL_ANTIGO_C1: EMAIL_ANTIGO_C1,
               emailAntigoVisivel: emailAntigoVisivel, PREFIXOS_OCULTOS: PREFIXOS_OCULTOS, GRUPOS: GRUPOS, ocultoNoPainel: ocultoNoPainel,
               grupoDoCampo: grupoDoCampo, ordenar: ordenar, ordenarArquivos: ordenarArquivos,
-              ABAS: ABAS, ABAS_LISTA: ABAS_LISTA, abaDoCampo: abaDoCampo, ETAPAS: ETAPAS, etapa: etapa, porEtapa: porEtapa,
+              ABAS: ABAS, ABAS_LISTA: ABAS_LISTA, abaDoCampo: abaDoCampo, ETAPAS: ETAPAS, etapa: etapa, porEtapa: porEtapa, colunasRua: colunasRua, CURTA_RUA: CURTA_RUA,
               /* nomes antigos (antes de 13/11 eram departamentos): continuam respondendo, agora por etapa */
               departamento: etapa, porDepartamento: porEtapa, agruparPares: agruparPares, PARES: PARES,
               colunasDaFalta: colunasDaFalta };

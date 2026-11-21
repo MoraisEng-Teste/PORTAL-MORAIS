@@ -1118,6 +1118,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
         <select id="hub-ano" onchange="aplicarFiltros('hub')"><option value="">Todos os anos</option></select>
           <select id="hub-periodo" onchange="aoTrocarPeriodo('hub')"><option value="">Qualquer período</option><option value="7d">Últimos 7 dias</option><option value="30d">Últimos 30 dias</option><option value="mes">Mês (escolher)</option><option value="intervalo">Intervalo (escolher)</option></select><select id="hub-mes" style="display:none" onchange="aplicarFiltros('hub')"><option value="">Mês…</option><option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select><input type="date" id="hub-de" style="display:none" title="Data inicial" onchange="aplicarFiltros('hub')"><input type="date" id="hub-ate" style="display:none" title="Data final" onchange="aplicarFiltros('hub')">
         <input class="busca" type="search" readonly onfocus="this.removeAttribute('readonly')" id="hub-busca" name="q_planilha_hub" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Buscar por endereço, setor ou cidade…" oninput="aplicarFiltros('hub')">
+        <label class="cd-chk"><input type="checkbox" id="hub-proc" onchange="ruaMudou('hub','rua_proc',this)"> Colunas do processo</label><label class="cd-chk"><input type="checkbox" id="hub-todas" onchange="ruaMudou('hub','rua_todas',this)"> Todas as colunas<span id="hub-todas-n"></span></label>
         <span class="count" id="hub-count"></span>
       </div>
       <div class="info-bar" id="hub-info"></div>
@@ -1171,6 +1172,7 @@ html[data-tema="escuro"] .tarja-teste{background:#2a2113;border-color:#57431f;co
           <select id="set-ano" onchange="aplicarFiltros('set')"><option value="">Todos os anos</option></select>
           <select id="set-periodo" onchange="aoTrocarPeriodo('set')"><option value="">Qualquer período</option><option value="7d">Últimos 7 dias</option><option value="30d">Últimos 30 dias</option><option value="mes">Mês (escolher)</option><option value="intervalo">Intervalo (escolher)</option></select><select id="set-mes" style="display:none" onchange="aplicarFiltros('set')"><option value="">Mês…</option><option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select><input type="date" id="set-de" style="display:none" title="Data inicial" onchange="aplicarFiltros('set')"><input type="date" id="set-ate" style="display:none" title="Data final" onchange="aplicarFiltros('set')">
           <input class="busca" type="search" readonly onfocus="this.removeAttribute('readonly')" id="set-busca" name="q_planilha_set" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Buscar…" oninput="aplicarFiltros('set')">
+          <label class="cd-chk"><input type="checkbox" id="set-proc" onchange="ruaMudou('set','rua_proc',this)"> Colunas do processo</label><label class="cd-chk"><input type="checkbox" id="set-todas" onchange="ruaMudou('set','rua_todas',this)"> Todas as colunas<span id="set-todas-n"></span></label>
           <span class="count" id="set-count"></span>
         </div>
         <div class="info-bar" id="set-info"></div>
@@ -4164,6 +4166,7 @@ function ordenarPorEndereco(arr){
   });
 }
 async function carregarPlanilha(ctx){
+  ruaRestaurar();
   const setor = document.getElementById(ctx+"-setor").value;
   const wrap=document.getElementById(ctx+"-wrap");
   wrap.innerHTML='<div class="vazio"><span class="load"></span> Carregando…</div>';
@@ -4377,8 +4380,34 @@ function ordenarPor(ctx, colNome){
   else { renumerarTabela(ctx); atualizarSetas(ctx); }
 }
 
+/* 20/11/2026 (usabilidade): planilha de casas de rua abre com a lista curta; "Colunas do processo" e "Todas as colunas"
+   (caixas rua-proc / rua-todas, guardadas em rua_proc / rua_todas) trazem mais. Setor com lista própria (COLUNAS_SETOR) segue a dele. */
+function ruaModo(ctx){
+  const ck=id=>{ const e=document.getElementById(ctx+"-"+id); return !!(e&&e.checked); };
+  return {proc:ck("proc"), todas:ck("todas")};
+}
+function ruaColunas(ctx){
+  const nomes=ordemColunas().filter((n,i)=>i===0||!ocultaTecnica(n));
+  if(COLUNAS_SETOR[SETOR_ATUAL]) return nomes;
+  const m=ruaModo(ctx);
+  try{ if(window.PainelCasa&&window.PainelCasa.colunasRua) return window.PainelCasa.colunasRua(nomes,m.proc,m.todas); }catch(e){}
+  return nomes;
+}
+function ruaMudou(ctx,chave,el){
+  try{ localStorage.setItem(chave,el.checked?"1":"0"); }catch(e){}
+  ["hub","set"].forEach(c=>{ if(c===ctx) return; const o=document.getElementById(c+"-"+(chave==="rua_proc"?"proc":"todas")); if(o) o.checked=el.checked; });
+  renderTabela(ctx); aplicarFiltros(ctx);
+}
+function ruaRestaurar(){
+  ["hub","set"].forEach(c=>{
+    [["proc","rua_proc"],["todas","rua_todas"]].forEach(([id,ch])=>{
+      try{ const e=document.getElementById(c+"-"+id); if(e) e.checked=localStorage.getItem(ch)==="1"; }catch(e){}
+    });
+  });
+}
 function renderTabela(ctx){
-  const cols=ordemColunas().filter((n,i)=>i===0||!ocultaTecnica(n)).map(campoPorNome).filter(Boolean);
+  const cols=ruaColunas(ctx).map(campoPorNome).filter(Boolean);
+  try{ const nt=document.getElementById(ctx+"-todas-n"); if(nt) nt.textContent=" ("+ordemColunas().filter((n,i)=>i===0||!ocultaTecnica(n)).length+")"; }catch(e){}
   let html='<table><thead><tr><th>Nº</th>'+cols.map((c,i)=>thCol(c,i,ctx)).join("")+'</tr></thead><tbody>';
   DADOS[ctx].forEach(v=>{
     const dv=getV(v.valores,"DATA DA VENDA");
