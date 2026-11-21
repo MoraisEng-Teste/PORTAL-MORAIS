@@ -938,6 +938,10 @@ body{display:flex;flex-direction:column;min-height:100vh}
      disso o iOS dá zoom sozinho ao focar o campo) */
   input,select,textarea{font-size:16px}
   .bt,.bt-mini,button{min-height:40px}
+  /* 20/11/2026: tudo que se toca fica com 44 px (botões, filtros, caixas de marcar); as barras já quebram linha */
+  .bt,button,.cd-bt,.tab,select,input[type=search],input[type=text],input[type=date]{min-height:44px}
+  .cd-chk{min-height:44px}
+  .cd-chk input{width:20px;height:20px}
   .bt-mini{min-height:44px}   /* Onda 3 (ux): alvo de toque de 44 px; as linhas de botões já quebram (flex-wrap) */
 
   /* cabeçalho */
