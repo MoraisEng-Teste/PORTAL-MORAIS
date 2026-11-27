@@ -1009,10 +1009,19 @@
       h += '<div class="dz-linha"><span class="dz-rot">Prévia do contrato: ' + esc(pre.nome || "") + "</span>" +
         '<button type="button" class="bt bt-mini" data-acao="c-ver-pre"' + (ocupado ? " disabled" : "") + ">Visualizar prévia</button></div>";
       h += '<div class="dz-msg">Confira na prévia do contrato o que está grifado: amarelo = preenchido pelo app; vermelho = ficou em branco.</div>';
-      h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-aprovar"' + ((ocupado || testes || velho) ? " disabled" : "") +
-        ">Conferi, está tudo certo — gerar contrato</button> " +
-        '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button>" +
-        motivoHtml(velho ? "Os dados mudaram: gere a prévia do contrato de novo antes de conferir." : (testes ? "Perfil TESTES só consulta." : ocupado ? "Aguarde: outra ação está em andamento." : "")) + "</div>";
+      /* 27/11/2026 (Juliana): prévia velha em destaque, com o botão de gerar de novo dentro; sem "Conferi" enquanto velha */
+      if (velho) {
+        h += '<div class="dz-aviso dz-velho" role="alert" style="border-width:2px;padding:12px 14px;font-size:14px">' +
+          "<b>Esta prévia do contrato ficou velha:</b> você mudou dados depois de gerá-la (conta, corretor ou outro campo). " +
+          "Os dados novos já estão salvos — falta só gerar a prévia de novo." +
+          '<div class="dz-linha" style="margin-top:8px"><button type="button" class="bt" style="min-height:44px" data-acao="c-pre"' + dis +
+          ">Gerar a prévia do contrato de novo agora</button></div></div>";
+      } else {
+        h += '<div class="dz-linha"><button type="button" class="bt bt-mini" data-acao="c-aprovar"' + ((ocupado || testes || velho) ? " disabled" : "") +
+          ">Conferi, está tudo certo — gerar contrato</button> " +
+          '<button type="button" class="bt ghost bt-mini" data-acao="c-pre"' + dis + ">Gerar prévia do contrato de novo</button>" +
+          motivoHtml(velho ? "Os dados mudaram: gere a prévia do contrato de novo antes de conferir." : (testes ? "Perfil TESTES só consulta." : ocupado ? "Aguarde: outra ação está em andamento." : "")) + "</div>";
+      }
       if (e.gerado) h += '<div class="dz-msg">Contrato anterior: ' + esc(e.nome) + " (será substituído ao conferir).</div>";
     } else if (etapa === "FINAL") {
       h += '<div class="dz-linha"><span class="dz-rot">Contrato gerado<span class="dz-arq-nome">: ' + esc(e.nome) + "</span></span>" +
@@ -4702,6 +4711,15 @@
       if (valor === CONTA_DIGITAR) { uiC.contaDigitar = true; pintar(); return; }
       return salvarConta(valor ? { id: valor } : {});
     }
+    /* 27/11/2026 (Juliana): conta salva — o aviso "Banco, agência e conta: escolha ou digite…" e a falta "Conta de
+       recebimento: …" saem na hora (antes ficavam até gerar de novo, e parecia que a conta não tinha salvo) */
+    function contaResolvidaNaTela() {
+      if (uiC.campos && uiC.campos.conta) {
+        uiC.campos.conta = false;
+        if (!(uiC.campos.grupos || []).length) uiC.campos = null;
+      }
+      if (Array.isArray(uiC.faltas)) uiC.faltas = uiC.faltas.filter(function (f) { return !/^Conta de recebimento:/.test(String(f)); });
+    }
     async function salvarConta(conta) {
       uiC.ocupadoContrato = "conta"; uiC.msg = ""; pintar();
       var seq = ++seqC;
@@ -4714,7 +4732,8 @@
           if (r.desatualizado && estadoC.pre && etapaContrato(estadoC) === "PRE") estadoC.pre.desatualizado = true;
         }
         uiC.contaDigitar = undefined; limparRascunhoConta();
-        uiC.msg = "Conta de recebimento salva." + (r.desatualizado ? " Gere a prévia do contrato de novo." : "");
+        contaResolvidaNaTela();
+        uiC.msg = "Conta de recebimento salva." + (r.desatualizado ? " Gere a prévia do contrato de novo (botão acima)." : "");
       } else uiC.msg = mensagemContrato(r);
       pintar();
     }
